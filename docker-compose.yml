@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+    billing_server:
+        image: "nginx:stable-alpine"
+        volumes:
+            - ./:/var/www
+            - ./_docker/nginx/conf.d/:/etc/nginx/conf.d
+        ports:
+            - "8088:80"
+        depends_on:
+            - billing_app
+        container_name: billing_server
+    billing_app:
+        build:
+            context: .
+            dockerfile: _docker/app/Dockerfile
+        volumes:
+            - ./:/var/www
+        depends_on:
+            - billing_database
+        container_name: billing_app
+    billing_database:
+        image: mysql:8.0
+        restart: always
+        volumes:
+            - ./tmp/db:/var/lib/mysql
+        environment:
+            MYSQL_DATABASE: billing
+            MYSQL_ROOT_PASSWORD: root
+        ports:
+            - 8104:3306
+        command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci --lower_case_table_names=0
+        container_name: billing_database
