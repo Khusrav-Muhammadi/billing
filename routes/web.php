@@ -29,6 +29,7 @@ Route::get('/', function () {
         Route::get('/create', [ClientController::class, 'create'])->name('client.create');
         Route::post('/store', [ClientController::class, 'store'])->name('client.store');
         Route::get('edit/{client}', [ClientController::class, 'edit'])->name('client.edit');
+        Route::get('show/{client}', [ClientController::class, 'show'])->name('client.show');
         Route::patch('update/{client}', [ClientController::class, 'update'])->name('client.update');
         Route::delete('/{client}', [ClientController::class, 'destroy'])->name('client.destroy');
     });
@@ -36,10 +37,11 @@ Route::get('/', function () {
     Route::group(['prefix' => 'organization'], function () {
         Route::get('/', [OrganizationController::class, 'index'])->name('organization.index');
         Route::get('/create', [OrganizationController::class, 'create'])->name('organization.create');
-        Route::post('/store', [OrganizationController::class, 'store'])->name('organization.store');
+        Route::post('/store/{client}', [OrganizationController::class, 'store'])->name('organization.store');
         Route::get('edit/{organization}', [OrganizationController::class, 'edit'])->name('organization.edit');
         Route::patch('update/{organization}', [OrganizationController::class, 'update'])->name('organization.update');
         Route::delete('/{organization}', [OrganizationController::class, 'destroy'])->name('organization.destroy');
+        Route::post('access', [OrganizationController::class, 'access'])->name('organization.access');
     });
 
     Route::group(['prefix' => 'business-type'], function () {

@@ -23,13 +23,13 @@
             </div>
 
             <div class="form-group">
-                <label for="project_uuid">Id проекта</label>
-                <input type="text" class="form-control" name="project_uuid" placeholder="id проекта">
+                <label for="sub_domain">Поддомен фронта</label>
+                <input type="text" class="form-control" name="front_sub_domain" placeholder="Поддомен фронта">
             </div>
 
             <div class="form-group">
-                <label for="sub_domain">Поддомен</label>
-                <input type="text" class="form-control" name="sub_domain" placeholder="Поддомен">
+                <label for="sub_domain">Поддомен бекенда</label>
+                <input type="text" class="form-control" name="back_sub_domain" placeholder="Поддомен бекенда">
             </div>
 
             <div class="form-group">
@@ -37,6 +37,24 @@
                 <select class="form-control form-control-sm" name="business_type_id">
                     @foreach($businessTypes as $businessType)
                         <option value="{{ $businessType->id }}">{{ $businessType->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="business_type_id">Тариф</label>
+                <select class="form-control form-control-sm" name="tariff_id">
+                    @foreach($tariffs as $tariff)
+                        <option value="{{ $tariff->id }}">{{ $tariff->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="business_type_id">Скидка</label>
+                <select class="form-control form-control-sm" name="sale_id">
+                    @foreach($sales as $sale)
+                        <option value="{{ $sale->id }}">{{ $sale->name }}</option>
                     @endforeach
                 </select>
             </div>

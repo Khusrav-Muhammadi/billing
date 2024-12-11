@@ -24,20 +24,38 @@
             </div>
 
             <div class="form-group">
-                <label for="project_uuid">Id проекта</label>
-                <input type="text" class="form-control" name="project_uuid" value="{{ $client->project_uuid }}">
+                <label for="sub_domain">Поддомен фронта</label>
+                <input type="text" class="form-control" name="front_sub_domain" value="{{ $client->front_sub_domain }}">
             </div>
 
             <div class="form-group">
-                <label for="sub_domain">Поддомен</label>
-                <input type="text" class="form-control" name="sub_domain" value="{{ $client->sub_domain }}">
+                <label for="sub_domain">Поддомен бекенда</label>
+                <input type="text" class="form-control" name="back_sub_domain" value="{{ $client->back_sub_domain }}">
             </div>
 
             <div class="form-group">
                 <label for="business_type_id">Тип бизнеса</label>
                 <select class="form-control form-control-sm" name="business_type_id">
                     @foreach($businessTypes as $businessType)
-                        <option value="{{ $businessType->id }}" {{ $businessType->id == $client->business_type_id ? 'selected' : '' }}>{{ $businessType->name }}</option>
+                        <option value="{{ $businessType->id }}" {{ $client->business_type_id == $businessType->id ? 'selected': '' }}>{{ $businessType->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="business_type_id">Тариф</label>
+                <select class="form-control form-control-sm" name="tariff_id">
+                    @foreach($tariffs as $tariff)
+                        <option value="{{ $tariff->id }}" {{ $client->tariff_id == $tariff->id ? 'selected': '' }}>{{ $tariff->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="business_type_id">Скидка</label>
+                <select class="form-control form-control-sm" name="sale_id">
+                    @foreach($sales as $sale)
+                        <option value="{{ $sale->id }}" {{ $client->sale_id == $sale->id ? 'selected': '' }}>{{ $sale->name }}</option>
                     @endforeach
                 </select>
             </div>

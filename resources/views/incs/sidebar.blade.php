@@ -38,12 +38,6 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{{ route('organization.index') }}">
-            <i class="mdi mdi-city menu-icon"></i>
-            <span class="menu-title">Организации</span>
-        </a>
-    </li>
-    <li class="nav-item">
         <a class="nav-link" href="{{ route('sale.index') }}">
             <i class="mdi mdi-sale menu-icon"></i>
             <span class="menu-title">Скидки</span>

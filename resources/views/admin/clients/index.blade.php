@@ -28,10 +28,11 @@
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $client->name }}</td>
                         <td>{{ $client->phone }}</td>
-                        <td>{{ $client->sub_domain }}</td>
+                        <td>{{ $client->front_sub_domain }}</td>
                         <td>{{ $client->businessType?->name }}</td>
                         <td>
                             <a href="{{ route('client.edit', $client->id) }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
+                            <a href="{{ route('client.show', $client->id) }}"><i class="mdi mdi-eye" style="font-size: 30px"></i></a>
                             <a href="" data-bs-toggle="modal" data-bs-target="#deleteClient{{$client->id}}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
                         </td>
                     </tr>

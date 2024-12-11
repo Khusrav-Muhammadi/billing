@@ -18,11 +18,8 @@ class StoreRequest extends FormRequest
         return [
             'name' => ['required'],
             'phone' => ['required'],
-            'INN' => ['required'],
-            'license' => ['required'],
+            'INN' => ['nullable'],
             'address' => ['required'],
-            'client_id' => ['required', Rule::exists('clients','id')],
-            'sale_id' => ['nullable', Rule::exists('sales','id')],
         ];
     }
 }
