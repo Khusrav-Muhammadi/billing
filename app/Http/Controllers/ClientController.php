@@ -25,10 +25,8 @@ class ClientController extends Controller
     public function create()
     {
         $businessTypes = BusinessType::all();
-        $sales = Sale::all();
-        $tariffs = Tariff::all();
 
-        return view('admin.clients.create', compact('businessTypes', 'sales', 'tariffs'));
+        return view('admin.clients.create', compact('businessTypes'));
     }
 
     public function store(StoreRequest $request)
@@ -44,11 +42,13 @@ class ClientController extends Controller
 
     public function show(Client $client)
     {
-        $organizations = Organization::where('client_id',$client->id)->get();
-        $transactions = Transaction::where('client_id',$client->id)->get();
+        $organizations = Organization::where('client_id', $client->id)->with('tariff', 'sale')->get();
+        $transactions = Transaction::where('client_id', $client->id)->get();
         $businessTypes = BusinessType::all();
+        $sales = Sale::all();
+        $tariffs = Tariff::all();
 
-        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes'));
+        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'sales', 'tariffs'));
     }
 
     public function edit(Client $client)

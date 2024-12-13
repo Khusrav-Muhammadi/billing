@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Organization;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -16,7 +17,7 @@ class OrganizationJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public string $name, public string $domain)
+    public function __construct(public Organization $organization, public string $domain)
     {
         //
     }
@@ -29,7 +30,8 @@ class OrganizationJob implements ShouldQueue
         Http::withHeaders([
             'Accept' => 'application/json',
         ])->post("https://$this->domain.shamcrm.com/api/organization", [
-            'name' => $this->name
+            'name' => $this->organization->name,
+            'tariff_id' => $this->organization->tariff_id
         ]);
     }
 }

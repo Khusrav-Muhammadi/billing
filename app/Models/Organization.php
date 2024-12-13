@@ -17,4 +17,14 @@ class Organization extends Model
         return $this
             ->belongsTo(Client::class);
     }
+
+    public function tariff()
+    {
+        return $this->belongsTo(Tariff::class, 'tariff_id');
+    }
+
+    public function sale()
+    {
+        return $this->belongsTo(Sale::class, 'sale_id');
+    }
 }

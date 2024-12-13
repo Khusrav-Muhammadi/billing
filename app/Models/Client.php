@@ -16,13 +16,4 @@ class Client extends Model
         return $this->belongsTo(BusinessType::class);
     }
 
-    public function tariff()
-    {
-        return $this->belongsTo(Tariff::class);
-    }
-
-    public function sale()
-    {
-        return $this->belongsTo(Sale::class);
-    }
 }

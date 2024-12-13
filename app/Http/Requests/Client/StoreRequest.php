@@ -20,9 +20,7 @@ class StoreRequest extends FormRequest
             'phone' => ['required'],
             'front_sub_domain' => ['required'],
             'back_sub_domain' => ['required'],
-            'business_type_id' => ['required', Rule::exists('business_types','id')],
-            'sale_id' => ['nullable', Rule::exists('sales','id')],
-            'tariff_id' => ['nullable', Rule::exists('tariffs','id')],
+            'business_type_id' => ['required', Rule::exists('business_types','id')]
         ];
     }
 }

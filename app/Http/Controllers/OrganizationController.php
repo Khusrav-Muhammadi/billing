@@ -19,11 +19,12 @@ class OrganizationController extends Controller
     public function store(Client $client, StoreRequest $request): RedirectResponse
     {
         $data = $request->validated();
+
         $data['client_id'] = $client->id;
 
         $organization = Organization::create($data);
 
-        OrganizationJob::dispatch($organization->name, $client->back_sub_domain);
+        OrganizationJob::dispatch($organization, $client->back_sub_domain);
 
         return redirect()->back();
     }

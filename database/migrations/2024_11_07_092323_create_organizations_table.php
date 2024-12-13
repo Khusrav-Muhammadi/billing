@@ -20,7 +20,6 @@ return new class extends Migration
             $table->unsignedInteger('sale_id')->nullable();
             $table->unsignedInteger('client_id')->nullable();
             $table->boolean('has_access')->default(true);
-            $table->unsignedInteger('sale_id');
             $table->unsignedInteger('tariff_id');
             $table->timestamps();
         });

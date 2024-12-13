@@ -11,7 +11,6 @@
             <h4 class="card-title">Организации</h4>
             <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button" class="btn btn-primary">Создать</a>
             <div class="d-flex">
-                <!-- Первая таблица -->
                 <div class="card table-container flex-fill mr-3">
                     <table class="table table-hover">
                         <thead>
@@ -19,8 +18,8 @@
                             <th>№</th>
                             <th>Имя</th>
                             <th>Телефон</th>
-                            <th>ИНН</th>
-                            <th>Адрес</th>
+                            <th>Тариф</th>
+                            <th>Скидка</th>
                             <th>Активный</th>
                             <th>Действие</th>
                         </tr>
@@ -31,8 +30,8 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $organization->name }}</td>
                                 <td>{{ $organization->phone }}</td>
-                                <td>{{ $organization->INN }}</td>
-                                <td>{{ $organization->address }}</td>
+                                <td>{{ $organization->tariff?->name }}</td>
+                                <td>{{ $organization->sale?->name }}</td>
                                 <td>
                                     <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
                                            data-organization-id="{{ $organization->id }}" data-client-id="{{ $client->id }}" {{ $organization->has_access ? 'checked' : '' }}
@@ -106,6 +105,23 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="tariff_id">Тариф</label>
+                            <select class="form-control form-control" name="tariff_id">
+                                @foreach($tariffs as $tariff)
+                                    <option value="{{ $tariff->id }}">{{ $tariff->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sale_id">Скидка</label>
+                            <select class="form-control form-control" name="sale_id">
+                                @foreach($sales as $sale)
+                                    <option value="{{ $sale->id }}">{{ $sale->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label for="INN">Инн</label>
                             <input type="number" class="form-control" name="INN" placeholder="ИНН">
                         </div>
@@ -116,6 +132,7 @@
                                       class="form-control"></textarea>
                         </div>
                     </div>
+
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                         <button type="submit" class="btn btn-primary">Сохранить</button>

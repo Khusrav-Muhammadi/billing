@@ -41,24 +41,6 @@
                 </select>
             </div>
 
-            <div class="form-group">
-                <label for="business_type_id">Тариф</label>
-                <select class="form-control form-control-sm" name="tariff_id">
-                    @foreach($tariffs as $tariff)
-                        <option value="{{ $tariff->id }}">{{ $tariff->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="business_type_id">Скидка</label>
-                <select class="form-control form-control-sm" name="sale_id">
-                    @foreach($sales as $sale)
-                        <option value="{{ $sale->id }}">{{ $sale->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
             <button type="submit" class="btn btn-primary mr-2"> Сохранить </button>
 
         </form>
