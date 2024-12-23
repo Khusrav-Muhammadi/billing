@@ -28,7 +28,7 @@ class OrganizationJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $url = "https://$this->domain.shamcrm.com/api/organization";
+        $url = "https://$this->domain-back.shamcrm.com/api/organization";
 
         $organization = $this->organization;
         $tariff = Tariff::find($organization->client->tariff_id);
