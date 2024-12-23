@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Organization\AddPackRequest;
 use App\Http\Requests\Organization\StoreRequest;
 use App\Http\Requests\Organization\UpdateRequest;
 use App\Jobs\OrganizationJob;
 use App\Models\BusinessType;
 use App\Models\Client;
 use App\Models\Organization;
+use App\Models\OrganizationPack;
+use App\Models\Pack;
 use App\Models\Sale;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +30,13 @@ class OrganizationController extends Controller
         OrganizationJob::dispatch($organization, $client->back_sub_domain);
 
         return redirect()->back();
+    }
+
+    public function show(Organization $organization)
+    {
+        $packs = Pack::all();
+
+        return view('admin.organizations.show', compact('organization', 'packs'));
     }
 
     public function update(Organization $organization, UpdateRequest $request): RedirectResponse
@@ -67,5 +77,25 @@ class OrganizationController extends Controller
         ])->post("http://$client->back_sub_domain.shamcrm.com/api/organization/access/$organization->id",[
             'has_access' => $data['has_access']
         ]);
+    }
+
+    public function addPack(Organization $organization, AddPackRequest $request)
+    {
+        $data = $request->validated();
+
+        OrganizationPack::create([
+            'organization_id' => $organization->id,
+            'pack_id' => $data['pack_id'],
+            'date' => $data['date'],
+        ]);
+
+        return redirect()->back();
+    }
+
+    public function deletePack(OrganizationPack $organizationPack)
+    {
+        $organizationPack->delete();
+
+        return redirect()->back();
     }
 }

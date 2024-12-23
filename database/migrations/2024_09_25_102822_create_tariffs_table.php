@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->integer('price');
+            $table->unsignedInteger('lead_count');
+            $table->unsignedInteger('user_count');
+            $table->unsignedInteger('project_count');
             $table->timestamps();
         });
     }

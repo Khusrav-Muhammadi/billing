@@ -18,8 +18,6 @@
                             <th>№</th>
                             <th>Имя</th>
                             <th>Телефон</th>
-                            <th>Тариф</th>
-                            <th>Скидка</th>
                             <th>Активный</th>
                             <th>Действие</th>
                         </tr>
@@ -30,14 +28,15 @@
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $organization->name }}</td>
                                 <td>{{ $organization->phone }}</td>
-                                <td>{{ $organization->tariff?->name }}</td>
-                                <td>{{ $organization->sale?->name }}</td>
                                 <td>
                                     <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
                                            data-organization-id="{{ $organization->id }}" data-client-id="{{ $client->id }}" {{ $organization->has_access ? 'checked' : '' }}
                                     >
                                 </td>
                                 <td>
+                                    <a href="{{ route('organization.show', $organization->id) }}">
+                                        <i class="mdi mdi-eye" style="font-size: 30px"></i></i>
+                                    </a>
                                     <a href="" data-bs-toggle="modal" data-bs-target="#editOrganization{{$organization->id}}">
                                         <i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i>
                                     </a>
@@ -46,6 +45,61 @@
                                     </a>
                                 </td>
                             </tr>
+
+                            <div class="modal fade" id="deleteOrganization{{$organization->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <form action="{{ route('organization.destroy', $organization->id) }}" method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="exampleModalLabel">Удаление организации</h5>
+                                            </div>
+                                            <div class="modal-body">
+                                                Вы уверены что хотите удалить эти данные?
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                <button type="submit" class="btn btn-danger">Удалить</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="modal fade" id="addPack{{$organization->id}}" tabindex="-1" aria-labelledby="exampleModalLabel"
+                                 aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <form method="POST" action="{{ route('organization.addPack', $organization->id) }}">
+                                        @csrf
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="exampleModalLabel">Добавить пакет на организацию {{ $organization->name }}</h5>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="form-group">
+                                                    <label for="tariff_id">Пакеты</label>
+                                                    <select class="form-control form-control" name="pack_id" required>
+                                                        @foreach($packs as $pack)
+                                                            <option value="{{ $pack->id }}">{{ $pack->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="phone">Дата</label>
+                                                    <input type="date" class="form-control" name="date" required>
+                                                </div>
+
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
                         @endforeach
                         </tbody>
                     </table>
@@ -74,6 +128,7 @@
                                 <td>{{ $transaction->sum }}</td>
                                 <td>{{ $transaction->type }}</td>
                             </tr>
+
                         @endforeach
                         </tbody>
                     </table>
@@ -104,23 +159,6 @@
                             <input type="text" class="form-control" name="phone" placeholder="Телефон">
                         </div>
 
-                        <div class="form-group">
-                            <label for="tariff_id">Тариф</label>
-                            <select class="form-control form-control" name="tariff_id">
-                                @foreach($tariffs as $tariff)
-                                    <option value="{{ $tariff->id }}">{{ $tariff->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="sale_id">Скидка</label>
-                            <select class="form-control form-control" name="sale_id">
-                                @foreach($sales as $sale)
-                                    <option value="{{ $sale->id }}">{{ $sale->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
                         <div class="form-group">
                             <label for="INN">Инн</label>
                             <input type="number" class="form-control" name="INN" placeholder="ИНН">

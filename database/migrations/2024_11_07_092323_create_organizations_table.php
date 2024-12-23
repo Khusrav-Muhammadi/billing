@@ -17,10 +17,8 @@ return new class extends Migration
             $table->integer('INN')->nullable();
             $table->string('phone');
             $table->text('address');
-            $table->unsignedInteger('sale_id')->nullable();
             $table->unsignedInteger('client_id')->nullable();
             $table->boolean('has_access')->default(true);
-            $table->unsignedInteger('tariff_id');
             $table->timestamps();
         });
     }

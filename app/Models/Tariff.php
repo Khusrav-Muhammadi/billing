@@ -9,5 +9,5 @@ class Tariff extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'price'];
+    protected $fillable = ['name', 'price', 'lead_count', 'user_count', 'project_count'];
 }

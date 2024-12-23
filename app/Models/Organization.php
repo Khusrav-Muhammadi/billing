@@ -27,4 +27,9 @@ class Organization extends Model
     {
         return $this->belongsTo(Sale::class, 'sale_id');
     }
+
+    public function packs()
+    {
+        return $this->hasMany(OrganizationPack::class, 'organization_id');
+    }
 }

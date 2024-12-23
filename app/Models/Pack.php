@@ -9,5 +9,10 @@ class Pack extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['type', 'amount', 'price'];
+    protected $fillable = ['name', 'type', 'amount', 'price', 'tariff_id'];
+
+    public function tariff()
+    {
+        return $this->belongsTo(Tariff::class, 'tariff_id');
+    }
 }

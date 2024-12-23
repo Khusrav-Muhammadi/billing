@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('packs', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
             $table->string('type');
             $table->unsignedInteger('amount');
+            $table->unsignedInteger('tariff_id');
             $table->decimal('price');
             $table->timestamps();
         });

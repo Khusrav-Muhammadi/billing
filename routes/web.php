@@ -3,6 +3,7 @@
 use App\Http\Controllers\BusinessTypeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\PackController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TariffController;
@@ -36,12 +37,14 @@ Route::get('/', function () {
 
     Route::group(['prefix' => 'organization'], function () {
         Route::get('/', [OrganizationController::class, 'index'])->name('organization.index');
-        Route::get('/create', [OrganizationController::class, 'create'])->name('organization.create');
         Route::post('/store/{client}', [OrganizationController::class, 'store'])->name('organization.store');
+        Route::get('show/{organization}', [OrganizationController::class, 'show'])->name('organization.show');
         Route::get('edit/{organization}', [OrganizationController::class, 'edit'])->name('organization.edit');
         Route::patch('update/{organization}', [OrganizationController::class, 'update'])->name('organization.update');
         Route::delete('/{organization}', [OrganizationController::class, 'destroy'])->name('organization.destroy');
         Route::post('access', [OrganizationController::class, 'access'])->name('organization.access');
+        Route::post('addPack/{organization}', [OrganizationController::class, 'addPack'])->name('organization.addPack');
+        Route::delete('delete-pack/{organizationPack}', [OrganizationController::class, 'deletePack'])->name('organization.pack.destroy');
     });
 
     Route::group(['prefix' => 'business-type'], function () {
@@ -58,12 +61,18 @@ Route::get('/', function () {
         Route::delete('/{tariff}', [TariffController::class, 'destroy'])->name('tariff.delete');
     });
 
-
     Route::group(['prefix' => 'sale'], function () {
         Route::get('/', [SaleController::class, 'index'])->name('sale.index');
         Route::post('/store', [SaleController::class, 'store'])->name('sale.store');
         Route::patch('/{sale}', [SaleController::class, 'update'])->name('sale.update');
         Route::delete('/{sale}', [SaleController::class, 'destroy'])->name('sale.delete');
+    });
+
+    Route::group(['prefix' => 'pack'], function () {
+        Route::get('/', [PackController::class, 'index'])->name('pack.index');
+        Route::post('/store', [PackController::class, 'store'])->name('pack.store');
+        Route::patch('/{pack}', [PackController::class, 'update'])->name('pack.update');
+        Route::delete('/{pack}', [PackController::class, 'destroy'])->name('pack.delete');
     });
 
     Route::group(['prefix' => 'partner'], function () {

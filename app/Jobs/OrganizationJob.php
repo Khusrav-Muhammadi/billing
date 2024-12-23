@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Organization;
+use App\Models\Tariff;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,11 +28,20 @@ class OrganizationJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $url = "https://$this->domain.shamcrm.com/api/organization";
+
+        $organization = $this->organization;
+        $tariff = Tariff::find($organization->client->tariff_id);
+
         Http::withHeaders([
             'Accept' => 'application/json',
-        ])->post("https://$this->domain.shamcrm.com/api/organization", [
-            'name' => $this->organization->name,
-            'tariff_id' => $this->organization->tariff_id
+        ])->post($url, [
+            'name' => $organization->name,
+            'tariff_id' => $tariff->id,
+            'lead_count' => $tariff->lead_count,
+            'user_count' => $tariff->user_count,
+            'project_count' => $tariff->project_count,
+            'b_organization_id' => $organization->id
         ]);
     }
 }

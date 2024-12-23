@@ -17,6 +17,9 @@ class StoreRequest extends FormRequest
         return [
             'name' => ['required'],
             'price' => ['required'],
+            'lead_count' => ['required'],
+            'user_count' => ['required'],
+            'project_count' => ['required'],
         ];
     }
 }

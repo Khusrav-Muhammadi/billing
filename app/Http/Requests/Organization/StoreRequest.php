@@ -20,8 +20,6 @@ class StoreRequest extends FormRequest
             'phone' => ['required'],
             'INN' => ['nullable'],
             'address' => ['required'],
-            'sale_id' => ['required', Rule::exists('sales','id')],
-            'tariff_id' => ['required', Rule::exists('tariffs','id')],
         ];
     }
 }
