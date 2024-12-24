@@ -18,8 +18,7 @@ class StoreRequest extends FormRequest
         return [
             'name' => ['required'],
             'phone' => ['required'],
-            'front_sub_domain' => ['required'],
-            'back_sub_domain' => ['required'],
+            'sub_domain' => ['required'],
             'business_type_id' => ['required', Rule::exists('business_types','id')],
             'tariff_id' => ['required', Rule::exists('tariffs','id')],
             'sale_id' => [''],

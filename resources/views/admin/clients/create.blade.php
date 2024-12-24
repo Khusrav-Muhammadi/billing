@@ -23,13 +23,8 @@
             </div>
 
             <div class="form-group">
-                <label for="sub_domain">Поддомен фронта</label>
-                <input type="text" class="form-control" name="front_sub_domain" placeholder="Поддомен фронта">
-            </div>
-
-            <div class="form-group">
-                <label for="sub_domain">Поддомен бекенда</label>
-                <input type="text" class="form-control" name="back_sub_domain" placeholder="Поддомен бекенда">
+                <label for="sub_domain">Поддомен</label>
+                <input type="text" class="form-control" name="sub_domain" placeholder="Поддомен сайта">
             </div>
 
             <div class="form-group">

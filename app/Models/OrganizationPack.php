@@ -15,4 +15,9 @@ class OrganizationPack extends Model
     {
         return $this->belongsTo(Pack::class);
     }
+
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
 }

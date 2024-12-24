@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Organization\AddPackRequest;
 use App\Http\Requests\Organization\StoreRequest;
 use App\Http\Requests\Organization\UpdateRequest;
+use App\Jobs\AddPackJob;
 use App\Jobs\OrganizationJob;
 use App\Models\BusinessType;
 use App\Models\Client;
@@ -27,7 +28,7 @@ class OrganizationController extends Controller
 
         $organization = Organization::create($data);
 
-        OrganizationJob::dispatch($organization, $client->back_sub_domain);
+        OrganizationJob::dispatch($organization, $client->sub_domain);
 
         return redirect()->back();
     }
@@ -83,12 +84,13 @@ class OrganizationController extends Controller
     {
         $data = $request->validated();
 
-        OrganizationPack::create([
+        $organizationPack = OrganizationPack::create([
             'organization_id' => $organization->id,
             'pack_id' => $data['pack_id'],
             'date' => $data['date'],
         ]);
 
+        AddPackJob::dispatch($organizationPack, '23');
         return redirect()->back();
     }
 

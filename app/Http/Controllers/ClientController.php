@@ -39,7 +39,7 @@ class ClientController extends Controller
 
         Client::create($data);
 
-        SubDomainJob::dispatch($data['front_sub_domain']);
+        SubDomainJob::dispatch($data['sub_domain']);
 
         return redirect()->route('client.index');
     }
