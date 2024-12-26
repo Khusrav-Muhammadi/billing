@@ -90,7 +90,7 @@ class OrganizationController extends Controller
             'date' => $data['date'],
         ]);
 
-        AddPackJob::dispatch($organizationPack, '23');
+        AddPackJob::dispatch($organizationPack, $organization->client->sub_domain);
         return redirect()->back();
     }
 
