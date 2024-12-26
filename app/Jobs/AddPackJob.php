@@ -34,23 +34,18 @@ class AddPackJob implements ShouldQueue
         $pack = $this->organizationPack->pack()->first();
         $data = [
             'type' => $pack->type,
-            'b_organization_id' => $organization->id
+            'b_organization_id' => $organization->id,
         ];
-        if ($pack->type == 'user')
-        {
-            $data[] = [
-                'lead_count' => $pack->amount,
-            ];
-        }
-        else
-        {
-            $data[] = [
-                'user_count' => $pack->amount,
-            ];
+
+        if ($pack->type == 'user') {
+            $data['lead_count'] = $pack->amount;
+        } else {
+            $data['user_count'] = $pack->amount;
         }
 
         Http::withHeaders([
             'Accept' => 'application/json',
         ])->post($url, $data);
+
     }
 }
