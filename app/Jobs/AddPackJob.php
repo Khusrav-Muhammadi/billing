@@ -38,9 +38,9 @@ class AddPackJob implements ShouldQueue
         ];
 
         if ($pack->type == 'user') {
-            $data['lead_count'] = $pack->amount;
-        } else {
             $data['user_count'] = $pack->amount;
+        } else {
+            $data['lead_count'] = $pack->amount;
         }
 
         Http::withHeaders([
