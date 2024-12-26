@@ -35,7 +35,7 @@ class OrganizationController extends Controller
 
     public function show(Organization $organization)
     {
-        $packs = Pack::all();
+        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->get();
 
         return view('admin.organizations.show', compact('organization', 'packs'));
     }

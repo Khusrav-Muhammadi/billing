@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('sub_domain')->nullable();
             $table->unsignedInteger('business_type_id');
             $table->unsignedInteger('tariff_id');
+            $table->unsignedInteger('sale_id')->nullable();
             $table->decimal('balance',20,2)->default(0);
             $table->timestamps();
         });

@@ -46,7 +46,7 @@ class ClientController extends Controller
 
     public function show(Client $client)
     {
-        $organizations = Organization::where('client_id', $client->id)->with('tariff', 'sale')->get();
+        $organizations = Organization::where('client_id', $client->id)->get();
         $transactions = Transaction::where('client_id', $client->id)->get();
         $businessTypes = BusinessType::all();
         $packs = Pack::all();

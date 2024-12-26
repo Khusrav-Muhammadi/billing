@@ -9,7 +9,7 @@ class Client extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','phone', 'sub_domain','business_type_id', 'INN', 'address', 'balance', 'tariff_id'];
+    protected $fillable = ['name','phone', 'sub_domain','business_type_id', 'INN', 'address', 'balance', 'tariff_id', 'sale_id'];
 
     public function businessType()
     {
@@ -19,6 +19,11 @@ class Client extends Model
     public function tariff()
     {
         return $this->belongsTo(Tariff::class, 'tariff_id');
+    }
+
+    public function sale()
+    {
+        return $this->belongsTo(Sale::class, 'sale_id');
     }
 
     public function organizations()
