@@ -28,8 +28,7 @@ class AddPackJob implements ShouldQueue
      */
     public function handle(): void
     {
-//        $url = "https://$this->domain-back.shamcrm.com/api/organization/add-pack";
-        $url = "https://e33c-95-142-94-22.ngrok-free.app/api/organization/add-pack";
+        $url = "https://$this->domain-back.shamcrm.com/api/organization/add-pack";
 
         $organization = $this->organizationPack->organization()->first();
         $pack = $this->organizationPack->pack()->first();

@@ -28,8 +28,7 @@ class UpdateTariffJob implements ShouldQueue
      */
     public function handle(): void
     {
-//        $url = "https://$this->domain-back.shamcrm.com/api/organization/update-tariff";
-        $url = "https://708b-95-142-94-22.ngrok-free.app/api/organization/update-tariff";
+        $url = "https://$this->domain-back.shamcrm.com/api/organization/update-tariff";
 
         $organizations = $this->client->organizations()->get();
         foreach ($organizations as $organization) {
