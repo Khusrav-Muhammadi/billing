@@ -112,8 +112,8 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="name">Имя</label>
-                            <input type="text" class="form-control" name="name" placeholder="ФИО">
+                            <label for="name">Название</label>
+                            <input type="text" class="form-control" name="name" placeholder="Название">
                         </div>
                         <div class="form-group">
                             <label for="name">Цена</label>
@@ -121,15 +121,15 @@
                         </div>
                         <div class="form-group">
                             <label for="name">Кол-во пользователей</label>
-                            <input type="number" class="form-control" name="user_count" placeholder="Цена">
+                            <input type="number" class="form-control" name="user_count" placeholder="Кол-во пользователей">
                         </div>
                         <div class="form-group">
                             <label for="name">Кол-во лидов</label>
-                            <input type="number" class="form-control" name="lead_count" placeholder="Цена">
+                            <input type="number" class="form-control" name="lead_count" placeholder="Кол-во лидов">
                         </div>
                         <div class="form-group">
                             <label for="name">Кол-во проектов</label>
-                            <input type="number" class="form-control" name="project_count" placeholder="Цена">
+                            <input type="number" class="form-control" name="project_count" placeholder="Кол-во проектов">
                         </div>
                     </div>
                     <div class="modal-footer">

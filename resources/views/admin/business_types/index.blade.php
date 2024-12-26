@@ -41,7 +41,7 @@
                                     </div>
                                     <div class="modal-body">
                                         <div class="form-group">
-                                            <label for="name">ФИО</label>
+                                            <label for="name">Наименование</label>
                                             <input type="text" class="form-control" name="name" value="{{ $businessType->name }}">
                                         </div>
                                     </div>
@@ -90,8 +90,8 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="name">ФИО</label>
-                            <input type="text" class="form-control" name="name" placeholder="ФИО">
+                            <label for="name">Наименование</label>
+                            <input type="text" class="form-control" name="name" placeholder="Наименование">
                         </div>
                     </div>
                     <div class="modal-footer">
