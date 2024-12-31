@@ -28,7 +28,8 @@ class UpdateTariffJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $url = "https://$this->domain-back.shamcrm.com/api/organization/update-tariff";
+        $domain = env('APP_DOMAIN');
+        $url = "https://{$this->domain}-back.{$domain}/api/organization/update-tariff";
 
         $organizations = $this->client->organizations()->get();
         foreach ($organizations as $organization) {
