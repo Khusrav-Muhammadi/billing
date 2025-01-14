@@ -9,7 +9,10 @@
     <div class="card-body">
         <div class="table-responsive">
             <h4 class="card-title">Организации</h4>
-            <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button" class="btn btn-primary">Создать</a>
+            <div style="margin-bottom: 10px">
+                <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button" class="btn btn-primary">Создать</a>
+                <a href="#" onclick="history.back();" class="btn btn-outline-danger" >Назад</a>
+            </div>
             <div class="d-flex">
                 <div class="card table-container flex-fill mr-3">
                     <table class="table table-hover">
@@ -45,6 +48,47 @@
                                     </a>
                                 </td>
                             </tr>
+
+                            <div class="modal fade" id="editOrganization{{$organization->id}}" tabindex="-1" aria-labelledby="exampleModalLabel"
+                                 aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <form method="POST" action="{{ route('organization.update', $organization->id) }}">
+                                        @csrf
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="exampleModalLabel">Обновить организацию</h5>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="form-group">
+                                                    <label for="name">Наименование</label>
+                                                    <input type="text" class="form-control" name="name" value="{{ $organization->name }}">
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="phone">Телефон</label>
+                                                    <input type="text" class="form-control" name="phone" value="{{ $organization->phone }}">
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="INN">Инн</label>
+                                                    <input type="number" class="form-control" name="INN" value="{{ $organization->INN }}">
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="sub_domain">Адрес</label>
+                                                    <textarea name="address" cols="30" rows="10"
+                                                              class="form-control">{{ $organization->address }}</textarea>
+                                                </div>
+                                            </div>
+
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                <button type="submit" class="btn btn-primary">Сохранить</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
 
                             <div class="modal fade" id="deleteOrganization{{$organization->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                 <div class="modal-dialog">
@@ -210,8 +254,8 @@
                     })
                         .then(response => response.text())
                         .then(text => {
-                            console.log('Ответ сервера:', text); // Посмотреть, что вернул сервер
-                            return text ? JSON.parse(text) : {}; // Если текст пустой, вернуть пустой объект
+                            console.log('Ответ сервера:', text);
+                            return text ? JSON.parse(text) : {};
                         })
                         .then(data => {
                             console.log('Распознанный JSON:', data);

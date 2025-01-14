@@ -6,7 +6,8 @@
 
 @section('content')
 
-{{--    <a href="{{ route('client') }}" type="button" class="btn btn-outline-danger">Создать</a>--}}
+    {{--    <a href="{{ route('client') }}" type="button" class="btn btn-outline-danger">Создать</a>--}}
+    <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 10px">Назад</a>
     <div class="card">
         <!-- Первая строка -->
         <div class="row mb-3">
@@ -40,7 +41,8 @@
             </div>
             <div class="col-3">
                 <label for="address">Адрес</label>
-                <textarea name="address" cols="30" rows="5" placeholder="Адрес" class="form-control" disabled>{{ $organization->address }}</textarea>
+                <textarea name="address" cols="30" rows="5" placeholder="Адрес" class="form-control"
+                          disabled>{{ $organization->address }}</textarea>
             </div>
         </div>
 
@@ -74,7 +76,8 @@
                                     </a>
                                 </td>
                             </tr>
-                            <div class="modal fade" id="deletePack{{$pack->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal fade" id="deletePack{{$pack->id}}" tabindex="-1"
+                                 aria-labelledby="exampleModalLabel" aria-hidden="true">
                                 <div class="modal-dialog">
                                     <form action="{{ route('organization.pack.destroy', $pack->id) }}" method="POST">
                                         @csrf
@@ -87,7 +90,9 @@
                                                 Вы уверены что хотите удалить эти данные?
                                             </div>
                                             <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    Отмена
+                                                </button>
                                                 <button type="submit" class="btn btn-danger">Удалить</button>
                                             </div>
                                         </div>
@@ -109,7 +114,8 @@
                 @csrf
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Добавить пакет на организацию {{ $organization->name }}</h5>
+                        <h5 class="modal-title" id="exampleModalLabel">Добавить пакет на
+                            организацию {{ $organization->name }}</h5>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">

@@ -10,6 +10,8 @@
     <div class="card-body">
         <h4 class="card-title">Создание партнера</h4>
 
+        <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 10px">Назад</a>
+
         <form method="POST" action="{{ route('partner.store') }}">
             @csrf
             <div class="form-group">

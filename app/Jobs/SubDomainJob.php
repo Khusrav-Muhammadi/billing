@@ -28,7 +28,7 @@ class SubDomainJob implements ShouldQueue
     {
         Http::withHeaders([
             'Accept' => 'application/json',
-        ])->post('https://shamcrm.com/api/createSubdomain', [
+        ])->post('https://sham360.com/api/createSubdomain', [
             'subdomain' => $this->subDomain
         ]);
 

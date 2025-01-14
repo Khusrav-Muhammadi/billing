@@ -5,6 +5,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PackController;
 use App\Http\Controllers\PartnerController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TariffController;
 use Illuminate\Support\Facades\Route;
@@ -21,10 +22,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('layouts/app');
+    return view('auth.login');
 });
 
-//Route::middleware('auth')->group(function () {
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'client'], function () {
         Route::get('/', [ClientController::class, 'index'])->name('client.index');
         Route::get('/create', [ClientController::class, 'create'])->name('client.create');
@@ -84,6 +89,6 @@ Route::get('/', function () {
         Route::delete('/{partner}', [PartnerController::class, 'destroy'])->name('partner.delete');
     });
 
-//});
+});
 
 require __DIR__.'/auth.php';

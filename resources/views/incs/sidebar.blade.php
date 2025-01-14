@@ -8,7 +8,7 @@
         <span class="nav-item-head">Template Pages</span>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="">
+        <a class="nav-link" href="{{ route('dashboard') }}">
             <i class="mdi mdi-compass-outline menu-icon"></i>
             <span class="menu-title">Главная</span>
         </a>
@@ -47,6 +47,12 @@
         <a class="nav-link" href="{{ route('pack.index') }}">
             <i class="mdi mdi-package menu-icon"></i>
             <span class="menu-title">Пакеты</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('logout') }}">
+            <i class="mdi mdi-logout-variant menu-icon"></i>
+            <span class="menu-title">Выход</span>
         </a>
     </li>
 
