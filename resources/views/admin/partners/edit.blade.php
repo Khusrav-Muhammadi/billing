@@ -10,6 +10,7 @@
     <div class="card-body">
         <h4 class="card-title">Изменение партнера</h4>
 
+        <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 10px">Назад</a>
         <form method="POST" action="{{ route('partner.update', $partner->id) }}">
             @csrf
             @method('PATCH')

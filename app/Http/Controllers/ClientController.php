@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Client\StoreRequest;
+use App\Http\Requests\Client\TransactionRequest;
 use App\Http\Requests\Client\UpdateRequest;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
@@ -77,6 +78,16 @@ class ClientController extends Controller
     public function destroy(Client $client)
     {
         $client->delete();
+
+        return redirect()->back();
+    }
+
+    public function createTransaction(Client $client, TransactionRequest $request)
+    {
+        $data = $request->validated();
+        $data['type'] = 'Пополнение баланса';
+        $data['client_id'] = $client->id;
+        Transaction::create($data);
 
         return redirect()->back();
     }

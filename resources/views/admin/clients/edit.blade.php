@@ -9,7 +9,7 @@
 
     <div class="card-body">
         <h4 class="card-title">Изменение клиента</h4>
-
+        <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 10px" >Назад</a>
         <form method="POST" action="{{ route('client.update', $client->id) }}">
             @csrf
             @method('PATCH')

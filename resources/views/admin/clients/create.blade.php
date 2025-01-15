@@ -9,27 +9,28 @@
 
     <div class="card-body">
         <h4 class="card-title">Создание клиента</h4>
+        <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 20px">Назад</a>
 
         <form method="POST" action="{{ route('client.store') }}">
             @csrf
             <div class="form-group">
                 <label for="name">ФИО</label>
-                <input type="text" class="form-control" name="name" placeholder="ФИО">
+                <input type="text" class="form-control" name="name" placeholder="ФИО" required>
             </div>
 
             <div class="form-group">
                 <label for="phone">Телефон</label>
-                <input type="text" class="form-control" name="phone" placeholder="Телефон">
+                <input type="text" class="form-control" name="phone" placeholder="Телефон" required>
             </div>
 
             <div class="form-group">
                 <label for="sub_domain">Поддомен</label>
-                <input type="text" class="form-control" name="sub_domain" placeholder="Поддомен сайта">
+                <input type="text" class="form-control" name="sub_domain" placeholder="Поддомен сайта" required>
             </div>
 
             <div class="form-group">
                 <label for="business_type_id">Тип бизнеса</label>
-                <select class="form-control form-control-sm" name="business_type_id">
+                <select class="form-control form-control-sm" name="business_type_id" required>
                     @foreach($businessTypes as $businessType)
                         <option value="{{ $businessType->id }}">{{ $businessType->name }}</option>
                     @endforeach
@@ -38,7 +39,7 @@
 
             <div class="form-group">
                 <label for="tariff_id">Тариф</label>
-                <select class="form-control form-control" name="tariff_id">
+                <select class="form-control form-control" name="tariff_id" required>
                     @foreach($tariffs as $tariff)
                         <option value="{{ $tariff->id }}">{{ $tariff->name }}</option>
                     @endforeach

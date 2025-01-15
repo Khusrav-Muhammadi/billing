@@ -28,6 +28,7 @@ class OrganizationJob implements ShouldQueue
      */
     public function handle(): void
     {
+
         $domain = env('APP_DOMAIN');
         $url = "https://{$this->domain}-back.{$domain}/api/organization";
 
