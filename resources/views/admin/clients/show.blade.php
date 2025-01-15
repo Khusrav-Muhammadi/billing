@@ -10,8 +10,9 @@
         <div class="table-responsive">
             <h4 class="card-title">Организации</h4>
             <div style="margin-bottom: 10px">
-                <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button" class="btn btn-primary">Создать</a>
-                <a href="#" onclick="history.back();" class="btn btn-outline-danger" >Назад</a>
+                <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
+                   class="btn btn-primary">Создать</a>
+                <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
             </div>
             <div class="d-flex">
                 <div class="card table-container flex-fill mr-3">
@@ -33,23 +34,27 @@
                                 <td>{{ $organization->phone }}</td>
                                 <td>
                                     <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
-                                           data-organization-id="{{ $organization->id }}" data-client-id="{{ $client->id }}" {{ $organization->has_access ? 'checked' : '' }}
+                                           data-organization-id="{{ $organization->id }}"
+                                           data-client-id="{{ $client->id }}" {{ $organization->has_access ? 'checked' : '' }}
                                     >
                                 </td>
                                 <td>
                                     <a href="{{ route('organization.show', $organization->id) }}">
                                         <i class="mdi mdi-eye" style="font-size: 30px"></i></i>
                                     </a>
-                                    <a href="" data-bs-toggle="modal" data-bs-target="#editOrganization{{$organization->id}}">
+                                    <a href="" data-bs-toggle="modal"
+                                       data-bs-target="#editOrganization{{$organization->id}}">
                                         <i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i>
                                     </a>
-                                    <a href="" data-bs-toggle="modal" data-bs-target="#deleteOrganization{{$organization->id}}">
+                                    <a href="" data-bs-toggle="modal"
+                                       data-bs-target="#deleteOrganization{{$organization->id}}">
                                         <i style="color:red; font-size: 30px" class="mdi mdi-delete"></i>
                                     </a>
                                 </td>
                             </tr>
 
-                            <div class="modal fade" id="editOrganization{{$organization->id}}" tabindex="-1" aria-labelledby="exampleModalLabel"
+                            <div class="modal fade" id="editOrganization{{$organization->id}}" tabindex="-1"
+                                 aria-labelledby="exampleModalLabel"
                                  aria-hidden="true">
                                 <div class="modal-dialog">
                                     <form method="POST" action="{{ route('organization.update', $organization->id) }}">
@@ -61,17 +66,20 @@
                                             <div class="modal-body">
                                                 <div class="form-group">
                                                     <label for="name">Наименование</label>
-                                                    <input type="text" class="form-control" name="name" value="{{ $organization->name }}">
+                                                    <input type="text" class="form-control" name="name"
+                                                           value="{{ $organization->name }}">
                                                 </div>
 
                                                 <div class="form-group">
                                                     <label for="phone">Телефон</label>
-                                                    <input type="text" class="form-control" name="phone" value="{{ $organization->phone }}">
+                                                    <input type="text" class="form-control" name="phone"
+                                                           value="{{ $organization->phone }}">
                                                 </div>
 
                                                 <div class="form-group">
                                                     <label for="INN">Инн</label>
-                                                    <input type="number" class="form-control" name="INN" value="{{ $organization->INN }}">
+                                                    <input type="number" class="form-control" name="INN"
+                                                           value="{{ $organization->INN }}">
                                                 </div>
 
                                                 <div class="form-group">
@@ -82,7 +90,9 @@
                                             </div>
 
                                             <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    Отмена
+                                                </button>
                                                 <button type="submit" class="btn btn-primary">Сохранить</button>
                                             </div>
                                         </div>
@@ -90,7 +100,8 @@
                                 </div>
                             </div>
 
-                            <div class="modal fade" id="deleteOrganization{{$organization->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal fade" id="deleteOrganization{{$organization->id}}" tabindex="-1"
+                                 aria-labelledby="exampleModalLabel" aria-hidden="true">
                                 <div class="modal-dialog">
                                     <form action="{{ route('organization.destroy', $organization->id) }}" method="POST">
                                         @csrf
@@ -103,7 +114,9 @@
                                                 Вы уверены что хотите удалить эти данные?
                                             </div>
                                             <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    Отмена
+                                                </button>
                                                 <button type="submit" class="btn btn-danger">Удалить</button>
                                             </div>
                                         </div>
@@ -111,14 +124,16 @@
                                 </div>
                             </div>
 
-                            <div class="modal fade" id="addPack{{$organization->id}}" tabindex="-1" aria-labelledby="exampleModalLabel"
+                            <div class="modal fade" id="addPack{{$organization->id}}" tabindex="-1"
+                                 aria-labelledby="exampleModalLabel"
                                  aria-hidden="true">
                                 <div class="modal-dialog">
                                     <form method="POST" action="{{ route('organization.addPack', $organization->id) }}">
                                         @csrf
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title" id="exampleModalLabel">Добавить пакет на организацию {{ $organization->name }}</h5>
+                                                <h5 class="modal-title" id="exampleModalLabel">Добавить пакет на
+                                                    организацию {{ $organization->name }}</h5>
                                             </div>
                                             <div class="modal-body">
                                                 <div class="form-group">
@@ -136,7 +151,9 @@
                                                 </div>
 
                                                 <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                    <button type="button" class="btn btn-secondary"
+                                                            data-bs-dismiss="modal">Отмена
+                                                    </button>
                                                     <button type="submit" class="btn btn-primary">Сохранить</button>
                                                 </div>
                                             </div>
@@ -150,7 +167,11 @@
                 </div>
 
                 <div class="card table-container flex-fill ml-3">
-                    <h4 class="card-title">Транзакции</h4>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="card-title m-2">Транзакции</h4>
+                        <a href="" data-bs-toggle="modal" data-bs-target="#createTransaction" type="button"
+                           class="btn btn-primary m-2">Создать</a>
+                    </div>
                     <table class="table table-hover">
                         <thead>
                         <tr>
@@ -167,21 +188,19 @@
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $transaction->created_at }}</td>
-                                <td>{{ $transaction->tariff->price }}</td>
-                                <td>{{ $transaction->sale->amount }}</td>
+                                <td>{{ $transaction->tariff?->price }}</td>
+                                <td>{{ $transaction->sale?->amount }}</td>
                                 <td>{{ $transaction->sum }}</td>
                                 <td>{{ $transaction->type }}</td>
                             </tr>
-
                         @endforeach
                         </tbody>
                     </table>
                 </div>
+
             </div>
         </div>
     </div>
-
-
 
     <div class="modal fade" id="createOrganization" tabindex="-1" aria-labelledby="exampleModalLabel"
          aria-hidden="true">
@@ -223,6 +242,45 @@
             </form>
         </div>
     </div>
+
+    <div class="modal fade" id="createTransaction" tabindex="-1" aria-labelledby="exampleModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ route('client.createTransaction', $client->id) }}">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Пополнить баланс</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="name">Дата</label>
+                            <input type="date" class="form-control" name="date" id="date">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Сумма</label>
+                            <input type="number" class="form-control" name="sum" placeholder="Сумма">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Устанавливаем текущую дату
+        const dateInput = document.getElementById('date');
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0'); // Месяц с ведущим нулём
+        const day = String(today.getDate()).padStart(2, '0'); // День с ведущим нулём
+        dateInput.value = `${year}-${month}-${day}`;
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

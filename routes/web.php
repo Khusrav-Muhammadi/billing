@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
         Route::get('show/{client}', [ClientController::class, 'show'])->name('client.show');
         Route::patch('update/{client}', [ClientController::class, 'update'])->name('client.update');
         Route::delete('/{client}', [ClientController::class, 'destroy'])->name('client.destroy');
+        Route::post('/create-transaction/{client}', [ClientController::class, 'createTransaction'])->name('client.createTransaction');
     });
 
     Route::group(['prefix' => 'organization'], function () {

@@ -28,17 +28,26 @@ class AddPackJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $url = "https://$this->domain-back.sham360.com/api/organization/add-pack";
+
+        $domain = env('APP_DOMAIN');
+        $url = 'https://' . $this->domain . '-back.' . $domain . '/api/organization/add-pack';
 
         $organization = $this->organizationPack->organization()->first();
         $pack = $this->organizationPack->pack()->first();
+        $data = [
+            'type' => $pack->type,
+            'b_organization_id' => $organization->id,
+        ];
+
+        if ($pack->type == 'user') {
+            $data['user_count'] = $pack->amount;
+        } else {
+            $data['lead_count'] = $pack->amount;
+        }
 
         Http::withHeaders([
             'Accept' => 'application/json',
-        ])->post($url, [
-            'type' => $pack->type,
-            'amount' => $pack->amount,
-            'b_organization_id' => $organization->id
-        ]);
+        ])->post($url, $data);
+
     }
 }

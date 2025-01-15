@@ -52,7 +52,7 @@
         <div class="table-responsive">
             <h4 class="card-title">Подключенные пакеты</h4>
             <a href="" data-bs-toggle="modal" data-bs-target="#addPack" type="button"
-               class="btn btn-outline-primary">Создать</a>
+               class="btn btn-outline-primary">Подключить</a>
             <div class="d-flex">
                 <div class="card table-container flex-fill mr-3">
                     <table class="table table-hover">

@@ -49,7 +49,7 @@
             <span class="menu-title">Пакеты</span>
         </a>
     </li>
-    <li class="nav-item">
+    <li class="nav-item mt-5">
         <a class="nav-link" href="{{ route('logout') }}">
             <i class="mdi mdi-logout-variant menu-icon"></i>
             <span class="menu-title">Выход</span>

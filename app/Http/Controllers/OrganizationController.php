@@ -7,12 +7,10 @@ use App\Http\Requests\Organization\StoreRequest;
 use App\Http\Requests\Organization\UpdateRequest;
 use App\Jobs\AddPackJob;
 use App\Jobs\OrganizationJob;
-use App\Models\BusinessType;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\Pack;
-use App\Models\Sale;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -73,11 +71,13 @@ class OrganizationController extends Controller
         $client = Client::find($data['client_id']);
 
 
+        $domain = env('APP_DOMAIN');
         Http::withHeaders([
             'Content-Type' => 'application/json; charset=utf-8',
-        ])->post("http://$client->back_sub_domain.shamcrm.com/api/organization/access/$organization->id",[
+        ])->post("http://{$client->back_sub_domain}.{$domain}/api/organization/access/{$organization->id}", [
             'has_access' => $data['has_access']
         ]);
+
     }
 
     public function addPack(Organization $organization, AddPackRequest $request)
