@@ -6,6 +6,7 @@ use App\Http\Requests\Organization\AddPackRequest;
 use App\Http\Requests\Organization\StoreRequest;
 use App\Http\Requests\Organization\UpdateRequest;
 use App\Jobs\AddPackJob;
+use App\Jobs\DeleteOrganizationJob;
 use App\Jobs\OrganizationJob;
 use App\Models\Client;
 use App\Models\Organization;
@@ -49,6 +50,8 @@ class OrganizationController extends Controller
 
     public function destroy(Organization $organization): RedirectResponse
     {
+        DeleteOrganizationJob::dispatch($organization, $organization->client->sub_domain);
+
         $organization->delete();
 
         return redirect()->back();

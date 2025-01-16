@@ -25,21 +25,7 @@
             </div>
         </div>
 
-        <!-- Вторая строка -->
-        <div class="row mb-3">
-            <div class="col-4 ml-5">
-                <label for="tariff_id">Тариф</label>
-                <select class="form-control" name="tariff_id" disabled>
-                    <option>{{ $organization->tariff?->name }}</option>
-                </select>
-            </div>
-            <div class="col-4">
-                <label for="sale_id">Скидка</label>
-                <select class="form-control" name="sale_id" disabled>
-                    <option>{{ $organization->sale?->name }}</option>
-                </select>
-            </div>
-            <div class="col-3">
+            <div class="col-6 mb-5 ml-4 mr-5">
                 <label for="address">Адрес</label>
                 <textarea name="address" cols="30" rows="5" placeholder="Адрес" class="form-control"
                           disabled>{{ $organization->address }}</textarea>

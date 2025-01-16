@@ -24,13 +24,8 @@
             </div>
 
             <div class="form-group">
-                <label for="sub_domain">Поддомен фронта</label>
-                <input type="text" class="form-control" name="front_sub_domain" value="{{ $client->front_sub_domain }}">
-            </div>
-
-            <div class="form-group">
-                <label for="sub_domain">Поддомен бекенда</label>
-                <input type="text" class="form-control" name="back_sub_domain" value="{{ $client->back_sub_domain }}">
+                <label for="sub_domain">Поддомен</label>
+                <input type="text" class="form-control" name="sub_domain" value="{{ $client->sub_domain }}">
             </div>
 
             <div class="form-group">

@@ -20,7 +20,7 @@
 
             <div class="form-group">
                 <label for="phone">Телефон</label>
-                <input type="text" class="form-control" name="phone" placeholder="Телефон" required>
+                <input type="number" class="form-control" name="phone" placeholder="Телефон" required>
             </div>
 
             <div class="form-group">

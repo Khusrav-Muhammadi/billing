@@ -19,7 +19,7 @@
     <li class="nav-item">
         <a class="nav-link collapsed" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
             <i class="mdi mdi-settings menu-icon"></i>
-            <span class="menu-title">UI Elements</span>
+            <span class="menu-title">Настройки</span>
             <i class="menu-arrow"></i>
         </a>
         <div class="collapse" id="ui-basic" style="">

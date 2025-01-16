@@ -40,7 +40,7 @@ class ClientController extends Controller
 
         Client::create($data);
 
-        SubDomainJob::dispatch($data['sub_domain']);
+//        SubDomainJob::dispatch($data['sub_domain']);
 
         return redirect()->route('client.index');
     }
@@ -78,6 +78,8 @@ class ClientController extends Controller
     public function destroy(Client $client)
     {
         $client->delete();
+
+
 
         return redirect()->back();
     }
