@@ -7,13 +7,13 @@
 @section('content')
 
     <div class="card-body">
+        <h4 class="card-title">Организации</h4>
+        <div style="margin-bottom: 10px">
+            <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
+               class="btn btn-primary">Создать</a>
+            <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
+        </div>
         <div class="table-responsive">
-            <h4 class="card-title">Организации</h4>
-            <div style="margin-bottom: 10px">
-                <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
-                   class="btn btn-primary">Создать</a>
-                <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
-            </div>
             <div class="d-flex">
                 <div class="card table-container flex-fill mr-3">
                     <table class="table table-hover">
@@ -165,7 +165,8 @@
                         </tbody>
                     </table>
                 </div>
-
+            </div>
+            <div class="table-responsive">
                 <div class="card table-container flex-fill ml-3">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="card-title m-2">Транзакции</h4>
