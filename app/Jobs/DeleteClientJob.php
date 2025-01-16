@@ -31,10 +31,10 @@ class DeleteClientJob implements ShouldQueue
     {
 
         $domain = env('APP_DOMAIN');
-        $url = 'https://' . $this->domain . '-back.' . $domain . '/api/organization/delete-from-billing';
+        $url = 'https://' . $domain . '/api/tenant/delete';
 
         $data = [
-            'sub_domain' => $this->domain,
+            'subdomain' => $this->domain,
         ];
 
         Http::withHeaders([

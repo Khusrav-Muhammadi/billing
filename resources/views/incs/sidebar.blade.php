@@ -22,30 +22,30 @@
             <span class="menu-title">Настройки</span>
             <i class="menu-arrow"></i>
         </a>
-        <div class="collapse" id="ui-basic" style="">
+        <div class="collapse show" id="ui-basic" style="">
             <ul class="nav flex-column sub-menu">
                 <li class="nav-item">
                     <a class="nav-link" href="{{route('business_type.index')}}">
                         <i class="mdi mdi-format-list-bulleted menu-icon"></i>
-                        <span class="menu-title">Тип бизнеса</span>
+                        <span class="">Тип бизнеса</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('tariff.index') }}">
                         <i class="mdi mdi-chart-bar menu-icon"></i>
-                        <span class="menu-title">Тарифы</span>
+                        <span class="">Тарифы</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('sale.index') }}">
                         <i class="mdi mdi-sale menu-icon"></i>
-                        <span class="menu-title">Скидки</span>
+                        <span class="">Скидки</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('pack.index') }}">
                         <i class="mdi mdi-package menu-icon"></i>
-                        <span class="menu-title">Пакеты</span>
+                        <span class="">Пакеты</span>
                     </a>
                 </li>
             </ul>

@@ -25,7 +25,7 @@
 
             <div class="form-group">
                 <label for="sub_domain">Поддомен</label>
-                <input type="text" class="form-control" name="sub_domain" value="{{ $client->sub_domain }}">
+                <input type="text" class="form-control" name="sub_domain" value="{{ $client->sub_domain }}" disabled>
             </div>
 
             <div class="form-group">

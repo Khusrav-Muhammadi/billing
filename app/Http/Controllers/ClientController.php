@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Client\StoreRequest;
 use App\Http\Requests\Client\TransactionRequest;
 use App\Http\Requests\Client\UpdateRequest;
+use App\Jobs\DeleteClientJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\BusinessType;
@@ -40,7 +41,7 @@ class ClientController extends Controller
 
         Client::create($data);
 
-//        SubDomainJob::dispatch($data['sub_domain']);
+        SubDomainJob::dispatch($data['sub_domain']);
 
         return redirect()->route('client.index');
     }
@@ -77,9 +78,9 @@ class ClientController extends Controller
 
     public function destroy(Client $client)
     {
+        DeleteClientJob::dispatch($client->sub_domain);
+
         $client->delete();
-
-
 
         return redirect()->back();
     }
