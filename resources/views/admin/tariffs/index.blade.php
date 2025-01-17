@@ -9,7 +9,6 @@
 
     <div class="card-body">
         <h4 class="card-title">Тарифы</h4>
-        <a href="" type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#create">Создать</a>
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
@@ -27,9 +26,9 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $tariff->name }}</td>
-                        <td>{{ $tariff->price }}</td>
-                        <td>{{ $tariff->lead_count }}</td>
+                        <td>{{ $tariff->price }} $</td>
                         <td>{{ $tariff->user_count }}</td>
+                        <td>{{ $tariff->lead_count }}</td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#delete{{ $tariff->id }}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>

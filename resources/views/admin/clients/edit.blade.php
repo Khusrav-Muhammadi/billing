@@ -20,7 +20,7 @@
 
             <div class="form-group">
                 <label for="phone">Телефон</label>
-                <input type="text" class="form-control" name="phone" value="{{ $client->phone }}">
+                <input type="number" class="form-control" name="phone" value="{{ $client->phone }}">
             </div>
 
             <div class="form-group">

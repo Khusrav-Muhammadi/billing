@@ -7,11 +7,11 @@ use App\Http\Requests\Organization\StoreRequest;
 use App\Http\Requests\Organization\UpdateRequest;
 use App\Jobs\AddPackJob;
 use App\Jobs\DeleteOrganizationJob;
-use App\Jobs\OrganizationJob;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\Pack;
+use App\Models\Tariff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -27,7 +27,9 @@ class OrganizationController extends Controller
 
         $organization = Organization::create($data);
 
-        OrganizationJob::dispatch($organization, $client->sub_domain);
+        $res = $this->createInSham($organization, $client->sub_domain);
+
+        if (!$res) $organization->delete();
 
         return redirect()->back();
     }
@@ -93,7 +95,10 @@ class OrganizationController extends Controller
             'date' => $data['date'],
         ]);
 
-        AddPackJob::dispatch($organizationPack, $organization->client->sub_domain);
+        $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
+
+        if (!$res) $organizationPack->delete();
+
         return redirect()->back();
     }
 
@@ -102,5 +107,51 @@ class OrganizationController extends Controller
         $organizationPack->delete();
 
         return redirect()->back();
+    }
+
+    public function createInSham(Organization $organization, string $sub_domain)
+    {
+        $domain = env('APP_DOMAIN');
+        $url = "https://{$sub_domain}-back.{$domain}/api/organization";
+
+        $tariff = Tariff::find($organization->client->tariff_id);
+
+        $response = Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->post($url, [
+            'name' => $organization->name,
+            'tariff_id' => $tariff->id,
+            'lead_count' => $tariff->lead_count,
+            'user_count' => $tariff->user_count,
+            'project_count' => $tariff->project_count,
+            'b_organization_id' => $organization->id,
+        ]);
+
+        return $response->successful();
+    }
+
+    public function addPackInSham(OrganizationPack $organizationPack, string $sub_domain)
+    {
+        $domain = env('APP_DOMAIN');
+        $url = 'https://' . $sub_domain . '-back.' . $domain . '/api/organization/add-pack';
+
+        $organization = $organizationPack->organization()->first();
+        $pack = $organizationPack->pack()->first();
+        $data = [
+            'type' => $pack->type,
+            'b_organization_id' => $organization->id,
+        ];
+
+        if ($pack->type == 'user') {
+            $data['user_count'] = $pack->amount;
+        } else {
+            $data['lead_count'] = $pack->amount;
+        }
+
+        $response = Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->post($url, $data);
+
+        return $response->successful();
     }
 }

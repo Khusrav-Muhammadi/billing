@@ -72,7 +72,7 @@
 
                                                 <div class="form-group">
                                                     <label for="phone">Телефон</label>
-                                                    <input type="text" class="form-control" name="phone"
+                                                    <input type="number" class="form-control" name="phone"
                                                            value="{{ $organization->phone }}">
                                                 </div>
 
@@ -219,7 +219,7 @@
 
                         <div class="form-group">
                             <label for="phone">Телефон</label>
-                            <input type="text" class="form-control" name="phone" placeholder="Телефон">
+                            <input type="number" class="form-control" name="phone" placeholder="Телефон">
                         </div>
 
                         <div class="form-group">
