@@ -10,9 +10,11 @@
         <div class="table-responsive">
             <h4 class="card-title">Организации</h4>
             <div style="margin-bottom: 10px">
+                @if($client->balance >= $client->tariff?->price && $client->is_active)
                 <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
                    class="btn btn-primary">Создать</a>
-                <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
+                @endif
+                    <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
             </div>
             <div class="d-flex">
                 <div class="card table-container flex-fill mr-3">

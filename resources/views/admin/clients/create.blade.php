@@ -56,6 +56,11 @@
                 </select>
             </div>
 
+            <div class="form-group col-2" style="display: flex; align-items: center;">
+                <label for="is_demo" style="margin-right: 10px;">Демо версия:</label>
+                <input type="checkbox" name="is_demo" class="form-control" style="width: 30px; margin: 0;">
+            </div>
+
             <button type="submit" class="btn btn-primary mr-2"> Сохранить </button>
 
         </form>

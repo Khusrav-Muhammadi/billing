@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Client\GetBalanceRequest;
 use App\Http\Requests\Client\StoreRequest;
 use App\Http\Requests\Client\TransactionRequest;
 use App\Http\Requests\Client\UpdateRequest;
 use App\Jobs\DeleteClientJob;
+use App\Jobs\DeleteOrganizationJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\BusinessType;
@@ -16,7 +18,6 @@ use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 
 class ClientController extends Controller
 {
@@ -39,6 +40,8 @@ class ClientController extends Controller
     public function store(StoreRequest $request)
     {
         $data = $request->validated();
+
+        if ($data['is_demo'] == 'on') $data['is_demo'] = true;
 
         Client::create($data);
 
@@ -72,6 +75,9 @@ class ClientController extends Controller
 
         if ($client->tariff_id != $data['tariff_id']) UpdateTariffJob::dispatch($client, $data['tariff_id'], $client->back_sub_domain);
 
+        if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
+        else $data['is_demo'] = false;
+
         $client->update($data);
 
         return redirect()->route('client.index');
@@ -79,9 +85,14 @@ class ClientController extends Controller
 
     public function destroy(Client $client)
     {
-        DeleteClientJob::dispatch($client->sub_domain);
+        $organizations = $client->organizations()->get();
 
-        $client->delete();
+        foreach ($organizations as $organization) {
+            DeleteOrganizationJob::dispatch($organization, $client->sub_domain);
+            $organization->update(['has_access' => false]);
+        }
+
+        $client->update(['is_active' => false]);
 
         return redirect()->back();
     }
@@ -91,7 +102,7 @@ class ClientController extends Controller
         $data = $request->validated();
 
         DB::transaction(function () use ($data, $client) {
-            $data['type'] = 'Пополнение баланса';
+            $data['type'] = 'Пополнение';
             $data['client_id'] = $client->id;
             Transaction::create($data);
             $client->increment('balance', $data['sum']);
@@ -100,8 +111,14 @@ class ClientController extends Controller
         return redirect()->back();
     }
 
-    public function getBalance(string $domin)
+    public function getBalance(GetBalanceRequest $request)
     {
-        return Client::where('sub_domain', $domin)->first()->balance;
+        $data = $request->validated();
+
+        $balance = Client::where('sub_domain', $data['sub_domain'])->first()->balance;
+
+        return response()->json([
+            'balance' => $balance
+        ]);
     }
 }

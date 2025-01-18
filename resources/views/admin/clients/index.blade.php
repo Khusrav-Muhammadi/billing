@@ -20,6 +20,8 @@
                     <th>Поддомен</th>
                     <th>Тип бизнеса</th>
                     <th>Баланс</th>
+                    <th>Статус</th>
+                    <th>Тип подключения</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -32,6 +34,12 @@
                         <td>{{ $client->sub_domain }}</td>
                         <td>{{ $client->businessType?->name }}</td>
                         <td>{{ $client->balance }}</td>
+                        <td>
+                            @if($client->is_active) <p style="color: #00bb00">Активный</p> @else <p style="color: red">Неактивный</p> @endif
+                        </td>
+                        <td>
+                            @if($client->is_demo) Демо версия @else Боевая версия @endif
+                        </td>
                         <td>
                             <a href="{{ route('client.edit', $client->id) }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             <a href="{{ route('client.show', $client->id) }}"><i class="mdi mdi-eye" style="font-size: 30px"></i></a>
