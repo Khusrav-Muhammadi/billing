@@ -17,11 +17,9 @@ class UpdateRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'company' => ['nullable'],
-            'email' => ['required'],
-            'phone' => ['required'],
-            'address' => ['required'],
-            'manager_id' => ['required', Rule::exists('users','id')],
+            'price' => ['required'],
+            'user_count' => ['required'],
+            'project_count' => ['required'],
         ];
     }
 }

@@ -17,7 +17,7 @@
                     <th>Имя</th>
                     <th>Цена</th>
                     <th>Кол-во пользователей</th>
-                    <th>Кол-во лидов</th>
+                    <th>Кол-во проектов</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -28,7 +28,7 @@
                         <td>{{ $tariff->name }}</td>
                         <td>{{ $tariff->price }} $</td>
                         <td>{{ $tariff->user_count }}</td>
-                        <td>{{ $tariff->lead_count }}</td>
+                        <td>{{ $tariff->project_count }}</td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#delete{{ $tariff->id }}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
@@ -56,10 +56,6 @@
                                         <div class="form-group">
                                             <label for="name">Кол-во пользователей</label>
                                             <input type="number" class="form-control" name="user_count" value="{{ $tariff->user_count }}">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="name">Кол-во лидов</label>
-                                            <input type="number" class="form-control" name="lead_count" value="{{ $tariff->lead_count }}">
                                         </div>
                                         <div class="form-group">
                                             <label for="name">Кол-во проектов</label>
@@ -121,10 +117,6 @@
                         <div class="form-group">
                             <label for="name">Кол-во пользователей</label>
                             <input type="number" class="form-control" name="user_count" placeholder="Кол-во пользователей">
-                        </div>
-                        <div class="form-group">
-                            <label for="name">Кол-во лидов</label>
-                            <input type="number" class="form-control" name="lead_count" placeholder="Кол-во лидов">
                         </div>
                         <div class="form-group">
                             <label for="name">Кол-во проектов</label>

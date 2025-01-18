@@ -19,6 +19,7 @@
                     <th>Телефон</th>
                     <th>Поддомен</th>
                     <th>Тип бизнеса</th>
+                    <th>Баланс</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -30,6 +31,7 @@
                         <td>{{ $client->phone }}</td>
                         <td>{{ $client->sub_domain }}</td>
                         <td>{{ $client->businessType?->name }}</td>
+                        <td>{{ $client->balance }}</td>
                         <td>
                             <a href="{{ route('client.edit', $client->id) }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             <a href="{{ route('client.show', $client->id) }}"><i class="mdi mdi-eye" style="font-size: 30px"></i></a>

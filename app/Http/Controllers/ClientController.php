@@ -15,6 +15,7 @@ use App\Models\Pack;
 use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class ClientController extends Controller
@@ -88,10 +89,19 @@ class ClientController extends Controller
     public function createTransaction(Client $client, TransactionRequest $request)
     {
         $data = $request->validated();
-        $data['type'] = 'Пополнение баланса';
-        $data['client_id'] = $client->id;
-        Transaction::create($data);
+
+        DB::transaction(function () use ($data, $client) {
+            $data['type'] = 'Пополнение баланса';
+            $data['client_id'] = $client->id;
+            Transaction::create($data);
+            $client->increment('balance', $data['sum']);
+        });
 
         return redirect()->back();
+    }
+
+    public function getBalance(string $domin)
+    {
+        return Client::where('sub_domain', $domin)->first()->balance;
     }
 }

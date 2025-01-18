@@ -121,7 +121,6 @@ class OrganizationController extends Controller
         ])->post($url, [
             'name' => $organization->name,
             'tariff_id' => $tariff->id,
-            'lead_count' => $tariff->lead_count,
             'user_count' => $tariff->user_count,
             'project_count' => $tariff->project_count,
             'b_organization_id' => $organization->id,
@@ -144,8 +143,6 @@ class OrganizationController extends Controller
 
         if ($pack->type == 'user') {
             $data['user_count'] = $pack->amount;
-        } else {
-            $data['lead_count'] = $pack->amount;
         }
 
         $response = Http::withHeaders([

@@ -46,11 +46,12 @@ class BalanceCommand extends Command
             Transaction::create([
                 'client_id' => $client->id,
                 'tariff_id' => $client->tariff->id,
-                'sale_id' => $client->sale->id,
+                'sale_id' => $client->sale?->id,
                 'sum' => $sum,
                 'type' => 'Снятие',
             ]);
         }
 
     }
+
 }

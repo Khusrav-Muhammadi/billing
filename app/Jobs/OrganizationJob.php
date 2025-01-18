@@ -39,7 +39,6 @@ class OrganizationJob implements ShouldQueue
         ])->post($url, [
             'name' => $organization->name,
             'tariff_id' => $tariff->id,
-            'lead_count' => $tariff->lead_count,
             'user_count' => $tariff->user_count,
             'project_count' => $tariff->project_count,
             'b_organization_id' => $organization->id
