@@ -7,10 +7,10 @@
     <form id="filterForm">
         <div class="row mb-3">
             <div class="col-md-2">
-                <select name="type" class="form-control">
+                <select name="demo" class="form-control">
                     <option value="">Тип подключения</option>
-                    <option value="demo">Демо</option>
-                    <option value="live">Боевая</option>
+                    <option value="1">Демо</option>
+                    <option value="0">Боевая</option>
                 </select>
             </div>
             <div class="col-md-2">

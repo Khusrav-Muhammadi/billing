@@ -20,7 +20,7 @@
     </thead>
     <tbody>
     @foreach($clients as $client)
-        <tr>
+        <tr style="cursor: pointer" data-href="{{ route('client.show', $client->id) }}" onclick="window.location.href=this.dataset.href">
             <td>{{ $loop->iteration }}</td>
             <td>{{ $client->name }}</td>
             <td>{{ $client->phone }}</td>
