@@ -60,12 +60,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             const filterForm = document.getElementById('filterForm');
             const tableContainer = document.querySelector('.table-responsive');
-
-            // Функция для получения данных
+            console.log(filterForm)
             const fetchClients = () => {
                 const formData = new FormData(filterForm);
 
-                // Отправляем AJAX-запрос с параметрами фильтра
                 fetch('{{ route('client.index') }}?' + new URLSearchParams(formData), {
                     method: 'GET',
                     headers: {
@@ -74,25 +72,21 @@
                 })
                     .then(response => response.text())
                     .then(html => {
-                        // Заменяем содержимое контейнера с таблицей
                         tableContainer.innerHTML = html;
                     })
                     .catch(error => console.error('Ошибка загрузки:', error));
             };
 
-            // Применяем фильтрацию при изменении значений
             filterForm.querySelectorAll('select, input').forEach(element => {
                 element.addEventListener('change', fetchClients);
             });
 
-            // Обработка кликов по пагинации
             document.addEventListener('click', event => {
                 const paginationLink = event.target.closest('.pagination a');
                 if (paginationLink) {
                     event.preventDefault();
                     const url = paginationLink.getAttribute('href');
 
-                    // Отправляем AJAX-запрос для пагинации
                     fetch(url, {
                         method: 'GET',
                         headers: {

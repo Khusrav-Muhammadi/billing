@@ -28,7 +28,13 @@ class ClientFilter  extends ModelFilter
 
     public function search($search)
     {
-        return $this->where('name', 'LIKE', "%{$search}%");
+        $searchTerm = '%' . $search . '%';
+
+        return $this->where(function ($query) use ($searchTerm) {
+            $query->orWhere('name', 'like', $searchTerm)
+                ->orWhere('email', 'like', $searchTerm)
+                ->orWhere('phone', 'like', $searchTerm);
+        });
     }
 
     public function demo($is_demo)
