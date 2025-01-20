@@ -37,7 +37,7 @@ Route::middleware('auth')->group(function () {
         Route::get('edit/{client}', [ClientController::class, 'edit'])->name('client.edit');
         Route::get('show/{client}', [ClientController::class, 'show'])->name('client.show');
         Route::patch('update/{client}', [ClientController::class, 'update'])->name('client.update');
-        Route::delete('/{client}', [ClientController::class, 'destroy'])->name('client.destroy');
+        Route::post('/{client}', [ClientController::class, 'activation'])->name('client.activation');
         Route::post('/create-transaction/{client}', [ClientController::class, 'createTransaction'])->name('client.createTransaction');
     });
 

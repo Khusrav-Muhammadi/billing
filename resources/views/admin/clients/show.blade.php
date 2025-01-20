@@ -54,10 +54,6 @@
                                        data-bs-target="#editOrganization{{$organization->id}}">
                                         <i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i>
                                     </a>
-                                    <a href="" data-bs-toggle="modal"
-                                       data-bs-target="#deleteOrganization{{$organization->id}}">
-                                        <i style="color:red; font-size: 30px" class="mdi mdi-delete"></i>
-                                    </a>
                                 </td>
                             </tr>
 

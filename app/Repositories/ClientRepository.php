@@ -2,8 +2,7 @@
 
 namespace App\Repositories;
 
-
-use App\Jobs\DeleteOrganizationJob;
+use App\Jobs\ActivationJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
@@ -69,16 +68,13 @@ class ClientRepository implements ClientRepositoryInterface
         $client->update($data);
     }
 
-    public function destroy(Client $client)
+    public function activation(Client $client)
     {
-        $organizations = $client->organizations()->get();
+        $organizationIds = $client->organizations()->pluck('id')->toArray();
 
-        foreach ($organizations as $organization) {
-            DeleteOrganizationJob::dispatch($organization, $client->sub_domain);
-            $organization->update(['has_access' => false]);
-        }
+        ActivationJob::dispatch($organizationIds, $client->sub_domain, !$client->is_active);
 
-        $client->update(['is_active' => false]);
+        $client->update(['is_active' => !$client->is_active]);
     }
 
     public function createTransaction(Client $client, array $data)
@@ -89,7 +85,6 @@ class ClientRepository implements ClientRepositoryInterface
             Transaction::create($data);
             $client->increment('balance', $data['sum']);
         });
-
     }
 
     public function getBalance(array $data)

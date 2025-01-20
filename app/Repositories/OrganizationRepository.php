@@ -3,7 +3,7 @@
 namespace App\Repositories;
 
 
-use App\Jobs\DeleteOrganizationJob;
+use App\Jobs\ActivationJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
@@ -15,6 +15,7 @@ use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
@@ -37,30 +38,12 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $organization->update($data);
     }
 
-    public function destroy(Organization $organization)
-    {
-        DeleteOrganizationJob::dispatch($organization, $organization->client->sub_domain);
-
-        $organization->delete();
-    }
-
     public function access(array $data)
     {
         $organization =  Organization::find($data['organization_id']);
-
-        $organization->update([
-            'has_access' => $data['has_access']
-        ]);
-
         $client = Client::find($data['client_id']);
 
-
-        $domain = env('APP_DOMAIN');
-        Http::withHeaders([
-            'Content-Type' => 'application/json; charset=utf-8',
-        ])->post("http://{$client->back_sub_domain}.{$domain}/api/organization/access/{$organization->id}", [
-            'has_access' => $data['has_access']
-        ]);
+        ActivationJob::dispatch(array($data['organization_id']), $client->sub_domain, !$organization->has_access);
     }
 
     public function addPack(Organization $organization, array $data)

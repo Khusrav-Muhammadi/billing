@@ -26,25 +26,25 @@
             <ul class="nav flex-column sub-menu">
                 <li class="nav-item">
                     <a class="nav-link" href="{{route('business_type.index')}}">
-                        <i class="mdi mdi-format-list-bulleted menu-icon"></i>
+                        <i class="mdi mdi-format-list-bulleted menu-icon" style="color: white"></i>
                         <span class="">Тип бизнеса</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('tariff.index') }}">
-                        <i class="mdi mdi-chart-bar menu-icon"></i>
+                        <i class="mdi mdi-chart-bar menu-icon" style="color: white"></i>
                         <span class="">Тарифы</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('sale.index') }}">
-                        <i class="mdi mdi-sale menu-icon"></i>
+                        <i class="mdi mdi-sale menu-icon" style="color: white"></i>
                         <span class="">Скидки</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ route('pack.index') }}">
-                        <i class="mdi mdi-package menu-icon"></i>
+                        <i class="mdi mdi-package menu-icon" style="color: white"></i>
                         <span class="">Пакеты</span>
                     </a>
                 </li>
