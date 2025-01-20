@@ -69,9 +69,9 @@ class ClientController extends Controller
         return redirect()->route('client.index');
     }
 
-    public function destroy(Client $client)
+    public function activation(Client $client)
     {
-        $this->repository->destroy($client);
+        $this->repository->activation($client);
 
         return redirect()->back();
     }

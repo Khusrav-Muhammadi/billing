@@ -12,8 +12,6 @@ interface OrganizationRepositoryInterface
 
     public function update(Organization $organization, array $data);
 
-    public function destroy(Organization $organization);
-
     public function access(array $data);
 
     public function addPack(Organization $organization, array $data);
