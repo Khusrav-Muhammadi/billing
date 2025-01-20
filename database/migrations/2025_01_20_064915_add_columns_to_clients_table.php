@@ -12,8 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->boolean('is_active')->default(true);
-            $table->boolean('is_demo')->default(false);
+            $table->dateTime('last_activity')->nullable();
+            $table->string('email');
+            $table->unsignedBigInteger('partner_id')->nullable();
+            $table->string('client_type');
+            $table->string('contact_person')->nullable();
         });
     }
 
@@ -23,8 +26,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('clients', function (Blueprint $table) {
-            $table->dropColumn('is_active');
-            $table->dropColumn('is_demo');
+            $table->dropColumn('email');
+            $table->dropColumn('last_activity');
+            $table->dropColumn('client_type');
+            $table->dropColumn('contact_person');
         });
     }
 };
