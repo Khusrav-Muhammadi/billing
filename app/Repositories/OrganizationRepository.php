@@ -15,6 +15,7 @@ use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
@@ -40,7 +41,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $organization =  Organization::find($data['organization_id']);
         $client = Client::find($data['client_id']);
 
-        ActivationJob::dispatch($organization, $client->sub_domain, !$organization->has_access);
+        ActivationJob::dispatch(array($data['organization_id']), $client->sub_domain, !$organization->has_access);
     }
 
     public function addPack(Organization $organization, array $data)
