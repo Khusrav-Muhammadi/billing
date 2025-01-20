@@ -6,9 +6,12 @@ use App\Http\Requests\Partner\StoreRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Models\Partner;
 use App\Models\User;
+use App\Repositories\Contracts\PartnerRepositoryInterface;
 
 class PartnerController extends Controller
 {
+    public function __construct(public PartnerRepositoryInterface $repository) { }
+
     public function index()
     {
         $partners = Partner::all();
@@ -25,9 +28,7 @@ class PartnerController extends Controller
 
     public function store(StoreRequest $request)
     {
-        $data = $request->validated();
-
-        Partner::create($data);
+        $this->repository->store($request->validated());
 
         return redirect()->route('partner.index');
     }
@@ -41,9 +42,7 @@ class PartnerController extends Controller
 
     public function update(Partner $partner, UpdateRequest $request)
     {
-        $data = $request->validated();
-
-        $partner->update($data);
+        $this->repository->update($partner, $request->validated());
 
         return redirect()->route('partner.index');
     }

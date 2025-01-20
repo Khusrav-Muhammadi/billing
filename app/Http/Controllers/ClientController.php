@@ -6,10 +6,6 @@ use App\Http\Requests\Client\GetBalanceRequest;
 use App\Http\Requests\Client\StoreRequest;
 use App\Http\Requests\Client\TransactionRequest;
 use App\Http\Requests\Client\UpdateRequest;
-use App\Jobs\DeleteClientJob;
-use App\Jobs\DeleteOrganizationJob;
-use App\Jobs\SubDomainJob;
-use App\Jobs\UpdateTariffJob;
 use App\Models\BusinessType;
 use App\Models\Client;
 use App\Models\Organization;
@@ -17,13 +13,16 @@ use App\Models\Pack;
 use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
-use Illuminate\Support\Facades\DB;
+use App\Repositories\Contracts\ClientRepositoryInterface;
 
 class ClientController extends Controller
 {
+
+    public function __construct(public ClientRepositoryInterface $repository) { }
+
     public function index()
     {
-        $clients = Client::all();
+        $clients = $this->repository->index();
 
         return view('admin.clients.index', compact('clients'));
     }
@@ -39,13 +38,7 @@ class ClientController extends Controller
 
     public function store(StoreRequest $request)
     {
-        $data = $request->validated();
-
-        if ($data['is_demo'] == 'on') $data['is_demo'] = true;
-
-        Client::create($data);
-
-        SubDomainJob::dispatch($data['sub_domain']);
+        $this->repository->store($request->validated());
 
         return redirect()->route('client.index');
     }
@@ -71,51 +64,27 @@ class ClientController extends Controller
 
     public function update(Client $client, UpdateRequest $request)
     {
-        $data = $request->validated();
-
-        if ($client->tariff_id != $data['tariff_id']) UpdateTariffJob::dispatch($client, $data['tariff_id'], $client->back_sub_domain);
-
-        if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
-        else $data['is_demo'] = false;
-
-        $client->update($data);
+        $this->repository->update($client, $request->validated());
 
         return redirect()->route('client.index');
     }
 
     public function destroy(Client $client)
     {
-        $organizations = $client->organizations()->get();
-
-        foreach ($organizations as $organization) {
-            DeleteOrganizationJob::dispatch($organization, $client->sub_domain);
-            $organization->update(['has_access' => false]);
-        }
-
-        $client->update(['is_active' => false]);
+        $this->repository->destroy($client);
 
         return redirect()->back();
     }
 
     public function createTransaction(Client $client, TransactionRequest $request)
     {
-        $data = $request->validated();
-
-        DB::transaction(function () use ($data, $client) {
-            $data['type'] = 'Пополнение';
-            $data['client_id'] = $client->id;
-            Transaction::create($data);
-            $client->increment('balance', $data['sum']);
-        });
-
+        $this->repository->createTransaction($client, $request->validated());
         return redirect()->back();
     }
 
     public function getBalance(GetBalanceRequest $request)
     {
-        $data = $request->validated();
-
-        $balance = Client::where('sub_domain', $data['sub_domain'])->first()->balance;
+        $balance = $this->repository->getBalance($request->validated());
 
         return response()->json([
             'balance' => $balance
