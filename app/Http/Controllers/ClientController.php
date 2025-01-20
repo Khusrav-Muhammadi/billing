@@ -14,6 +14,7 @@ use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
@@ -88,6 +89,18 @@ class ClientController extends Controller
 
         return response()->json([
             'balance' => $balance
+        ]);
+    }
+
+    public function updateActivity(Request $request, string $subdomain)
+    {
+        $client = Client::query()->firstOrFail();
+
+        $client->last_activity = $request->last_activity;
+        $client->save();
+
+        return response()->json([
+            'result' => 'success'
         ]);
     }
 }

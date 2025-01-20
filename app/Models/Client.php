@@ -4,12 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Client extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','phone', 'sub_domain','business_type_id', 'INN', 'address', 'balance', 'tariff_id', 'sale_id', 'is_active', 'is_demo'];
+    protected $fillable = ['name','phone', 'sub_domain','business_type_id', 'INN', 'address',
+        'balance', 'tariff_id', 'sale_id', 'is_active', 'is_demo', 'last_activity', 'email', 'contact_person', 'client_type', 'partner_id', 'city_id'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'is_demo' => 'boolean',
+        'last_activity' => 'datetime'
+    ];
 
     public function businessType()
     {
@@ -29,6 +37,16 @@ class Client extends Model
     public function organizations()
     {
         return $this->hasMany(Organization::class);
+    }
+
+    public function partner() :BelongsTo
+    {
+        return $this->belongsTo(Partner::class);
+    }
+
+    public function city() : BelongsTo
+    {
+        return $this->belongsTo(Partner::class);
     }
 
 }
