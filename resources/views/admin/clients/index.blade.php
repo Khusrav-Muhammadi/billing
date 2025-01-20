@@ -3,74 +3,112 @@
 @section('title')
     Клиенты
 @endsection
-
-
 @section('content')
+    <form id="filterForm">
+        <div class="row mb-3">
+            <div class="col-md-2">
+                <select name="type" class="form-control">
+                    <option value="">Тип подключения</option>
+                    <option value="demo">Демо</option>
+                    <option value="live">Боевая</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-control">
+                    <option value="">Статус</option>
+                    <option value="1">Активный</option>
+                    <option value="0">Неактивный</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="tariff" class="form-control">
+                    <option value="">Тариф</option>
+                    @foreach($tariffs as $tariff)
+                        <option value="{{ $tariff->id }}">{{ $tariff->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="partner" class="form-control">
+                    <option value="">Партнер</option>
+                    @foreach($partners as $partner)
+                        <option value="{{ $partner->id }}">{{ $partner->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="search" class="form-control" placeholder="Поиск">
+            </div>
+        </div>
+    </form>
 
     <div class="card-body">
         <h4 class="card-title">Клиенты</h4>
         <a href="{{ route('client.create') }}" type="button" class="btn btn-primary">Создать</a>
         <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                <tr>
-                    <th>№</th>
-                    <th>Имя</th>
-                    <th>Телефон</th>
-                    <th>Поддомен</th>
-                    <th>Тип бизнеса</th>
-                    <th>Баланс</th>
-                    <th>Статус</th>
-                    <th>Тип подключения</th>
-                    <th>Действие</th>
-                </tr>
-                </thead>
-                <tbody>
-                @foreach($clients as $client)
-                    <tr>
-                        <td>{{ $loop->iteration }}</td>
-                        <td>{{ $client->name }}</td>
-                        <td>{{ $client->phone }}</td>
-                        <td>{{ $client->sub_domain }}</td>
-                        <td>{{ $client->businessType?->name }}</td>
-                        <td>{{ $client->balance }}</td>
-                        <td>
-                            @if($client->is_active) <p style="color: #00bb00">Активный</p> @else <p style="color: red">Неактивный</p> @endif
-                        </td>
-                        <td>
-                            @if($client->is_demo) Демо версия @else Боевая версия @endif
-                        </td>
-                        <td>
-                            <a href="{{ route('client.edit', $client->id) }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
-                            <a href="{{ route('client.show', $client->id) }}"><i class="mdi mdi-eye" style="font-size: 30px"></i></a>
-                            <a href="" data-bs-toggle="modal" data-bs-target="#deleteClient{{$client->id}}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
-                        </td>
-                    </tr>
-                    <div class="modal fade" id="deleteClient{{$client->id}}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <form action="{{ route('client.destroy', $client->id) }}" method="POST">
-                                @csrf
-                                @method('DELETE')
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Удаление клиента</h5>
-                                    </div>
-                                    <div class="modal-body">
-                                        Вы уверены что хотите удалить эти данные?
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                                        <button type="submit" class="btn btn-danger">Удалить</button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                @endforeach
-                </tbody>
-            </table>
+
+            @include('admin.partials.clients', ['clients' => $clients])
+
+        </div>
+        <div class="pagination-wrapper">
+            {{$clients->links()}}
         </div>
     </div>
-
 @endsection
+@section('script')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const filterForm = document.getElementById('filterForm');
+            const tableContainer = document.querySelector('.table-responsive');
 
+            // Функция для получения данных
+            const fetchClients = () => {
+                const formData = new FormData(filterForm);
+
+                // Отправляем AJAX-запрос с параметрами фильтра
+                fetch('{{ route('client.index') }}?' + new URLSearchParams(formData), {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.text())
+                    .then(html => {
+                        // Заменяем содержимое контейнера с таблицей
+                        tableContainer.innerHTML = html;
+                    })
+                    .catch(error => console.error('Ошибка загрузки:', error));
+            };
+
+            // Применяем фильтрацию при изменении значений
+            filterForm.querySelectorAll('select, input').forEach(element => {
+                element.addEventListener('change', fetchClients);
+            });
+
+            // Обработка кликов по пагинации
+            document.addEventListener('click', event => {
+                const paginationLink = event.target.closest('.pagination a');
+                if (paginationLink) {
+                    event.preventDefault();
+                    const url = paginationLink.getAttribute('href');
+
+                    // Отправляем AJAX-запрос для пагинации
+                    fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                        .then(response => response.text())
+                        .then(html => {
+                            // Заменяем содержимое контейнера с таблицей
+                            tableContainer.innerHTML = html;
+                        })
+                        .catch(error => console.error('Ошибка пагинации:', error));
+                }
+            });
+        });
+
+
+    </script>
+@endsection

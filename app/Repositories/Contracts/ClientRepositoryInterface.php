@@ -7,7 +7,7 @@ use App\Models\User;
 
 interface ClientRepositoryInterface
 {
-    public function index();
+    public function index(array $data);
 
     public function store(array $data);
 

@@ -19,7 +19,11 @@ class OrganizationController extends Controller
 
     public function store(Client $client, StoreRequest $request): RedirectResponse
     {
-        $this->repository->store($client, $request->validated());
+        $organization = $this->repository->store($client, $request->validated());
+
+        if (!$organization) {
+            return redirect()->back()->with('error', 'Не удалось создать организацию');
+        }
 
         return redirect()->back();
     }

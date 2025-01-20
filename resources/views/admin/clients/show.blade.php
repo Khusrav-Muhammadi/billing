@@ -7,12 +7,18 @@
 @section('content')
 
     <div class="card-body">
+
         <div class="table-responsive">
             <h4 class="card-title">Организации</h4>
             <div style="margin-bottom: 10px">
-                @if($client->balance >= $client->tariff?->price && $client->is_active)
-                <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
-                   class="btn btn-primary">Создать</a>
+                @if($errors->any())
+                    <div class="alert alert-danger">
+                        <ul>
+                            @foreach($errors as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
                 @endif
                     <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
             </div>

@@ -87,7 +87,7 @@
     </div>
 
 </div>
-
+@yield('script')
 <script src="{{asset('../assets/vendors/js/vendor.bundle.base.js')}}"></script>
 
 <script src="{{asset('../assets/vendors/jquery-bar-rating/jquery.barrating.min.js')}}"></script>

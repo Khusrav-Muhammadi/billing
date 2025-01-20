@@ -28,6 +28,8 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $res = $this->createInSham($organization, $client->sub_domain);
 
         if (!$res) $organization->delete();
+
+        return $organization;
     }
 
     public function update(Organization $organization, array $data)

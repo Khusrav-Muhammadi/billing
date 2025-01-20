@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use EloquentFilter\Filterable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Client extends Model
 {
-    use HasFactory;
+    use HasFactory, Filterable;
 
     protected $fillable = ['name','phone', 'sub_domain','business_type_id', 'INN', 'address',
         'balance', 'tariff_id', 'sale_id', 'is_active', 'is_demo', 'last_activity', 'email', 'contact_person', 'client_type', 'partner_id', 'city_id'];
@@ -48,5 +49,7 @@ class Client extends Model
     {
         return $this->belongsTo(Partner::class);
     }
+
+
 
 }

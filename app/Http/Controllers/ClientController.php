@@ -10,22 +10,29 @@ use App\Models\BusinessType;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Pack;
+use App\Models\Partner;
 use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ClientController extends Controller
 {
 
     public function __construct(public ClientRepositoryInterface $repository) { }
 
-    public function index()
+    public function index(Request $request)
     {
-        $clients = $this->repository->index();
+        $clients = $this->repository->index($request->all());
+        $partners = Partner::all();
+        $tariffs = Tariff::all();
 
-        return view('admin.clients.index', compact('clients'));
+        if ($request->ajax()) {
+            return view('admin.partials.clients', compact('clients'))->render();
+        }
+        return view('admin.clients.index', compact('clients', 'partners', 'tariffs'));
     }
 
     public function create()
@@ -33,12 +40,14 @@ class ClientController extends Controller
         $businessTypes = BusinessType::all();
         $sales = Sale::all();
         $tariffs = Tariff::all();
+        $partners = Partner::all();
 
-        return view('admin.clients.create', compact('businessTypes', 'tariffs', 'sales'));
+        return view('admin.clients.create', compact('businessTypes', 'tariffs', 'sales', 'partners'));
     }
 
     public function store(StoreRequest $request)
     {
+
         $this->repository->store($request->validated());
 
         return redirect()->route('client.index');
@@ -94,7 +103,10 @@ class ClientController extends Controller
 
     public function updateActivity(Request $request, string $subdomain)
     {
-        $client = Client::query()->firstOrFail();
+        $client = Client::query()->firstWhere('sub_domain', $subdomain);
+        if (!$client) {
+            abort(404);
+        }
 
         $client->last_activity = $request->last_activity;
         $client->save();
