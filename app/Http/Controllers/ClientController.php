@@ -56,19 +56,13 @@ class ClientController extends Controller
         $organizations = Organization::where('client_id', $client->id)->get();
         $transactions = Transaction::where('client_id', $client->id)->get();
         $businessTypes = BusinessType::all();
-        $packs = Pack::all();
-
-        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs'));
-    }
-
-    public function edit(Client $client)
-    {
-        $businessTypes = BusinessType::all();
         $sales = Sale::all();
         $tariffs = Tariff::all();
+        $packs = Pack::all();
 
-        return view('admin.clients.edit', compact('client', 'businessTypes', 'sales', 'tariffs'));
+        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales'));
     }
+
 
     public function update(Client $client, UpdateRequest $request)
     {

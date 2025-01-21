@@ -8,6 +8,62 @@
 
     <div class="card-body">
 
+        <a href="#" onclick="history.back();" class="btn btn-outline-danger mb-2">Назад</a>
+        <button type="submit" class="btn btn-outline-primary mb-2"> Сохранить </button>
+        <a href="" data-bs-toggle="modal" data-bs-target="#activation" type="button"
+           class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} mb-2 ml-5" ><i class="mdi mdi-power" style="font-size: 30px"></i></a>
+        <div class="card">
+            <!-- Первая строка -->
+            <div class="row mb-3">
+                <div class="col-4 ml-5 mt-3">
+                    <label for="name">Наименование</label>
+                    <input type="text" class="form-control" name="name" value="{{ $client->name }}">
+                </div>
+                <div class="col-4 mt-3">
+                    <label for="phone">Телефон</label>
+                    <input type="text" class="form-control" name="phone" value="{{ $client->phone }}">
+                </div>
+                <div class="col-3 mt-3">
+                    <label for="INN">Почта</label>
+                    <input type="number" class="form-control" name="INN" value="{{ $client->email }}">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4 ml-5 mt-3">
+                    <label for="sub_domain">Поддомен</label>
+                    <input type="text" class="form-control" name="sub_domain" value="{{ $client->sub_domain }}">
+                </div>
+                <div class="col-4 mt-3">
+                    <label for="business_type_id">Тип бизнеса</label>
+                    <select class="form-control form-control-sm" name="business_type_id">
+                        @foreach($businessTypes as $businessType)
+                            <option value="{{ $businessType->id }}" {{ $client->business_type_id == $businessType->id ? 'selected': '' }}>{{ $businessType->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-3 mt-3">
+                    <label for="tariff_id">Тариф</label>
+                    <select class="form-control form-control-sm" name="tariff_id">
+                        @foreach($tariffs as $tariff)
+                            <option value="{{ $tariff->id }}" {{ $client->tariff_id == $tariff->id ? 'selected': '' }}>{{ $tariff->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4 ml-5 mt-3">
+                    <label for="sale_id">Скидка</label>
+                    <select class="form-control form-control-sm" name="sale_id">
+                        @foreach($sales as $sale)
+                            <option value="{{ $sale->id }}" {{ $client->sale_id == $sale->id ? 'selected': '' }}>{{ $sale->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
         <div class="table-responsive">
             <h4 class="card-title">Организации</h4>
             <div style="margin-bottom: 10px">
@@ -20,13 +76,10 @@
                         </ul>
                     </div>
                 @endif
-                <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
                 @if($client->balance >= $client->tariff?->price && $client->is_active)
                     <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
                        class="btn btn-primary">Создать</a>
                 @endif
-                <a href="" data-bs-toggle="modal" data-bs-target="#activation" type="button"
-                   class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} ml-5" ><i class="mdi mdi-power" style="font-size: 30px"></i></a>
             </div>
             <div class="d-flex">
                 <div class="card table-container flex-fill mr-3">

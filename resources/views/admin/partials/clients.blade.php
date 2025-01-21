@@ -15,7 +15,6 @@
         <th>Тип подключения</th>
         <th>Срок действия</th>
         <th>Последняя активность</th>
-        <th>Действие</th>
     </tr>
     </thead>
     <tbody>
@@ -47,14 +46,6 @@
             </td>
             <td>{{ $client->srok_daystviya }}</td>
             <td>{{ $client->last_activity }}</td>
-            <td>
-                <a href="{{ route('client.edit', $client->id) }}">
-                    <i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i>
-                </a>
-                <a href="#" data-bs-toggle="modal" data-bs-target="#deleteClient{{ $client->id }}">
-                    <i style="color:red; font-size: 30px" class="mdi mdi-delete"></i>
-                </a>
-            </td>
         </tr>
     @endforeach
     </tbody>
