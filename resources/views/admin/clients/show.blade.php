@@ -15,7 +15,7 @@
            class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} mb-2 ml-5">
             <i class="mdi mdi-power" style="font-size: 30px"></i>
         </a>
-        <div class="card mb-5">
+        <div class="card mb-3">
             @csrf
             @method('PATCH')
             <div class="row mb-3">
