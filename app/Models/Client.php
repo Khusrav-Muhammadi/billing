@@ -6,6 +6,7 @@ use EloquentFilter\Filterable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Client extends Model
 {
@@ -50,6 +51,9 @@ class Client extends Model
         return $this->belongsTo(Partner::class);
     }
 
-
+    public function history(): MorphMany
+    {
+        return $this->morphMany('App\Models\ModelHistory', 'model');
+    }
 
 }
