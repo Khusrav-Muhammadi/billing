@@ -13,6 +13,7 @@ use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -24,13 +25,28 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     {
         $data['client_id'] = $client->id;
 
-        $organization = Organization::create($data);
+        return DB::transaction(function () use ($client, $data) {
+            $organization = Organization::create($data);
 
-        $res = $this->createInSham($organization, $client->sub_domain);
+            $res = $this->createInSham($organization, $client->sub_domain);
 
-        if (!$res) $organization->delete();
+            if (!$res) $organization->delete();
+            else {
+                $daysInMonth = Carbon::now()->daysInMonth;
 
-        return $organization;
+                $sum = $client->tariff->price / $daysInMonth;
+
+                Transaction::create([
+                    'client_id' => $client->id,
+                    'organization_id' => $organization->id,
+                    'tariff_id' => $client->tariff->id,
+                    'sale_id' => $client->sale?->id,
+                    'sum' => $sum,
+                    'type' => 'Снятие',
+                ]);
+            }
+            return $organization;
+        });
     }
 
     public function update(Organization $organization, array $data)
@@ -40,7 +56,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     public function access(array $data)
     {
-        $organization =  Organization::find($data['organization_id']);
+        $organization = Organization::find($data['organization_id']);
         $client = Client::find($data['client_id']);
 
         ActivationJob::dispatch(array($data['organization_id']), $client->sub_domain, !$organization->has_access);

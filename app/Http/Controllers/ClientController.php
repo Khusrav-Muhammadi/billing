@@ -16,7 +16,6 @@ use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class ClientController extends Controller
 {
@@ -47,7 +46,6 @@ class ClientController extends Controller
 
     public function store(StoreRequest $request)
     {
-
         $this->repository->store($request->validated());
 
         return redirect()->route('client.index');

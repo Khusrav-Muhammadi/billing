@@ -38,14 +38,10 @@ class ClientRepository implements ClientRepositoryInterface
             return $client;
         });
 
-        // Обновляем коллекцию в существующем объекте пагинации
         $clients->setCollection($processedClients);
 
         return $clients;
     }
-
-
-
 
     public function store(array $data)
     {

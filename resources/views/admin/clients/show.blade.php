@@ -20,7 +20,13 @@
                         </ul>
                     </div>
                 @endif
-                    <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
+                <a href="#" onclick="history.back();" class="btn btn-outline-danger">Назад</a>
+                @if($client->balance >= $client->tariff?->price && $client->is_active)
+                    <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
+                       class="btn btn-primary">Создать</a>
+                @endif
+                <a href="" data-bs-toggle="modal" data-bs-target="#activation" type="button"
+                   class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} ml-5" ><i class="mdi mdi-power" style="font-size: 30px"></i></a>
             </div>
             <div class="d-flex">
                 <div class="card table-container flex-fill mr-3">
@@ -44,6 +50,7 @@
                                     <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
                                            data-organization-id="{{ $organization->id }}"
                                            data-client-id="{{ $client->id }}" {{ $organization->has_access ? 'checked' : '' }}
+                                        {{ $client->is_active ? '' : 'disabled' }}
                                     >
                                 </td>
                                 <td>
@@ -276,13 +283,38 @@
         </div>
     </div>
 
+
+    <div class="modal fade" id="activation" tabindex="-1"
+         aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form action="{{ route('client.activation', $client->id) }}" method="POST">
+                @csrf
+
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel"> {{ $client->is_active ? 'Деактивация' : 'Активация' }} клиента</h5>
+                    </div>
+                    <div class="modal-body">
+                        Вы уверены что хотите {{ $client->is_active ? 'активировать' : 'деактивировать' }} эти данные?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Отмена
+                        </button>
+                        <button type="submit" class="btn btn-{{ $client->is_active ? 'danger' : 'success' }}">{{ $client->is_active ? 'Деактивировать' : 'Активировать' }}</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
     <script>
-        // Устанавливаем текущую дату
         const dateInput = document.getElementById('date');
         const today = new Date();
         const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0'); // Месяц с ведущим нулём
-        const day = String(today.getDate()).padStart(2, '0'); // День с ведущим нулём
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
         dateInput.value = `${year}-${month}-${day}`;
     </script>
 
