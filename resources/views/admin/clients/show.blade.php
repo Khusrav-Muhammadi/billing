@@ -14,7 +14,7 @@
         <a href="" data-bs-toggle="modal" data-bs-target="#activation" type="button"
            class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} mb-2 ml-5"><i class="mdi mdi-power"
                                                                                                 style="font-size: 30px"></i></a>
-        <div class="card">
+        <div class="card mb-5">
             @csrf
             @method('PATCH')
             <div class="row mb-3">
@@ -68,7 +68,8 @@
                 @if($client->is_demo)
                     <div class="col-4 mt-3" style="display: flex; align-items: center;">
                         <label for="is_demo" style="margin-right: 10px;">Демо версия:</label>
-                        <input type="checkbox" name="is_demo" class="form-control" style="width: 40px; margin: 0;" {{ $client->is_demo ? 'checked' : '' }}>
+                        <input type="checkbox" name="is_demo" class="form-control"
+                               style="width: 40px; margin: 0;" {{ $client->is_demo ? 'checked' : '' }}>
                     </div>
                 @endif
             </div>
@@ -77,7 +78,6 @@
     </form>
 
     <div class="table-responsive">
-        <h4 class="card-title">Организации</h4>
         <div style="margin-bottom: 10px">
             @if($errors->any())
                 <div class="alert alert-danger">
@@ -88,13 +88,17 @@
                     </ul>
                 </div>
             @endif
-            @if($client->balance >= $client->tariff?->price && $client->is_active)
-                <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
-                   class="btn btn-primary">Создать</a>
-            @endif
         </div>
         <div class="d-flex">
             <div class="card table-container flex-fill mr-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    @if($client->balance >= $client->tariff?->price && $client->is_active)
+                        <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
+                           class="btn btn-primary ml-2 mt-2">Создать</a>
+                    @endif
+                    <h4 class="card-title text-center flex-grow-1 mb-0">Организации</h4>
+                </div>
+
                 <table class="table table-hover">
                     <thead>
                     <tr>
@@ -244,9 +248,9 @@
 
             <div class="card table-container flex-fill ml-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4 class="card-title m-2">Транзакции</h4>
                     <a href="" data-bs-toggle="modal" data-bs-target="#createTransaction" type="button"
                        class="btn btn-primary m-2">Создать</a>
+                    <h4 class="card-title m-2 text-center flex-grow-1 mb-0">Транзакции</h4>
                 </div>
                 <table class="table table-hover">
                     <thead>
