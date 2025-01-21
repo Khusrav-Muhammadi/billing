@@ -12,8 +12,9 @@
         <a href="#" onclick="history.back();" class="btn btn-outline-danger mb-2">Назад</a>
         <button type="submit" class="btn btn-outline-primary mb-2"> Сохранить</button>
         <a href="" data-bs-toggle="modal" data-bs-target="#activation" type="button"
-           class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} mb-2 ml-5"><i class="mdi mdi-power"
-                                                                                                style="font-size: 30px"></i></a>
+           class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} mb-2 ml-5">
+            <i class="mdi mdi-power" style="font-size: 30px"></i>
+        </a>
         <div class="card mb-5">
             @csrf
             @method('PATCH')

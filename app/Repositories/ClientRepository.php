@@ -68,9 +68,7 @@ class ClientRepository implements ClientRepositoryInterface
     {
         $organizationIds = $client->organizations()->pluck('id')->toArray();
 
-        ActivationJob::dispatch($organizationIds, $client->sub_domain, !$client->is_active);
-
-        $client->update(['is_active' => !$client->is_active]);
+        ActivationJob::dispatch($organizationIds, $client->sub_domain, !$client->is_active, true);
     }
 
     public function createTransaction(Client $client, array $data)

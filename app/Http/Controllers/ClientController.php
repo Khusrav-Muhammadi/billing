@@ -63,7 +63,6 @@ class ClientController extends Controller
         return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales'));
     }
 
-
     public function update(Client $client, UpdateRequest $request)
     {
         $this->repository->update($client, $request->validated());

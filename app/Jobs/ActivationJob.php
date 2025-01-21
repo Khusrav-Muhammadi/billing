@@ -19,7 +19,7 @@ class ActivationJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public array $organizationIds, public string $domain, public bool $activation)
+    public function __construct(public array $organizationIds, public string $domain, public bool $activation, public bool $updateClient = false)
     {
         //
     }
@@ -45,5 +45,11 @@ class ActivationJob implements ShouldQueue
             Organization::whereIn('id', $this->organizationIds)
                 ->update(['has_access' => $this->activation]);
 
+        if ($this->updateClient) {
+            $organization = Organization::whereIn('id', $this->organizationIds)->first();
+            $client = $organization->client()->first();
+
+            $client->update(['is_active' => !$client->is_active]);
+        }
     }
 }
