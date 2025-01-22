@@ -29,14 +29,14 @@
                     <input type="text" class="form-control" name="phone" value="{{ $client->phone }}">
                 </div>
                 <div class="col-3 mt-3">
-                    <label for="INN">Почта</label>
-                    <input type="number" class="form-control" name="INN" value="{{ $client->email }}">
+                    <label for="email">Почта</label>
+                    <input type="email" class="form-control" name="email" value="{{ $client->email }}">
                 </div>
             </div>
             <div class="row mb-3">
                 <div class="col-4 ml-5 mt-3">
                     <label for="sub_domain">Поддомен</label>
-                    <input type="text" class="form-control" name="sub_domain" value="{{ $client->sub_domain }}">
+                    <input type="text" class="form-control" value="{{ $client->sub_domain }}">
                 </div>
                 <div class="col-4 mt-3">
                     <label for="business_type_id">Тип бизнеса</label>
@@ -397,7 +397,7 @@
                                 <strong>{{ $history->user->name }}</strong> <i>{{ $history->created_at->format('d.m.Y H:i') }}</i>
                             </span>
                         </div>
-                        <div class="ml-3">
+                        <div class="ml-3" style="font-size: 14px">
                             @foreach ($history->changes as $change)
                                 @php
                                     $bodyData = json_decode($change->body, true);
