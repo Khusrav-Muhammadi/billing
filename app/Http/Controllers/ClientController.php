@@ -54,7 +54,9 @@ class ClientController extends Controller
     public function show(Client $client)
     {
         $organizations = Organization::where('client_id', $client->id)->get();
-        $transactions = Transaction::where('client_id', $client->id)->get();
+        $transactions = Transaction::where('client_id', $client->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
         $businessTypes = BusinessType::all();
         $sales = Sale::all();
         $tariffs = Tariff::all();

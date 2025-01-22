@@ -58,7 +58,28 @@
                 </div>
             </div>
             <div class="row mb-3">
-                <div class="col-4 ml-5 mt-3">
+                <div class="col-4 mt-3 ml-5">
+                    <label for="client_type">Тип клиента <span class="text-danger">*</span></label>
+                    <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
+                            name="client_type" required>
+                        <option value="">Выберите тип клиента</option>
+                        <option value="{{ \App\Enums\ClientType::LegalEntity->value }}" {{ $client->client_type == \App\Enums\ClientType::LegalEntity->value ? 'selected' : '' }}>
+                            {{ \App\Enums\ClientType::LegalEntity->value }}
+                        </option>
+                        <option value="{{ \App\Enums\ClientType::Individual->value }}" {{ $client->client_type == \App\Enums\ClientType::Individual->value ? 'selected' : '' }}>
+                            {{ \App\Enums\ClientType::Individual->value }}
+                        </option>
+                        <option value="{{ \App\Enums\ClientType::Entrepreneur->value }}" {{ $client->client_type == \App\Enums\ClientType::Entrepreneur->value ? 'selected' : '' }}>
+                            {{ \App\Enums\ClientType::Entrepreneur->value }}
+                        </option>
+                    </select>
+                </div>
+                <div class="col-4 mt-3">
+                    <label for="contact_person">Контактное лицо</label>
+                    <input type="text" class="form-control @error('contact_person') is-invalid @enderror"
+                           name="contact_person" value="{{ $client->contact_person }}">
+                </div>
+                <div class="col-3 mt-3">
                     <label for="sale_id">Скидка</label>
                     <select class="form-control form-control-sm" name="sale_id">
                         @foreach($sales as $sale)
@@ -67,27 +88,8 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-4 mt-3">
-                    <label for="contact_person">Контактное лицо</label>
-                    <input type="text" class="form-control @error('contact_person') is-invalid @enderror"
-                           name="contact_person" value="{{ $client->contact_person }}">
-                </div>
-                <div class="col-4 mt-3">
-                    <label for="client_type">Тип клиента <span class="text-danger">*</span></label>
-                    <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
-                            name="client_type" required>
-                        <option value="">Выберите тип клиента</option>
-                        <option value="{{ \App\Enums\ClientType::LegalEntity->value }}" {{ old('client_type') == \App\Enums\ClientType::LegalEntity->value ? 'selected' : '' }}>
-                            {{ \App\Enums\ClientType::LegalEntity->value }}
-                        </option>
-                        <option value="{{ \App\Enums\ClientType::Individual->value }}" {{ old('client_type') == \App\Enums\ClientType::Individual->value ? 'selected' : '' }}>
-                            {{ \App\Enums\ClientType::Individual->value }}
-                        </option>
-                        <option value="{{ \App\Enums\ClientType::Entrepreneur->value }}" {{ old('client_type') == \App\Enums\ClientType::Entrepreneur->value ? 'selected' : '' }}>
-                            {{ \App\Enums\ClientType::Entrepreneur->value }}
-                        </option>
-                    </select>
-                </div>
+            </div>
+            <div class="row mb-3 ml-4">
                 @if($client->is_demo)
                     <div class="col-4 mt-3" style="display: flex; align-items: center;">
                         <label for="is_demo" style="margin-right: 10px;">Демо версия:</label>
@@ -280,6 +282,7 @@
                     <tr>
                         <th>№</th>
                         <th>Дата</th>
+                        <th>Организация</th>
                         <th>Тариф</th>
                         <th>Скидка</th>
                         <th>Сумма</th>
@@ -291,6 +294,7 @@
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $transaction->created_at }}</td>
+                            <td>{{ $transaction->organization?->name }}</td>
                             <td>{{ $transaction->tariff?->price }}</td>
                             <td>{{ $transaction->sale?->amount }}</td>
                             <td>{{ $transaction->sum }}</td>
@@ -299,8 +303,10 @@
                     @endforeach
                     </tbody>
                 </table>
+                <div>
+                    {{$transactions->links()}}
+                </div>
             </div>
-
         </div>
     </div>
     </div>

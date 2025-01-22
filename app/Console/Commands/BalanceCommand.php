@@ -50,6 +50,7 @@ class BalanceCommand extends Command
             foreach ($organizations as $organization) {
                 if ($client->balance >= $sum) {
                     $client->balance -= $sum;
+                    $client->disableObserver = true;
                     $client->save();
 
                     Transaction::create([

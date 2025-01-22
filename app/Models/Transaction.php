@@ -26,4 +26,9 @@ class Transaction extends Model
         return $this->belongsTo(Sale::class, 'sale_id');
     }
 
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
 }
