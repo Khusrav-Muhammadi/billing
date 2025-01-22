@@ -35,8 +35,20 @@ class ClientRepository implements ClientRepositoryInterface
 
             $client->total_users = ($client->tariff->user_count ?? 0) + $totalUsersFromPacks;
 
+            $organizationCount = $client->organizations()
+                ->where('has_access', true)
+                ->count();
+
+
+            if ($organizationCount == 0) $validity_period = '-';
+            else $validity_period = floor($client->balance / ($organizationCount * $client->tariff->price));
+
+            $client->validity_period = $validity_period;
+
             return $client;
         });
+
+
 
         $clients->setCollection($processedClients);
 

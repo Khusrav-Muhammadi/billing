@@ -25,11 +25,11 @@
             <td>{{ $client->phone }}</td>
             <td>{{ $client->email }}</td>
             <td>{{ $client->partner?->name }}</td>
-            <td>{{ $client->organizations_count }}</td>
+            <td class="text-center">{{ $client->organizations_count }}</td>
             <td>{{ $client->tariff?->name }}</td>
-            <td>{{ $client->total_users }}</td>
+            <td class="text-center">{{ $client->total_users }}</td>
             <td>{{ $client->sub_domain }}</td>
-            <td>{{ $client->balance }}</td>
+            <td class="text-center">{{ $client->balance }}</td>
             <td>
                 @if($client->is_active)
                     <p style="color: #00bb00">Активный</p>
@@ -44,7 +44,7 @@
                     Боевая версия
                 @endif
             </td>
-            <td>{{ $client->srok_daystviya }}</td>
+            <td class="text-center">{{ $client->validity_period }}</td>
             <td>{{ $client->last_activity }}</td>
         </tr>
     @endforeach
