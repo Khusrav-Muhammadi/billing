@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Client;
 use App\Models\Transaction;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class BalanceCommand extends Command
@@ -29,29 +30,39 @@ class BalanceCommand extends Command
     {
         $clients = Client::all();
 
-        foreach ($clients as $client) {
-            $sum = $client->tariff->price;
+        $currentMonth = Carbon::now();
 
-            if ($client->sale_id) {
-                if ($client->sale->sale_type == 'procent') {
-                    $sum -= ($client->tariff->price*$client->sale->amount) / 100;
-                } else {
-                    $sum -= $client->sale->amount;
+        $daysInMonth = $currentMonth->daysInMonth;
+
+        foreach ($clients as $client) {
+            $sum = $client->tariff->price / $daysInMonth;
+
+//            if ($client->sale_id) {
+//                if ($client->sale->sale_type == 'procent') {
+//                    $sum -= ($client->tariff->price*$client->sale->amount) / 100;
+//                } else {
+//                    $sum -= $client->sale->amount;
+//                }
+//            }
+
+            $organizations = $client->organizations()->get();
+
+            foreach ($organizations as $organization) {
+                if ($client->balance >= $sum) {
+                    $client->balance -= $sum;
+                    $client->save();
+
+                    Transaction::create([
+                        'client_id' => $client->id,
+                        'organization_id' => $organization->id,
+                        'tariff_id' => $client->tariff->id,
+                        'sale_id' => $client->sale?->id,
+                        'sum' => $sum,
+                        'type' => 'Снятие',
+                    ]);
                 }
             }
-
-            $client->balance -= $sum;
-            $client->save();
-
-            Transaction::create([
-                'client_id' => $client->id,
-                'tariff_id' => $client->tariff->id,
-                'sale_id' => $client->sale?->id,
-                'sum' => $sum,
-                'type' => 'Снятие',
-            ]);
         }
-
     }
 
 }

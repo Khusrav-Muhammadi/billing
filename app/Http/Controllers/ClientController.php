@@ -16,7 +16,6 @@ use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class ClientController extends Controller
 {
@@ -47,7 +46,6 @@ class ClientController extends Controller
 
     public function store(StoreRequest $request)
     {
-
         $this->repository->store($request->validated());
 
         return redirect()->route('client.index');
@@ -58,18 +56,12 @@ class ClientController extends Controller
         $organizations = Organization::where('client_id', $client->id)->get();
         $transactions = Transaction::where('client_id', $client->id)->get();
         $businessTypes = BusinessType::all();
-        $packs = Pack::all();
-
-        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs'));
-    }
-
-    public function edit(Client $client)
-    {
-        $businessTypes = BusinessType::all();
         $sales = Sale::all();
         $tariffs = Tariff::all();
+        $packs = Pack::all();
+        $client = $client->load(['history.changes', 'history.user']);
 
-        return view('admin.clients.edit', compact('client', 'businessTypes', 'sales', 'tariffs'));
+        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales'));
     }
 
     public function update(Client $client, UpdateRequest $request)
@@ -115,4 +107,5 @@ class ClientController extends Controller
             'result' => 'success'
         ]);
     }
+
 }
