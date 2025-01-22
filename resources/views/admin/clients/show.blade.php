@@ -303,7 +303,7 @@
                     @endforeach
                     </tbody>
                 </table>
-                <div>
+                <div class="mb-3 ml-2 mt-3 text-center">
                     {{$transactions->links()}}
                 </div>
             </div>
