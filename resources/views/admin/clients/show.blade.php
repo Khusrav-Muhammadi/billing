@@ -394,7 +394,7 @@
                         <div style="display: flex; justify-content: space-between;">
                             <h4>{{ $history->status }}</h4>
                             <span>
-                                <strong>{{ $history->user->name }}</strong> <i>{{ $history->created_at->format('d.m.Y H:i') }}</i>
+                                <strong>{{ $history->user->name }}</strong> <i style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
                             </span>
                         </div>
                         <div class="ml-3" style="font-size: 14px">
@@ -404,7 +404,12 @@
                                 @endphp
 
                                 @foreach ($bodyData as $key => $value)
-                                    {{ ucfirst($key) }}: <br>
+                                    @if($key == 'name') Имя: <br>
+                                    @elseif($key == 'phone') Телефон: <br>
+                                    @elseif($key == 'email') Почта: <br>
+                                    @elseif($key == 'client_type') Тип клиента: <br>
+                                    @elseif($key == 'tariff') Тариф: <br>
+                                    @endif
                                     <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}   ==>  {{ $value['new_value'] ?? 'N/A' }}</p>
                                 @endforeach
                             @endforeach
