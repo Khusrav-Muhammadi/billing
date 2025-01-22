@@ -89,6 +89,7 @@ class ClientRepository implements ClientRepositoryInterface
             $data['type'] = 'Пополнение';
             $data['client_id'] = $client->id;
             Transaction::create($data);
+            $client->disableObserver = true;
             $client->increment('balance', $data['sum']);
         });
     }

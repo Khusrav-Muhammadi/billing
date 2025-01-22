@@ -6,7 +6,6 @@
 
 @section('content')
 
-    {{--    <a href="{{ route('client') }}" type="button" class="btn btn-outline-danger">Создать</a>--}}
     <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 10px">Назад</a>
     <div class="card">
         <!-- Первая строка -->
@@ -25,20 +24,18 @@
             </div>
         </div>
 
-            <div class="col-6 mb-5 ml-4 mr-5">
-                <label for="address">Адрес</label>
-                <textarea name="address" cols="30" rows="5" placeholder="Адрес" class="form-control"
-                          disabled>{{ $organization->address }}</textarea>
-            </div>
+        <div class="col-6 mb-5 ml-4 mr-5">
+            <label for="address">Адрес</label>
+            <textarea name="address" cols="30" rows="5" placeholder="Адрес" class="form-control"
+                      disabled>{{ $organization->address }}</textarea>
         </div>
-
     </div>
 
     <div class="card-body w-75">
         <div class="table-responsive">
             <h4 class="card-title">Подключенные пакеты</h4>
             <a href="" data-bs-toggle="modal" data-bs-target="#addPack" type="button"
-               class="btn btn-outline-primary">Подключить</a>
+               class="btn btn-outline-primary mb-2">Подключить</a>
             <div class="d-flex">
                 <div class="card table-container flex-fill mr-3">
                     <table class="table table-hover">
