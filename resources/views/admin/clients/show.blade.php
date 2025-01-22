@@ -5,12 +5,13 @@
 @endsection
 
 @section('content')
-
-    <div class="card-body">
-    </div>
     <form method="POST" action="{{ route('client.update', $client->id) }}">
         <a href="#" onclick="history.back();" class="btn btn-outline-danger mb-2">Назад</a>
         <button type="submit" class="btn btn-outline-primary mb-2"> Сохранить</button>
+        <a href="" data-bs-toggle="modal" data-bs-target="#history" type="button"
+           class="btn btn-outline-dark mb-2 ml-5">
+            <i class="mdi mdi-history" style="font-size: 30px"></i>
+        </a>
         <a href="" data-bs-toggle="modal" data-bs-target="#activation" type="button"
            class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} mb-2 ml-5">
             <i class="mdi mdi-power" style="font-size: 30px"></i>
@@ -380,6 +381,40 @@
         </div>
     </div>
 
+    <div class="modal fade" id="history" tabindex="-1"
+         aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"
+                        id="exampleModalLabel"> История клиента</h5>
+                </div>
+                <div class="modal-body">
+                    @foreach($client->history as $history)
+                        <div style="display: flex; justify-content: space-between;">
+                            <h4>{{ $history->status }}</h4>
+                            <span>
+                                <strong>{{ $history->user->name }}</strong> <i>{{ $history->created_at->format('d.m.Y H:i') }}</i>
+                            </span>
+                        </div>
+                        <div class="ml-3">
+                            @foreach ($history->changes as $change)
+                                @php
+                                    $bodyData = json_decode($change->body, true);
+                                @endphp
+
+                                @foreach ($bodyData as $key => $value)
+                                    {{ ucfirst($key) }}: <br>
+                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}   ==>  {{ $value['new_value'] ?? 'N/A' }}</p>
+                                @endforeach
+                            @endforeach
+                        </div>
+                        <hr>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         const dateInput = document.getElementById('date');

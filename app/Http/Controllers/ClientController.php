@@ -59,6 +59,7 @@ class ClientController extends Controller
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $packs = Pack::all();
+        $client = $client->load(['history.changes', 'history.user']);
 
         return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales'));
     }
@@ -106,4 +107,5 @@ class ClientController extends Controller
             'result' => 'success'
         ]);
     }
+
 }
