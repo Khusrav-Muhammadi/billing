@@ -5,6 +5,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="{{ route('dashboard') }}">
+            <i class="mdi mdi-contacts menu-icon"></i>
+            <span class="menu-title">Дашбоард</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="{{ route('client.index') }}">
             <i class="mdi mdi-contacts menu-icon"></i>
             <span class="menu-title">Клиенты</span>
