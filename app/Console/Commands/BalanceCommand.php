@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Client;
 use App\Models\Transaction;
+use App\Repositories\ClientRepository;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -28,7 +29,7 @@ class BalanceCommand extends Command
      */
     public function handle()
     {
-        $clients = Client::all();
+        $clients = Client::where('is_active', true)->get();
 
         $currentMonth = Carbon::now();
 
@@ -45,7 +46,9 @@ class BalanceCommand extends Command
 //                }
 //            }
 
-            $organizations = $client->organizations()->get();
+            $organizations = $client->organizations()
+                ->where('has_access', true)
+                ->get();
 
             foreach ($organizations as $organization) {
                 if ($client->balance >= $sum) {
@@ -61,6 +64,9 @@ class BalanceCommand extends Command
                         'sum' => $sum,
                         'type' => 'Снятие',
                     ]);
+                } else {
+                    $repository = new ClientRepository();
+                    $repository->activation($client);
                 }
             }
         }

@@ -8,6 +8,7 @@ use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
@@ -40,15 +41,17 @@ class ClientRepository implements ClientRepositoryInterface
                 ->count();
 
 
+            $currentMonth = Carbon::now();
+
+            $daysInMonth = $currentMonth->daysInMonth;
+
             if ($organizationCount == 0) $validity_period = '-';
-            else $validity_period = floor($client->balance / ($organizationCount * $client->tariff->price));
+            else $validity_period = floor($client->balance / ($organizationCount * ($client->tariff->price / $daysInMonth)));
 
             $client->validity_period = $validity_period;
 
             return $client;
         });
-
-
 
         $clients->setCollection($processedClients);
 
