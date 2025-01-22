@@ -37,11 +37,11 @@ class ActivationJob implements ShouldQueue
             'has_access' => $this->activation
         ];
 
-//        $res = Http::withHeaders([
-//            'Accept' => 'application/json',
-//        ])->post($url, $data);
-//
-//        if ($res->successful())
+        $res = Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->post($url, $data);
+
+        if ($res->successful())
             Organization::whereIn('id', $this->organizationIds)
                 ->update(['has_access' => $this->activation]);
 

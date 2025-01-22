@@ -6,7 +6,7 @@
     </li>
     <li class="nav-item">
         <a class="nav-link" href="{{ route('dashboard') }}">
-            <i class="mdi mdi-contacts menu-icon"></i>
+            <i class="mdi mdi-view-dashboard menu-icon"></i>
             <span class="menu-title">Дашбоард</span>
         </a>
     </li>
