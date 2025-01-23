@@ -35,17 +35,6 @@
             </div>
 
             <div class="form-group">
-                <label for="business_type_id">Тип бизнеса</label>
-                <select class="form-control form-control-sm" name="business_type_id">
-                    @foreach($businessTypes as $businessType)
-                        <option value="{{ $businessType->id }}" {{ $client->business_type_id == $businessType->id ? 'selected': '' }}>{{ $businessType->name }}</option>
-                    @endforeach
-                </select>
-                @if($errors->has('business_type_id')) <p
-                    style="color: red;">{{ $errors->first('business_type_id') }}</p> @endif
-            </div>
-
-            <div class="form-group">
                 <label for="tariff_id">Тариф</label>
                 <select class="form-control form-control-sm" name="tariff_id">
                     @foreach($tariffs as $tariff)

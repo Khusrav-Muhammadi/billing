@@ -76,22 +76,6 @@
             </div>
 
             <div class="form-group">
-                <label for="business_type_id">Тип бизнеса <span class="text-danger">*</span></label>
-                <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
-                        name="business_type_id" required>
-                    <option value="">Выберите тип бизнеса</option>
-                    @foreach($businessTypes as $businessType)
-                        <option value="{{ $businessType->id }}" {{ old('business_type_id') == $businessType->id ? 'selected' : '' }}>
-                            {{ $businessType->name }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('business_type_id')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <div class="form-group">
                 <label for="client_type">Тип клиента <span class="text-danger">*</span></label>
                 <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
                         name="client_type" required>

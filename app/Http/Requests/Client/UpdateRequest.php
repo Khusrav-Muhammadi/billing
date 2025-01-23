@@ -18,7 +18,6 @@ class UpdateRequest extends FormRequest
         return [
             'name' => ['required'],
             'phone' => ['required'],
-            'business_type_id' => ['required', Rule::exists('business_types','id')],
             'tariff_id' => ['nullable', Rule::exists('tariffs','id')],
             'sale_id' => [''],
             'is_demo' => [''],

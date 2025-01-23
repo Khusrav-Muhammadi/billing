@@ -39,26 +39,6 @@
                     <input type="text" class="form-control" value="{{ $client->sub_domain }}">
                 </div>
                 <div class="col-4 mt-3">
-                    <label for="business_type_id">Тип бизнеса</label>
-                    <select class="form-control form-control-sm" name="business_type_id">
-                        @foreach($businessTypes as $businessType)
-                            <option
-                                value="{{ $businessType->id }}" {{ $client->business_type_id == $businessType->id ? 'selected': '' }}>{{ $businessType->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-3 mt-3">
-                    <label for="tariff_id">Тариф</label>
-                    <select class="form-control form-control-sm" name="tariff_id">
-                        @foreach($tariffs as $tariff)
-                            <option
-                                value="{{ $tariff->id }}" {{ $client->tariff_id == $tariff->id ? 'selected': '' }}>{{ $tariff->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-4 mt-3 ml-5">
                     <label for="client_type">Тип клиента <span class="text-danger">*</span></label>
                     <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
                             name="client_type" required>
@@ -74,12 +54,23 @@
                         </option>
                     </select>
                 </div>
-                <div class="col-4 mt-3">
+                <div class="col-3 mt-3">
+                    <label for="tariff_id">Тариф</label>
+                    <select class="form-control form-control-sm" name="tariff_id">
+                        @foreach($tariffs as $tariff)
+                            <option
+                                value="{{ $tariff->id }}" {{ $client->tariff_id == $tariff->id ? 'selected': '' }}>{{ $tariff->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-4 ml-5 mt-3">
                     <label for="contact_person">Контактное лицо</label>
                     <input type="text" class="form-control @error('contact_person') is-invalid @enderror"
                            name="contact_person" value="{{ $client->contact_person }}">
                 </div>
-                <div class="col-3 mt-3">
+                <div class="col-4 mt-3">
                     <label for="sale_id">Скидка</label>
                     <select class="form-control form-control-sm" name="sale_id">
                         @foreach($sales as $sale)
@@ -185,6 +176,22 @@
                                                 <label for="INN">Инн</label>
                                                 <input type="number" class="form-control" name="INN"
                                                        value="{{ $organization->INN }}">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="business_type_id">Тип бизнеса <span class="text-danger">*</span></label>
+                                                <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
+                                                        name="business_type_id" required>
+                                                    <option value="">Выберите тип бизнеса</option>
+                                                    @foreach($businessTypes as $businessType)
+                                                        <option value="{{ $businessType->id }}" {{ $organization->business_type_id == $businessType->id ? 'selected' : '' }}>
+                                                            {{ $businessType->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                @error('business_type_id')
+                                                <span class="text-danger">{{ $message }}</span>
+                                                @enderror
                                             </div>
 
                                             <div class="form-group">
@@ -322,22 +329,37 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="name">Наименование</label>
+                            <label for="name">Наименование <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="name" placeholder="Введите название">
                         </div>
 
                         <div class="form-group">
-                            <label for="phone">Телефон</label>
+                            <label for="phone">Телефон <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" name="phone" placeholder="Телефон">
                         </div>
 
                         <div class="form-group">
-                            <label for="INN">Инн</label>
+                            <label for="INN">Инн <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" name="INN" placeholder="ИНН">
+                        </div>
+                        <div class="form-group">
+                            <label for="business_type_id">Тип бизнеса <span class="text-danger">*</span></label>
+                            <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
+                                    name="business_type_id" required>
+                                <option value="">Выберите тип бизнеса</option>
+                                @foreach($businessTypes as $businessType)
+                                    <option value="{{ $businessType->id }}" {{ old('business_type_id') == $businessType->id ? 'selected' : '' }}>
+                                        {{ $businessType->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('business_type_id')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
                         </div>
 
                         <div class="form-group">
-                            <label for="sub_domain">Адрес</label>
+                            <label for="sub_domain">Адрес <span class="text-danger">*</span></label>
                             <textarea name="address" cols="30" rows="10" placeholder="Адрес"
                                       class="form-control"></textarea>
                         </div>
