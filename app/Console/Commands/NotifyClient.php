@@ -29,7 +29,7 @@ class NotifyClient extends Command
      */
     public function handle()
     {
-        $clients = Client::all();
+        $clients = Client::where('is_active', true)->get();
 
         foreach ($clients as $client) {
             $organizationCount = $client->organizations()
