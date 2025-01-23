@@ -9,8 +9,7 @@ class Organization extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','INN','phone','address', 'client_id', 'has_access'];
-
+    protected $fillable = ['name','INN','phone','address', 'client_id', 'has_access', 'business_type_id'];
 
     public function client()
     {
@@ -21,5 +20,10 @@ class Organization extends Model
     public function packs()
     {
         return $this->hasMany(OrganizationPack::class, 'organization_id');
+    }
+
+    public function businessType()
+    {
+        return $this->belongsTo(BusinessType::class);
     }
 }
