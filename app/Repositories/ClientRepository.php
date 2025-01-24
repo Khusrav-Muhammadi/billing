@@ -8,6 +8,7 @@ use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use App\Services\WithdrawalService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -76,6 +77,8 @@ class ClientRepository implements ClientRepositoryInterface
         if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
         else $data['is_demo'] = false;
 
+        if ($data['is_demo'] == false) $this->withdrawal($client);
+
         $client->update($data);
     }
 
@@ -100,5 +103,19 @@ class ClientRepository implements ClientRepositoryInterface
     public function getBalance(array $data)
     {
         return Client::where('sub_domain', $data['sub_domain'])->first()->balance;
+    }
+
+    public function withdrawal(Client $client)
+    {
+        $service = new WithdrawalService();
+        $sum = $service->countSum($client);
+
+        $organizations = $client->organizations()
+            ->where('has_access', true)->get();
+
+        foreach ($organizations as $organization) {
+            $service->handle($organization, $sum);
+        }
+
     }
 }

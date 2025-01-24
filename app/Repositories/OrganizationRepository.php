@@ -32,10 +32,11 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
 //            if (!$res) $organization->delete();
 //            else {
-                $daysInMonth = Carbon::now()->daysInMonth;
+            $daysInMonth = Carbon::now()->daysInMonth;
 
-                $sum = $client->tariff->price / $daysInMonth;
+            $sum = $client->tariff->price / $daysInMonth;
 
+            if (!$client->is_demo)
                 Transaction::create([
                     'client_id' => $client->id,
                     'organization_id' => $organization->id,

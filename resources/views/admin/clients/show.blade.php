@@ -43,13 +43,16 @@
                     <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
                             name="client_type" required>
                         <option value="">Выберите тип клиента</option>
-                        <option value="{{ \App\Enums\ClientType::LegalEntity->value }}" {{ $client->client_type == \App\Enums\ClientType::LegalEntity->value ? 'selected' : '' }}>
+                        <option
+                            value="{{ \App\Enums\ClientType::LegalEntity->value }}" {{ $client->client_type == \App\Enums\ClientType::LegalEntity->value ? 'selected' : '' }}>
                             {{ \App\Enums\ClientType::LegalEntity->value }}
                         </option>
-                        <option value="{{ \App\Enums\ClientType::Individual->value }}" {{ $client->client_type == \App\Enums\ClientType::Individual->value ? 'selected' : '' }}>
+                        <option
+                            value="{{ \App\Enums\ClientType::Individual->value }}" {{ $client->client_type == \App\Enums\ClientType::Individual->value ? 'selected' : '' }}>
                             {{ \App\Enums\ClientType::Individual->value }}
                         </option>
-                        <option value="{{ \App\Enums\ClientType::Entrepreneur->value }}" {{ $client->client_type == \App\Enums\ClientType::Entrepreneur->value ? 'selected' : '' }}>
+                        <option
+                            value="{{ \App\Enums\ClientType::Entrepreneur->value }}" {{ $client->client_type == \App\Enums\ClientType::Entrepreneur->value ? 'selected' : '' }}>
                             {{ \App\Enums\ClientType::Entrepreneur->value }}
                         </option>
                     </select>
@@ -71,6 +74,19 @@
                            name="contact_person" value="{{ $client->contact_person }}">
                 </div>
                 <div class="col-4 mt-3">
+                    <label for="business_type_id">Партнер</label>
+                    <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
+                            name="business_type_id">
+                        <option value="">Выберите партнера</option>
+                        @foreach($partners as $partner)
+                            <option
+                                value="{{ $partner->id }}" {{ old('business_type_id') == $partner->id ? 'selected' : '' }}>
+                                {{ $partner->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-3 mt-3">
                     <label for="sale_id">Скидка</label>
                     <select class="form-control form-control-sm" name="sale_id">
                         @foreach($sales as $sale)
@@ -108,7 +124,7 @@
         <div class="d-flex">
             <div class="card table-container flex-fill mr-3">
                 <div class="d-flex justify-content-between align-items-center mb-3 ">
-                    @if($client->balance >= $client->tariff?->price && $client->is_active)
+                    @if($client->balance >= $client->tariff?->price && $client->is_active || $client->is_demo)
                         <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
                            class="btn btn-outline-primary ml-2 mt-2">Создать</a>
                     @endif
@@ -179,12 +195,15 @@
                                             </div>
 
                                             <div class="form-group">
-                                                <label for="business_type_id">Тип бизнеса <span class="text-danger">*</span></label>
-                                                <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
-                                                        name="business_type_id" required>
+                                                <label for="business_type_id">Тип бизнеса <span
+                                                        class="text-danger">*</span></label>
+                                                <select
+                                                    class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
+                                                    name="business_type_id" required>
                                                     <option value="">Выберите тип бизнеса</option>
                                                     @foreach($businessTypes as $businessType)
-                                                        <option value="{{ $businessType->id }}" {{ $organization->business_type_id == $businessType->id ? 'selected' : '' }}>
+                                                        <option
+                                                            value="{{ $businessType->id }}" {{ $organization->business_type_id == $businessType->id ? 'selected' : '' }}>
                                                             {{ $businessType->name }}
                                                         </option>
                                                     @endforeach
@@ -348,7 +367,8 @@
                                     name="business_type_id" required>
                                 <option value="">Выберите тип бизнеса</option>
                                 @foreach($businessTypes as $businessType)
-                                    <option value="{{ $businessType->id }}" {{ old('business_type_id') == $businessType->id ? 'selected' : '' }}>
+                                    <option
+                                        value="{{ $businessType->id }}" {{ old('business_type_id') == $businessType->id ? 'selected' : '' }}>
                                         {{ $businessType->name }}
                                     </option>
                                 @endforeach
@@ -443,7 +463,8 @@
                         <div style="display: flex; justify-content: space-between;">
                             <h4>{{ $history->status }}</h4>
                             <span>
-                                <strong>{{ $history->user->name }}</strong> <i style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
+                                <strong>{{ $history->user->name }}</strong> <i
+                                    style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
                             </span>
                         </div>
                         <div class="ml-3" style="font-size: 14px">
@@ -459,7 +480,8 @@
                                     @elseif($key == 'client_type') Тип клиента: <br>
                                     @elseif($key == 'tariff') Тариф: <br>
                                     @endif
-                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}   ==>  {{ $value['new_value'] ?? 'N/A' }}</p>
+                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
+                                        ==> {{ $value['new_value'] ?? 'N/A' }}</p>
                                 @endforeach
                             @endforeach
                         </div>
