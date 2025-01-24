@@ -29,10 +29,10 @@ class SubDomainJob implements ShouldQueue
      */
     public function handle(): void
     {
-//        $response = Http::withHeaders([
-//            'Accept' => 'application/json',
-//        ])->post('https://' . env('APP_DOMAIN') . '/api/createSubdomain', [
-//            'subdomain' => $this->client->sub_domain
-//        ]);
+        $response = Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->post('https://' . env('APP_DOMAIN') . '/api/createSubdomain', [
+            'subdomain' => $this->client->sub_domain
+        ]);
     }
 }

@@ -4,19 +4,15 @@ namespace App\Repositories;
 
 
 use App\Jobs\ActivationJob;
-use App\Jobs\SubDomainJob;
-use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\Tariff;
 use App\Models\Transaction;
-use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
@@ -28,27 +24,27 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         return DB::transaction(function () use ($client, $data) {
             $organization = Organization::create($data);
 
-//            $res = $this->createInSham($organization, $client->sub_domain);
+            $res = $this->createInSham($organization, $client->sub_domain);
 
-//            if (!$res) $organization->delete();
-//            else {
-            $daysInMonth = Carbon::now()->daysInMonth;
+            if (!$res) $organization->delete();
+            else {
+                $daysInMonth = Carbon::now()->daysInMonth;
 
-            $sum = $client->tariff->price / $daysInMonth;
+                $sum = $client->tariff->price / $daysInMonth;
 
-            if (!$client->is_demo)
-                Transaction::create([
-                    'client_id' => $client->id,
-                    'organization_id' => $organization->id,
-                    'tariff_id' => $client->tariff->id,
-                    'sale_id' => $client->sale?->id,
-                    'sum' => $sum,
-                    'type' => 'Снятие',
-                ]);
-//            }
-            return $organization;
-        });
-    }
+                if (!$client->is_demo)
+                    Transaction::create([
+                        'client_id' => $client->id,
+                        'organization_id' => $organization->id,
+                        'tariff_id' => $client->tariff->id,
+                        'sale_id' => $client->sale?->id,
+                        'sum' => $sum,
+                        'type' => 'Снятие',
+                    ]);
+            }
+                return $organization;
+            });
+        }
 
     public function update(Organization $organization, array $data)
     {
