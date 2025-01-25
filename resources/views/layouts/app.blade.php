@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -17,7 +16,7 @@
     <link rel="stylesheet" href="{{asset('../assets/css/demo_1/style.css')}}" />
 
     <link rel="shortcut icon" href="{{asset('../assets/images/favicon.png')}}" />
-
+    <link rel="stylesheet" href="{{asset('style.css')}}">
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
 

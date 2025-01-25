@@ -806,78 +806,7 @@
       });
       $("#doughnut-chart-legend2").html(trafficChart.generateLegend());
     }
-    if ($("#doughnutChart3").length) {
-      var ctx = document.getElementById('doughnutChart3').getContext("2d");
 
-      var blue2 = '#00cff4';
-
-      var red2 = '#ff0d59';
-
-      var green2 = '#00d284';
-
-      var trafficChartData = {
-        datasets: [{
-          data: [40, 50, 10],
-          backgroundColor: [
-            blue2,
-            green2,
-            red2
-          ],
-          hoverBackgroundColor: [
-            blue2,
-            green2,
-            red2
-          ],
-          borderColor: [
-            blue2,
-            green2,
-            red2
-          ],
-          legendColor: [
-            blue2,
-            green2,
-            red2
-          ]
-        }],
-
-        // These labels appear in the legend and in the tooltips when hovering different arcs
-        labels: [
-          'Iphone',
-          'Samsung',
-          'Oneplus',
-        ]
-      };
-      var trafficChartOptions = {
-        responsive: true,
-        animation: {
-          animateScale: true,
-          animateRotate: true
-        },
-        legend: false,
-        legendCallback: function (chart) {
-          var text = [];
-          text.push('<ul>');
-          for (var i = 0; i < trafficChartData.datasets[0].data.length; i++) {
-            text.push('<li><span class="legend-dots" style="background:' +
-              trafficChartData.datasets[0].legendColor[i] +
-              '"></span>');
-            if (trafficChartData.labels[i]) {
-              text.push(trafficChartData.labels[i]);
-            }
-            text.push('</li>');
-          }
-          text.push('</ul>');
-          return text.join('');
-        }
-      };
-      var trafficChartCanvas = $("#doughnutChart3").get(0).getContext("2d");
-      var trafficChart = new Chart(trafficChartCanvas, {
-        type: 'doughnut',
-        data: trafficChartData,
-        options: trafficChartOptions
-      });
-      $("#doughnut-chart-legend3").html(trafficChart.generateLegend());
-    }
   });
 
   // gradient line chart
@@ -1700,7 +1629,7 @@
           barPercentage: 0.3,
           gridLines: {
             drawBorder: false,
-            color: "rgba(169, 169, 169, .32)" 
+            color: "rgba(169, 169, 169, .32)"
           }
         }]
       },
