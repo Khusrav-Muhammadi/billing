@@ -22,6 +22,9 @@ class ClientObserver
      */
     public function updated(Client $client): void
     {
+        if (isset($client->disableObserver) && $client->disableObserver) {
+            return;
+        }
         $this->update($client, Auth::id());
     }
 

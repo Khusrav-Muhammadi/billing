@@ -6,7 +6,7 @@
 
 @section('content')
     <form method="POST" action="{{ route('client.update', $client->id) }}">
-        <a href="#" onclick="history.back();" class="btn btn-outline-danger mb-2">Назад</a>
+        <a href="{{ route('client.index') }}" class="btn btn-outline-danger mb-2">Назад</a>
         <button type="submit" class="btn btn-outline-primary mb-2"> Сохранить</button>
         <a href="" data-bs-toggle="modal" data-bs-target="#history" type="button"
            class="btn btn-outline-dark mb-2 ml-5">
@@ -29,22 +29,32 @@
                     <input type="text" class="form-control" name="phone" value="{{ $client->phone }}">
                 </div>
                 <div class="col-3 mt-3">
-                    <label for="INN">Почта</label>
-                    <input type="number" class="form-control" name="INN" value="{{ $client->email }}">
+                    <label for="email">Почта</label>
+                    <input type="email" class="form-control" name="email" value="{{ $client->email }}">
                 </div>
             </div>
             <div class="row mb-3">
                 <div class="col-4 ml-5 mt-3">
                     <label for="sub_domain">Поддомен</label>
-                    <input type="text" class="form-control" name="sub_domain" value="{{ $client->sub_domain }}">
+                    <input type="text" class="form-control" value="{{ $client->sub_domain }}">
                 </div>
                 <div class="col-4 mt-3">
-                    <label for="business_type_id">Тип бизнеса</label>
-                    <select class="form-control form-control-sm" name="business_type_id">
-                        @foreach($businessTypes as $businessType)
-                            <option
-                                value="{{ $businessType->id }}" {{ $client->business_type_id == $businessType->id ? 'selected': '' }}>{{ $businessType->name }}</option>
-                        @endforeach
+                    <label for="client_type">Тип клиента <span class="text-danger">*</span></label>
+                    <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
+                            name="client_type" required>
+                        <option value="">Выберите тип клиента</option>
+                        <option
+                            value="{{ \App\Enums\ClientType::LegalEntity->value }}" {{ $client->client_type == \App\Enums\ClientType::LegalEntity->value ? 'selected' : '' }}>
+                            {{ \App\Enums\ClientType::LegalEntity->value }}
+                        </option>
+                        <option
+                            value="{{ \App\Enums\ClientType::Individual->value }}" {{ $client->client_type == \App\Enums\ClientType::Individual->value ? 'selected' : '' }}>
+                            {{ \App\Enums\ClientType::Individual->value }}
+                        </option>
+                        <option
+                            value="{{ \App\Enums\ClientType::Entrepreneur->value }}" {{ $client->client_type == \App\Enums\ClientType::Entrepreneur->value ? 'selected' : '' }}>
+                            {{ \App\Enums\ClientType::Entrepreneur->value }}
+                        </option>
                     </select>
                 </div>
                 <div class="col-3 mt-3">
@@ -59,6 +69,24 @@
             </div>
             <div class="row mb-3">
                 <div class="col-4 ml-5 mt-3">
+                    <label for="contact_person">Контактное лицо</label>
+                    <input type="text" class="form-control @error('contact_person') is-invalid @enderror"
+                           name="contact_person" value="{{ $client->contact_person }}">
+                </div>
+                <div class="col-4 mt-3">
+                    <label for="business_type_id">Партнер</label>
+                    <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
+                            name="business_type_id">
+                        <option value="">Выберите партнера</option>
+                        @foreach($partners as $partner)
+                            <option
+                                value="{{ $partner->id }}" {{ old('business_type_id') == $partner->id ? 'selected' : '' }}>
+                                {{ $partner->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-3 mt-3">
                     <label for="sale_id">Скидка</label>
                     <select class="form-control form-control-sm" name="sale_id">
                         @foreach($sales as $sale)
@@ -67,6 +95,8 @@
                         @endforeach
                     </select>
                 </div>
+            </div>
+            <div class="row mb-3 ml-4">
                 @if($client->is_demo)
                     <div class="col-4 mt-3" style="display: flex; align-items: center;">
                         <label for="is_demo" style="margin-right: 10px;">Демо версия:</label>
@@ -93,12 +123,12 @@
         </div>
         <div class="d-flex">
             <div class="card table-container flex-fill mr-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    @if($client->balance >= $client->tariff?->price && $client->is_active)
+                <div class="d-flex justify-content-between align-items-center mb-3 ">
+                    @if($client->balance >= $client->tariff?->price && $client->is_active || $client->is_demo)
                         <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
-                           class="btn btn-primary ml-2 mt-2">Создать</a>
+                           class="btn btn-outline-primary ml-2 mt-2">Создать</a>
                     @endif
-                    <h4 class="card-title text-center flex-grow-1 mb-0">Организации</h4>
+                    <h4 class="card-title text-center flex-grow-1 mb-0 mt-3">Организации</h4>
                 </div>
 
                 <table class="table table-hover">
@@ -162,6 +192,25 @@
                                                 <label for="INN">Инн</label>
                                                 <input type="number" class="form-control" name="INN"
                                                        value="{{ $organization->INN }}">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="business_type_id">Тип бизнеса <span
+                                                        class="text-danger">*</span></label>
+                                                <select
+                                                    class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
+                                                    name="business_type_id" required>
+                                                    <option value="">Выберите тип бизнеса</option>
+                                                    @foreach($businessTypes as $businessType)
+                                                        <option
+                                                            value="{{ $businessType->id }}" {{ $organization->business_type_id == $businessType->id ? 'selected' : '' }}>
+                                                            {{ $businessType->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                @error('business_type_id')
+                                                <span class="text-danger">{{ $message }}</span>
+                                                @enderror
                                             </div>
 
                                             <div class="form-group">
@@ -251,7 +300,7 @@
             <div class="card table-container flex-fill ml-3">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <a href="" data-bs-toggle="modal" data-bs-target="#createTransaction" type="button"
-                       class="btn btn-primary m-2">Создать</a>
+                       class="btn btn-outline-primary m-2">Пополнить баланс</a>
                     <h4 class="card-title m-2 text-center flex-grow-1 mb-0">Транзакции</h4>
                 </div>
                 <table class="table table-hover">
@@ -259,6 +308,7 @@
                     <tr>
                         <th>№</th>
                         <th>Дата</th>
+                        <th>Организация</th>
                         <th>Тариф</th>
                         <th>Скидка</th>
                         <th>Сумма</th>
@@ -270,16 +320,19 @@
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $transaction->created_at }}</td>
+                            <td>{{ $transaction->organization?->name }}</td>
                             <td>{{ $transaction->tariff?->price }}</td>
                             <td>{{ $transaction->sale?->amount }}</td>
                             <td>{{ $transaction->sum }}</td>
-                            <td>{{ $transaction->type }}</td>
+                            <td style="color: {{ $transaction->type == 'Снятие' ? 'red' : 'green' }}">{{ $transaction->type }}</td>
                         </tr>
                     @endforeach
                     </tbody>
                 </table>
+                <div class="mb-3 ml-2 mt-3 text-center">
+                    {{$transactions->links()}}
+                </div>
             </div>
-
         </div>
     </div>
     </div>
@@ -295,22 +348,38 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="name">Наименование</label>
+                            <label for="name">Наименование <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="name" placeholder="Введите название">
                         </div>
 
                         <div class="form-group">
-                            <label for="phone">Телефон</label>
+                            <label for="phone">Телефон <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" name="phone" placeholder="Телефон">
                         </div>
 
                         <div class="form-group">
-                            <label for="INN">Инн</label>
+                            <label for="INN">Инн <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" name="INN" placeholder="ИНН">
+                        </div>
+                        <div class="form-group">
+                            <label for="business_type_id">Тип бизнеса <span class="text-danger">*</span></label>
+                            <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
+                                    name="business_type_id" required>
+                                <option value="">Выберите тип бизнеса</option>
+                                @foreach($businessTypes as $businessType)
+                                    <option
+                                        value="{{ $businessType->id }}" {{ old('business_type_id') == $businessType->id ? 'selected' : '' }}>
+                                        {{ $businessType->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('business_type_id')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
                         </div>
 
                         <div class="form-group">
-                            <label for="sub_domain">Адрес</label>
+                            <label for="sub_domain">Адрес <span class="text-danger">*</span></label>
                             <textarea name="address" cols="30" rows="10" placeholder="Адрес"
                                       class="form-control"></textarea>
                         </div>
@@ -394,18 +463,25 @@
                         <div style="display: flex; justify-content: space-between;">
                             <h4>{{ $history->status }}</h4>
                             <span>
-                                <strong>{{ $history->user->name }}</strong> <i>{{ $history->created_at->format('d.m.Y H:i') }}</i>
+                                <strong>{{ $history->user->name }}</strong> <i
+                                    style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
                             </span>
                         </div>
-                        <div class="ml-3">
+                        <div class="ml-3" style="font-size: 14px">
                             @foreach ($history->changes as $change)
                                 @php
                                     $bodyData = json_decode($change->body, true);
                                 @endphp
 
                                 @foreach ($bodyData as $key => $value)
-                                    {{ ucfirst($key) }}: <br>
-                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}   ==>  {{ $value['new_value'] ?? 'N/A' }}</p>
+                                    @if($key == 'name') Имя: <br>
+                                    @elseif($key == 'phone') Телефон: <br>
+                                    @elseif($key == 'email') Почта: <br>
+                                    @elseif($key == 'client_type') Тип клиента: <br>
+                                    @elseif($key == 'tariff') Тариф: <br>
+                                    @endif
+                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
+                                        ==> {{ $value['new_value'] ?? 'N/A' }}</p>
                                 @endforeach
                             @endforeach
                         </div>

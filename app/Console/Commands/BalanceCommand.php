@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Models\Client;
 use App\Models\Transaction;
+use App\Repositories\ClientRepository;
+use App\Services\WithdrawalService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -28,39 +30,20 @@ class BalanceCommand extends Command
      */
     public function handle()
     {
-        $clients = Client::all();
+        $clients = Client::where('is_active', true)->get();
 
-        $currentMonth = Carbon::now();
-
-        $daysInMonth = $currentMonth->daysInMonth;
+        $service = new WithdrawalService();
 
         foreach ($clients as $client) {
-            $sum = $client->tariff->price / $daysInMonth;
 
-//            if ($client->sale_id) {
-//                if ($client->sale->sale_type == 'procent') {
-//                    $sum -= ($client->tariff->price*$client->sale->amount) / 100;
-//                } else {
-//                    $sum -= $client->sale->amount;
-//                }
-//            }
+            $sum = $service->countSum($client);
 
-            $organizations = $client->organizations()->get();
+            $organizations = $client->organizations()
+                ->where('has_access', true)
+                ->get();
 
             foreach ($organizations as $organization) {
-                if ($client->balance >= $sum) {
-                    $client->balance -= $sum;
-                    $client->save();
-
-                    Transaction::create([
-                        'client_id' => $client->id,
-                        'organization_id' => $organization->id,
-                        'tariff_id' => $client->tariff->id,
-                        'sale_id' => $client->sale?->id,
-                        'sum' => $sum,
-                        'type' => 'Снятие',
-                    ]);
-                }
+                $service->handle($organization, $sum);
             }
         }
     }
