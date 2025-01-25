@@ -16,6 +16,7 @@ use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class DashBoardController extends Controller
 {
@@ -50,11 +51,67 @@ class DashBoardController extends Controller
             $inactiveClientsByMonth[$month] = (int)$activity->inactive_clients;
         }
 
+        $tariffs = Tariff::all();
+        $incomeData = [];
 
-        return view('dashboard', compact('clients',  'activeClientsByMonth', 'inactiveClientsByMonth'));
+        foreach ($tariffs as $tariff) {
+            $incomeData[$tariff->name] = [];
+
+            for ($month = 1; $month <= 12; $month++) {
+                $clientCount = Client::where('tariff_id', $tariff->id)
+                    ->whereMonth('created_at', $month)
+                    ->count();
+                $income = $clientCount * $tariff->price;
+
+                $incomeData[$tariff->name][] = $income;
+            }
+        }
+        $chartData = [];
+
+        foreach ($incomeData as $tariffName => $income) {
+            $chartData[] = [
+                'name' => $tariffName,
+                'data' => $income,
+            ];
+        }
+
+        $partners = Partner::all();
+        $totalIncomeFromPartners = 0;
+
+        foreach ($partners as $partner) {
+            $clientss = Client::where('partner_id', $partner->id)->get();
+
+            foreach ($clientss as $client) {
+                $tariff = Tariff::find($client->tariff_id);
+                if ($tariff) {
+                    $totalIncomeFromPartners += $tariff->price;
+                }
+            }
+        }
+
+
+        $clients_count = Client::query()->where('is_active', 1)->count();
+
+
+        $totalIncomeForMonth = 0;
+        $currentMonth = Carbon::now()->month;
+        $currentYear = Carbon::now()->year;
+
+        $clientsss = Client::whereMonth('created_at', $currentMonth)
+            ->whereYear('created_at', $currentYear)
+            ->get();
+
+        foreach ($clientsss as $client) {
+            $tariff = Tariff::find($client->tariff_id);
+            if ($tariff) {
+                $totalIncomeForMonth += $tariff->price;
+            }
+        }
+
+        $partners = Partner::count();
+
+        return view('dashboard', compact('clients',  'activeClientsByMonth', 'inactiveClientsByMonth', 'chartData', 'clients_count', 'totalIncomeFromPartners', 'totalIncomeForMonth', 'partners'));
     }
-
-
 
     public function create()
     {
