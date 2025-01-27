@@ -16,11 +16,10 @@
                 <tr>
                     <th>№</th>
                     <th>Имя</th>
-                    <th>Компания</th>
                     <th>Телефон</th>
                     <th>E-mail</th>
+                    <th>Статус</th>
                     <th>Адрес</th>
-                    <th>Менеджер</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -29,11 +28,10 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $partner->name }}</td>
-                        <td>{{ $partner->company }}</td>
                         <td>{{ $partner->phone }}</td>
                         <td>{{ $partner->email }}</td>
+                        <td>{{ $partner->partnerStatus?->name }}</td>
                         <td>{{ $partner->address }}</td>
-                        <td>{{ $partner->manager?->name }}</td>
                         <td>
                             <a href="{{ route('partner.edit', $partner->id) }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             <a href="" data-bs-toggle="modal" data-bs-target="#deleteClient{{$partner->id}}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>

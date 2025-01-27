@@ -17,11 +17,10 @@ class UpdateRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'company' => ['nullable'],
             'email' => ['required'],
             'phone' => ['required'],
             'address' => ['required'],
-            'manager_id' => ['required', Rule::exists('users', 'id')],
+            'partner_status_id' => ['required', Rule::exists('partner_statuses', 'id')],
         ];
     }
 }

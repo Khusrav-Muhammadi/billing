@@ -9,10 +9,10 @@ class Partner extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'company', 'email', 'phone', 'address', 'manager_id'];
+    protected $fillable = ['name', 'partner_status_id', 'email', 'phone', 'address'];
 
-    public function manager()
+    public function partnerStatus()
     {
-        return $this->belongsTo(User::class, 'manager_id');
+        return $this->belongsTo(PartnerStatus::class, 'partner_status_id');
     }
 }

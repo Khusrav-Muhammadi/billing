@@ -45,7 +45,7 @@
         <div class="col-md-6">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Клиенты</div>
+                    <div class="card-text"><strong>Тип подключенние клиентов</strong></div>
                     <div class="d-flex flex-wrap">
                         <div class="doughnut-wrapper w-50">
                             <canvas id="doughnutChart3" width="200" height="100"></canvas>

@@ -19,12 +19,6 @@
                 <input type="text" class="form-control" name="name" placeholder="ФИО">
             </div>
 
-
-            <div class="form-group">
-                <label for="company">Компания</label>
-                <input type="text" class="form-control" name="company" placeholder="Название компании">
-            </div>
-
             <div class="form-group">
                 <label for="phone">Телефон</label>
                 <input type="text" class="form-control" name="phone" placeholder="Телефон">
@@ -36,10 +30,10 @@
             </div>
 
             <div class="form-group">
-                <label for="business_type_id">Менеджеры</label>
-                <select class="form-control form-control-sm" name="manager_id">
-                    @foreach($managers as $manager)
-                        <option value="{{ $manager->id }}">{{ $manager->name }}</option>
+                <label for="partner_status_id">Статус партнёра</label>
+                <select class="form-control form-control-sm" name="partner_status_id">
+                    @foreach($partnerStatuses as $status)
+                        <option value="{{ $status->id }}">{{ $status->name }}</option>
                     @endforeach
                 </select>
             </div>
