@@ -137,6 +137,7 @@
                         <th>№</th>
                         <th>Имя</th>
                         <th>Телефон</th>
+                        <th>Тип бизнеса</th>
                         <th>Активный</th>
                         <th>Действие</th>
                     </tr>
@@ -147,6 +148,7 @@
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $organization->name }}</td>
                             <td>{{ $organization->phone }}</td>
+                            <td>{{ $organization->businessType?->name }}</td>
                             <td>
                                 <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
                                        data-organization-id="{{ $organization->id }}"

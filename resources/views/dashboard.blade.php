@@ -10,7 +10,7 @@
         <div class="col-md-3">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Количество клиентов</div>
+                    <div class="card-text"><strong>Количество клиентов</strong></div>
                     <div class="card-text">{{$clients_count}}</div>
                 </div>
             </div>
@@ -18,7 +18,7 @@
         <div class="col-md-3">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Доход за месяц</div>
+                    <div class="card-text"><strong>Доход за месяц</strong></div>
                     <div class="card-text">{{$totalIncomeForMonth}}</div>
                 </div>
             </div>
@@ -26,7 +26,7 @@
         <div class="col-md-3">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Количество активных/неактивных партнеров</div>
+                    <div class="card-text"><strong>Количество партнеров</strong></div>
                     <div class="card-text">{{$partners}}</div>
                 </div>
             </div>
@@ -34,7 +34,7 @@
         <div class="col-md-3">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Доход партнеров</div>
+                    <div class="card-text"><strong>Доход от партнеров</strong></div>
                     <div class="card-text">{{$totalIncomeFromPartners}}</div>
                 </div>
             </div>
@@ -45,7 +45,7 @@
         <div class="col-md-6">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Общее количество клиентов</div>
+                    <div class="card-title">Клиенты</div>
                     <div class="d-flex flex-wrap">
                         <div class="doughnut-wrapper w-50">
                             <canvas id="doughnutt" width="200" height="100"></canvas>
@@ -59,7 +59,7 @@
         <div class="col-md-6">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Общее количество партнеров</div>
+                    <div class="card-title">Партнеры</div>
                     <div class="d-flex flex-wrap">
                         <div class="doughnut-wrapper w-50">
                             <canvas id="doughnutChart4" width="200" height="100"></canvas>
@@ -145,15 +145,7 @@
                 legendCallback: function (chart) {
                     var text = [];
                     text.push('<ul>');
-                    for (var i = 0; i < trafficChartData.datasets[0].data.length; i++) {
-                        text.push('<li><span class="legend-dots" style="background:' +
-                            trafficChartData.datasets[0].legendColor[i] +
-                            '"></span>');
-                        if (trafficChartData.labels[i]) {
-                            text.push(trafficChartData.labels[i]);
-                        }
-                        text.push('</li>');
-                    }
+
                     text.push('</ul>');
                     return text.join('');
                 }
@@ -183,7 +175,7 @@
             },
             yAxis: {
                 title: {
-                    text: 'Количество клиентов'
+                    text: ''
                 }
             },
             tooltip: {
@@ -226,6 +218,11 @@
                 crosshair: true
             },
 
+            yAxis: {
+                title: {
+                    text: ''
+                }
+            },
             series: chartData,
 
             responsive: {
@@ -277,8 +274,8 @@
                 }],
 
                 labels: [
-                    'Активные партнеры',
-                    'Не активные партнеры'
+                    'Активные',
+                    'Не активные'
                 ]
             };
             var trafficChartOptions = {

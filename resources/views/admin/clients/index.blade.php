@@ -36,7 +36,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <input type="text" name="search" class="form-control" placeholder="Поиск">
             </div>
         </div>

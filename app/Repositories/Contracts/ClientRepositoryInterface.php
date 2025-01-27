@@ -3,6 +3,7 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Client;
+use App\Models\Partner;
 use App\Models\User;
 
 interface ClientRepositoryInterface
@@ -18,5 +19,7 @@ interface ClientRepositoryInterface
     public function createTransaction(Client $client, array $data);
 
     public function getBalance(array $data);
+
+    public function getByPartner(Partner $partner);
 
 }
