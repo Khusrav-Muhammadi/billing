@@ -14,6 +14,7 @@ class WithdrawalService
     public function handle(Organization $organization, $sum)
     {
         $client = $organization->client()->first();
+        if ($client->is_demo) return true;
         if ($client->balance >= $sum) {
             $client->balance -= $sum;
             $client->disableObserver = true;
