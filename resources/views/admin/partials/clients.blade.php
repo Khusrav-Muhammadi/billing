@@ -30,14 +30,14 @@
             <td class="text-center">{{ $client->total_users }}</td>
             <td>{{ $client->sub_domain }}</td>
             <td class="text-center">{{ $client->balance }}</td>
-            <td>
+            <td class="text-center">
                 @if($client->is_active)
                     <p style="color: #00bb00">Активный</p>
                 @else
                     <p style="color: red">Неактивный</p>
                 @endif
             </td>
-            <td>
+            <td class="text-center">
                 @if($client->is_demo)
                     Демо версия
                 @else

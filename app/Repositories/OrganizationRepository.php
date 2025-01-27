@@ -2,7 +2,6 @@
 
 namespace App\Repositories;
 
-
 use App\Jobs\ActivationJob;
 use App\Models\Client;
 use App\Models\Organization;
@@ -16,7 +15,6 @@ use Illuminate\Support\Facades\Http;
 
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
-
     public function store(Client $client, array $data)
     {
         $data['client_id'] = $client->id;
