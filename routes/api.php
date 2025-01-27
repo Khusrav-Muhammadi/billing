@@ -20,3 +20,5 @@ Route::middleware('auth.basic')->group(function () {
 });
 
 Route::get('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
+
+Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
