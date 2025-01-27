@@ -10,7 +10,7 @@
         <div class="col-md-3">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Количество клиентов</div>
+                    <div class="card-text"><strong>Количество клиентов</strong></div>
                     <div class="card-text">{{$clients_count}}</div>
                 </div>
             </div>
@@ -18,7 +18,7 @@
         <div class="col-md-3">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Доход за месяц</div>
+                    <div class="card-text"><strong>Доход за месяц</strong></div>
                     <div class="card-text">{{$totalIncomeForMonth}}</div>
                 </div>
             </div>
@@ -26,7 +26,7 @@
         <div class="col-md-3">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Количество активных/неактивных партнеров</div>
+                    <div class="card-text"><strong>Количество партнеров</strong></div>
                     <div class="card-text">{{$partners}}</div>
                 </div>
             </div>
@@ -34,7 +34,7 @@
         <div class="col-md-3">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Доход от партнеров</div>
+                    <div class="card-text"><strong>Доход от партнеров</strong></div>
                     <div class="card-text">{{$totalIncomeFromPartners}}</div>
                 </div>
             </div>
