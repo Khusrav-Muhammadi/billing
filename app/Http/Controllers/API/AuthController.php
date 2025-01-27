@@ -18,7 +18,7 @@ class AuthController extends Controller
             $user = Auth::user();
             $token = $user->createToken('PartnerToken');
 
-            return response()->json(['token' => $token->plainTextToken], 200);
+            return response()->json(['token' => $token->plainTextToken, 'user' => $user], 200);
         }
 
         return response()->json(['error' => 'Unauthorized'], 401);
