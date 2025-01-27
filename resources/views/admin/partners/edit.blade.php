@@ -31,7 +31,7 @@
             </div>
 
             <div class="form-group">
-                <label for="email">E-mail</label>
+                <label for="email">Почта</label>
                 <input type="email" class="form-control" name="email" value="{{ $partner->email }}">
             </div>
 
@@ -45,7 +45,7 @@
             </div>
 
             <div class="form-group">
-                <label for="email">Адрес</label>
+                <label for="address">Адрес</label>
                 <textarea name="address" cols="30" rows="10" class="form-control">{{ $partner->address }}</textarea>
             </div>
 
