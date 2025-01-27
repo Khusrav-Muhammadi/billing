@@ -40,7 +40,7 @@ class ClientController extends Controller
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $packs = Pack::all();
-        $client = $client->load(['history.changes', 'history.user']);
+        $client = $client->load(['history.changes', 'history.user', 'tariff']);
 
         return response()->json([
             'organizations' => $organizations,
