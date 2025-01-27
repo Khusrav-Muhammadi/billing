@@ -19,7 +19,7 @@
             <div class="card border-0">
                 <div class="card-body">
                     <div class="card-text"><strong>Доход за месяц</strong></div>
-                    <div class="card-text">{{$totalIncomeForMonth}}</div>
+                    <div class="card-text">{{$totalIncomeForMonth}} $</div>
                 </div>
             </div>
         </div>
@@ -35,7 +35,7 @@
             <div class="card border-0">
                 <div class="card-body">
                     <div class="card-text"><strong>Доход от партнеров</strong></div>
-                    <div class="card-text">{{$totalIncomeFromPartners}}</div>
+                    <div class="card-text">{{$totalIncomeFromPartners}} $</div>
                 </div>
             </div>
         </div>

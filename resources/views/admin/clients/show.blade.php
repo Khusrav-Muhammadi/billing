@@ -39,7 +39,7 @@
                     <input type="text" class="form-control" value="{{ $client->sub_domain }}">
                 </div>
                 <div class="col-4 mt-3">
-                    <label for="client_type">Тип клиента <span class="text-danger">*</span></label>
+                    <label for="client_type">Тип клиента</label>
                     <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
                             name="client_type" required>
                         <option value="">Выберите тип клиента</option>
@@ -438,7 +438,7 @@
                             id="exampleModalLabel"> {{ $client->is_active ? 'Деактивация' : 'Активация' }} клиента</h5>
                     </div>
                     <div class="modal-body">
-                        Вы уверены что хотите {{ $client->is_active ? 'активировать' : 'деактивировать' }} эти данные?
+                        Вы уверены что хотите {{ $client->is_active ? 'деактивировать' : 'активировать' }} эти данные?
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
