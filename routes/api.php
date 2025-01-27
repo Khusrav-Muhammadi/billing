@@ -16,7 +16,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth.basic')->group(function () {
     Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
-    Route::get('clients-by-partner/{partner}', [\App\Http\Controllers\ClientController::class, 'getByPartner']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('clients', [\App\Http\Controllers\API\ClientController::class, 'index']);
+    Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);
 });
 
 Route::get('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
+
+Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);

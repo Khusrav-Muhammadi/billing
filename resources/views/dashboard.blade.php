@@ -48,7 +48,7 @@
                     <div class="card-text"><strong>Тип подключенние клиентов</strong></div>
                     <div class="d-flex flex-wrap">
                         <div class="doughnut-wrapper w-50">
-                            <canvas id="doughnutChart3" width="200" height="100"></canvas>
+                            <canvas id="doughnutt" width="200" height="100"></canvas>
                         </div>
                         <div id="doughnut-chart-legend3"
                              class="pl-lg-3 rounded-legend align-self-center flex-grow legend-vertical legend-bottom-left"></div>
@@ -100,8 +100,8 @@
     <script src="https://code.highcharts.com/modules/export-data.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
     <script>
-        if ($("#doughnutChart3").length) {
-            var ctx = document.getElementById('doughnutChart3').getContext("2d");
+        if ($("#doughnutt").length) {
+            var ctx = document.getElementById('doughnutt').getContext("2d");
             const realClients = @json($clients->real_clients);
             const demoClients = @json($clients->demo_clients);
 
@@ -150,7 +150,7 @@
                     return text.join('');
                 }
             };
-            var trafficChartCanvas = $("#doughnutChart3").get(0).getContext("2d");
+            var trafficChartCanvas = $("#doughnutt").get(0).getContext("2d");
             var trafficChart = new Chart(trafficChartCanvas, {
                 type: 'doughnut',
                 data: trafficChartData,

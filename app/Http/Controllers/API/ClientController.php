@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\API;
 
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Client\GetBalanceRequest;
 use App\Http\Requests\Client\StoreRequest;
 use App\Http\Requests\Client\TransactionRequest;
@@ -24,31 +25,9 @@ class ClientController extends Controller
 
     public function index(Request $request)
     {
-        $clients = $this->repository->index($request->all());
-        $partners = Partner::all();
-        $tariffs = Tariff::all();
-
-        if ($request->ajax()) {
-            return view('admin.partials.clients', compact('clients'))->render();
-        }
-        return view('admin.clients.index', compact('clients', 'partners', 'tariffs'));
-    }
-
-    public function create()
-    {
-        $businessTypes = BusinessType::all();
-        $sales = Sale::all();
-        $tariffs = Tariff::all();
-        $partners = Partner::all();
-
-        return view('admin.clients.create', compact('businessTypes', 'tariffs', 'sales', 'partners'));
-    }
-
-    public function store(StoreRequest $request)
-    {
-        $this->repository->store($request->validated());
-
-        return redirect()->route('client.index');
+        return response()->json([
+            'clients' => $this->repository->getByPartner($request->all()),
+        ]);
     }
 
     public function show(Client $client)
@@ -62,9 +41,16 @@ class ClientController extends Controller
         $tariffs = Tariff::all();
         $packs = Pack::all();
         $client = $client->load(['history.changes', 'history.user']);
-        $partners = Partner::all();
 
-        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales', 'partners'));
+        return response()->json([
+            'organizations' => $organizations,
+            'transactions' => $transactions,
+            'businessTypes' => $businessTypes,
+            'sales' => $sales,
+            'tariffs' => $tariffs,
+            'packs' => $packs,
+            'client' => $client
+        ]);
     }
 
     public function update(Client $client, UpdateRequest $request)
@@ -110,6 +96,5 @@ class ClientController extends Controller
             'result' => 'success'
         ]);
     }
-
 
 }

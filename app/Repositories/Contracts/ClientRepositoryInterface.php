@@ -20,6 +20,6 @@ interface ClientRepositoryInterface
 
     public function getBalance(array $data);
 
-    public function getByPartner(Partner $partner);
+    public function getByPartner(array $data);
 
 }
