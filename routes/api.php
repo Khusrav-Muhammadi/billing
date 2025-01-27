@@ -16,5 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth.basic')->group(function () {
     Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
+    Route::get('clients-by-partner/{partner}', [\App\Http\Controllers\ClientController::class, 'getByPartner']);
 });
+
 Route::get('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);

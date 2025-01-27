@@ -6,6 +6,7 @@ use App\Jobs\ActivationJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
+use App\Models\Partner;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Services\WithdrawalService;
@@ -117,5 +118,10 @@ class ClientRepository implements ClientRepositoryInterface
             $service->handle($organization, $sum);
         }
 
+    }
+
+    public function getByPartner(Partner $partner)
+    {
+        return Client::where('partner_id', $partner->id)->get();
     }
 }

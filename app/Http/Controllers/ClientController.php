@@ -111,4 +111,9 @@ class ClientController extends Controller
         ]);
     }
 
+    public function getByPartner(Partner $partner)
+    {
+        return $this->repository->getByPartner($partner);
+    }
+
 }
