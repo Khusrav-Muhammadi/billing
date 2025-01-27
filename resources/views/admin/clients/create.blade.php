@@ -33,7 +33,7 @@
             </div>
 
             <div class="form-group">
-                <label for="email">Email <span class="text-danger">*</span></label>
+                <label for="email">Почта <span class="text-danger">*</span></label>
                 <input type="email" class="form-control @error('email') is-invalid @enderror"
                        name="email" placeholder="Почта" value="{{ old('email') }}" required>
                 @error('email')

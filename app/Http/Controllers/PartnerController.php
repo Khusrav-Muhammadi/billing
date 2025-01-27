@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Partner\StoreRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Models\Partner;
+use App\Models\PartnerStatus;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
 
@@ -22,8 +23,9 @@ class PartnerController extends Controller
     public function create()
     {
         $managers = User::all();
+        $partnerStatuses = PartnerStatus::all();
 
-        return view('admin.partners.create', compact('managers'));
+        return view('admin.partners.create', compact('partnerStatuses'));
     }
 
     public function store(StoreRequest $request)
@@ -36,8 +38,9 @@ class PartnerController extends Controller
     public function edit(Partner $partner)
     {
         $managers = User::all();
+        $partnerStatuses = PartnerStatus::all();
 
-        return view('admin.partners.edit', compact('partner', 'managers'));
+        return view('admin.partners.edit', compact('partner', 'partnerStatuses'));
     }
 
     public function update(Partner $partner, UpdateRequest $request)
