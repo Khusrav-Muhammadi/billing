@@ -34,6 +34,7 @@ class ClientController extends Controller
     {
         $organizations = Organization::where('client_id', $client->id)->get();
         $transactions = Transaction::where('client_id', $client->id)
+            ->with(['tariff', 'client', 'organization', 'sale'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
         $businessTypes = BusinessType::all();
