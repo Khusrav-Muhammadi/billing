@@ -7,6 +7,8 @@ use App\Http\Requests\Partner\UpdateRequest;
 use App\Models\Partner;
 use App\Models\PartnerRequest;
 use App\Models\PartnerStatus;
+use App\Models\Sale;
+use App\Models\Tariff;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
 
@@ -17,6 +19,23 @@ class PartnerRequestController extends Controller
         $partnerRequests = PartnerRequest::all();
 
         return view('admin.partner_requests.index', compact('partnerRequests'));
+    }
+
+    public function reject(PartnerRequest $partnerRequest)
+    {
+        $partnerRequest->update([
+            'request_status' => 'Отклонён'
+        ]);
+        return redirect()->back();
+    }
+
+    public function approve(PartnerRequest $partnerRequest)
+    {
+        $sales = Sale::all();
+        $tariffs = Tariff::all();
+        $partners = Partner::all();
+
+        return view('admin.clients.create', compact( 'tariffs', 'sales', 'partners', 'partnerRequest'));
     }
 
 }
