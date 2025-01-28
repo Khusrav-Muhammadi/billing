@@ -77,12 +77,11 @@ class OrganizationController extends Controller
 
     }
 
-    public function deletePack(OrganizationPack $organizationPack)
+    public function deletePack(int $id)
     {
-        $organizationPack->delete();
+        OrganizationPack::where('id', $id)->delete();
 
         return response()->json(['success'=> true]);
-
     }
 
 }
