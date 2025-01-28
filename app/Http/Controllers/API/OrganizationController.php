@@ -70,7 +70,7 @@ class OrganizationController extends Controller
 
     public function addPack(int $id, AddPackRequest $request)
     {
-        $organization = Organization::first($id);
+        $organization = Organization::find($id);
         $this->repository->addPack($organization, $request->validated());
 
         return response()->json(['success'=> true]);
