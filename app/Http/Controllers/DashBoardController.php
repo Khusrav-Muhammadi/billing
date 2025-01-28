@@ -22,15 +22,20 @@ use Illuminate\Support\Facades\DB;
 class DashBoardController extends Controller
 {
 
-    public function __construct(public ClientRepositoryInterface $repository) { }
+    public function __construct(public ClientRepositoryInterface $repository)
+    {
+    }
 
     public function index(Request $request)
     {
+        $year = 2025;
+
         $clients = Client::query()
             ->selectRaw('
         SUM(CASE WHEN clients.is_demo = 0 THEN 1 ELSE 0 END) as real_clients,
         SUM(CASE WHEN clients.is_demo = 1 THEN 1 ELSE 0 END) as demo_clients
     ')
+            ->whereYear('created_at', $year)
             ->first();
 
         $clientsActivity = Client::query()
@@ -39,6 +44,7 @@ class DashBoardController extends Controller
         SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_clients,
         SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_clients
     ')
+            ->whereYear('created_at', $year)
             ->groupBy('month')
             ->orderBy('month')
             ->get();
@@ -87,6 +93,7 @@ class DashBoardController extends Controller
             ->join('tariffs', 'transactions.tariff_id', '=', 'tariffs.id')
             ->select('tariffs.name', DB::raw('SUM(transactions.sum) as total'), DB::raw('MONTH(transactions.created_at) as month'))
             ->where('transactions.type', 'Снятие')
+            ->whereYear('transactions.created_at', $year)
             ->groupBy('tariffs.name', 'month')
             ->orderBy('tariffs.name')
             ->get();
@@ -108,7 +115,7 @@ class DashBoardController extends Controller
 
         $partners = Partner::count();
 
-        return view('dashboard', compact('clients',  'activeClientsByMonth', 'inactiveClientsByMonth', 'chartData', 'clients_count', 'totalIncomeFromPartners', 'totalIncomeForMonth', 'partners'));
+        return view('dashboard', compact('clients', 'activeClientsByMonth', 'inactiveClientsByMonth', 'chartData', 'clients_count', 'totalIncomeFromPartners', 'totalIncomeForMonth', 'partners'));
     }
 
     public function create()
