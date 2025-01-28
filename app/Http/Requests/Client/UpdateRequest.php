@@ -23,6 +23,7 @@ class UpdateRequest extends FormRequest
             'is_demo' => [''],
             'email' => ['nullable', 'email'],
             'client_type' => ['nullable'],
+            'contact_person' => ['nullable'],
         ];
     }
 }
