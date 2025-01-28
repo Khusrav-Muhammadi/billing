@@ -70,19 +70,18 @@ class OrganizationController extends Controller
 
     public function addPack(int $id, AddPackRequest $request)
     {
-        $organization = Organization::first($id);
+        $organization = Organization::find($id);
         $this->repository->addPack($organization, $request->validated());
 
         return response()->json(['success'=> true]);
 
     }
 
-    public function deletePack(OrganizationPack $organizationPack)
+    public function deletePack(int $id)
     {
-        $organizationPack->delete();
+        OrganizationPack::where('id', $id)->delete();
 
         return response()->json(['success'=> true]);
-
     }
 
 }
