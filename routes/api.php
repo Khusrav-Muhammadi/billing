@@ -24,6 +24,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'update']);
     Route::get('clients/activation/{client}', [\App\Http\Controllers\API\ClientController::class, 'activation']);
     Route::post('clients/create-transaction/{id}', [\App\Http\Controllers\API\ClientController::class, 'createTransaction']);
+
+    Route::post('organizations/access', [\App\Http\Controllers\API\OrganizationController::class, 'access']);
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class)->except(['store']);
     Route::post('organizations/{client_id}', [\App\Http\Controllers\API\OrganizationController::class, 'store']);
     Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack']);
