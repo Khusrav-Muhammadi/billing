@@ -68,8 +68,9 @@ class ClientController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function createTransaction(Client $client, TransactionRequest $request)
+    public function createTransaction(int $id, TransactionRequest $request)
     {
+        $client = Client::find($id);
         $this->repository->createTransaction($client, $request->validated());
         return response()->json(['success' => true]);
     }
