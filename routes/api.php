@@ -21,7 +21,8 @@ Route::middleware('auth.basic')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('clients', [\App\Http\Controllers\API\ClientController::class, 'index']);
     Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);
-    Route::apiResource('clients', \App\Http\Controllers\API\ClientController::class);
+    Route::get('clients/activation/{client}', [\App\Http\Controllers\API\ClientController::class, 'activation']);
+
 });
 
 Route::get('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
