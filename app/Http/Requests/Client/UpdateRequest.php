@@ -21,6 +21,9 @@ class UpdateRequest extends FormRequest
             'tariff_id' => ['nullable', Rule::exists('tariffs','id')],
             'sale_id' => [''],
             'is_demo' => [''],
+            'email' => ['nullable', 'email'],
+            'client_type' => ['nullable'],
+            'contact_person' => ['nullable'],
         ];
     }
 }
