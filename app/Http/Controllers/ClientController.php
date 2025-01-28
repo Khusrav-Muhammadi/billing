@@ -36,12 +36,11 @@ class ClientController extends Controller
 
     public function create()
     {
-        $businessTypes = BusinessType::all();
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $partners = Partner::all();
 
-        return view('admin.clients.create', compact('businessTypes', 'tariffs', 'sales', 'partners'));
+        return view('admin.clients.create', compact( 'tariffs', 'sales', 'partners'));
     }
 
     public function store(StoreRequest $request)

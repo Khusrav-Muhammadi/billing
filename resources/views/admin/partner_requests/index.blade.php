@@ -17,6 +17,7 @@
                     <th>Телефон</th>
                     <th>E-mail</th>
                     <th>Тариф</th>
+                    <th>Поддомен</th>
                     <th>Дата подачи</th>
                     <th>Статус</th>
                     <th>Адрес</th>
@@ -31,6 +32,7 @@
                         <td>{{ $partner->phone }}</td>
                         <td>{{ $partner->email }}</td>
                         <td>{{ $partner->tariff->name }}</td>
+                        <td>{{ $partner->sub_domain }}</td>
                         <td>{{ $partner->date }}</td>
                         <td>{{ $partner->request_status }}</td>
                         <td>{{ $partner->address }}</td>
@@ -39,9 +41,8 @@
                     <!-- Modal -->
                     <div class="modal fade" id="edit-{{ $partner->id }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
-                            <form action="" method="POST">
+                            <form action="{{ route('partner-request.approve', $partner->id) }}" method="POST">
                                 @csrf
-                                @method('DELETE')
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title" id="exampleModalLabel">Обработка запроса</h5>
@@ -50,7 +51,7 @@
                                         Что вы хотите делать с этим запросом?
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Отклонить</button>
+                                        <a href="{{ route('partner-request.reject', $partner->id) }}"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">Отклонить</button></a>
                                         <button type="submit" class="btn btn-success">Одобрить</button>
                                     </div>
                                 </div>
