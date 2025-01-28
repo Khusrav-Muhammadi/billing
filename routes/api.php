@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('clients', [\App\Http\Controllers\API\ClientController::class, 'index']);
     Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);
     Route::get('clients/activation/{client}', [\App\Http\Controllers\API\ClientController::class, 'activation']);
+    Route::post('clients/create-transaction/{id}', [\App\Http\Controllers\API\ClientController::class, 'createTransaction']);
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class);
     Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack']);
     Route::delete('organizations/delete-pack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'deletePack']);
