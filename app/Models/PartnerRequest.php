@@ -10,4 +10,14 @@ class PartnerRequest extends Model
     use HasFactory;
 
     protected $fillable = ['partner_id', 'client_type', 'name', 'phone', 'email', 'address', 'organization', 'is_demo', 'tariff_id', 'date', 'request_status'];
+
+    public function partner()
+    {
+        return $this->belongsTo(Partner::class, 'partner_id');
+    }
+
+    public function tariff()
+    {
+        return $this->belongsTo(Tariff::class, 'tariff_id');
+    }
 }
