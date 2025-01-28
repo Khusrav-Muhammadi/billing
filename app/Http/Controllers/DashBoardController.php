@@ -17,6 +17,7 @@ use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashBoardController extends Controller
 {
@@ -89,9 +90,7 @@ class DashBoardController extends Controller
             }
         }
 
-
         $clients_count = Client::query()->where('is_active', 1)->count();
-
 
         $totalIncomeForMonth = 0;
         $currentMonth = Carbon::now()->month;
@@ -107,6 +106,29 @@ class DashBoardController extends Controller
                 $totalIncomeForMonth += $tariff->price;
             }
         }
+
+        $results = DB::table('transactions')
+            ->join('tariffs', 'transactions.tariff_id', '=', 'tariffs.id')
+            ->select('tariffs.name', DB::raw('SUM(transactions.sum) as total'), DB::raw('MONTH(transactions.created_at) as month'))
+            ->where('transactions.type', 'Снятие')
+            ->groupBy('tariffs.name', 'month')
+            ->orderBy('tariffs.name')
+            ->get();
+
+        $formattedResults = [];
+
+        foreach ($results as $result) {
+            if (!isset($formattedResults[$result->name])) {
+                $formattedResults[$result->name] = [
+                    'name' => $result->name,
+                    'data' => array_fill(0, 12, 0), // Заполняем массив нулями (int)
+                ];
+            }
+            // Приводим значение к типу int
+            $formattedResults[$result->name]['data'][$result->month - 1] = (int)$result->total;
+        }
+
+        $chartData = array_values($formattedResults);
 
         $partners = Partner::count();
 
