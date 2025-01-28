@@ -135,6 +135,7 @@
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
             </div>
+            <input type="hidden" name="partner_request_id" value="{{ isset($partnerRequest) ? $partnerRequest->id : null }}">
 
             <button type="submit" class="btn btn-primary mr-2">Сохранить</button>
         </form>

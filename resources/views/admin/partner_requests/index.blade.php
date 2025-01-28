@@ -25,7 +25,10 @@
                 </thead>
                 <tbody>
                 @foreach($partnerRequests as $partner)
-                    <tr data-bs-toggle="modal" data-bs-target="#edit-{{ $partner->id }}">
+                    <tr @if ($partner->request_status != 'Успешный')
+                          data-bs-toggle="modal" data-bs-target="#edit-{{ $partner->id }}"
+                        @endif
+                    >
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $partner->partner->name }}</td>
                         <td>{{ $partner->name }}</td>
@@ -38,7 +41,6 @@
                         <td>{{ $partner->address }}</td>
                     </tr>
 
-                    <!-- Modal -->
                     <div class="modal fade" id="edit-{{ $partner->id }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
                             <form action="{{ route('partner-request.approve', $partner->id) }}" method="POST">

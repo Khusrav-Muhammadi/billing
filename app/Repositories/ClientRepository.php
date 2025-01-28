@@ -7,6 +7,7 @@ use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\Partner;
+use App\Models\PartnerRequest;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Services\WithdrawalService;
@@ -67,6 +68,11 @@ class ClientRepository implements ClientRepositoryInterface
         $client = Client::create($data);
 
         SubDomainJob::dispatch($client);
+
+        if (isset($data['partner_request_id']) && $data['partner_request_id'] != null) {
+            PartnerRequest::where('id', $data['partner_request_id'])
+                ->update(['request_status' => 'Успешный']);
+        }
 
         return $client;
     }
