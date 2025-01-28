@@ -34,13 +34,14 @@ class ClientController extends Controller
     {
         $organizations = Organization::where('client_id', $client->id)->get();
         $transactions = Transaction::where('client_id', $client->id)
+            ->with(['tariff', 'client', 'organization', 'sale'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
         $businessTypes = BusinessType::all();
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $packs = Pack::all();
-        $client = $client->load(['history.changes', 'history.user']);
+        $client = $client->load(['history.changes', 'history.user', 'tariff']);
 
         return response()->json([
             'organizations' => $organizations,
@@ -57,20 +58,20 @@ class ClientController extends Controller
     {
         $this->repository->update($client, $request->validated());
 
-        return redirect()->route('client.index');
+        return response()->json(['success' => true]);
     }
 
     public function activation(Client $client)
     {
         $this->repository->activation($client);
 
-        return redirect()->back();
+        return response()->json(['success' => true]);
     }
 
     public function createTransaction(Client $client, TransactionRequest $request)
     {
         $this->repository->createTransaction($client, $request->validated());
-        return redirect()->back();
+        return response()->json(['success' => true]);
     }
 
     public function getBalance(GetBalanceRequest $request)
