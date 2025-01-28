@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('clients/create-transaction/{id}', [\App\Http\Controllers\API\ClientController::class, 'createTransaction']);
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class);
     Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack']);
+
     Route::delete('organizations/delete-pack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'deletePack']);
     Route::post('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'store']);
 
