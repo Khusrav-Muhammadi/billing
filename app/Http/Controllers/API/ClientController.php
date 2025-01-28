@@ -58,20 +58,20 @@ class ClientController extends Controller
     {
         $this->repository->update($client, $request->validated());
 
-        return redirect()->route('client.index');
+        return response()->json(['success' => true]);
     }
 
     public function activation(Client $client)
     {
         $this->repository->activation($client);
 
-        return redirect()->back();
+        return response()->json(['success' => true]);
     }
 
     public function createTransaction(Client $client, TransactionRequest $request)
     {
         $this->repository->createTransaction($client, $request->validated());
-        return redirect()->back();
+        return response()->json(['success' => true]);
     }
 
     public function getBalance(GetBalanceRequest $request)
