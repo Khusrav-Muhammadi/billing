@@ -25,6 +25,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class);
     Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack']);
 
+    Route::post('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'store']);
+
 });
 
 Route::get('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
