@@ -44,7 +44,7 @@ class OrganizationController extends Controller
     {
         $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->with('tariff')->get();
 
-        return response()->json(['success'=> true, 'packs' => $packs, 'organization' => $organization->load('packs', 'businessType')]);
+        return response()->json(['success'=> true, 'packs' => $packs, 'organization' => $organization->load('packs.pack', 'businessType')]);
     }
 
     public function update(Organization $organization, \App\Http\Requests\Organization\UpdateRequest $request)
@@ -68,8 +68,9 @@ class OrganizationController extends Controller
         return response()->json(['success'=> true]);
     }
 
-    public function addPack(Organization $organization, AddPackRequest $request)
+    public function addPack(int $id, AddPackRequest $request)
     {
+        $organization = Organization::first($id);
         $this->repository->addPack($organization, $request->validated());
 
         return response()->json(['success'=> true]);
