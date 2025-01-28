@@ -23,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);
     Route::get('clients/activation/{client}', [\App\Http\Controllers\API\ClientController::class, 'activation']);
 
+    Route::post('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'store']);
+
 });
 
 Route::get('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);

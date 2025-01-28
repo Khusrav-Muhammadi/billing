@@ -52,30 +52,6 @@ class DashBoardController extends Controller
             $inactiveClientsByMonth[$month] = (int)$activity->inactive_clients;
         }
 
-        $tariffs = Tariff::all();
-        $incomeData = [];
-
-        foreach ($tariffs as $tariff) {
-            $incomeData[$tariff->name] = [];
-
-            for ($month = 1; $month <= 12; $month++) {
-                $clientCount = Client::where('tariff_id', $tariff->id)
-                    ->whereMonth('created_at', $month)
-                    ->count();
-                $income = $clientCount * $tariff->price;
-
-                $incomeData[$tariff->name][] = $income;
-            }
-        }
-        $chartData = [];
-
-        foreach ($incomeData as $tariffName => $income) {
-            $chartData[] = [
-                'name' => $tariffName,
-                'data' => $income,
-            ];
-        }
-
         $partners = Partner::all();
         $totalIncomeFromPartners = 0;
 
@@ -121,10 +97,10 @@ class DashBoardController extends Controller
             if (!isset($formattedResults[$result->name])) {
                 $formattedResults[$result->name] = [
                     'name' => $result->name,
-                    'data' => array_fill(0, 12, 0), // Заполняем массив нулями (int)
+                    'data' => array_fill(0, 12, 0),
                 ];
             }
-            // Приводим значение к типу int
+
             $formattedResults[$result->name]['data'][$result->month - 1] = (int)$result->total;
         }
 
