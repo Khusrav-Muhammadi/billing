@@ -5,6 +5,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PackController;
 use App\Http\Controllers\PartnerController;
+use App\Http\Controllers\PartnerRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TariffController;
@@ -86,6 +87,10 @@ Route::middleware('auth')->group(function () {
         Route::get('edit/{partner}', [PartnerController::class, 'edit'])->name('partner.edit');
         Route::patch('/{partner}', [PartnerController::class, 'update'])->name('partner.update');
         Route::delete('/{partner}', [PartnerController::class, 'destroy'])->name('partner.delete');
+    });
+
+    Route::group(['prefix' => 'partner-request'], function () {
+        Route::get('/', [PartnerRequestController::class, 'index'])->name('partner-request.index');
     });
 
 });

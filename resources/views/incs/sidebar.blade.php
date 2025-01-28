@@ -23,6 +23,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="{{ route('partner-request.index') }}">
+            <i class="mdi mdi-account-multiple menu-icon"></i>
+            <span class="menu-title">Заявки партнера</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link collapsed" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">
             <i class="mdi mdi-settings menu-icon"></i>
             <span class="menu-title">Настройки</span>
