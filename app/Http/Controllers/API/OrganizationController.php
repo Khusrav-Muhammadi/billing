@@ -42,9 +42,9 @@ class OrganizationController extends Controller
 
     public function show(Organization $organization)
     {
-        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->with('tariff')->get();
+        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->with('tariff', 'pack')->get();
 
-        return response()->json(['success'=> true, 'packs' => $packs, 'organization' => $organization->load('packs', 'businessType')]);
+        return response()->json(['success'=> true, 'packs' => $packs, 'organization' => $organization->load('packs.pack', 'businessType')]);
     }
 
     public function update(Organization $organization, \App\Http\Requests\Organization\UpdateRequest $request)
