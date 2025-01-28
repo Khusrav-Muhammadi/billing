@@ -13,6 +13,7 @@ class PartnerRequestRepository implements PartnerRequestRepositoryInterface
         else $data['is_demo'] = false;
 
         $data['request_status'] = 'Новый';
+        $data['partner_id'] = auth()->id();
 
         PartnerRequest::create($data);
     }
