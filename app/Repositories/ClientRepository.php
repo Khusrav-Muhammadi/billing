@@ -109,7 +109,12 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function getBalance(array $data)
     {
-        return Client::where('sub_domain', $data['sub_domain'])->first()->balance;
+        $client = Client::where('sub_domain', $data['sub_domain'])->first();
+
+        return response()->json([
+            'balance' => $client->balance,
+            'tariff' => $client->tariff->name
+        ]);
     }
 
     public function withdrawal(Client $client)

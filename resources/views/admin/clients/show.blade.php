@@ -517,7 +517,7 @@
                 checkbox.addEventListener('change', function () {
                     const organizationId = this.dataset.organizationId;
                     const clientId = this.dataset.clientId;
-                    const hasAccess = this.checked; // Текущее состояние чекбокса
+                    const hasAccess = this.checked;
 
                     fetch('/organization/access', {
                         method: 'POST',
