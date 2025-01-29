@@ -151,8 +151,7 @@
                             <td>{{ $organization->businessType?->name }}</td>
                             <td>
                                 <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
-                                       data-organization-id="{{ $organization->id }}"
-                                       data-client-id="{{ $client->id }}" {{ $organization->has_access ? 'checked' : '' }}
+                                       data-bs-toggle="modal" data-bs-target="#organizationActivation{{$organization->id}}" {{ $organization->has_access ? 'checked' : '' }}
                                     {{ $client->is_active ? '' : 'disabled' }}
                                 >
                             </td>
@@ -166,6 +165,32 @@
                                 </a>
                             </td>
                         </tr>
+
+                        <div class="modal fade" id="organizationActivation{{$organization->id}}" tabindex="-1"
+                             aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <form action="{{ route('organization.access', $organization->id) }}" method="POST">
+                                    @csrf
+
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title"
+                                                id="exampleModalLabel"> {{ $organization->has_access ? 'Деактивация' : 'Активация' }} организации</h5>
+                                        </div>
+                                        <div class="modal-body">
+                                            Вы уверены что хотите {{ $organization->has_access ? 'деактивировать' : 'активировать' }} эту организацию?
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                Отмена
+                                            </button>
+                                            <button type="submit"
+                                                    class="btn btn-{{ $organization->has_access ? 'danger' : 'success' }}">{{ $organization->has_access ? 'Деактивировать' : 'Активировать' }}</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
 
                         <div class="modal fade" id="editOrganization{{$organization->id}}" tabindex="-1"
                              aria-labelledby="exampleModalLabel"
@@ -501,52 +526,6 @@
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
         dateInput.value = `${year}-${month}-${day}`;
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-            if (!csrfToken) {
-                console.error('CSRF token not found');
-                return;
-            }
-
-            const checkboxes = document.querySelectorAll('input[name="has_access"]');
-            checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', function () {
-                    const organizationId = this.dataset.organizationId;
-                    const clientId = this.dataset.clientId;
-                    const hasAccess = this.checked;
-
-                    fetch('/organization/access', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken
-                        },
-                        body: JSON.stringify({
-                            organization_id: organizationId,
-                            client_id: clientId,
-                            has_access: hasAccess
-                        })
-                    })
-                        .then(response => response.text())
-                        .then(text => {
-                            console.log('Ответ сервера:', text);
-                            return text ? JSON.parse(text) : {};
-                        })
-                        .then(data => {
-                            console.log('Распознанный JSON:', data);
-                        })
-                        .catch(error => {
-                            console.error('Ошибка:', error);
-                        });
-
-                });
-            });
-        });
-
     </script>
 
 @endsection

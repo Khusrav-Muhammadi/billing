@@ -47,7 +47,7 @@ Route::middleware('auth')->group(function () {
         Route::get('edit/{organization}', [OrganizationController::class, 'edit'])->name('organization.edit');
         Route::patch('update/{organization}', [OrganizationController::class, 'update'])->name('organization.update');
         Route::delete('/{organization}', [OrganizationController::class, 'destroy'])->name('organization.destroy');
-        Route::post('access', [OrganizationController::class, 'access'])->name('organization.access');
+        Route::post('access/{organization}', [OrganizationController::class, 'access'])->name('organization.access');
         Route::post('addPack/{organization}', [OrganizationController::class, 'addPack'])->name('organization.addPack');
         Route::delete('delete-pack/{organizationPack}', [OrganizationController::class, 'deletePack'])->name('organization.pack.destroy');
     });

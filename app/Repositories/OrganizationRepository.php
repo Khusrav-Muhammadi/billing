@@ -49,12 +49,11 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $organization->update($data);
     }
 
-    public function access(array $data)
+    public function access(Organization $organization)
     {
-        $organization = Organization::find($data['organization_id']);
-        $client = Client::find($data['client_id']);
+        $client = $organization->client()->first();
 
-        ActivationJob::dispatch(array($data['organization_id']), $client->sub_domain, !$organization->has_access);
+        ActivationJob::dispatch(array($organization->id), $client->sub_domain, !$organization->has_access);
     }
 
     public function addPack(Organization $organization, array $data)

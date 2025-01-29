@@ -49,9 +49,11 @@ class OrganizationController extends Controller
         return redirect()->back();
     }
 
-    public function access(AccessRequest $request)
+    public function access(Organization $organization)
     {
-        $this->repository->access($request->validated());
+        $this->repository->access($organization);
+
+        return redirect()->back();
     }
 
     public function addPack(Organization $organization, AddPackRequest $request)
