@@ -79,7 +79,7 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function update(Client $client, array $data)
     {
-        if ($client->tariff_id != $data['tariff_id']) UpdateTariffJob::dispatch($client, $data['tariff_id'], $client->back_sub_domain);
+        if ($client->tariff_id != $data['tariff_id']) UpdateTariffJob::dispatch($client, $data['tariff_id'], $client->sub_domain);
 
         if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
         else $data['is_demo'] = false;
