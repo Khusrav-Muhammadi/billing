@@ -7,6 +7,7 @@ use App\Http\Controllers\PackController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PartnerRequestController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TariffController;
 use Illuminate\Support\Facades\Route;
@@ -93,6 +94,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PartnerRequestController::class, 'index'])->name('partner-request.index');
         Route::get('/reject/{partnerRequest}', [PartnerRequestController::class, 'reject'])->name('partner-request.reject');
         Route::post('/approve/{partnerRequest}', [PartnerRequestController::class, 'approve'])->name('partner-request.approve');
+    });
+
+    Route::group(['prefix' => 'report'], function () {
+        Route::get('/income', [ReportController::class, 'income'])->name('report.income');
     });
 
 });
