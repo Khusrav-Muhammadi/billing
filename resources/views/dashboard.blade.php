@@ -45,7 +45,7 @@
         <div class="col-md-6">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-text"><strong>Тип подключенние клиентов</strong></div>
+                    <div class="card-text"><strong>Тип подключения клиентов</strong></div>
                     <div class="d-flex flex-wrap">
                         <div class="doughnut-wrapper w-50">
                             <canvas id="doughnutt" width="200" height="100"></canvas>
@@ -62,7 +62,7 @@
                     <div class="card-title">Партнеры</div>
                     <div class="d-flex flex-wrap">
                         <div class="doughnut-wrapper w-50">
-                            <canvas id="doughnutChart4" width="200" height="100"></canvas>
+                            <canvas id="doughnutChart5" width="200" height="100"></canvas>
                         </div>
                         <div id="doughnut-chart-legend3"
                              class="pl-lg-3 rounded-legend align-self-center flex-grow legend-vertical legend-bottom-left"></div>
@@ -105,9 +105,9 @@
             const realClients = @json($clients->real_clients);
             const demoClients = @json($clients->demo_clients);
 
-            var red2 = '#ff0d59';
+            var red2 = '#ffd70d';
 
-            var green2 = '#00d284';
+            var green2 = '#1326f8';
 
             var trafficChartData = {
                 datasets: [{
@@ -241,20 +241,18 @@
             }
         });
 
+        if ($("#doughnutChart5").length) {
+            var ctx = document.getElementById('doughnutChart5').getContext("2d");
+            const activePartners = @json($activePartners);
+            const inactivePartners = @json($inactivePartners);
 
-        //partners
-        if ($("#doughnutChart4").length) {
-            var ctx = document.getElementById('doughnutChart4').getContext("2d");
-            const realClients = @json($clients->real_clients);
-            const demoClients = @json($clients->demo_clients);
+            var red2 = '#c20920';
 
-            var red2 = '#ff0d59';
-
-            var green2 = '#00d284';
+            var green2 = '#119b18';
 
             var trafficChartData = {
                 datasets: [{
-                    data: [realClients, demoClients],
+                    data: [activePartners, inactivePartners],
                     backgroundColor: [
                         green2,
                         red2
@@ -301,7 +299,7 @@
                     return text.join('');
                 }
             };
-            var trafficChartCanvas = $("#doughnutChart4").get(0).getContext("2d");
+            var trafficChartCanvas = $("#doughnutChart5").get(0).getContext("2d");
             var trafficChart = new Chart(trafficChartCanvas, {
                 type: 'doughnut',
                 data: trafficChartData,
