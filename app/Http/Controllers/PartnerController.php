@@ -8,14 +8,15 @@ use App\Models\Partner;
 use App\Models\PartnerStatus;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
+use Illuminate\Http\Request;
 
 class PartnerController extends Controller
 {
     public function __construct(public PartnerRepositoryInterface $repository) { }
 
-    public function index()
+    public function index(Request $request)
     {
-        $partners = Partner::all();
+        $partners = $this->repository->index($request->all());
 
         return view('admin.partners.index', compact('partners'));
     }

@@ -22,9 +22,6 @@ class OrganizationObserver
      */
     public function updated(Organization $organization): void
     {
-        if (isset($organization->disableObserver) && $organization->disableObserver) {
-            return;
-        }
         $this->update($organization, Auth::id());
     }
 

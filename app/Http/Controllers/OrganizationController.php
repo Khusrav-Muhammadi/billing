@@ -32,8 +32,9 @@ class OrganizationController extends Controller
     {
         $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->get();
         $organization = $organization->load(['history.changes', 'history.user']);
+        $userCount = $organization->client()->first()->tariff->user_count;
 
-        return view('admin.organizations.show', compact('organization', 'packs'));
+        return view('admin.organizations.show', compact('organization', 'packs', 'userCount'));
     }
 
     public function update(Organization $organization, UpdateRequest $request): RedirectResponse

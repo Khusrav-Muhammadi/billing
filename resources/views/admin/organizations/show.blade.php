@@ -28,10 +28,16 @@
             </div>
         </div>
 
-        <div class="col-6 mb-5 ml-4 mr-5">
-            <label for="address">Адрес</label>
-            <textarea name="address" cols="30" rows="5" placeholder="Адрес" class="form-control"
-                      disabled>{{ $organization->address }}</textarea>
+        <div class="row mb-3">
+            <div class="col-4 ml-5 mt-3">
+                <label for="name">Кол-во пользователей</label>
+                <input type="text" class="form-control" name="name" value="{{ $userCount }}" disabled>
+            </div>
+            <div class="col-4 mb-5 mr-5">
+                <label for="address">Адрес</label>
+                <textarea name="address" cols="30" rows="5" placeholder="Адрес" class="form-control"
+                          disabled>{{ $organization->address }}</textarea>
+            </div>
         </div>
     </div>
 
@@ -162,8 +168,8 @@
                                     @elseif($key == 'has_access') Доступ: <br>
                                     @endif
                                     @if($key == 'has_access')
-                                            <p style="margin-left: 20px;">{{ $value['previous_value'] == 0 ? 'Отключен' : 'Подключён' }}
-                                                ==> {{ $value['new_value'] == 0 ? 'Отключен' : 'Подключён' }}</p>
+                                        <p style="margin-left: 20px;">{{ $value['previous_value'] == 0 ? 'Отключен' : 'Подключён' }}
+                                            ==> {{ $value['new_value'] == 0 ? 'Отключен' : 'Подключён' }}</p>
                                     @else
                                         <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
                                             ==> {{ $value['new_value'] ?? 'N/A' }}</p>
