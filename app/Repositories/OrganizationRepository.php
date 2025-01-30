@@ -22,10 +22,10 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         return DB::transaction(function () use ($client, $data) {
             $organization = Organization::create($data);
 
-            $res = $this->createInSham($organization, $client->sub_domain);
-
-            if (!$res) $organization->delete();
-            else {
+//            $res = $this->createInSham($organization, $client->sub_domain);
+//
+//            if (!$res) $organization->delete();
+//            else {
                 $daysInMonth = Carbon::now()->daysInMonth;
 
                 $sum = $client->tariff->price / $daysInMonth;
@@ -39,7 +39,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                         'sum' => $sum,
                         'type' => 'Снятие',
                     ]);
-            }
+//            }
                 return $organization;
             });
         }
