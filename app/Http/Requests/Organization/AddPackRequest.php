@@ -16,8 +16,9 @@ class AddPackRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'pack_id' => ['required', Rule::exists('packs','id')],
-            'date' => ['required'],
+            'pack_id' => [''],
+            'date' => [''],
+            'amount ' => [''],
         ];
     }
 }

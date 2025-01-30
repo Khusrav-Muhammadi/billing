@@ -53,8 +53,8 @@
                         <tr>
                             <th>№</th>
                             <th>Пакет</th>
+                            <th>Количество</th>
                             <th>Дата подключения</th>
-                            <th>Действие</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -62,36 +62,9 @@
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $pack->pack?->name }}</td>
+                                <td>{{ $pack->amount }}</td>
                                 <td>{{ $pack->date }}</td>
-                                <td>
-                                    <a href="" data-bs-toggle="modal" data-bs-target="#deletePack{{$pack->id}}">
-                                        <i style="color:red; font-size: 30px" class="mdi mdi-delete"></i>
-                                    </a>
-                                </td>
                             </tr>
-                            <div class="modal fade" id="deletePack{{$pack->id}}" tabindex="-1"
-                                 aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <form action="{{ route('organization.pack.destroy', $pack->id) }}" method="POST">
-                                        @csrf
-                                        @method('DELETE')
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="exampleModalLabel">Удаление пакета</h5>
-                                            </div>
-                                            <div class="modal-body">
-                                                Вы уверены что хотите удалить эти данные?
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                    Отмена
-                                                </button>
-                                                <button type="submit" class="btn btn-danger">Удалить</button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
                         @endforeach
                         </tbody>
                     </table>
@@ -114,16 +87,25 @@
                         <div class="form-group">
                             <label for="tariff_id">Пакеты</label>
                             <select class="form-control form-control" name="pack_id" required>
-                                @foreach($packs as $pack)
-                                    <option value="{{ $pack->id }}">{{ $pack->name }}</option>
-                                @endforeach
+                                <option value="{{ $packs->id }}">{{ $packs->name }}</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label for="phone">Дата</label>
-                            <input type="date" class="form-control" name="date" required>
+                            <label for="name">Дата</label>
+                            <input type="date" class="form-control" name="date" id="date">
                         </div>
+
+                        <div class="form-group">
+                            <label for="phone">Количество</label>
+                            <input type="number" class="form-control" name="amount" value="1" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Цена</label>
+                            <input type="number" class="form-control" name="price" value="{{ $packs->price }}">
+                        </div>
+                        <p>Общ. цена: <span id="total-price"><strong>{{ $packs->price }}</strong></span></p>
 
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -184,3 +166,32 @@
         </div>
     </div>
 @endsection
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const amountInput = document.querySelector('input[name="amount"]');
+        const priceInput = document.querySelector('input[name="price"]');
+        const totalPrice = document.getElementById('total-price');
+
+        function updateTotal() {
+            const amount = parseFloat(amountInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            totalPrice.textContent = (amount * price).toFixed(2);
+        }
+
+        amountInput.addEventListener("input", updateTotal);
+        priceInput.addEventListener("input", updateTotal);
+    });
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const dateInput = document.getElementById('date');
+        if (dateInput) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            dateInput.value = `${year}-${month}-${day}`;
+        }
+    });
+</script>

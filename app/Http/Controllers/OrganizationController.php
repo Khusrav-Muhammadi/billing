@@ -30,7 +30,7 @@ class OrganizationController extends Controller
 
     public function show(Organization $organization)
     {
-        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->get();
+        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->first();
         $organization = $organization->load(['history.changes', 'history.user']);
         $userCount = $organization->client()->first()->tariff->user_count;
 

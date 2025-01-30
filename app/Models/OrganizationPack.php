@@ -9,7 +9,7 @@ class OrganizationPack extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['organization_id', 'pack_id', 'date'];
+    protected $fillable = ['organization_id', 'pack_id', 'date', 'amount'];
 
     public function pack()
     {

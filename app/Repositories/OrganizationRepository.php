@@ -62,6 +62,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'organization_id' => $organization->id,
             'pack_id' => $data['pack_id'],
             'date' => $data['date'],
+            'amount' => $data['amount'],
         ]);
 
         $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
