@@ -52,18 +52,20 @@
                         <thead>
                         <tr>
                             <th>№</th>
+                            <th>Дата подключения</th>
                             <th>Пакет</th>
                             <th>Количество</th>
-                            <th>Дата подключения</th>
+                            <th>Сумма</th>
                         </tr>
                         </thead>
                         <tbody>
                         @foreach($organization->packs as $pack)
                             <tr>
                                 <td>{{ $loop->iteration }}</td>
+                                <td>{{ $pack->date }}</td>
                                 <td>{{ $pack->pack?->name }}</td>
                                 <td>{{ $pack->amount }}</td>
-                                <td>{{ $pack->date }}</td>
+                                <td>{{ $pack->pack?->price * $pack->amount }}</td>
                             </tr>
                         @endforeach
                         </tbody>
