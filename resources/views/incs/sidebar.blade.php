@@ -60,12 +60,6 @@
                         <span class="">Скидки</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('pack.index') }}">
-                        <i class="mdi mdi-package menu-icon" style="color: white"></i>
-                        <span class="">Пакеты</span>
-                    </a>
-                </li>
             </ul>
         </div>
     </li>

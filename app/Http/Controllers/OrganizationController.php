@@ -31,6 +31,7 @@ class OrganizationController extends Controller
     public function show(Organization $organization)
     {
         $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->get();
+        $organization = $organization->load(['history.changes', 'history.user']);
 
         return view('admin.organizations.show', compact('organization', 'packs'));
     }

@@ -198,6 +198,7 @@
                             <div class="modal-dialog">
                                 <form method="POST" action="{{ route('organization.update', $organization->id) }}">
                                     @csrf
+                                    @method('PATCH')
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h5 class="modal-title" id="exampleModalLabel">Обновить организацию</h5>

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\OrganizationHistoryEvent;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\Tariff;
@@ -21,7 +22,7 @@ class ActivationJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public array $organizationIds, public string $domain, public bool $activation, public bool $updateClient = false)
+    public function __construct(public array $organizationIds, public string $domain, public bool $activation, public bool $updateClient = false, public int $authId = 1)
     {
         //
     }
@@ -39,14 +40,19 @@ class ActivationJob implements ShouldQueue
             'has_access' => $this->activation
         ];
 
-        $res = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $data);
-
-        if ($res->successful())
+//        $res = Http::withHeaders([
+//            'Accept' => 'application/json',
+//        ])->post($url, $data);
+//
+//        if ($res->successful())
             DB::transaction(function () {
-                Organization::whereIn('id', $this->organizationIds)
-                    ->update(['has_access' => $this->activation]);
+                $organizations = Organization::whereIn('id', $this->organizationIds)->get();
+
+                foreach ($organizations as $organization) {
+                    $organization->update(['has_access' => $this->activation]);
+                    OrganizationHistoryEvent::dispatch($organization, $this->authId);
+                }
+
                 if ($this->activation) {
                     $organization = Organization::whereIn('id', $this->organizationIds)->first();
                     $service = new WithdrawalService();
