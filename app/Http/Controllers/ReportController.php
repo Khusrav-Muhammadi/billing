@@ -23,6 +23,9 @@ class ReportController extends Controller
 {
     public function income()
     {
+        setlocale(LC_TIME, 'ru_RU.UTF-8');
+        Carbon::setLocale('ru');
+
         $months = collect(range(1, 12))->mapWithKeys(function ($month) {
             return [str_pad($month, 2, '0', STR_PAD_LEFT) => [
                 'month' => Carbon::create()->month($month)->translatedFormat('F'),
@@ -31,10 +34,10 @@ class ReportController extends Controller
         });
 
         $incomeReport = DB::table('transactions as t')
-            ->selectRaw('YEAR(t.created_at) as year, MONTH(t.created_at) as month, MONTHNAME(t.created_at) as month_name, tariffs.name as tariff_name, SUM(t.sum) as total_income')
+            ->selectRaw('YEAR(t.created_at) as year, MONTH(t.created_at) as month, tariffs.name as tariff_name, SUM(t.sum) as total_income')
             ->join('tariffs', 't.tariff_id', '=', 'tariffs.id')
             ->where('t.type', 'Снятие')
-            ->groupByRaw('YEAR(t.created_at), MONTH(t.created_at), MONTHNAME(t.created_at), tariffs.name')
+            ->groupByRaw('YEAR(t.created_at), MONTH(t.created_at), tariffs.name')
             ->orderByRaw('YEAR(t.created_at), MONTH(t.created_at)')
             ->get();
 
@@ -42,10 +45,11 @@ class ReportController extends Controller
 
         foreach ($incomeReport as $row) {
             $monthKey = str_pad($row->month, 2, '0', STR_PAD_LEFT);
+            $monthName = Carbon::create()->month($row->month)->translatedFormat('F'); // Название месяца на русском
 
             if (!isset($report[$monthKey])) {
                 $report[$monthKey] = [
-                    'month' => $row->month_name,
+                    'month' => $monthName,
                     'total' => 0
                 ];
             }

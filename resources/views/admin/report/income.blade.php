@@ -9,7 +9,6 @@
 
     <div class="card-body">
         <h4 class="card-title">Отчёт о доходности</h4>
-        <a href="" type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#create">Создать</a>
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
@@ -26,11 +25,11 @@
                 @foreach($incomes as $income)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $income['month'] }}</td>
+                        <td>{{ mb_ucfirst($income['month']) }}</td>
                         <td>{{ $income['total'] }}</td>
-                        <td>@if(isset($income['Стандарт'])){{ $income['Стандарт'] }}@else 0 @endif</td>
-                        <td>@if(isset($income['Премиум'])){{ $income['Премиум'] }}@else 0 @endif</td>
-                        <td>@if(isset($income['VIP'])){{ $income['VIP'] }}@else 0 @endif</td>
+                        <td>{{ $income['Стандарт'] ?? 0 }}</td>
+                        <td>{{ $income['Премиум'] ?? 0 }}</td>
+                        <td>{{ $income['VIP'] ?? 0 }}</td>
 
                     </tr>
                 @endforeach
