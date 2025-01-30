@@ -18,7 +18,7 @@ class AddPackRequest extends FormRequest
         return [
             'pack_id' => [''],
             'date' => [''],
-            'amount ' => [''],
+            'amount' => [''],
         ];
     }
 }

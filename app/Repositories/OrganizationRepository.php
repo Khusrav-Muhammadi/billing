@@ -65,7 +65,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'amount' => $data['amount'],
         ]);
 
-        $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
+//        $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
 
         if (!$res) $organizationPack->delete();
 
