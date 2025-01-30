@@ -97,7 +97,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="phone">Количество</label>
+                            <label for="amount">Количество</label>
                             <input type="number" class="form-control" name="amount" value="1" required>
                         </div>
 
