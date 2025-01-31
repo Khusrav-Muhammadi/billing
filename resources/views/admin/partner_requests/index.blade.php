@@ -12,15 +12,17 @@
                 <thead>
                 <tr>
                     <th>№</th>
-                    <th>Партнер</th>
-                    <th>Клиент</th>
-                    <th>Телефон</th>
-                    <th>E-mail</th>
-                    <th>Тариф</th>
-                    <th>Поддомен</th>
-                    <th>Дата подачи</th>
-                    <th>Статус</th>
-                    <th>Адрес</th>
+                    <th class="text-center">Партнер</th>
+                    <th class="text-center">Клиент</th>
+                    <th class="text-center">Тип клиента</th>
+                    <th class="text-center">Телефон</th>
+                    <th class="text-center">E-mail</th>
+                    <th class="text-center">Тариф</th>
+                    <th class="text-center">Поддомен</th>
+                    <th class="text-center">Дата подачи</th>
+                    <th class="text-center">Тип подключения</th>
+                    <th class="text-center">Статус</th>
+                    <th class="text-center">Адрес</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -29,16 +31,24 @@
                           data-bs-toggle="modal" data-bs-target="#edit-{{ $partner->id }}"
                         @endif
                     >
-                        <td>{{ $loop->iteration }}</td>
-                        <td>{{ $partner->partner->name }}</td>
-                        <td>{{ $partner->name }}</td>
-                        <td>{{ $partner->phone }}</td>
-                        <td>{{ $partner->email }}</td>
-                        <td>{{ $partner->tariff->name }}</td>
-                        <td>{{ $partner->sub_domain }}</td>
-                        <td>{{ $partner->date }}</td>
-                        <td>{{ $partner->request_status }}</td>
-                        <td>{{ $partner->address }}</td>
+                        <td class="text-center">{{ $loop->iteration }}</td>
+                        <td class="text-center">{{ $partner->partner->name }}</td>
+                        <td class="text-center">{{ $partner->name }}</td>
+                        <td class="text-center">{{ $partner->client_type }}</td>
+                        <td class="text-center">{{ $partner->phone }}</td>
+                        <td class="text-center">{{ $partner->email }}</td>
+                        <td class="text-center">{{ $partner->tariff->name }}</td>
+                        <td class="text-center">{{ $partner->sub_domain }}</td>
+                        <td class="text-center">{{ $partner->date }}</td>
+                        <td class="text-center">
+                            @if($partner->is_demo)
+                                Демо версия
+                            @else
+                                Боевая версия
+                            @endif
+                        </td>
+                        <td class="text-center">{{ $partner->request_status }}</td>
+                        <td class="text-center">{{ $partner->address }}</td>
                     </tr>
 
                     <div class="modal fade" id="edit-{{ $partner->id }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
