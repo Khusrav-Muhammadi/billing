@@ -122,6 +122,6 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function getByPartner(array $data)
     {
-        return Client::where('partner_id', auth()->id())->paginate(20);
+        return Client::query()->filter()->where('partner_id', auth()->id())->paginate(20);
     }
 }
