@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::delete('organizations/delete-pack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'deletePack']);
     Route::post('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'store']);
+    Route::get('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'index']);
 
 });
 
