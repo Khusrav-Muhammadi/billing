@@ -125,7 +125,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title"
-                        id="exampleModalLabel"> История клиента</h5>
+                        id="exampleModalLabel"> История организации</h5>
                 </div>
                 <div class="modal-body">
                     @foreach($organization->history as $history)
