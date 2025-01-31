@@ -22,10 +22,10 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         return DB::transaction(function () use ($client, $data) {
             $organization = Organization::create($data);
 
-            $res = $this->createInSham($organization, $client->sub_domain);
-
-            if (!$res) $organization->delete();
-            else {
+//            $res = $this->createInSham($organization, $client->sub_domain);
+//
+//            if (!$res) $organization->delete();
+//            else {
                 $daysInMonth = Carbon::now()->daysInMonth;
 
                 $sum = $client->tariff->price / $daysInMonth;
@@ -39,7 +39,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                         'sum' => $sum,
                         'type' => 'Снятие',
                     ]);
-            }
+//            }
                 return $organization;
             });
         }
@@ -49,12 +49,11 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $organization->update($data);
     }
 
-    public function access(array $data)
+    public function access(Organization $organization)
     {
-        $organization = Organization::find($data['organization_id']);
-        $client = Client::find($data['client_id']);
+        $client = $organization->client()->first();
 
-        ActivationJob::dispatch(array($data['organization_id']), $client->sub_domain, !$organization->has_access);
+        ActivationJob::dispatch(array($organization->id), $client->sub_domain, !$organization->has_access, false, auth()->id());
     }
 
     public function addPack(Organization $organization, array $data)
@@ -63,9 +62,10 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'organization_id' => $organization->id,
             'pack_id' => $data['pack_id'],
             'date' => $data['date'],
+            'amount' => $data['amount'],
         ]);
 
-        $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
+//        $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
 
         if (!$res) $organizationPack->delete();
 

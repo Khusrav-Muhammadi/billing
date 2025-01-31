@@ -24,8 +24,14 @@
     </li>
     <li class="nav-item">
         <a class="nav-link" href="{{ route('partner-request.index') }}">
-            <i class="mdi mdi-account-multiple menu-icon"></i>
+            <i class="mdi mdi-account-card-details menu-icon"></i>
             <span class="menu-title">Заявки партнера</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('report.income') }}">
+            <i class="mdi mdi-chart-bar menu-icon"></i>
+            <span class="menu-title">Отчёт о доходности</span>
         </a>
     </li>
     <li class="nav-item">
@@ -52,12 +58,6 @@
                     <a class="nav-link" href="{{ route('sale.index') }}">
                         <i class="mdi mdi-sale menu-icon" style="color: white"></i>
                         <span class="">Скидки</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ route('pack.index') }}">
-                        <i class="mdi mdi-package menu-icon" style="color: white"></i>
-                        <span class="">Пакеты</span>
                     </a>
                 </li>
             </ul>

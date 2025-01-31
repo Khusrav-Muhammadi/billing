@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
 Route::middleware('auth.basic')->group(function () {
-    Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {

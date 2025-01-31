@@ -30,9 +30,11 @@ class OrganizationController extends Controller
 
     public function show(Organization $organization)
     {
-        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->get();
+        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->first();
+        $organization = $organization->load(['history.changes', 'history.user']);
+        $userCount = $organization->client()->first()->tariff->user_count;
 
-        return view('admin.organizations.show', compact('organization', 'packs'));
+        return view('admin.organizations.show', compact('organization', 'packs', 'userCount'));
     }
 
     public function update(Organization $organization, UpdateRequest $request): RedirectResponse
@@ -49,9 +51,11 @@ class OrganizationController extends Controller
         return redirect()->back();
     }
 
-    public function access(AccessRequest $request)
+    public function access(Organization $organization)
     {
-        $this->repository->access($request->validated());
+        $this->repository->access($organization);
+
+        return redirect()->back();
     }
 
     public function addPack(Organization $organization, AddPackRequest $request)

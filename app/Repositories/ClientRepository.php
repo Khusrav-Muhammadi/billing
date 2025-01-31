@@ -7,6 +7,7 @@ use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\Partner;
+use App\Models\PartnerRequest;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Services\WithdrawalService;
@@ -68,12 +69,17 @@ class ClientRepository implements ClientRepositoryInterface
 
         SubDomainJob::dispatch($client);
 
+        if (isset($data['partner_request_id']) && $data['partner_request_id'] != null) {
+            PartnerRequest::where('id', $data['partner_request_id'])
+                ->update(['request_status' => 'Успешный']);
+        }
+
         return $client;
     }
 
     public function update(Client $client, array $data)
     {
-        if ($client->tariff_id != $data['tariff_id']) UpdateTariffJob::dispatch($client, $data['tariff_id'], $client->back_sub_domain);
+        if ($client->tariff_id != $data['tariff_id']) UpdateTariffJob::dispatch($client, $data['tariff_id'], $client->sub_domain);
 
         if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
         else $data['is_demo'] = false;
@@ -103,7 +109,12 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function getBalance(array $data)
     {
-        return Client::where('sub_domain', $data['sub_domain'])->first()->balance;
+        $client = Client::where('sub_domain', $data['sub_domain'])->first();
+
+        return response()->json([
+            'balance' => $client->balance,
+            'tariff' => $client->tariff->name
+        ]);
     }
 
     public function withdrawal(Client $client)

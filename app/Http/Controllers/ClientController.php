@@ -88,11 +88,7 @@ class ClientController extends Controller
 
     public function getBalance(GetBalanceRequest $request)
     {
-        $balance = $this->repository->getBalance($request->validated());
-
-        return response()->json([
-            'balance' => $balance
-        ]);
+        return $this->repository->getBalance($request->validated());
     }
 
     public function updateActivity(Request $request, string $subdomain)

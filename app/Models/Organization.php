@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Organization extends Model
 {
@@ -24,5 +25,10 @@ class Organization extends Model
     public function businessType()
     {
         return $this->belongsTo(BusinessType::class);
+    }
+
+    public function history(): MorphMany
+    {
+        return $this->morphMany('App\Models\ModelHistory', 'model');
     }
 }

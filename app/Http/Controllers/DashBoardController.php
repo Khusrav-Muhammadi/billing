@@ -11,6 +11,7 @@ use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Pack;
 use App\Models\Partner;
+use App\Models\PartnerStatus;
 use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
@@ -115,7 +116,14 @@ class DashBoardController extends Controller
 
         $partners = Partner::count();
 
-        return view('dashboard', compact('clients', 'activeClientsByMonth', 'inactiveClientsByMonth', 'chartData', 'clients_count', 'totalIncomeFromPartners', 'totalIncomeForMonth', 'partners'));
+        $activeStatus = PartnerStatus::where('is_active', true)->first();
+
+        $activePartners = Partner::where('partner_status_id', $activeStatus->id)->count();
+        $inactivePartners = Partner::where('partner_status_id', '!=', $activeStatus->id)->count();
+
+        return view('dashboard', compact(
+            'clients', 'activeClientsByMonth', 'inactiveClientsByMonth', 'chartData', 'clients_count', 'totalIncomeFromPartners', 'totalIncomeForMonth', 'partners', 'activePartners', 'inactivePartners'
+        ));
     }
 
     public function create()
