@@ -9,7 +9,7 @@ class PartnerRequest extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['partner_id', 'client_type', 'name', 'phone', 'email', 'address', 'organization', 'is_demo', 'tariff_id', 'date', 'request_status', 'sub_domain'];
+    protected $fillable = ['partner_id', 'client_type', 'name', 'phone', 'email', 'address', 'is_demo', 'tariff_id', 'date', 'request_status', 'sub_domain'];
 
     public function partner()
     {
