@@ -14,7 +14,7 @@ class PartnerRequestController extends Controller
 
     public function index()
     {
-        return PartnerRequest::where('partner_id', auth()->id())->get();
+        return PartnerRequest::where('partner_id', auth()->id())->paginate(20);
     }
 
     public function store(StoreRequest $request)
