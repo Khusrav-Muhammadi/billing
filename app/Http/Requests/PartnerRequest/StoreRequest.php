@@ -23,7 +23,6 @@ class StoreRequest extends FormRequest
             'address' => ['required'],
             'is_demo' => ['nullable'],
             'tariff_id' => ['required', Rule::exists('tariffs','id')],
-            'sub_domain' => ['required', Rule::unique('clients','sub_domain')],
             'date' => ['required'],
         ];
     }

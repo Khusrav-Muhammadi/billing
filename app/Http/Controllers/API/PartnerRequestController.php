@@ -27,4 +27,9 @@ class PartnerRequestController extends Controller
         return $this->repository->store($request->validated());
     }
 
+    public function update(PartnerRequest $partnerRequest, StoreRequest $request)
+    {
+        return $this->repository->update($partnerRequest, $request->validated());
+    }
+
 }
