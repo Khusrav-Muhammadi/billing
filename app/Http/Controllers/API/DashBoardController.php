@@ -72,7 +72,7 @@ class DashBoardController extends Controller
                 $totalIncomeForMonth += $tariff->price;
             }
 
-            $organizationIds = array_merge($organizationIds, $client->organization()->pluck('id')->toArray());
+            $organizationIds = array_merge($organizationIds, $client->organizations()->pluck('id')->toArray());
         }
 
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Partner\StoreRequest;
 use App\Http\Requests\Partner\UpdateRequest;
+use App\Http\Requests\PartnerRequest\RejectRequest;
 use App\Models\Partner;
 use App\Models\PartnerRequest;
 use App\Models\PartnerStatus;
@@ -11,6 +12,7 @@ use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
+use Illuminate\Support\Facades\Request;
 
 class PartnerRequestController extends Controller
 {
@@ -21,8 +23,10 @@ class PartnerRequestController extends Controller
         return view('admin.partner_requests.index', compact('partnerRequests'));
     }
 
-    public function reject(PartnerRequest $partnerRequest)
+    public function reject(PartnerRequest $partnerRequest, RejectRequest $request)
     {
+        $data = $request->validated();
+
         $partnerRequest->update([
             'request_status' => 'Отклонён'
         ]);

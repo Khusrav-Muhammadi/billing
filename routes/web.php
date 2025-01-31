@@ -92,7 +92,7 @@ Route::middleware('auth')->group(function () {
 
     Route::group(['prefix' => 'request'], function () {
         Route::get('/', [PartnerRequestController::class, 'index'])->name('partner-request.index');
-        Route::get('/reject/{partnerRequest}', [PartnerRequestController::class, 'reject'])->name('partner-request.reject');
+        Route::post('/reject/{partnerRequest}', [PartnerRequestController::class, 'reject'])->name('partner-request.reject');
         Route::post('/approve/{partnerRequest}', [PartnerRequestController::class, 'approve'])->name('partner-request.approve');
     });
 
