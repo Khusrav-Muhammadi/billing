@@ -17,4 +17,12 @@ class PartnerRequestRepository implements PartnerRequestRepositoryInterface
 
         PartnerRequest::create($data);
     }
+
+    public function update(PartnerRequest $partnerRequest, array $data)
+    {
+        if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
+        else $data['is_demo'] = $partnerRequest->is_demo;
+
+        PartnerRequest::update($data);
+    }
 }
