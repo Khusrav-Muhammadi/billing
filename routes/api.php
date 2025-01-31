@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('organizations/delete-pack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'deletePack']);
     Route::post('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'store']);
     Route::get('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'index']);
+    Route::get('partner-request/{partnerRequest}', [\App\Http\Controllers\API\PartnerRequestController::class, 'show']);
 
     Route::get('dashboard', [\App\Http\Controllers\API\DashBoardController::class, 'index']);
 
