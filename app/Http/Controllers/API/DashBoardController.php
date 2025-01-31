@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\PartnerRequest;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -101,6 +102,10 @@ class DashBoardController extends Controller
 
         $chartData = array_values($formattedResults);
 
+        $newRequest = PartnerRequest::where('request_status', 'Новый')->count();
+        $successRequest = PartnerRequest::where('request_status', 'Успешный')->count();
+        $rejectRequest = PartnerRequest::where('request_status', 'Отклонён')->count();
+
         return response()->json([
             'clients' => $clients,
             'activeClientsByMonth' => $activeClientsByMonth,
@@ -108,6 +113,9 @@ class DashBoardController extends Controller
             'chartData' => $chartData,
             'clients_count' => $clients_count,
             'totalIncomeForMonth' => $totalIncomeForMonth,
+            'newRequest' => $newRequest,
+            'successRequest' => $successRequest,
+            'rejectRequest' => $rejectRequest,
         ]);
     }
 

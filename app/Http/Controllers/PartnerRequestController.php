@@ -28,6 +28,7 @@ class PartnerRequestController extends Controller
         $data = $request->validated();
 
         $partnerRequest->update([
+            'reject_cause' => $data['reject_cause'],
             'request_status' => 'Отклонён'
         ]);
         return redirect()->back();
