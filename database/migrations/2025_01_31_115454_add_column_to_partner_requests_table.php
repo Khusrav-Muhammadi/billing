@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('partners', function (Blueprint $table) {
+        Schema::table('partner_requests', function (Blueprint $table) {
             $table->text('reject_cause')->nullable();
         });
     }
@@ -21,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('partners', function (Blueprint $table) {
+        Schema::table('partner_requests', function (Blueprint $table) {
             //
         });
     }
