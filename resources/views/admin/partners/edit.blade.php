@@ -33,7 +33,7 @@
                 <label for="partner_status_id">Статус партнёра</label>
                 <select class="form-control form-control-sm" name="partner_status_id">
                     @foreach($partnerStatuses as $status)
-                        <option value="{{ $status->id }}" {{ $partner->id == $partner->partner_status_id ? 'selected' : '' }}>{{ $status->name }}</option>
+                        <option value="{{ $status->id }}" {{ $status->id == $partner->partner_status_id ? 'selected' : '' }}>{{ $status->name }}</option>
                     @endforeach
                 </select>
             </div>

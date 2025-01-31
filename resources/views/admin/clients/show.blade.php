@@ -21,7 +21,7 @@
             @method('PATCH')
             <div class="row mb-3">
                 <div class="col-4 ml-5 mt-3">
-                    <label for="name">Наименование</label>
+                    <label for="name">ФИО</label>
                     <input type="text" class="form-control" name="name" value="{{ $client->name }}">
                 </div>
                 <div class="col-4 mt-3">
