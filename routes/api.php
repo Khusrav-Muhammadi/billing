@@ -40,6 +40,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
-Route::get('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
+Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
 
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
