@@ -22,7 +22,9 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
-            TariffSeeder::class
+            TariffSeeder::class,
+            PartnerStatusSeeder::class,
+            PackSeeder::class,
         ]);
 
     }
