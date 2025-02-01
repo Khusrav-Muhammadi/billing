@@ -19,8 +19,7 @@ class StoreRequest extends FormRequest
             'name' => ['required'],
             'email' => ['required'],
             'phone' => ['required'],
-            'address' => ['required'],
-            'partner_status_id' => ['nullable', Rule::exists('partner_statuses','id')],
+            'address' => ['required']
         ];
     }
 }

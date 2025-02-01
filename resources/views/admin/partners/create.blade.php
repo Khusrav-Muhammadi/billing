@@ -30,15 +30,6 @@
             </div>
 
             <div class="form-group">
-                <label for="partner_status_id">Статус партнёра</label>
-                <select class="form-control form-control-sm" name="partner_status_id">
-                    @foreach($partnerStatuses as $status)
-                        <option value="{{ $status->id }}">{{ $status->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="form-group">
                 <label for="email">Адрес</label>
                 <textarea name="address" cols="30" rows="10" class="form-control"></textarea>
             </div>
