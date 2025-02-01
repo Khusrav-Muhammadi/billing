@@ -23,7 +23,6 @@ class PartnerController extends Controller
 
     public function create()
     {
-        $managers = User::all();
         $partnerStatuses = PartnerStatus::all();
 
         return view('admin.partners.create', compact('partnerStatuses'));
