@@ -104,7 +104,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         ];
 
         if ($pack->type == 'user') {
-            $data['user_count'] = $pack->amount;
+            $data['user_count'] = $organizationPack->amount;
         }
 
         $response = Http::withHeaders([

@@ -3,10 +3,6 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Client\GetBalanceRequest;
-use App\Http\Requests\Client\StoreRequest;
-use App\Http\Requests\Client\TransactionRequest;
-use App\Http\Requests\Client\UpdateRequest;
 use App\Http\Requests\Organization\AccessRequest;
 use App\Http\Requests\Organization\AddPackRequest;
 use App\Models\BusinessType;
@@ -61,9 +57,9 @@ class OrganizationController extends Controller
         return response()->json(['success'=> true]);
     }
 
-    public function access(AccessRequest $request)
+    public function access(Organization $organization)
     {
-        $this->repository->access($request->validated());
+        $this->repository->access($organization);
 
         return response()->json(['success'=> true]);
     }
