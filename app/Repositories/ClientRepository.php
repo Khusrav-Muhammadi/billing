@@ -84,9 +84,10 @@ class ClientRepository implements ClientRepositoryInterface
         if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
         else $data['is_demo'] = false;
 
+        $client->update($data);
+
         if ($data['is_demo'] == false) $this->withdrawal($client);
 
-        $client->update($data);
     }
 
     public function activation(Client $client)

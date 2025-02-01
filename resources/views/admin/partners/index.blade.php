@@ -75,7 +75,7 @@
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title"
-                                        id="exampleModalLabel"> История клиента</h5>
+                                        id="exampleModalLabel"> История партнера</h5>
                                 </div>
                                 <div class="modal-body">
                                     @foreach($partner->history as $history)
@@ -98,6 +98,7 @@
                                                     @elseif($key == 'email') Почта: <br>
                                                     @elseif($key == 'client_type') Тип клиента: <br>
                                                     @elseif($key == 'tariff') Тариф: <br>
+                                                    @elseif($key == 'partner_status') Статус партнера: <br>
                                                     @endif
                                                     <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
                                                         ==> {{ $value['new_value'] ?? 'N/A' }}</p>

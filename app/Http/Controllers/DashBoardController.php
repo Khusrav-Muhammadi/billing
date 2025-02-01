@@ -81,6 +81,7 @@ class DashBoardController extends Controller
 
         $clientsss = Client::whereMonth('created_at', $currentMonth)
             ->whereYear('created_at', $currentYear)
+            ->where('is_active', true)
             ->get();
 
         foreach ($clientsss as $client) {
