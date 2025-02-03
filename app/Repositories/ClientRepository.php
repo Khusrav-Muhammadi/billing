@@ -64,6 +64,7 @@ class ClientRepository implements ClientRepositoryInterface
     public function store(array $data)
     {
         if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
+        if (isset($data['nfr']) && $data['nfr'] == 'on') $data['nfr'] = true;
 
         $client = Client::create($data);
 

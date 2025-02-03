@@ -27,6 +27,7 @@ class StoreRequest extends FormRequest
             'email' => ['nullable', 'string', 'email', 'max:255', 'unique:clients'],
             'client_type' => ['required', Rule::enum(ClientType::class)],
             'partner_request_id' => ['nullable'],
+            'nfr' => ['']
         ];
     }
 

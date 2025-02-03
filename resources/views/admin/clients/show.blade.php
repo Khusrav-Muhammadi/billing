@@ -104,6 +104,14 @@
                                style="width: 40px; margin: 0;" {{ $client->is_demo ? 'checked' : '' }}>
                     </div>
                 @endif
+
+                @if($client->nfr)
+                    <div class="col-4 ml-2 mt-3" style="display: flex; align-items: center;">
+                        <label for="is_demo" style="margin-right: 10px;">НФР:</label>
+                        <input type="checkbox" class="form-control"
+                               style="width: 40px; margin: 0;" {{ $client->nfr ? 'checked' : '' }}>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -124,7 +132,7 @@
         <div class="d-flex">
             <div class="card table-container flex-fill mr-3">
                 <div class="d-flex justify-content-between align-items-center mb-3 ">
-                    @if($client->balance >= $client->tariff?->price && $client->is_active || $client->is_demo)
+                    @if($client->balance >= $client->tariff?->price && $client->is_active || $client->is_demo || $client->nfr)
                         <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
                            class="btn btn-outline-primary ml-2 mt-2">Создать</a>
                     @endif
@@ -151,7 +159,8 @@
                             <td>{{ $organization->businessType?->name }}</td>
                             <td>
                                 <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
-                                       data-bs-toggle="modal" data-bs-target="#organizationActivation{{$organization->id}}" {{ $organization->has_access ? 'checked' : '' }}
+                                       data-bs-toggle="modal"
+                                       data-bs-target="#organizationActivation{{$organization->id}}" {{ $organization->has_access ? 'checked' : '' }}
                                     {{ $client->is_active ? '' : 'disabled' }}
                                 >
                             </td>
@@ -175,10 +184,13 @@
                                     <div class="modal-content">
                                         <div class="modal-header">
                                             <h5 class="modal-title"
-                                                id="exampleModalLabel"> {{ $organization->has_access ? 'Деактивация' : 'Активация' }} организации</h5>
+                                                id="exampleModalLabel"> {{ $organization->has_access ? 'Деактивация' : 'Активация' }}
+                                                организации</h5>
                                         </div>
                                         <div class="modal-body">
-                                            Вы уверены что хотите {{ $organization->has_access ? 'деактивировать' : 'активировать' }} эту организацию?
+                                            Вы уверены что
+                                            хотите {{ $organization->has_access ? 'деактивировать' : 'активировать' }}
+                                            эту организацию?
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">

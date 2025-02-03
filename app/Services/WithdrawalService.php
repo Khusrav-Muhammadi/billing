@@ -14,11 +14,13 @@ class WithdrawalService
     public function handle(Organization $organization, $sum)
     {
         $client = $organization->client()->first();
+        if ($client->nfr) return true;
         if ($client->is_demo) return true;
         if ($client->balance >= $sum) {
             $client->balance -= $sum;
             $client->disableObserver = true;
             $client->save();
+
 
             Transaction::create([
                 'client_id' => $client->id,
