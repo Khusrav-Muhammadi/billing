@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Client\GetBalanceRequest;
+use App\Http\Requests\Client\RejectRequest;
 use App\Http\Requests\Client\StoreRequest;
 use App\Http\Requests\Client\TransactionRequest;
 use App\Http\Requests\Client\UpdateRequest;
@@ -73,9 +74,9 @@ class ClientController extends Controller
         return redirect()->route('client.index');
     }
 
-    public function activation(Client $client)
+    public function activation(Client $client, RejectRequest $request)
     {
-        $this->repository->activation($client);
+        $this->repository->activation($client, $request->validated());
 
         return redirect()->back();
     }

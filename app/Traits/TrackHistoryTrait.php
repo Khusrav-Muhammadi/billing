@@ -32,7 +32,6 @@ trait TrackHistoryTrait
             'model_id' => $model->id,
             'model_type' => get_class($model),
         ]);
-
        $this->track($model, $documentHistory);
     }
 
@@ -107,8 +106,6 @@ trait TrackHistoryTrait
                 'model_history_id' => $history->id,
                 'body' => json_encode($value),
             ]);
-        } else {
-            $history->delete();
         }
 
     }

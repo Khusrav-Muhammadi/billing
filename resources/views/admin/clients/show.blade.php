@@ -467,23 +467,51 @@
     <div class="modal fade" id="activation" tabindex="-1"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
+            @if(!$client->is_active)
+                <form action="{{ route('client.activation', $client->id) }}" method="POST">@endif
+                    @csrf
+
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"
+                                id="exampleModalLabel"> {{ $client->is_active ? 'Деактивация' : 'Активация' }}
+                                клиента</h5>
+                        </div>
+                        <div class="modal-body">
+                            Вы уверены что хотите {{ $client->is_active ? 'деактивировать' : 'активировать' }} эти
+                            данные?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Отмена
+                            </button>
+                            <button type="submit"
+                                    class="btn btn-{{ $client->is_active ? 'danger' : 'success' }}"
+                                    @if($client->is_active) data-bs-toggle="modal"
+                                    data-bs-target="#reject_cause" @endif>{{ $client->is_active ? 'Деактивировать' : 'Активировать' }}</button>
+                        </div>
+                    </div>
+                </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="reject_cause" tabindex="-1" aria-labelledby="exampleModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
             <form action="{{ route('client.activation', $client->id) }}" method="POST">
                 @csrf
-
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"
-                            id="exampleModalLabel"> {{ $client->is_active ? 'Деактивация' : 'Активация' }} клиента</h5>
+                        <h5 class="modal-title" id="exampleModalLabel">Причина отклонения</h5>
                     </div>
                     <div class="modal-body">
-                        Вы уверены что хотите {{ $client->is_active ? 'деактивировать' : 'активировать' }} эти данные?
+                                        <textarea name="reject_cause" id="" cols="30" rows="5" class="form-control"
+                                                  placeholder="Почему вы отклоняете этот запрос?"></textarea>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            Отмена
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена
                         </button>
-                        <button type="submit"
-                                class="btn btn-{{ $client->is_active ? 'danger' : 'success' }}">{{ $client->is_active ? 'Деактивировать' : 'Активировать' }}</button>
+                        <button type="submit" class="btn btn-primary">Отправить</button>
                     </div>
                 </div>
             </form>
@@ -519,9 +547,17 @@
                                     @elseif($key == 'email') Почта: <br>
                                     @elseif($key == 'client_type') Тип клиента: <br>
                                     @elseif($key == 'tariff') Тариф: <br>
+                                    @elseif($key == 'is_active') Доступ: <br>
+                                    @elseif($key == 'reject_cause') Причина: <br>
                                     @endif
-                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
-                                        ==> {{ $value['new_value'] ?? 'N/A' }}</p>
+                                    @if($key == 'is_active')
+                                        <p style="margin-left: 20px;"> {{ $value['new_value'] == 0 ? 'Деактивирован' : 'Активирован' }}</p>
+                                    @elseif($key = 'reject_cause')
+                                            <p style="margin-left: 20px;">{{ $value['new_value'] ?? 'N/A' }}</p>
+                                    @else
+                                        <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
+                                            ==> {{ $value['new_value'] ?? 'N/A' }}</p>
+                                    @endif
                                 @endforeach
                             @endforeach
                         </div>

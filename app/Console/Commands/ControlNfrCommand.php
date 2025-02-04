@@ -34,19 +34,20 @@ class ControlNfrCommand extends Command
                 ['is_active', false],
             ])->get();
 
-        $threeMonthsAgo = Carbon::now()->subMonths(3)->startOfMonth();
+        $threeMonthsAgo = now()->subMonths(3);
 
         foreach ($clients as $client) {
-            $data = Client::query()
+            $count = Client::query()
                 ->where([
                     ['partner_id', $client->partner?->id],
                     ['is_active', true],
-                    ['nfr', true],
+                    ['nfr', false],
                 ])
-                ->whereDate('created_at', '<=', $threeMonthsAgo)
-                ->first();
+                ->whereBetween('created_at', [$threeMonthsAgo, now()])
+                ->count();
 
-            if ($data) {
+
+            if ($count < 1) {
                 $repository = new ClientRepository();
                 $repository->activation($client);
             }
