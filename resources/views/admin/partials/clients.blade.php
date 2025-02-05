@@ -29,7 +29,7 @@
             <td class="text-center">{{ $client->total_users }}</td>
             <td class="text-center">{{ $client->balance }}</td>
             <td class="text-center">{{ $client->validity_period }}</td>
-            <td>{{ $client->last_activity }}</td>
+            <td>{{ $client->last_activity?->format('d.m.Y H:i') }}</td>
             <td class="text-center">
                 @if($client->is_active)
                     <p style="color: #00bb00">Активный</p>
