@@ -150,10 +150,13 @@
                                     @elseif($key == 'business_type') Тип бизнеса: <br>
                                     @elseif($key == 'tariff') Тариф: <br>
                                     @elseif($key == 'has_access') Доступ: <br>
+                                    @elseif($key == 'reject_cause') Причина: <br>
                                     @endif
                                     @if($key == 'has_access')
                                         <p style="margin-left: 20px;">{{ $value['previous_value'] == 0 ? 'Отключен' : 'Подключён' }}
                                             ==> {{ $value['new_value'] == 0 ? 'Отключен' : 'Подключён' }}</p>
+                                    @elseif($key = 'reject_cause')
+                                        <p style="margin-left: 20px;">{{ $value['new_value'] ?? 'N/A' }}</p>
                                     @else
                                         <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
                                             ==> {{ $value['new_value'] ?? 'N/A' }}</p>
@@ -170,7 +173,7 @@
 @endsection
 
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         const amountInput = document.querySelector('input[name="amount"]');
         const priceInput = document.querySelector('input[name="price"]');
         const totalPrice = document.getElementById('total-price');

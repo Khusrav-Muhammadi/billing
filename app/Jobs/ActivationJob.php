@@ -51,7 +51,10 @@ class ActivationJob implements ShouldQueue
                 $organizations = Organization::whereIn('id', $this->organizationIds)->get();
 
                 foreach ($organizations as $organization) {
-                    $organization->update(['has_access' => $this->activation]);
+                    $organization->update([
+                        'has_access' => $this->activation,
+                        'reject_cause' => $this->reject_cause
+                    ]);
                 }
 
                 if ($this->activation) {

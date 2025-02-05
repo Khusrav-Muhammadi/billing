@@ -94,7 +94,7 @@ class ClientRepository implements ClientRepositoryInterface
     public function activation(Client $client, array $data)
     {
         $organizationIds = $client->organizations()->pluck('id')->toArray();
-        $reject_cause = $data['reject_cause'] ?? $client->reject_cause;
+        $reject_cause = $data['reject_cause'] ?? '';
 
         ActivationJob::dispatch($organizationIds, $client->sub_domain, false, true, auth()->id(), $reject_cause);
     }

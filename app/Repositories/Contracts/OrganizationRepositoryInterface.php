@@ -12,7 +12,7 @@ interface OrganizationRepositoryInterface
 
     public function update(Organization $organization, array $data);
 
-    public function access(Organization $organization);
+    public function access(Organization $organization, array $data);
 
     public function addPack(Organization $organization, array $data);
 

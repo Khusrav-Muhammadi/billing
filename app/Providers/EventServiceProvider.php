@@ -44,7 +44,7 @@ class EventServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Client::observe(ClientObserver::class);
-    //    Organization::observe(OrganizationObserver::class);
+        Organization::observe(OrganizationObserver::class);
         Partner::observe(PartnerObserver::class);
     }
 
