@@ -49,11 +49,13 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $organization->update($data);
     }
 
-    public function access(Organization $organization)
+    public function access(Organization $organization, array $data)
     {
         $client = $organization->client()->first();
 
-        ActivationJob::dispatch(array($organization->id), $client->sub_domain, !$organization->has_access, false, auth()->id());
+        $reject_cause = $data['reject_cause'] ?? '';
+
+        ActivationJob::dispatch(array($organization->id), $client->sub_domain, !$organization->has_access, false, auth()->id(), $reject_cause);
     }
 
     public function addPack(Organization $organization, array $data)

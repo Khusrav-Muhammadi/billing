@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\ClientHistoryEvent;
 use App\Events\OrganizationHistoryEvent;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
@@ -22,7 +23,8 @@ class ActivationJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public array $organizationIds, public string $domain, public bool $activation, public bool $updateClient = false, public int $authId = 1)
+    public function __construct(public array $organizationIds, public string $domain, public bool $activation,
+                                public bool $updateClient = false, public int $authId = 1, public string $reject_cause = '')
     {
         //
     }
@@ -49,8 +51,10 @@ class ActivationJob implements ShouldQueue
                 $organizations = Organization::whereIn('id', $this->organizationIds)->get();
 
                 foreach ($organizations as $organization) {
-                    $organization->update(['has_access' => $this->activation]);
-                    OrganizationHistoryEvent::dispatch($organization, $this->authId);
+                    $organization->update([
+                        'has_access' => $this->activation,
+                        'reject_cause' => $this->reject_cause
+                    ]);
                 }
 
                 if ($this->activation) {
@@ -66,8 +70,11 @@ class ActivationJob implements ShouldQueue
             $organization = Organization::whereIn('id', $this->organizationIds)->first();
             $client = $organization->client()->first();
 
-            $client->disableObserver = true;
-            $client->update(['is_active' => !$client->is_active]);
+
+            $client->is_active = !$client->is_active;
+            $client->reject_cause = $this->reject_cause;
+            $client->save();
+
         }
     }
 }

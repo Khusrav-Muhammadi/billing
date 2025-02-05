@@ -127,6 +127,11 @@
                 @enderror
             </div>
 
+            <div class="form-group col-2" id="partner_checkbox_container" style="display: none; align-items: center;">
+                <label for="partner_checkbox" style="margin-right: 10px;">НФР:</label>
+                <input type="checkbox" name="nfr" class="form-control" style="width: 30px; margin: 0;">
+            </div>
+
             <div class="form-group col-2" style="display: flex; align-items: center;">
                 <label for="is_demo" style="margin-right: 10px;">Демо версия:</label>
                 <input type="checkbox" name="is_demo" class="form-control @error('is_demo') is-invalid @enderror"
@@ -142,4 +147,23 @@
     </div>
 
 @endsection
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let partnerSelect = document.querySelector("select[name='partner_id']");
+        let partnerCheckboxContainer = document.getElementById("partner_checkbox_container");
+
+        function togglePartnerCheckbox() {
+            if (partnerSelect.value) {
+                partnerCheckboxContainer.style.display = "flex";
+            } else {
+                partnerCheckboxContainer.style.display = "none";
+            }
+        }
+
+        partnerSelect.addEventListener("change", togglePartnerCheckbox);
+        togglePartnerCheckbox();
+    });
+</script>
+
 

@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Events\ClientHistoryEvent;
+use App\Events\OrganizationHistoryEvent;
+use App\Listeners\ClientHistoryListener;
+use App\Listeners\OrganizationHistoryListener;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Partner;
@@ -24,6 +28,14 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
+
+        ClientHistoryEvent::class => [
+            ClientHistoryListener::class
+        ],
+
+        OrganizationHistoryEvent::class => [
+            OrganizationHistoryListener::class
+        ]
     ];
 
     /**

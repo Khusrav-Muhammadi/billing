@@ -32,7 +32,6 @@ trait TrackHistoryTrait
             'model_id' => $model->id,
             'model_type' => get_class($model),
         ]);
-
        $this->track($model, $documentHistory);
     }
 
@@ -95,8 +94,9 @@ trait TrackHistoryTrait
     private function track(Model $document, ModelHistory $history)
     {
         $value = collect($this->getUpdated($document))
-            ->filter(function ($value, $field) {
-                return $field != 'file' && $field != 'position' && $field != 'dialog_state' && $field != 'is_finished' && $field != 'status_update_date';
+            ->filter(function ($value, $field) use ($history) {
+                if ($field == 'balance') $history->delete();
+                return $field != 'file' && $field != 'position' && $field != 'dialog_state' && $field != 'balance' && $field != 'status_update_date';
             })
             ->mapWithKeys(function ($value, $field) use ($document) {
                 return [$field => $this->getHistoryDetails($document, $value, $field)];
@@ -107,8 +107,6 @@ trait TrackHistoryTrait
                 'model_history_id' => $history->id,
                 'body' => json_encode($value),
             ]);
-        } else {
-            $history->delete();
         }
 
     }

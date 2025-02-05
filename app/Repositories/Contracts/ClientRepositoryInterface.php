@@ -14,7 +14,7 @@ interface ClientRepositoryInterface
 
     public function update(Client $client, array $data);
 
-    public function activation(Client $client);
+    public function activation(Client $client, array $data);
 
     public function createTransaction(Client $client, array $data);
 

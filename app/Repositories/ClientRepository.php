@@ -64,10 +64,11 @@ class ClientRepository implements ClientRepositoryInterface
     public function store(array $data)
     {
         if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
+        if (isset($data['nfr']) && $data['nfr'] == 'on') $data['nfr'] = true;
 
         $client = Client::create($data);
 
-        SubDomainJob::dispatch($client);
+//        SubDomainJob::dispatch($client);
 
         if (isset($data['partner_request_id']) && $data['partner_request_id'] != null) {
             PartnerRequest::where('id', $data['partner_request_id'])
@@ -90,11 +91,12 @@ class ClientRepository implements ClientRepositoryInterface
 
     }
 
-    public function activation(Client $client)
+    public function activation(Client $client, array $data)
     {
         $organizationIds = $client->organizations()->pluck('id')->toArray();
+        $reject_cause = $data['reject_cause'] ?? '';
 
-        ActivationJob::dispatch($organizationIds, $client->sub_domain, false, true);
+        ActivationJob::dispatch($organizationIds, $client->sub_domain, false, true, auth()->id(), $reject_cause);
     }
 
     public function createTransaction(Client $client, array $data)

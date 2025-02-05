@@ -104,6 +104,14 @@
                                style="width: 40px; margin: 0;" {{ $client->is_demo ? 'checked' : '' }}>
                     </div>
                 @endif
+
+                @if($client->nfr)
+                    <div class="col-4 ml-2 mt-3" style="display: flex; align-items: center;">
+                        <label for="is_demo" style="margin-right: 10px;">НФР:</label>
+                        <input type="checkbox" class="form-control"
+                               style="width: 40px; margin: 0;" {{ $client->nfr ? 'checked' : '' }}>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -124,7 +132,7 @@
         <div class="d-flex">
             <div class="card table-container flex-fill mr-3">
                 <div class="d-flex justify-content-between align-items-center mb-3 ">
-                    @if($client->balance >= $client->tariff?->price && $client->is_active || $client->is_demo)
+                    @if($client->balance >= $client->tariff?->price && $client->is_active || $client->is_demo || $client->nfr)
                         <a href="" data-bs-toggle="modal" data-bs-target="#createOrganization" type="button"
                            class="btn btn-outline-primary ml-2 mt-2">Создать</a>
                     @endif
@@ -151,7 +159,8 @@
                             <td>{{ $organization->businessType?->name }}</td>
                             <td>
                                 <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
-                                       data-bs-toggle="modal" data-bs-target="#organizationActivation{{$organization->id}}" {{ $organization->has_access ? 'checked' : '' }}
+                                       data-bs-toggle="modal"
+                                       data-bs-target="#organizationActivation{{$organization->id}}" {{ $organization->has_access ? 'checked' : '' }}
                                     {{ $client->is_active ? '' : 'disabled' }}
                                 >
                             </td>
@@ -169,26 +178,33 @@
                         <div class="modal fade" id="organizationActivation{{$organization->id}}" tabindex="-1"
                              aria-labelledby="exampleModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
-                                <form action="{{ route('organization.access', $organization->id) }}" method="POST">
-                                    @csrf
+                                @if(!$organization->has_access)
+                                    <form action="{{ route('organization.access', $organization->id) }}" method="POST">
+                                        @endif
+                                        @csrf
 
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title"
-                                                id="exampleModalLabel"> {{ $organization->has_access ? 'Деактивация' : 'Активация' }} организации</h5>
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title"
+                                                    id="exampleModalLabel"> {{ $organization->has_access ? 'Деактивация' : 'Активация' }}
+                                                    организации</h5>
+                                            </div>
+                                            <div class="modal-body">
+                                                Вы уверены что
+                                                хотите {{ $organization->has_access ? 'деактивировать' : 'активировать' }}
+                                                эту организацию?
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                    Отмена
+                                                </button>
+                                                <button type="submit"
+                                                        class="btn btn-{{ $organization->has_access ? 'danger' : 'success' }}"
+                                                        @if($organization->has_access) data-bs-toggle="modal"
+                                                        data-bs-target="#organization_reject_cause" @endif>{{ $organization->has_access ? 'Деактивировать' : 'Активировать' }}</button>
+                                            </div>
                                         </div>
-                                        <div class="modal-body">
-                                            Вы уверены что хотите {{ $organization->has_access ? 'деактивировать' : 'активировать' }} эту организацию?
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                Отмена
-                                            </button>
-                                            <button type="submit"
-                                                    class="btn btn-{{ $organization->has_access ? 'danger' : 'success' }}">{{ $organization->has_access ? 'Деактивировать' : 'Активировать' }}</button>
-                                        </div>
-                                    </div>
-                                </form>
+                                    </form>
                             </div>
                         </div>
 
@@ -253,30 +269,6 @@
                                                 Отмена
                                             </button>
                                             <button type="submit" class="btn btn-primary">Сохранить</button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div class="modal fade" id="deleteOrganization{{$organization->id}}" tabindex="-1"
-                             aria-labelledby="exampleModalLabel" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <form action="{{ route('organization.destroy', $organization->id) }}" method="POST">
-                                    @csrf
-                                    @method('DELETE')
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="exampleModalLabel">Удаление организации</h5>
-                                        </div>
-                                        <div class="modal-body">
-                                            Вы уверены что хотите удалить эти данные?
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                Отмена
-                                            </button>
-                                            <button type="submit" class="btn btn-danger">Удалить</button>
                                         </div>
                                     </div>
                                 </form>
@@ -362,7 +354,6 @@
                 </div>
             </div>
         </div>
-    </div>
     </div>
 
     <div class="modal fade" id="createOrganization" tabindex="-1" aria-labelledby="exampleModalLabel"
@@ -455,23 +446,75 @@
     <div class="modal fade" id="activation" tabindex="-1"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
+            @if(!$client->is_active)
+                <form action="{{ route('client.activation', $client->id) }}" method="POST">
+                    @endif
+                    @csrf
+
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"
+                                id="exampleModalLabel"> {{ $client->is_active ? 'Деактивация' : 'Активация' }}
+                                клиента</h5>
+                        </div>
+                        <div class="modal-body">
+                            Вы уверены что хотите {{ $client->is_active ? 'деактивировать' : 'активировать' }} эти
+                            данные?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Отмена
+                            </button>
+                            <button type="submit"
+                                    class="btn btn-{{ $client->is_active ? 'danger' : 'success' }}"
+                                    @if($client->is_active) data-bs-toggle="modal"
+                                    data-bs-target="#reject_cause" @endif>{{ $client->is_active ? 'Деактивировать' : 'Активировать' }}</button>
+                        </div>
+                    </div>
+                </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="reject_cause" tabindex="-1" aria-labelledby="exampleModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
             <form action="{{ route('client.activation', $client->id) }}" method="POST">
                 @csrf
-
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"
-                            id="exampleModalLabel"> {{ $client->is_active ? 'Деактивация' : 'Активация' }} клиента</h5>
+                        <h5 class="modal-title" id="exampleModalLabel">Причина отклонения</h5>
                     </div>
                     <div class="modal-body">
-                        Вы уверены что хотите {{ $client->is_active ? 'деактивировать' : 'активировать' }} эти данные?
+                                        <textarea name="reject_cause" id="" cols="30" rows="5" class="form-control"
+                                                  placeholder="Почему вы отклоняете этот запрос?"></textarea>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            Отмена
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена
                         </button>
-                        <button type="submit"
-                                class="btn btn-{{ $client->is_active ? 'danger' : 'success' }}">{{ $client->is_active ? 'Деактивировать' : 'Активировать' }}</button>
+                        <button type="submit" class="btn btn-primary">Отправить</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="organization_reject_cause" tabindex="-1" aria-labelledby="exampleModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <form action="{{ route('organization.access', $organization->id) }}" method="POST">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Причина отклонения</h5>
+                    </div>
+                    <div class="modal-body">
+                                        <textarea name="reject_cause" id="" cols="30" rows="5" class="form-control"
+                                                  placeholder="Почему вы отклоняете этот запрос?"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена
+                        </button>
+                        <button type="submit" class="btn btn-primary">Отправить</button>
                     </div>
                 </div>
             </form>
@@ -507,9 +550,17 @@
                                     @elseif($key == 'email') Почта: <br>
                                     @elseif($key == 'client_type') Тип клиента: <br>
                                     @elseif($key == 'tariff') Тариф: <br>
+                                    @elseif($key == 'is_active') Доступ: <br>
+                                    @elseif($key == 'reject_cause') Причина: <br>
                                     @endif
-                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
-                                        ==> {{ $value['new_value'] ?? 'N/A' }}</p>
+                                    @if($key == 'is_active')
+                                        <p style="margin-left: 20px;"> {{ $value['new_value'] == 0 ? 'Деактивирован' : 'Активирован' }}</p>
+                                    @elseif($key = 'reject_cause')
+                                        <p style="margin-left: 20px;">{{ $value['new_value'] ?? 'N/A' }}</p>
+                                    @else
+                                        <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
+                                            ==> {{ $value['new_value'] ?? 'N/A' }}</p>
+                                    @endif
                                 @endforeach
                             @endforeach
                         </div>

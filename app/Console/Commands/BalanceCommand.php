@@ -30,7 +30,10 @@ class BalanceCommand extends Command
      */
     public function handle()
     {
-        $clients = Client::where('is_active', true)->get();
+        $clients = Client::where([
+            ['is_active', true],
+            ['nfr', false]
+        ])->get();
 
         $service = new WithdrawalService();
 

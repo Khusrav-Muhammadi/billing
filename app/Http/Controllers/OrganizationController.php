@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Organization\AccessRequest;
 use App\Http\Requests\Organization\AddPackRequest;
+use App\Http\Requests\Organization\RejectRequest;
 use App\Http\Requests\Organization\StoreRequest;
 use App\Http\Requests\Organization\UpdateRequest;
 use App\Models\Client;
@@ -51,9 +52,9 @@ class OrganizationController extends Controller
         return redirect()->back();
     }
 
-    public function access(Organization $organization)
+    public function access(Organization $organization, RejectRequest $request)
     {
-        $this->repository->access($organization);
+        $this->repository->access($organization, $request->validated());
 
         return redirect()->back();
     }
