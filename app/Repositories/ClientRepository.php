@@ -68,7 +68,7 @@ class ClientRepository implements ClientRepositoryInterface
 
         $client = Client::create($data);
 
-//        SubDomainJob::dispatch($client);
+        SubDomainJob::dispatch($client);
 
         if (isset($data['partner_request_id']) && $data['partner_request_id'] != null) {
             PartnerRequest::where('id', $data['partner_request_id'])
