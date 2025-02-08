@@ -498,6 +498,7 @@
         </div>
     </div>
 
+    @if(isset($organization))
     <div class="modal fade" id="organization_reject_cause" tabindex="-1" aria-labelledby="exampleModalLabel"
          aria-hidden="true">
         <div class="modal-dialog">
@@ -520,6 +521,7 @@
             </form>
         </div>
     </div>
+    @endif
 
     <div class="modal fade" id="history" tabindex="-1"
          aria-labelledby="exampleModalLabel" aria-hidden="true">
