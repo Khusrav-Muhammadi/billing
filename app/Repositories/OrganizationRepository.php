@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Jobs\ActivationJob;
+use App\Mail\SendSiteDataMail;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
@@ -12,6 +13,8 @@ use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
@@ -22,7 +25,9 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         return DB::transaction(function () use ($client, $data) {
             $organization = Organization::create($data);
 
-            $res = $this->createInSham($organization, $client->sub_domain);
+            $password = Str::random(12);
+
+            $res = $this->createInSham($organization, $client->sub_domain, $password);
 
             if (!$res) $organization->delete();
             else {
@@ -40,9 +45,11 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                         'type' => 'Снятие',
                     ]);
             }
-                return $organization;
-            });
-        }
+
+            if (Organization::where('client_id', $client->id)->count() == 1) Mail::to($client->email)->send(new SendSiteDataMail($client, $password));
+            return $organization;
+        });
+    }
 
     public function update(Organization $organization, array $data)
     {
@@ -73,7 +80,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     }
 
-    public function createInSham(Organization $organization, string $sub_domain)
+    public function createInSham(Organization $organization, string $sub_domain, string $password)
     {
         $domain = env('APP_DOMAIN');
         $url = "https://{$sub_domain}-back.{$domain}/api/organization";
@@ -88,6 +95,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'user_count' => $tariff->user_count,
             'project_count' => $tariff->project_count,
             'b_organization_id' => $organization->id,
+            'password' => $password
         ]);
 
         return $response->successful();
