@@ -28,6 +28,7 @@ class ClientRepository implements ClientRepositoryInterface
             ->with(['tariff', 'partner', 'organizations.packs.pack' => function ($query) {
                 $query->where('type', 'user');
             }])
+            ->orderByDesc('created_at')
             ->paginate(20);
 
         $processedClients = $clients->getCollection()->map(function ($client) {

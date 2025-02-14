@@ -341,7 +341,7 @@
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $transaction->created_at }}</td>
                             <td>{{ $transaction->organization?->name }}</td>
-                            <td>{{ $transaction->tariff?->price }}</td>
+                            <td>{{ $transaction->tariff?->name }}</td>
                             <td>{{ $transaction->sale?->amount }}</td>
                             <td>{{ $transaction->sum }}</td>
                             <td style="color: {{ $transaction->type == 'Снятие' ? 'red' : 'green' }}">{{ $transaction->type }}</td>
