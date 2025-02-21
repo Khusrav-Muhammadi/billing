@@ -24,6 +24,7 @@ class StoreRequest extends FormRequest
             'is_demo' => ['nullable'],
             'tariff_id' => ['required', Rule::exists('tariffs','id')],
             'date' => ['required'],
+            'sub_domain' => ['required', Rule::unique('clients','sub_domain')],
         ];
     }
 }
