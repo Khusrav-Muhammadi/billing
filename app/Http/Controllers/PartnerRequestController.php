@@ -29,7 +29,7 @@ class PartnerRequestController extends Controller
 
         $partnerRequest->update([
             'reject_cause' => $data['reject_cause'],
-            'request_status' => 'Отклонён'
+            'request_status' => []
         ]);
         return redirect()->back();
     }
