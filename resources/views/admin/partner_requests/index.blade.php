@@ -92,7 +92,7 @@
                                     </div>
                                     <div class="modal-body">
                                         <textarea name="reject_cause" id="" cols="30" rows="5" class="form-control"
-                                                  placeholder="Почему вы отклоняете этот запрос?"></textarea>
+                                                  placeholder="Почему вы отклоняете этот запрос?">{{ $partner->id }}</textarea>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена
