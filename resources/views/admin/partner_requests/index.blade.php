@@ -50,7 +50,7 @@
                         <td class="text-center" style="color: {{ $partner->request_status == 'Отклонён' ? 'red' : '' }}">{{ $partner->request_status }}
                             @if($partner->request_status == 'Отклонён') <a style="color: #0033c4; cursor: pointer"
                                                                            data-bs-toggle="modal"
-                                                                           data-bs-target="#reject">(Причина)</a> @endif
+                                                                           data-bs-target="#reject{{ $partner->id }}">(Причина)</a> @endif
                         </td>
                         <td class="text-center">{{ $partner->address }}</td>
                     </tr>
@@ -105,7 +105,7 @@
                     </div>
 
 
-                    <div class="modal fade" id="reject" tabindex="-1" aria-labelledby="exampleModalLabel"
+                    <div class="modal fade" id="reject{{ $partner->id }}" tabindex="-1" aria-labelledby="exampleModalLabel"
                          aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
