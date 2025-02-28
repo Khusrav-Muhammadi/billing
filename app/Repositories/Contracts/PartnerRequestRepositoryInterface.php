@@ -11,4 +11,6 @@ interface PartnerRequestRepositoryInterface
 
     public function update(PartnerRequest $partnerRequest, array $data);
 
+    public function changeStatus(PartnerRequest $partnerRequest);
+
 }

@@ -31,4 +31,9 @@ class PartnerRequestRepository implements PartnerRequestRepositoryInterface
 
         $partnerRequest->update($data);
     }
+
+    public function changeStatus(PartnerRequest $partnerRequest)
+    {
+        $partnerRequest->update(['request_status' => 'Новый']);
+    }
 }

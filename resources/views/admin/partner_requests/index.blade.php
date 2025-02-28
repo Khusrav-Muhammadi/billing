@@ -27,7 +27,7 @@
                 </thead>
                 <tbody>
                 @foreach($partnerRequests as $partner)
-                    <tr @if ($partner->request_status != 'Успешный')
+                    <tr @if ($partner->request_status == 'Новый')
                         data-bs-toggle="modal" data-bs-target="#edit-{{ $partner->id }}"
                         @endif
                     >
@@ -47,7 +47,8 @@
                                 Боевая версия
                             @endif
                         </td>
-                        <td class="text-center" style="color: {{ $partner->request_status == 'Отклонён' ? 'red' : '' }}">{{ $partner->request_status }}
+                        <td class="text-center"
+                            style="color: {{ $partner->request_status == 'Отклонён' ? 'red' : '' }}">{{ $partner->request_status }}
                             @if($partner->request_status == 'Отклонён') <a style="color: #0033c4; cursor: pointer"
                                                                            data-bs-toggle="modal"
                                                                            data-bs-target="#reject{{ $partner->id }}">(Причина)</a> @endif
@@ -68,13 +69,12 @@
                                         Что вы хотите делать с этим запросом?
                                     </div>
                                     <div class="modal-footer">
-                                        @if($partner->request_status != 'Отклонён')
-                                            <a href="#" data-bs-toggle="modal" data-bs-target="#reject_cause{{ $partner->id }}">
-                                                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                                                    Отклонить
-                                                </button>
-                                            </a>
-                                        @endif
+                                        <a href="#" data-bs-toggle="modal"
+                                           data-bs-target="#reject_cause{{ $partner->id }}">
+                                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                                                Отклонить
+                                            </button>
+                                        </a>
                                         <button type="submit" class="btn btn-success">Одобрить</button>
                                     </div>
                                 </div>
@@ -83,7 +83,8 @@
                     </div>
 
 
-                    <div class="modal fade" id="reject_cause{{ $partner->id }}" tabindex="-1" aria-labelledby="exampleModalLabel"
+                    <div class="modal fade" id="reject_cause{{ $partner->id }}" tabindex="-1"
+                         aria-labelledby="exampleModalLabel"
                          aria-hidden="true">
                         <div class="modal-dialog">
                             <form action="{{ route('partner-request.reject', $partner->id) }}" method="POST">
@@ -107,7 +108,8 @@
                     </div>
 
 
-                    <div class="modal fade" id="reject{{ $partner->id }}" tabindex="-1" aria-labelledby="exampleModalLabel"
+                    <div class="modal fade" id="reject{{ $partner->id }}" tabindex="-1"
+                         aria-labelledby="exampleModalLabel"
                          aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -115,7 +117,8 @@
                                     <h5 class="modal-title" id="exampleModalLabel">Причина отклонения</h5>
                                 </div>
                                 <div class="modal-body">
-                                    <textarea name="reject_cause" id="" cols="30" rows="5" class="form-control">{{ $partner->reject_cause }}</textarea>
+                                    <textarea name="reject_cause" id="" cols="30" rows="5"
+                                              class="form-control">{{ $partner->reject_cause }}</textarea>
                                 </div>
                             </div>
                         </div>
