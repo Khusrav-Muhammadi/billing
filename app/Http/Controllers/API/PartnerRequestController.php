@@ -32,4 +32,9 @@ class PartnerRequestController extends Controller
         return $this->repository->update($partnerRequest, $request->validated());
     }
 
+    public function changeStatus(PartnerRequest $partnerRequest)
+    {
+        return $this->repository->changeStatus($partnerRequest);
+    }
+
 }

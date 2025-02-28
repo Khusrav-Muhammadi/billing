@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Jobs\ActivationJob;
+use App\Jobs\ChangeRequestStatusJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
@@ -72,8 +73,12 @@ class ClientRepository implements ClientRepositoryInterface
         SubDomainJob::dispatch($client);
 
         if (isset($data['partner_request_id']) && $data['partner_request_id'] != null) {
-            PartnerRequest::where('id', $data['partner_request_id'])
-                ->update(['request_status' => 'Успешный']);
+            $partnerRequest = PartnerRequest::where('id', $data['partner_request_id'])->first();
+            $partnerRequest->update(['request_status' => 'Успешный']);
+
+            $partner = $partnerRequest->partner()->first();
+
+            ChangeRequestStatusJob::dispatch($partner, $partnerRequest);
         }
 
         return $client;

@@ -52,7 +52,7 @@
 
             <div class="form-group">
                 <label for="sub_domain">Адрес</label>
-                <textarea name="address" cols="30" rows="10" placeholder="Адрес" class="form-control"></textarea>
+                <textarea name="address" cols="30" rows="10" placeholder="Адрес" class="form-control" required></textarea>
             </div>
 
             <button type="submit" class="btn btn-primary mr-2"> Сохранить </button>

@@ -41,8 +41,8 @@
                 </ul>
                 <ul class="navbar-nav navbar-nav-right">
                     <li class="nav-item nav-logout d-none d-lg-block">
-                        <a class="nav-link" href="{{ route('login') }}">
-                            <i class="mdi mdi-home-circle"></i>
+                        <a class="nav-link" href="{{ route('profile.index') }}">
+                            <i class="mdi mdi-account-circle"></i>
                         </a>
                     </li>
                 </ul>
