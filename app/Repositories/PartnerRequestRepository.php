@@ -2,7 +2,9 @@
 
 namespace App\Repositories;
 
+use App\Jobs\NewRequestJob;
 use App\Models\PartnerRequest;
+use App\Models\User;
 use App\Repositories\Contracts\PartnerRequestRepositoryInterface;
 
 class PartnerRequestRepository implements PartnerRequestRepositoryInterface
@@ -13,9 +15,13 @@ class PartnerRequestRepository implements PartnerRequestRepositoryInterface
         else $data['is_demo'] = false;
 
         $data['request_status'] = 'Новый';
-        $data['partner_id'] = auth()->id();
+        $data['partner_id'] = 1;//auth()->id();
 
         PartnerRequest::create($data);
+
+        $user = User::first();
+
+        NewRequestJob::dispatch($user, 'test');
     }
 
     public function update(PartnerRequest $partnerRequest, array $data)

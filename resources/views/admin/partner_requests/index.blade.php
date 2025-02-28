@@ -58,7 +58,7 @@
                     <div class="modal fade" id="edit-{{ $partner->id }}" tabindex="-1"
                          aria-labelledby="exampleModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
-                            <form action="{{ route('partner-request.approve', $partner->id) }}" method="POST">
+                            <form action="{{ route('partner-request.approve', $partner->id) }}" method="GET">
                                 @csrf
                                 <div class="modal-content">
                                     <div class="modal-header">
@@ -68,11 +68,13 @@
                                         Что вы хотите делать с этим запросом?
                                     </div>
                                     <div class="modal-footer">
-                                        <a href="#" data-bs-toggle="modal" data-bs-target="#reject_cause{{ $partner->id }}">
-                                            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
-                                                Отклонить
-                                            </button>
-                                        </a>
+                                        @if($partner->request_status != 'Отклонён')
+                                            <a href="#" data-bs-toggle="modal" data-bs-target="#reject_cause{{ $partner->id }}">
+                                                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
+                                                    Отклонить
+                                                </button>
+                                            </a>
+                                        @endif
                                         <button type="submit" class="btn btn-success">Одобрить</button>
                                     </div>
                                 </div>

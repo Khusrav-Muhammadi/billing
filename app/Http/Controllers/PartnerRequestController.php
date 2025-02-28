@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Partner\StoreRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Http\Requests\PartnerRequest\RejectRequest;
+use App\Jobs\ChangeRequestStatusJob;
 use App\Models\Partner;
 use App\Models\PartnerRequest;
 use App\Models\PartnerStatus;
@@ -31,6 +32,11 @@ class PartnerRequestController extends Controller
             'reject_cause' => $data['reject_cause'],
             'request_status' => 'Отклонён'
         ]);
+
+        $partner = $partnerRequest->partner()->first();
+
+        ChangeRequestStatusJob::dispatch($partner, $partnerRequest);
+
         return redirect()->back();
     }
 

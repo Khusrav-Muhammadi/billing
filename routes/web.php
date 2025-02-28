@@ -93,11 +93,16 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'request'], function () {
         Route::get('/', [PartnerRequestController::class, 'index'])->name('partner-request.index');
         Route::post('/reject/{partnerRequest}', [PartnerRequestController::class, 'reject'])->name('partner-request.reject');
-        Route::post('/approve/{partnerRequest}', [PartnerRequestController::class, 'approve'])->name('partner-request.approve');
+        Route::get('/approve/{partnerRequest}', [PartnerRequestController::class, 'approve'])->name('partner-request.approve');
     });
 
     Route::group(['prefix' => 'report'], function () {
         Route::get('/income', [ReportController::class, 'income'])->name('report.income');
+    });
+
+    Route::group(['prefix' => 'profile'], function () {
+        Route::get('/', [ProfileController::class, 'edit'])->name('profile.index');
+        Route::patch('/{user}', [ProfileController::class, 'update'])->name('profile.update');
     });
 
 });

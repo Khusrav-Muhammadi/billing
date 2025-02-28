@@ -29,9 +29,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class)->except(['store']);
     Route::post('organizations/{client_id}', [\App\Http\Controllers\API\OrganizationController::class, 'store']);
     Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack']);
-
     Route::delete('organizations/delete-pack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'deletePack']);
-    Route::post('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'store']);
+
     Route::get('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'index']);
     Route::get('partner-request/{partnerRequest}', [\App\Http\Controllers\API\PartnerRequestController::class, 'show']);
     Route::patch('partner-request/{partnerRequest}', [\App\Http\Controllers\API\PartnerRequestController::class, 'update']);
@@ -39,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\API\DashBoardController::class, 'index']);
 
 });
+Route::post('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'store']);
 
 Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
 

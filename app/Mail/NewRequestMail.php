@@ -2,23 +2,23 @@
 
 namespace App\Mail;
 
-use App\Models\Client;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class NotifyClientMail extends Mailable
+class NewRequestMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(public Client $client, public int $day)
+    public function __construct(public User $user, public string $partner)
     {
-
+        //
     }
 
     /**
@@ -27,7 +27,7 @@ class NotifyClientMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Уведомление о балансе',
+            subject: 'Уведомление о новой заявке',
         );
     }
 
@@ -37,8 +37,8 @@ class NotifyClientMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mail.notify_client',
-            with: ['day' => $this->day, 'client' => $this->client]
+            view: 'mail.new_request',
+            with: ['admin' => $this->user, 'partner' => $this->partner]
         );
     }
 
