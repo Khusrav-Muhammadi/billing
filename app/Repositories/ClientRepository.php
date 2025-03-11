@@ -114,7 +114,7 @@ class ClientRepository implements ClientRepositoryInterface
         $dailyPayment = round($this->calculateDailyPayment($client), 4);
 
         $days = (int)($client->balance / $dailyPayment);
-        
+
         return Carbon::now()->addDays($days);
     }
 
@@ -214,7 +214,7 @@ class ClientRepository implements ClientRepositoryInterface
 
             // Общее количество пользователей
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
-
+            $client->validate_date = $this->calculateValidateDate($client);
             return $client;
         });
 
