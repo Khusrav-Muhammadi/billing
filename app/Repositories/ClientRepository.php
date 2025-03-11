@@ -91,6 +91,7 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function activation(Client $client, array $data)
     {
+
         $organizationIds = $client->organizations()->pluck('id')->toArray();
         $reject_cause = $data['reject_cause'] ?? '';
 
@@ -134,6 +135,28 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function getByPartner(array $data)
     {
-        return Client::query()->filter($data)->where('partner_id', auth()->id())->paginate(20);
+        $clients = Client::query()->filter($data)->where('partner_id', auth()->id())->with(['tariff'])->paginate(20);
+        $processedClients = $clients->getCollection()->map(function ($client) {
+            $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
+
+                return $organization->packs->sum(function ($organizationPack) {
+                    return $organizationPack->amount ?? 0;
+                });
+            });
+
+
+            $totalUsersFromOrganizations = $client->organizations->sum(function ($organization) {
+                return $organization->client->tariff->user_count ?? 0;
+            });
+
+            // Общее количество пользователей
+            $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
+
+            return $client;
+        });
+
+        $clients->setCollection($processedClients);
+
+        return $clients;
     }
 }
