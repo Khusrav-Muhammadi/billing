@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('organizations', function (Blueprint $table) {
-            $table->text('reject_cause')->nullable();
+        Schema::table('model_histories', function (Blueprint $table) {
+            $table->unsignedInteger('user_id')->nullable();
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('organizations', function (Blueprint $table) {
-            $table->dropColumn('reject_cause');
+        Schema::table('model_histories', function (Blueprint $table) {
+            //
         });
     }
 };
