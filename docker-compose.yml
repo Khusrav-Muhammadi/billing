@@ -6,7 +6,7 @@ services:
             - ./:/var/www
             - ./_docker/nginx/conf.d/:/etc/nginx/conf.d
         ports:
-            - "8088:80"
+            - "8098:80"
         depends_on:
             - billing_app
         container_name: billing_server
