@@ -28,7 +28,7 @@
             <td>{{ $client->tariff?->name }}</td>
             <td class="text-center">{{ $client->total_users }}</td>
             <td class="text-center">{{ $client->balance }}</td>
-            <td class="text-center">{{ $client->validity_period }}</td>
+            <td class="text-center">{{ $client->validate_date?->format('d.m.Y') }}</td>
             <td>{{ $client->last_activity?->format('d.m.Y H:i') }}</td>
             <td class="text-center">
                 @if($client->is_active)
