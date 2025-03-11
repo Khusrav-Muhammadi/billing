@@ -27,7 +27,7 @@
                 </thead>
                 <tbody>
                 @foreach($partnerRequests as $partner)
-                    <tr @if ($partner->request_status == 'Новый')
+                    <tr @if ($partner->request_status == 'Новый' || $partner->request_status == 'Обновлено')
                         data-bs-toggle="modal" data-bs-target="#edit-{{ $partner->id }}"
                         @endif
                     >
