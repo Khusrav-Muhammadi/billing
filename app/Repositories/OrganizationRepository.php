@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Jobs\ActivationJob;
+use App\Jobs\SendOrganizationLicense;
 use App\Mail\SendSiteDataMail;
 use App\Models\Client;
 use App\Models\Organization;
@@ -47,6 +48,8 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             }
 
             if (Organization::where('client_id', $client->id)->count() == 1) Mail::to($client->email)->send(new SendSiteDataMail($client, $password));
+            SendOrganizationLicense::dispatch($organization);
+
             return $organization;
         });
     }
