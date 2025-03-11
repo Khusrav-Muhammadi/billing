@@ -541,7 +541,7 @@
                         <div style="display: flex; justify-content: space-between;">
                             <h4>{{ $history->status }}</h4>
                             <span>
-                                <strong>{{ $history->user->name }}</strong> <i
+                                <strong>{{ $history->user?->name }}</strong> <i
                                     style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
                             </span>
                         </div>
