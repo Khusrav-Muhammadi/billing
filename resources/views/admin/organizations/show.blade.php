@@ -75,6 +75,7 @@
         </div>
     </div>
 
+
     <div class="modal fade" id="addPack" tabindex="-1" aria-labelledby="exampleModalLabel"
          aria-hidden="true">
         <div class="modal-dialog">
@@ -137,10 +138,11 @@
                             </span>
                         </div>
                         <div class="ml-3" style="font-size: 14px">
-                            @foreach ($history->changes as $change)
-                                @php
-                                    $bodyData = json_decode($change->body, true);
-                                @endphp
+    @foreach ($history->changes as $change)
+        @php
+            $bodyData = json_decode($change->body, true);
+        @endphp
+
 
                                 @foreach ($bodyData as $key => $value)
                                     @if($key == 'name') Имя: <br>

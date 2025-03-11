@@ -32,6 +32,7 @@ class ClientController extends Controller
         if ($request->ajax()) {
             return view('admin.partials.clients', compact('clients'))->render();
         }
+
         return view('admin.clients.index', compact('clients', 'partners', 'tariffs'));
     }
 

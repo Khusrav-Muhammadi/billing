@@ -34,32 +34,24 @@ class ClientRepository implements ClientRepositoryInterface
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
+
                 return $organization->packs->sum(function ($organizationPack) {
-                    return $organizationPack->pack->amount ?? 0;
+                    return $organizationPack->amount ?? 0;
                 });
             });
 
-            $client->total_users = ($client->tariff->user_count ?? 0) + $totalUsersFromPacks;
 
-            $organizationCount = $client->organizations()
-                ->where('has_access', true)
-                ->count();
+            $totalUsersFromOrganizations = $client->organizations->sum(function ($organization) {
+                return $organization->client->tariff->user_count ?? 0;
+            });
 
-
-            $currentMonth = Carbon::now();
-
-            $daysInMonth = $currentMonth->daysInMonth;
-
-            if ($organizationCount == 0) $validity_period = '-';
-            else $validity_period = floor($client->balance / ($organizationCount * ($client->tariff->price / $daysInMonth)));
-
-            $client->validity_period = $validity_period;
+            // Общее количество пользователей
+            $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
 
             return $client;
         });
 
         $clients->setCollection($processedClients);
-
         return $clients;
     }
 
