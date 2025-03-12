@@ -17,9 +17,11 @@ class StoreRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'email' => ['required'],
-            'phone' => ['required'],
-            'address' => ['required']
+            'email' => ['required', 'unique:users,email'],
+            'address' => ['required'],
+            'login'  => ['required', 'unique:users,login'],
+            'password'  => ['required'],
+            'role'  => ['required']
         ];
     }
 }

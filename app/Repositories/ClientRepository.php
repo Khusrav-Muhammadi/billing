@@ -152,9 +152,8 @@ class ClientRepository implements ClientRepositoryInterface
 
     }
 
-    public function activation(Client $client, array $data)
+    public function activation(Client $client, ?array $data)
     {
-
         $organizationIds = $client->organizations()->pluck('id')->toArray();
         $reject_cause = $data['reject_cause'] ?? '';
 
@@ -212,7 +211,6 @@ class ClientRepository implements ClientRepositoryInterface
                 return $organization->client->tariff->user_count ?? 0;
             });
 
-            // Общее количество пользователей
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
             $client->validate_date = $this->calculateValidateDate($client);
             return $client;

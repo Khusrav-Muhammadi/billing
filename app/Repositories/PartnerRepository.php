@@ -3,22 +3,21 @@
 namespace App\Repositories;
 
 use App\Models\Partner;
+use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
 
 class PartnerRepository implements PartnerRepositoryInterface
 {
     public function index(array $data)
     {
-        $query = Partner::query();
+        $query = User::query()->where('role', 'partner');
 
-        $query = $query->filter($data);
-
-        return $query->with('history.changes', 'history.user')->get();
+        return $query->get();
     }
 
     public function store(array $data)
     {
-        Partner::create($data);
+        User::create($data);
     }
 
     public function update(Partner $partner, array $data)
