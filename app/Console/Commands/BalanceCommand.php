@@ -21,7 +21,7 @@ class BalanceCommand extends Command
     /**
      * The console command description.
      *
-     * @var string
+     * @var string\
      */
     protected $description = 'Command description';
 
