@@ -42,9 +42,7 @@
                         <td>{{ $partner->partnerStatus?->name }}</td>
                         <td>{{ $partner->address }}</td>
                         <td>
-                            <a href="" data-bs-toggle="modal" data-bs-target="#history{{ $partner->id }}" type="button">
-                                <i class="mdi mdi-history" style="font-size: 30px; color: #3D3D3D"></i>
-                            </a>
+
                             <a href="{{ route('partner.edit', $partner->id) }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             <a href="" data-bs-toggle="modal" data-bs-target="#deleteClient{{$partner->id}}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
                         </td>
@@ -69,48 +67,7 @@
                             </form>
                         </div>
                     </div>
-                    <div class="modal fade" id="history{{ $partner->id }}" tabindex="-1"
-                         aria-labelledby="exampleModalLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title"
-                                        id="exampleModalLabel"> История партнера</h5>
-                                </div>
-                                <div class="modal-body">
-                                    @foreach($partner->history as $history)
-                                        <div style="display: flex; justify-content: space-between;">
-                                            <h4>{{ $history->status }}</h4>
-                                            <span>
-                                <strong>{{ $history->user?->name }}</strong> <i
-                                                    style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
-                            </span>
-                                        </div>
-                                        <div class="ml-3" style="font-size: 14px">
-                                            @foreach ($history->changes as $change)
-                                                @php
-                                                    $bodyData = json_decode($change->body, true);
-                                                @endphp
 
-                                                @foreach ($bodyData as $key => $value)
-                                                    @if($key == 'name') Имя: <br>
-                                                    @elseif($key == 'phone') Телефон: <br>
-                                                    @elseif($key == 'email') Почта: <br>
-                                                    @elseif($key == 'client_type') Тип клиента: <br>
-                                                    @elseif($key == 'tariff') Тариф: <br>
-                                                    @elseif($key == 'partner_status') Статус партнера: <br>
-                                                    @endif
-                                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
-                                                        ==> {{ $value['new_value'] ?? 'N/A' }}</p>
-                                                @endforeach
-                                            @endforeach
-                                        </div>
-                                        <hr>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 @endforeach
                 </tbody>
             </table>

@@ -32,7 +32,7 @@ class WithdrawalService
             ]);
         } else {
             $repository = new ClientRepository();
-            $repository->activation($client);
+            $repository->activation($client, null);
         }
     }
 

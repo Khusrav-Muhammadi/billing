@@ -13,7 +13,7 @@ class PartnerRequest extends Model
 
     public function partner()
     {
-        return $this->belongsTo(Partner::class, 'partner_id');
+        return $this->belongsTo(User::class, 'partner_id');
     }
 
     public function tariff()

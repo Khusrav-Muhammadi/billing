@@ -16,14 +16,17 @@
             @csrf
             <div class="form-group">
                 <label for="name">ФИО</label>
-                <input type="text" class="form-control" name="name" placeholder="ФИО">
+                <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" placeholder="ФИО" value="{{ old('name') }}">
+                @error('name')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
             </div>
 
-            <div class="form-group" id="phone-container">
+            <div class="form-group">
                 <label for="phone">Телефон <span class="text-danger">*</span></label>
                 <input type="tel" class="form-control @error('phone') is-invalid @enderror"
                        id="phone" name="phone" placeholder="Телефон"
-                       value="{{ $partnerRequest->phone ?? old('phone') }}" required>
+                       value="{{ old('phone') }}" required>
                 @error('phone')
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
@@ -31,12 +34,35 @@
 
             <div class="form-group">
                 <label for="email">E-mail</label>
-                <input type="email" class="form-control" name="email" placeholder="Ваш email">
+                <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" placeholder="email" value="{{ old('email') }}">
+                @error('email')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
             </div>
 
             <div class="form-group">
-                <label for="email">Адрес</label>
-                <textarea name="address" cols="30" rows="10" class="form-control"></textarea>
+                <label for="login">Логин</label>
+                <input type="text" class="form-control @error('login') is-invalid @enderror" name="login" placeholder="логин" value="{{ old('login') }}">
+                @error('login')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="Пароль">
+                @error('password')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+                <input type="hidden" class="form-control" name="role" value="partner">
+            </div>
+
+            <div class="form-group">
+                <label for="address">Адрес</label>
+                <textarea name="address" cols="30" rows="10" class="form-control @error('address') is-invalid @enderror">{{ old('address') }}</textarea>
+                @error('address')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
             </div>
 
             <button type="submit" class="btn btn-primary mr-2"> Сохранить </button>
