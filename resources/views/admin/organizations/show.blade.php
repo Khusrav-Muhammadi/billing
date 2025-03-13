@@ -67,6 +67,58 @@
                                 <td>{{ $pack->amount }}</td>
                                 <td>{{ $pack->pack?->price * $pack->amount }}</td>
                             </tr>
+
+                            <div class="modal fade" id="history" tabindex="-1"
+                                 aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title"
+                                                id="exampleModalLabel"> История организации</h5>
+                                        </div>
+                                        <div class="modal-body">
+                                            @foreach($organization->history as $history)
+                                                <div style="display: flex; justify-content: space-between;">
+                                                    <h4>{{ $history->status }}</h4>
+                                                    <span>
+                                <strong>{{ $history->user?->name }}</strong> <i
+                                                            style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
+                            </span>
+                                                </div>
+                                                <div class="ml-3" style="font-size: 14px">
+                                                    @foreach ($history->changes as $change)
+                                                        @php
+                                                            $bodyData = json_decode($change->body, true);
+                                                        @endphp
+
+
+                                                        @foreach ($bodyData as $key => $value)
+                                                            @if($key == 'name') Имя: <br>
+                                                            @elseif($key == 'phone') Телефон: <br>
+                                                            @elseif($key == 'email') Почта: <br>
+                                                            @elseif($key == 'client_type') Тип клиента: <br>
+                                                            @elseif($key == 'business_type') Тип бизнеса: <br>
+                                                            @elseif($key == 'tariff') Тариф: <br>
+                                                            @elseif($key == 'has_access') Доступ: <br>
+                                                            @elseif($key == 'reject_cause' && $value['new_value']) Причина: <br>
+                                                            @endif
+                                                            @if($key == 'has_access')
+                                                                <p style="margin-left: 20px;">{{ $value['new_value'] == 0 ? 'Отключен' : 'Подключён' }}</p>
+                                                            @elseif($key = 'reject_cause')
+                                                                <p style="margin-left: 20px;">{{ $value['new_value'] ?? 'N/A' }}</p>
+                                                            @else
+                                                                <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
+                                                                    ==> {{ $value['new_value'] ?? 'N/A' }}</p>
+                                                            @endif
+                                                        @endforeach
+                                                    @endforeach
+                                                </div>
+                                                <hr>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         @endforeach
                         </tbody>
                     </table>
@@ -74,7 +126,6 @@
             </div>
         </div>
     </div>
-
 
     <div class="modal fade" id="addPack" tabindex="-1" aria-labelledby="exampleModalLabel"
          aria-hidden="true">
@@ -120,57 +171,7 @@
         </div>
     </div>
 
-    <div class="modal fade" id="history" tabindex="-1"
-         aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"
-                        id="exampleModalLabel"> История организации</h5>
-                </div>
-                <div class="modal-body">
-                    @foreach($organization->history as $history)
-                        <div style="display: flex; justify-content: space-between;">
-                            <h4>{{ $history->status }}</h4>
-                            <span>
-                                <strong>{{ $history->user?->name }}</strong> <i
-                                    style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
-                            </span>
-                        </div>
-                        <div class="ml-3" style="font-size: 14px">
-    @foreach ($history->changes as $change)
-        @php
-            $bodyData = json_decode($change->body, true);
-        @endphp
 
-
-                                @foreach ($bodyData as $key => $value)
-                                    @if($key == 'name') Имя: <br>
-                                    @elseif($key == 'phone') Телефон: <br>
-                                    @elseif($key == 'email') Почта: <br>
-                                    @elseif($key == 'client_type') Тип клиента: <br>
-                                    @elseif($key == 'business_type') Тип бизнеса: <br>
-                                    @elseif($key == 'tariff') Тариф: <br>
-                                    @elseif($key == 'has_access') Доступ: <br>
-                                    @elseif($key == 'reject_cause' && $value['new_value']) Причина: <br>
-                                    @endif
-                                    @if($key == 'has_access')
-                                        <p style="margin-left: 20px;">{{ $value['new_value'] == 0 ? 'Отключен' : 'Подключён' }}</p>
-                                    @elseif($key = 'reject_cause')
-                                        <p style="margin-left: 20px;">{{ $value['new_value'] ?? 'N/A' }}</p>
-                                    @else
-                                        <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
-                                            ==> {{ $value['new_value'] ?? 'N/A' }}</p>
-                                    @endif
-                                @endforeach
-                            @endforeach
-                        </div>
-                        <hr>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 <script>

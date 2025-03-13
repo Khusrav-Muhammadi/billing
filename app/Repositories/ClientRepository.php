@@ -37,10 +37,9 @@ class ClientRepository implements ClientRepositoryInterface
 
                 return $organization->packs->sum(function ($organizationPack) {
 
-                    return $organizationPack->pack()->first()->amount;
+                    return $organizationPack->amount;
                 });
             });
-
 
             $totalUsersFromOrganizations = $client->organizations->sum(function ($organization) {
                 return $organization->client->tariff->user_count ?? 0;
