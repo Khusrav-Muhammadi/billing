@@ -28,8 +28,8 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
             $password = Str::random(12);
 
-            $res = $this->createInSham($organization, $client->sub_domain, $password);
-
+            // $res = $this->createInSham($organization, $client->sub_domain, $password);
+                $res = true;
             if (!$res) $organization->delete();
             else {
                 $daysInMonth = Carbon::now()->daysInMonth;
