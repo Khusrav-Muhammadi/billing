@@ -33,6 +33,16 @@ class ProfileController extends Controller
         return redirect()->route('dashboard');
     }
 
+    public function updateApi(User $user, ProfileUpdateRequest $request)
+    {
+        $request->user()->fill($request->validated());
+
+        $request->user()->save();
+
+        return response()->json(['result' => true]);
+    }
+
+
     /**
      * Delete the user's account.
      */
