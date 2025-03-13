@@ -2,10 +2,12 @@
 
 namespace App\Repositories;
 
+use App\Jobs\ChangeRequestStatusJob;
 use App\Jobs\NewRequestJob;
 use App\Models\PartnerRequest;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRequestRepositoryInterface;
+use Illuminate\Support\Facades\Auth;
 
 class PartnerRequestRepository implements PartnerRequestRepositoryInterface
 {
@@ -32,6 +34,8 @@ class PartnerRequestRepository implements PartnerRequestRepositoryInterface
 
         $data['request_status'] = 'Обновлено';
         $partnerRequest->update($data);
+
+        ChangeRequestStatusJob::dispatch(Auth::user(), $partnerRequest);
     }
 
     public function changeStatus(PartnerRequest $partnerRequest)
