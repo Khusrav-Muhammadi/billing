@@ -39,6 +39,6 @@ class ChangeRequestStatusJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Mail::to($this->partner->email)->send(new ChangeRequestStatusMail($this->user, $this->partnerRequest));
+        Mail::to($this->partner->email)->send(new ChangeRequestStatusMail($this->partner, $this->partnerRequest));
     }
 }
