@@ -16,10 +16,11 @@ class UpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required'],
-            'email' => ['required'],
-            'phone' => ['required'],
-            'address' => ['required'],
+            'name' => ['required', 'string'],
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($this->partner)],
+            'phone' => ['required', 'string', Rule::unique('users', 'phone')->ignore($this->partner)],
+            'login' => ['sometimes', 'string', Rule::unique('users', 'login')->ignore($this->partner)],
+            'address' => ['required', 'string'],
             'partner_status_id' => ['required', Rule::exists('partner_statuses', 'id')],
         ];
     }

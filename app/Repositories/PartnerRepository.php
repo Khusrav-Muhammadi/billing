@@ -20,7 +20,7 @@ class PartnerRepository implements PartnerRepositoryInterface
         User::create($data);
     }
 
-    public function update(Partner $partner, array $data)
+    public function update(User $partner, array $data)
     {
         $partner->update($data);
     }

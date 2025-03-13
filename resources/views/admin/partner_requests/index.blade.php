@@ -23,12 +23,13 @@
                     <th class="text-center">Тип подключения</th>
                     <th class="text-center">Статус</th>
                     <th class="text-center">Адрес</th>
+                    <th class="text-center">Действия</th>
                 </tr>
                 </thead>
                 <tbody>
                 @foreach($partnerRequests as $partner)
                     <tr @if ($partner->request_status == 'Новый' || $partner->request_status == 'Обновлено')
-                        data-bs-toggle="modal" data-bs-target="#edit-{{ $partner->id }}"
+                            data-bs-toggle="modal" data-bs-target="#edit-{{ $partner->id }}"
                         @endif
                     >
                         <td class="text-center">{{ $loop->iteration }}</td>
@@ -49,11 +50,18 @@
                         </td>
                         <td class="text-center"
                             style="color: {{ $partner->request_status == 'Отклонён' ? 'red' : '' }}">{{ $partner->request_status }}
-                            @if($partner->request_status == 'Отклонён') <a style="color: #0033c4; cursor: pointer"
-                                                                           data-bs-toggle="modal"
-                                                                           data-bs-target="#reject{{ $partner->id }}">(Причина)</a> @endif
+                            @if($partner->request_status == 'Отклонён')
+                                <a style="color: #0033c4; cursor: pointer"
+                                   data-bs-toggle="modal"
+                                   data-bs-target="#reject{{ $partner->id }}">(Причина)</a>
+                            @endif
                         </td>
                         <td class="text-center">{{ $partner->address }}</td>
+                        <td>
+
+                            <a href="{{ route('partner-request.edit', $partner->id) }}"><i
+                                    class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
+                        </td>
                     </tr>
 
                     <div class="modal fade" id="edit-{{ $partner->id }}" tabindex="-1"
@@ -122,6 +130,7 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
                 @endforeach
                 </tbody>
             </table>

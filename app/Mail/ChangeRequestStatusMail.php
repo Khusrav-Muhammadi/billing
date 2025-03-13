@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\Partner;
 use App\Models\PartnerRequest;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -18,7 +19,7 @@ class ChangeRequestStatusMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(public Partner $partner, public PartnerRequest $partnerRequest)
+    public function __construct(public User $partner, public PartnerRequest $partnerRequest)
     {
         //
     }

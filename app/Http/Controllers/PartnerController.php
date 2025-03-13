@@ -35,22 +35,21 @@ class PartnerController extends Controller
         return redirect()->route('partner.index');
     }
 
-    public function edit(Partner $partner)
+    public function edit(User $partner)
     {
-        $managers = User::all();
         $partnerStatuses = PartnerStatus::all();
 
         return view('admin.partners.edit', compact('partner', 'partnerStatuses'));
     }
 
-    public function update(Partner $partner, UpdateRequest $request)
+    public function update(User $partner, UpdateRequest $request)
     {
         $this->repository->update($partner, $request->validated());
 
         return redirect()->route('partner.index');
     }
 
-    public function destroy(Partner $partner)
+    public function destroy(User $partner)
     {
         $partner->delete();
 

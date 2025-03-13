@@ -24,7 +24,8 @@ class User extends Authenticatable
         'login',
         'phone',
         'address',
-        'role'
+        'role',
+        'partner_status_id'
     ];
 
     /**
@@ -46,4 +47,9 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function partnerStatus()
+    {
+        return $this->belongsTo(PartnerStatus::class, 'partner_status_id');
+    }
 }

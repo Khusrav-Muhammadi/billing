@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Partner\StoreRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Http\Requests\PartnerRequest\RejectRequest;
+use App\Http\Requests\PartnerRequest\UpdateReuqest;
 use App\Jobs\ChangeRequestStatusJob;
 use App\Models\Partner;
 use App\Models\PartnerRequest;
@@ -47,6 +48,19 @@ class PartnerRequestController extends Controller
         $partners = Partner::all();
 
         return view('admin.clients.create', compact( 'tariffs', 'sales', 'partners', 'partnerRequest'));
+    }
+
+    public function edit(PartnerRequest $partnerRequest)
+    {
+        return view('admin.partner_requests.edit', compact('partnerRequest'));
+    }
+
+    public function update(PartnerRequest $partnerRequest, UpdateReuqest $request)
+    {
+        $partnerRequest->update($request->validated());
+
+        $partnerRequests = PartnerRequest::all();
+        return view('admin.partner_requests.index', compact('partnerRequest', 'partnerRequests'));
     }
 
 }

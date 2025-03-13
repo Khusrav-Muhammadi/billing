@@ -21,7 +21,6 @@ class WithdrawalService
             $client->disableObserver = true;
             $client->save();
 
-
             Transaction::create([
                 'client_id' => $client->id,
                 'organization_id' => $organization->id,
