@@ -45,6 +45,25 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                         'sum' => $sum,
                         'type' => 'Снятие',
                     ]);
+                if ($client->tariff->id == 1)
+                {
+                    $sum = 499;
+                }
+                elseif ($client->tariff->id == 2)
+                {
+                    $sum = 1299;
+                }
+                else {
+                    $sum = 2599;
+                }
+                Transaction::create([
+                    'client_id' => $client->id,
+                    'organization_id' => $organization->id,
+                    'tariff_id' => $client->tariff->id,
+                    'sale_id' => $client->sale?->id,
+                    'sum' => $sum,
+                    'type' => 'Снятие',
+                ]);
             }
 
             if (Organization::where('client_id', $client->id)->count() == 1) Mail::to($client->email)->send(new SendSiteDataMail($client, $password));
