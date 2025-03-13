@@ -3,6 +3,7 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Partner;
+use App\Models\User;
 
 interface PartnerRepositoryInterface
 {
@@ -10,6 +11,6 @@ interface PartnerRepositoryInterface
 
     public function store(array $data);
 
-    public function update(Partner $partner, array $data);
+    public function update(User $partner, array $data);
 
 }
