@@ -21,7 +21,7 @@ class PartnerRequestRepository implements PartnerRequestRepositoryInterface
 
         $user = User::first();
 
-        NewRequestJob::dispatch($user, 'test');
+        NewRequestJob::dispatch($user, auth()->user()->name);
     }
 
     public function update(PartnerRequest $partnerRequest, array $data)
