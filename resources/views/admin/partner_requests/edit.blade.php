@@ -98,7 +98,7 @@
                 <div class="mb-3">
                     <label for="date" class="form-label">Дата подачи</label>
                     <input type="date" class="form-control @error('date') is-invalid @enderror"
-                           name="date" value="{{ old('date', $partnerRequest->date) }}">
+                           name="date" value="{{ old('date', $partnerRequest->date) }}" disabled>
                     @error('date')
                     <span class="text-danger small">{{ $message }}</span>
                     @enderror
