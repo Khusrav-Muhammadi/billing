@@ -4,11 +4,11 @@
     Тарифы
 @endsection
 
-
 @section('content')
 
     <div class="card-body">
         <h4 class="card-title">Статус партнера</h4>
+        <a href="" type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#create">Создать</a>
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
@@ -22,21 +22,24 @@
                 </tr>
                 </thead>
                 <tbody>
-                @foreach($tariffs as $tariff)
+                @foreach($partnerStatuses as $partnerStatus)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $tariff->name }}</td>
-                        <td>{{ $tariff->connect_amount }}</td>
-                        <td>{{ $tariff->organization_connect_percent }} $</td>
-                        <td>{{ $tariff->tariff_price_percent }}</td>
+                        <td>{{ $partnerStatus->name }}</td>
+                        <td>{{ $partnerStatus->connect_amount }}</td>
+                        <td>{{ $partnerStatus->organization_connect_percent }}%</td>
+                        <td>{{ $partnerStatus->tariff_price_percent }}%</td>
                         <td>
-                            <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $partnerStatus->id }}">
+                                <i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i>
+                            </a>
                         </td>
                     </tr>
 
-                    <div class="modal fade" id="edit{{ $tariff->id }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                    <!-- Модальное окно для редактирования статуса партнера -->
+                    <div class="modal fade" id="edit{{ $partnerStatus->id }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
-                            <form action="{{ route('partner-status.store', $tariff->id) }}" method="POST">
+                            <form action="{{ route('partner-status.update', $partnerStatus->id) }}" method="POST">
                                 @csrf
                                 @method('PATCH')
                                 <div class="modal-content">
@@ -46,19 +49,19 @@
                                     <div class="modal-body">
                                         <div class="form-group">
                                             <label for="name">Название</label>
-                                            <input type="text" class="form-control" name="name" value="{{ $tariff->name }}">
+                                            <input type="text" class="form-control" name="name" value="{{ $partnerStatus->name }}">
                                         </div>
                                         <div class="form-group">
-                                            <label for="name">Количество подключений</label>
-                                            <input type="number" class="form-control" name="connect_amount" value="{{ $tariff->price }}">
+                                            <label for="connect_amount">Количество подключений</label>
+                                            <input type="number" class="form-control" name="connect_amount" value="{{ $partnerStatus->connect_amount }}">
                                         </div>
                                         <div class="form-group">
-                                            <label for="name">Процент подключений организации</label>
-                                            <input type="number" class="form-control" name="organization_connect_percent" value="{{ $tariff->user_count }}">
+                                            <label for="organization_connect_percent">Процент подключения организации</label>
+                                            <input type="number" class="form-control" name="organization_connect_percent" value="{{ $partnerStatus->organization_connect_percent }}">
                                         </div>
                                         <div class="form-group">
-                                            <label for="name">Процент от тарифов</label>
-                                            <input type="number" class="form-control" name="tariff_price_percent" value="{{ $tariff->project_count }}">
+                                            <label for="tariff_price_percent">Процент от тарифов</label>
+                                            <input type="number" class="form-control" name="tariff_price_percent" value="{{ $partnerStatus->tariff_price_percent }}">
                                         </div>
                                     </div>
                                     <div class="modal-footer">
@@ -69,19 +72,20 @@
                             </form>
                         </div>
                     </div>
- @endforeach
+                @endforeach
                 </tbody>
             </table>
         </div>
     </div>
 
+    <!-- Модальное окно для создания статуса партнера -->
     <div class="modal fade" id="create" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
-            <form action="{{ route('tariff.store') }}" method="POST">
+            <form action="{{ route('partner-status.store') }}" method="POST">
                 @csrf
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Создание тарифа</h5>
+                        <h5 class="modal-title" id="exampleModalLabel">Создание статуса партнера</h5>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
@@ -89,16 +93,16 @@
                             <input type="text" class="form-control" name="name" placeholder="Название">
                         </div>
                         <div class="form-group">
-                            <label for="name">Цена</label>
-                            <input type="number" class="form-control" name="price" placeholder="Цена">
+                            <label for="connect_amount">Количество подключений</label>
+                            <input type="number" class="form-control" name="connect_amount" placeholder="Количество подключений">
                         </div>
                         <div class="form-group">
-                            <label for="name">Кол-во пользователей</label>
-                            <input type="number" class="form-control" name="user_count" placeholder="Кол-во пользователей">
+                            <label for="organization_connect_percent">Процент подключения организации</label>
+                            <input type="number" class="form-control" name="organization_connect_percent" placeholder="Процент подключения организации">
                         </div>
                         <div class="form-group">
-                            <label for="name">Кол-во проектов</label>
-                            <input type="number" class="form-control" name="project_count" placeholder="Кол-во проектов">
+                            <label for="tariff_price_percent">Процент от тарифов</label>
+                            <input type="number" class="form-control" name="tariff_price_percent" placeholder="Процент от тарифов">
                         </div>
                     </div>
                     <div class="modal-footer">

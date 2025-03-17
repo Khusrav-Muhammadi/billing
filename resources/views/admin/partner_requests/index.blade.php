@@ -58,7 +58,7 @@
                         </td>
                         <td class="text-center">{{ $partner->address }}</td>
                         <td>
-
+                            @if($partner->status !== ) @endif
                             <a href="{{ route('partner-request.edit', $partner->id) }}"><i
                                     class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                         </td>

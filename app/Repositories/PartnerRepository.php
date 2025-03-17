@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Jobs\SendPartnerDataJob;
 use App\Models\Partner;
+use App\Models\PartnerStatus;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
 
@@ -19,6 +20,8 @@ class PartnerRepository implements PartnerRepositoryInterface
     public function store(array $data)
     {
         $password = $data['password'];
+        $data['partner_status_id'] = PartnerStatus::first()->id;
+
         $user = User::create($data);
 
         SendPartnerDataJob::dispatch($user, $password);
