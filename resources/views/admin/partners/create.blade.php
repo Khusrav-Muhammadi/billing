@@ -15,7 +15,7 @@
         <form method="POST" action="{{ route('partner.store') }}">
             @csrf
             <div class="form-group">
-                <label for="name">ФИО</label>
+                <label for="name">Название партнера</label>
                 <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" placeholder="ФИО" value="{{ old('name') }}">
                 @error('name')
                 <span class="text-danger">{{ $message }}</span>
