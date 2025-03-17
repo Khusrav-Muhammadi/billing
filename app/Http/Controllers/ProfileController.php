@@ -74,7 +74,10 @@ class ProfileController extends Controller
         Auth::user()->password = Hash::make($data['password']);
         Auth::user()->save();
 
-        return redirect()->back()->with('success', 'Пароль успешно изменен');
+        if(Auth::user()->role == 'partner') {
+            return response()->json(['result' => true]);
+        }
 
+        return redirect()->back()->with('success', 'Пароль успешно изменен');
     }
 }
