@@ -41,8 +41,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\API\DashBoardController::class, 'index']);
 
     Route::group(['prefix' => 'profile'], function () {
-        Route::patch('/{user}', [ProfileController::class, 'updateApi']);
         Route::patch('/change-password', [ProfileController::class, 'changePasswordApi']);
+        Route::patch('/{user}', [ProfileController::class, 'updateApi']);
     });
 });
 
