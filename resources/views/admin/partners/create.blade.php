@@ -16,7 +16,7 @@
             @csrf
             <div class="form-group">
                 <label for="name">Название партнера</label>
-                <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" placeholder="ФИО" value="{{ old('name') }}">
+                <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" placeholder="Название партнера" value="{{ old('name') }}">
                 @error('name')
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
