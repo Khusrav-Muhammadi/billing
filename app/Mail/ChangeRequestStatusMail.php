@@ -30,7 +30,7 @@ class ChangeRequestStatusMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Изменение статуса заявки',
+            subject: 'Изменение заявки',
         );
     }
 

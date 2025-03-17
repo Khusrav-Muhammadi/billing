@@ -39,7 +39,7 @@ class PartnerRequestController extends Controller
 
         ChangeRequestStatusJob::dispatch($partner, $partnerRequest, Auth::user());
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Успешно изменено');
     }
 
     public function approve(PartnerRequest $partnerRequest)

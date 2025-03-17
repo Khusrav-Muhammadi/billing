@@ -54,13 +54,17 @@
 <body>
 <div class="email-container">
     <div class="email-header">
-        <h1>Обновление статуса заявки</h1>
+        @if($author->role == 'partner')
+            <h1>Обновление заявки заявки</h1>
+        @else
+            <h1>Обновление статуса заявки</h1>
+        @endif
     </div>
     <div class="email-body">
         <p>Здравствуйте, <strong>{{ $partner->name }}</strong>,</p>
 
         @if($author->role == 'partner')
-            <p>Партнёр <strong>{{ $author->name }}</strong> обновил статус заявки <strong>{{ $client->name }}</strong>.</p>
+            <p>Партнёр <strong>{{ $author->name }}</strong> данные заявки <strong>{{ $client->name }}</strong>.</p>
             <p>Вы можете просмотреть обновленный статус заявки, перейдя по следующей ссылке:</p>
         @else
             <p>Статус вашей заявки <strong>{{ $client->name }}</strong> был изменен.</p>
