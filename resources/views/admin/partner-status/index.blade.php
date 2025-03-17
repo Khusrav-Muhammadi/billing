@@ -52,7 +52,7 @@
                                             <input type="text" class="form-control" name="name" value="{{ $partnerStatus->name }}">
                                         </div>
                                         <div class="form-group">
-                                            <label for="connect_amount">Количество подключений</label>
+                                            <label for="connect_amount">Сумма подключений</label>
                                             <input type="number" class="form-control" name="connect_amount" value="{{ $partnerStatus->connect_amount }}">
                                         </div>
                                         <div class="form-group">
