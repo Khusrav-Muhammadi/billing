@@ -22,7 +22,7 @@ class StoreRequest extends FormRequest
             'tariff_id' => ['required', Rule::exists('tariffs', 'id')],
             'sale_id' => ['nullable'],
             'is_demo' => ['nullable'],
-            'partner_id' => ['nullable', Rule::exists('partners', 'id')],
+            'partner_id' => ['nullable', Rule::exists('users', 'id')],
             'contact_person' => ['nullable', 'string'],
             'email' => ['nullable', 'string', 'email', 'max:255', 'unique:clients'],
             'client_type' => ['required', Rule::enum(ClientType::class)],
