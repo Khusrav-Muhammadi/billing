@@ -36,9 +36,9 @@ class ProfileController extends Controller
 
     public function updateApi(User $user, ProfileUpdateRequest $request)
     {
-        $request->user()->fill($request->validated());
+        $user->fill($request->validated());
 
-        $request->user()->save();
+        $user->save();
 
         return response()->json(['result' => true]);
     }
@@ -74,10 +74,21 @@ class ProfileController extends Controller
         Auth::user()->password = Hash::make($data['password']);
         Auth::user()->save();
 
-        if(Auth::user()->role == 'partner') {
-            return response()->json(['result' => true]);
-        }
 
         return redirect()->back()->with('success', 'Пароль успешно изменен');
+    }
+
+    public function changePasswordApi(Request $request)
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8']
+        ]);
+
+        Auth::user()->password = Hash::make($data['password']);
+        Auth::user()->save();
+
+        return response()->json(['result' => true]);
+
+
     }
 }

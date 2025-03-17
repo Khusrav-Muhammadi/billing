@@ -35,7 +35,7 @@ class PartnerRequestRepository implements PartnerRequestRepositoryInterface
         $data['request_status'] = 'Обновлено';
         $partnerRequest->update($data);
 
-        ChangeRequestStatusJob::dispatch(User::first(), $partnerRequest);
+        ChangeRequestStatusJob::dispatch(User::first(), $partnerRequest, Auth::user());
     }
 
     public function changeStatus(PartnerRequest $partnerRequest)
