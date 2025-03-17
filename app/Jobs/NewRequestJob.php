@@ -36,6 +36,6 @@ class NewRequestJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Mail::to($this->user->email)->send(new NewRequestMail($this->user, 'test'));
+        Mail::to($this->user->email)->send(new NewRequestMail($this->user, $this->partner));
     }
 }
