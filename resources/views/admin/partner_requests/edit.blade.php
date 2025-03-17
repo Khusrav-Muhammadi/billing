@@ -94,9 +94,7 @@
                     <span class="text-danger small">{{ $message }}</span>
                     @enderror
                 </div>
-
-
-
+                
                 <div class="mb-3">
                     <label for="tariff_id" class="form-label">Тарифы</label>
                     <select required class="form-control @error('tariff_id') is-invalid @enderror"
