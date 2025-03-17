@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::group(['prefix' => 'profile'], function () {
         Route::patch('/{user}', [ProfileController::class, 'updateApi']);
+        Route::patch('/change-password', [ProfileController::class, 'changePassword']);
     });
 });
 
