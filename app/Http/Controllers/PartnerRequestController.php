@@ -46,7 +46,7 @@ class PartnerRequestController extends Controller
     {
         $sales = Sale::all();
         $tariffs = Tariff::all();
-        $partners = Partner::all();
+        $partners = User::query()->where('role', 'partner')->get();
 
         return view('admin.clients.create', compact( 'tariffs', 'sales', 'partners', 'partnerRequest'));
     }
