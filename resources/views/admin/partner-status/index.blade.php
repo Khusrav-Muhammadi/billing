@@ -15,7 +15,7 @@
                 <tr>
                     <th>№</th>
                     <th>Название</th>
-                    <th>Количество подключений</th>
+                    <th>Сумма подключений</th>
                     <th>Процент подключения партнера</th>
                     <th>Процент тариф партнера</th>
                     <th>Действие</th>
@@ -93,8 +93,8 @@
                             <input type="text" class="form-control" name="name" placeholder="Название">
                         </div>
                         <div class="form-group">
-                            <label for="connect_amount">Количество подключений</label>
-                            <input type="number" class="form-control" name="connect_amount" placeholder="Количество подключений">
+                            <label for="connect_amount">Сумма подключений</label>
+                            <input type="number" class="form-control" name="connect_amount" placeholder="Сумма подключений">
                         </div>
                         <div class="form-group">
                             <label for="organization_connect_percent">Процент подключения организации</label>
