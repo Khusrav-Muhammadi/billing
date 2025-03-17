@@ -6,6 +6,7 @@ use App\Events\ClientHistoryEvent;
 use App\Events\OrganizationHistoryEvent;
 use App\Mail\ChangeRequestStatusMail;
 use App\Mail\NewRequestMail;
+use App\Mail\SendPartnerDataMail;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\Partner;
@@ -29,7 +30,7 @@ class SendPartnerDataJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public User $partner, string $password)
+    public function __construct(public User $partner, public string $password)
     {
         //
     }
@@ -39,6 +40,6 @@ class SendPartnerDataJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Mail::to($this->partner->email)->send(new ChangeRequestStatusMail($this->user, $this->partnerRequest));
+        Mail::to($this->partner->email)->send(new SendPartnerDataMail($this->partner, $this->password));
     }
 }

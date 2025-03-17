@@ -104,6 +104,7 @@ Route::middleware('auth')->group(function () {
 
     Route::group(['prefix' => 'profile'], function () {
         Route::get('/', [ProfileController::class, 'edit'])->name('profile.index');
+        Route::patch('/change-password', [ProfileController::class, 'changePassword'])->name('profile.changePassword');
         Route::patch('/{user}', [ProfileController::class, 'update'])->name('profile.update');
     });
 

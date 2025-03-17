@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
@@ -30,7 +31,7 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
-        return redirect()->route('dashboard');
+        return redirect()->back()->with('success', 'Успешно изменено');
     }
 
     public function updateApi(User $user, ProfileUpdateRequest $request)
@@ -62,5 +63,18 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    public function changePassword(Request $request)
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed']
+        ]);
+
+        Auth::user()->password = Hash::make($data['password']);
+        Auth::user()->save();
+
+        return redirect()->back()->with('success', 'Пароль успешно изменен');
+
     }
 }

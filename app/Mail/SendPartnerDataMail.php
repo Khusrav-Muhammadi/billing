@@ -12,14 +12,14 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class SendPartnerDataJob extends Mailable
+class SendPartnerDataMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(public User $partner, string $password)
+    public function __construct(public User $partner, public string $password)
     {
         //
     }
@@ -41,7 +41,7 @@ class SendPartnerDataJob extends Mailable
     {
         return new Content(
             view: 'mail.send_partner_data',
-            with: ['partner' => $this->partner, 'client' => $this->partnerRequest]
+            with: ['partner' => $this->partner, 'password' => $this->password  ]
         );
     }
 
