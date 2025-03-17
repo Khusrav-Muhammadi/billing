@@ -15,6 +15,7 @@ use App\Models\Partner;
 use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use Illuminate\Http\Request;
 
@@ -40,7 +41,7 @@ class ClientController extends Controller
     {
         $sales = Sale::all();
         $tariffs = Tariff::all();
-        $partners = Partner::all();
+        $partners = User::query()->where('role', 'partner')->get();
 
         return view('admin.clients.create', compact( 'tariffs', 'sales', 'partners'));
     }

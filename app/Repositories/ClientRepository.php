@@ -14,6 +14,7 @@ use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Services\WithdrawalService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ClientRepository implements ClientRepositoryInterface
@@ -132,7 +133,7 @@ class ClientRepository implements ClientRepositoryInterface
 
             $partner = $partnerRequest->partner()->first();
 
-            ChangeRequestStatusJob::dispatch($partner, $partnerRequest);
+            ChangeRequestStatusJob::dispatch($partner, $partnerRequest, Auth::user());
         }
 
         return $client;
