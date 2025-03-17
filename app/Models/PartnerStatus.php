@@ -9,5 +9,9 @@ class PartnerStatus extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'is_active'];
+    protected $fillable = ['name', 'organization_connect_percent', 'tariff_price_percent', 'connect_amount', 'is_active'];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 }

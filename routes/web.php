@@ -60,11 +60,22 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{businessType}', [BusinessTypeController::class, 'destroy'])->name('business_type.delete');
     });
 
+    Route::group(['prefix' => 'site-application'], function () {
+        Route::get('/', [\App\Http\Controllers\API\SiteApplicationController::class, 'index'])->name('site-application.index');
+        Route::get('/{siteApplication}', [\App\Http\Controllers\API\SiteApplicationController::class, 'destroy'])->name('site-application.delete');
+    });
+
     Route::group(['prefix' => 'tariff'], function () {
         Route::get('/', [TariffController::class, 'index'])->name('tariff.index');
         Route::post('/store', [TariffController::class, 'store'])->name('tariff.store');
         Route::patch('/{tariff}', [TariffController::class, 'update'])->name('tariff.update');
         Route::delete('/{tariff}', [TariffController::class, 'destroy'])->name('tariff.delete');
+    });
+    Route::group(['prefix' => 'partner-status'], function () {
+        Route::get('/', [\App\Http\Controllers\PartnerStatusController::class, 'index'])->name('partner-status.index');
+        Route::post('/store', [\App\Http\Controllers\PartnerStatusController::class, 'store'])->name('partner-status.store');
+        Route::patch('/{partnerStatus}', [\App\Http\Controllers\PartnerStatusController::class, 'update'])->name('partner-status.update');
+        Route::delete('/{partnerStatus}', [\App\Http\Controllers\PartnerStatusController::class, 'destroy'])->name('partner-status.delete');
     });
 
     Route::group(['prefix' => 'sale'], function () {
