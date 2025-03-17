@@ -19,7 +19,7 @@ class ChangeRequestStatusMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(public User $partner, public PartnerRequest $partnerRequest)
+    public function __construct(public User $partner, public PartnerRequest $partnerRequest, public User $author)
     {
         //
     }
@@ -41,7 +41,7 @@ class ChangeRequestStatusMail extends Mailable
     {
         return new Content(
             view: 'mail.change_request_status',
-            with: ['partner' => $this->partner, 'client' => $this->partnerRequest]
+            with: ['partner' => $this->partner, 'client' => $this->partnerRequest, 'author' => $this->author]
         );
     }
 

@@ -29,7 +29,7 @@ class ChangeRequestStatusJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public User $partner, public PartnerRequest $partnerRequest)
+    public function __construct(public User $partner, public PartnerRequest $partnerRequest, public User $author)
     {
         //
     }
@@ -39,6 +39,6 @@ class ChangeRequestStatusJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Mail::to($this->partner->email)->send(new ChangeRequestStatusMail($this->partner, $this->partnerRequest));
+        Mail::to($this->partner->email)->send(new ChangeRequestStatusMail($this->partner, $this->partnerRequest, $this->author));
     }
 }

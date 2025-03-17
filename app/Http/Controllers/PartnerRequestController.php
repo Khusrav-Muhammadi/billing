@@ -14,6 +14,7 @@ use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Request;
 
 class PartnerRequestController extends Controller
@@ -36,7 +37,7 @@ class PartnerRequestController extends Controller
 
         $partner = $partnerRequest->partner()->first();
 
-        ChangeRequestStatusJob::dispatch($partner, $partnerRequest);
+        ChangeRequestStatusJob::dispatch($partner, $partnerRequest, Auth::user());
 
         return redirect()->back();
     }
