@@ -8,6 +8,7 @@ use App\Models\PartnerRequest;
 use App\Models\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DashBoardController extends Controller
@@ -102,9 +103,9 @@ class DashBoardController extends Controller
 
         $chartData = array_values($formattedResults);
 
-        $newRequest = PartnerRequest::where('request_status', 'Новый')->count();
-        $successRequest = PartnerRequest::where('request_status', 'Успешный')->count();
-        $rejectRequest = PartnerRequest::where('request_status', 'Отклонён')->count();
+        $newRequest = PartnerRequest::query()->where('partner_id', Auth::id())->where('request_status', 'Новый')->count();
+        $successRequest = PartnerRequest::query()->where('partner_id', Auth::id())->where('request_status', 'Успешный')->count();
+        $rejectRequest = PartnerRequest::query()->where('partner_id', Auth::id())->where('request_status', 'Отклонён')->count();
 
         return response()->json([
             'clients' => $clients,
