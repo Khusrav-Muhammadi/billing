@@ -49,7 +49,15 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
 
 
+Route::options('/{any}', function (Request $request) {
+    return response()->json(['status' => 'ok'], 200, [
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers' => 'Content-Type, Authorization',
+    ]);
+})->where('any', '.*');
 Route::post('sendRequest', [\App\Http\Controllers\API\SiteApplicationController::class, 'store']);
+
 
 
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
