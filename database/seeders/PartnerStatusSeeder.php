@@ -13,8 +13,8 @@ class PartnerStatusSeeder extends Seeder
     public function run(): void
     {
         PartnerStatus::insert([
-            ['name' => 'Активный', 'is_active' => true],
-            ['name' => 'Неактивный', 'is_active' => false],
+            ['name' => 'Активный', 'is_active' => true, 'connect_amount' => 1, 'organization_connect_percent' => 1, 'tariff_price_percent' => 1],
+            ['name' => 'Неактивный', 'is_active' => false, 'connect_amount' => 1, 'organization_connect_percent' => 1, 'tariff_price_percent' => 1],
         ]);
     }
 }

@@ -26,7 +26,7 @@
             <td>{{ $client->email }}</td>
             <td class="text-center">{{ $client->organizations_count }}</td>
             <td>{{ $client->tariff?->name }}</td>
-            <td class="text-center">{{ $client->total_users }}</td>
+            <td class="text-center">{{ $client->is_demo ? 1 : $client->total_users }}</td>
             <td class="text-center">{{ $client->balance }}</td>
             <td class="text-center">{{ $client->validate_date?->format('d.m.Y') }}</td>
             <td>{{ $client->last_activity?->format('d.m.Y H:i') }}</td>
