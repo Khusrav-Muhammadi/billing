@@ -93,8 +93,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'organization_id' => $organization->id,
             'pack_id' => $data['pack_id'],
             'date' => $data['date'],
-            'amount' => $data['amount'],
-            'is_demo' => $organization->is_demo                                        
+            'amount' => $data['amount']                               
         ]);
 
         $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
@@ -118,7 +117,8 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'user_count' => $tariff->user_count,
             'project_count' => $tariff->project_count,
             'b_organization_id' => $organization->id,
-            'password' => $password
+            'password' => $password,
+            'is_demo' => $organization->is_demo    
         ]);
 
         return $response->successful();
