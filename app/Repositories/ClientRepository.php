@@ -62,61 +62,68 @@ class ClientRepository implements ClientRepositoryInterface
      * @param Client $client
      * @return float
      */
-    protected function calculateDailyPayment(Client $client): float
-    {
-        if (!$client->tariff) {
-            return 0;
-        }
-
-        $currentMonth = now();
-        $daysInMonth = $currentMonth->daysInMonth;
-
-        // Base daily payment from tariff
-        $dailyPayment = $client->tariff->price / $daysInMonth;
-
-        // Calculate additional daily cost from organization packs
-        $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
-            return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
-
-                $pack = $organizationPack->pack()->first();
-
-
-                return $pack ? ($pack->price / $daysInMonth) : 0;
-            });
-        });
-        // Combine tariff and packs daily payment
-
-        $totalDailyPayment = $dailyPayment + $packsDailyPayment;
-
-        if ($client->sale_id) {
-            $sale = $client->sale;
-
-            if ($sale->sale_type === 'procent') {
-                // Percentage discount on total daily payment
-                $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
-            } else {
-                // Fixed amount discount
-                $totalDailyPayment -= $sale->amount / $daysInMonth;
+        protected function calculateDailyPayment(Client $client): float
+        {
+            if (!$client->tariff) {
+                return 0;
             }
+
+
+            $currentMonth = now();
+            $daysInMonth = $currentMonth->daysInMonth;
+
+            // Base daily payment from tariff
+            $dailyPayment = $client->tariff->price / $daysInMonth;
+
+            // Calculate additional daily cost from organization packs
+            $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
+                return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
+
+                    $pack = $organizationPack->pack()->first();
+
+
+                    return $pack ? ($pack->price / $daysInMonth) : 0;
+                });
+            });
+            // Combine tariff and packs daily payment
+
+            $totalDailyPayment = $dailyPayment + $packsDailyPayment;
+
+            if ($client->sale_id) {
+                $sale = $client->sale;
+
+                if ($sale->sale_type === 'procent') {
+                    // Percentage discount on total daily payment
+                    $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
+                } else {
+                    // Fixed amount discount
+                    $totalDailyPayment -= $sale->amount / $daysInMonth;
+                }
+            }
+
+            return max(0, $totalDailyPayment);
         }
 
-        return max(0, $totalDailyPayment);
-    }
+        /**
+         * Calculate validation date for a client
+         *
+         * @param Client $client
+         * @return Carbon|null
+         */
+        protected function calculateValidateDate(Client $client)
+        {
 
-    /**
-     * Calculate validation date for a client
-     *
-     * @param Client $client
-     * @return Carbon|null
-     */
-    protected function calculateValidateDate(Client $client)
-    {
-        $dailyPayment = round($this->calculateDailyPayment($client), 4);
+            if ($client->is_demo) {
+                return Carbon::parse($client->created_at)->addWeeks(2)  ;
+            }
 
-        $days = (int)($client->balance / $dailyPayment);
 
-        return Carbon::now()->addDays($days);
-    }
+            $dailyPayment = round($this->calculateDailyPayment($client), 4);
+
+            $days = (int)($client->balance / $dailyPayment);
+
+            return Carbon::now()->addDays($days);
+        }
 
     public function store(array $data)
     {
