@@ -99,7 +99,6 @@ class ClientController extends Controller
         ]);
     }
 
-
     public function getOrganizations(Client $client)
     {
         return response()->json([
