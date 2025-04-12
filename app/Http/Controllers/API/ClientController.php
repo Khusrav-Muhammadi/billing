@@ -99,4 +99,21 @@ class ClientController extends Controller
         ]);
     }
 
+
+    public function getOrganizations(Client $client)
+    {
+        return response()->json([
+            'result' => Organization::query()->where('client_id', $client->id)->with('businessType')->paginate(10),
+        ]);
+    }
+
+    public function getTransactions(Client $client)
+    {
+        return response()->json([
+            'result' => Transaction::query()->where('client_id', $client->id)->with('tariff',  'sale')->paginate(50),
+        ]);
+    }
+
+
+
 }
