@@ -14,6 +14,7 @@
         <th class="text-center">Статус</th>
         <th>Тип подключения</th>
         <th>Партнер</th>
+        <th>Страна</th>
         <th>Поддомен</th>
     </tr>
     </thead>
@@ -45,6 +46,7 @@
                 @endif
             </td>
             <td>{{ $client->partner?->name }}</td>
+            <td>{{ $client->country?->name }}</td>
             <td>{{ $client->sub_domain }}</td>
         </tr>
     @endforeach

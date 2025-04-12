@@ -112,11 +112,9 @@ class ClientRepository implements ClientRepositoryInterface
          */
         protected function calculateValidateDate(Client $client)
         {
-
             if ($client->is_demo) {
                 return Carbon::parse($client->created_at)->addWeeks(2)  ;
             }
-
 
             $dailyPayment = round($this->calculateDailyPayment($client), 4);
 
@@ -214,7 +212,7 @@ class ClientRepository implements ClientRepositoryInterface
             $query->where('partner_id', auth()->id());
         }
 
-        $clients = $query->paginate(20);
+        $clients = $query->with(['sale', 'tariff', 'city'])->paginate(20);
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
