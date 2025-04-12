@@ -75,12 +75,12 @@
                 </div>
                 <div class="col-4 mt-3">
                     <label for="business_type_id">Партнер</label>
-                    <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
-                            name="business_type_id">
+                    <select class="form-control form-control-sm @error('partner_id') is-invalid @enderror"
+                            name="partner_id">
                         <option value="">Выберите партнера</option>
                         @foreach($partners as $partner)
                             <option
-                                value="{{ $partner->id }}" {{ old('business_type_id') == $partner->id ? 'selected' : '' }}>
+                                value="{{ $partner->id }}" {{ $client->partner_id == $partner->id ? 'selected' : '' }}>
                                 {{ $partner->name }}
                             </option>
                         @endforeach
@@ -94,6 +94,22 @@
                                 value="{{ $sale->id }}" {{ $client->sale_id == $sale->id ? 'selected': '' }}>{{ $sale->name }}</option>
                         @endforeach
                     </select>
+                </div>
+
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-4 ml-5 mt-3">
+                    <label>Дата создания:</label>
+                    <div class="form-control bg-light">{{ \Carbon\Carbon::parse($client->created_at)->format('d.m.Y') }}</div>
+                </div>
+                <div class="col-4 mt-3">
+                    <label>Дата окончания доступа:</label>
+                    <div class="form-control {{ $expirationDate && $expirationDate->isPast() ? 'bg-danger text-white' : 'bg-light' }}">
+
+                            {{ $expirationDate ? $expirationDate->format('d.m.Y') : 'Не определено' }}
+
+                    </div>
                 </div>
             </div>
             <div class="row mb-3 ml-4">
@@ -112,6 +128,7 @@
                                style="width: 40px; margin: 0;" {{ $client->nfr ? 'checked' : '' }}>
                     </div>
                 @endif
+
             </div>
         </div>
 

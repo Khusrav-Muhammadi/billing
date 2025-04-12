@@ -28,7 +28,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
             $password = Str::random(12);
 
-            $res = $this->createInSham($organization, $client->sub_domain, $password);
+            $res = $this->createInSham($organization, $client, $password);
 
             if (!$res) $organization->delete();
             else {
@@ -93,7 +93,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'organization_id' => $organization->id,
             'pack_id' => $data['pack_id'],
             'date' => $data['date'],
-            'amount' => $data['amount'],
+            'amount' => $data['amount']                               
         ]);
 
         $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
@@ -102,10 +102,10 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     }
 
-    public function createInSham(Organization $organization, string $sub_domain, string $password)
+    public function createInSham(Organization $organization, $client, string $password)
     {
         $domain = env('APP_DOMAIN');
-        $url = "https://{$sub_domain}-back.{$domain}/api/organization";
+        $url = "https://{$client->sub_domain}-back.{$domain}/api/organization";
 
         $tariff = Tariff::find($organization->client->tariff_id);
 
@@ -117,7 +117,8 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'user_count' => $tariff->user_count,
             'project_count' => $tariff->project_count,
             'b_organization_id' => $organization->id,
-            'password' => $password
+            'password' => $password,
+            'is_demo' => $client->is_demo    
         ]);
 
         return $response->successful();

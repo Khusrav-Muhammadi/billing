@@ -24,6 +24,7 @@ class UpdateRequest extends FormRequest
             'email' => ['nullable', 'email'],
             'client_type' => ['nullable'],
             'contact_person' => ['nullable'],
+            'partner_id' => ['nullable'],
         ];
     }
 }
