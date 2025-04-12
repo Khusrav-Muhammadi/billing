@@ -112,11 +112,9 @@ class ClientRepository implements ClientRepositoryInterface
          */
         protected function calculateValidateDate(Client $client)
         {
-
             if ($client->is_demo) {
                 return Carbon::parse($client->created_at)->addWeeks(2)  ;
             }
-
 
             $dailyPayment = round($this->calculateDailyPayment($client), 4);
 

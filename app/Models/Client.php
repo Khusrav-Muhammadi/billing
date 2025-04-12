@@ -14,8 +14,8 @@ class Client extends Model
 
     public bool $disableObserver = false;
 
-    protected $fillable = ['name','phone', 'sub_domain', 'INN', 'address', 'balance', 'tariff_id', 'reject_cause',
-        'sale_id', 'is_active', 'is_demo', 'last_activity', 'email', 'contact_person', 'client_type', 'partner_id', 'city_id', 'nfr'];
+    protected $fillable = ['name','phone', 'sub_domain', 'INN', 'address', 'balance', 'tariff_id', 'reject_cause', 'sale_id',
+        'is_active', 'is_demo', 'last_activity', 'email', 'contact_person', 'client_type', 'partner_id', 'city_id', 'nfr', 'country_id'];
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -46,6 +46,11 @@ class Client extends Model
     public function city() : BelongsTo
     {
         return $this->belongsTo(Partner::class);
+    }
+
+    public function country() : BelongsTo
+    {
+        return $this->belongsTo(Country::class);
     }
 
     public function history(): MorphMany

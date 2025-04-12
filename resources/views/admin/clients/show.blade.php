@@ -87,6 +87,18 @@
                     </select>
                 </div>
                 <div class="col-3 mt-3">
+                    <label for="sale_id">Страна</label>
+                    <select class="form-control form-control-sm" name="country_id">
+                        @foreach($countries as $country)
+                            <option
+                                value="{{ $country->id }}" {{ $client->country_id == $country->id ? 'selected': '' }}>{{ $country->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-4 ml-5 mt-3">
                     <label for="sale_id">Скидка</label>
                     <select class="form-control form-control-sm" name="sale_id">
                         @foreach($sales as $sale)
@@ -96,14 +108,11 @@
                     </select>
                 </div>
 
-            </div>
-
-            <div class="row mb-3">
-                <div class="col-4 ml-5 mt-3">
+                <div class="col-4 mt-3">
                     <label>Дата создания:</label>
                     <div class="form-control bg-light">{{ \Carbon\Carbon::parse($client->created_at)->format('d.m.Y') }}</div>
                 </div>
-                <div class="col-4 mt-3">
+                <div class="col-3 mt-3">
                     <label>Дата окончания доступа:</label>
                     <div class="form-control {{ $expirationDate && $expirationDate->isPast() ? 'bg-danger text-white' : 'bg-light' }}">
 

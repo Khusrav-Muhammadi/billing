@@ -19,6 +19,7 @@ class UpdateRequest extends FormRequest
             'name' => ['required'],
             'phone' => ['required'],
             'tariff_id' => ['nullable', Rule::exists('tariffs','id')],
+            'country_id' => ['nullable', Rule::exists('countries','id')],
             'sale_id' => [''],
             'is_demo' => [''],
             'email' => ['nullable', 'email'],
