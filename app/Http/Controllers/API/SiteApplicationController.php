@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 
 class SiteApplicationController extends Controller
 {
-
     public function index()
     {
         $applications = SiteApplications::all();
