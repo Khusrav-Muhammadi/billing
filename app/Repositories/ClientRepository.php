@@ -201,7 +201,14 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function getByPartner(array $data)
     {
-        $clients = Client::query()->filter($data)->where('partner_id', auth()->id())->with(['tariff'])->paginate(20);
+        $query = Client::query()->with('tariff')->filter($data);
+
+        if (auth()->user()->role == 'partner') {
+            $query->where('partner_id', auth()->id());
+        }
+
+        $clients = $query->paginate(20);
+
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
 
