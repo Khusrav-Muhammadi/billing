@@ -21,6 +21,7 @@ Route::middleware('auth.basic')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('clients', [\App\Http\Controllers\API\ClientController::class, 'index']);
+    Route::post('clients/store', [\App\Http\Controllers\API\ClientController::class, 'store']);
     Route::get('partners', [\App\Http\Controllers\API\ClientController::class, 'getPartners']);
     Route::get('sale', [\App\Http\Controllers\API\ClientController::class, 'sale']);
     Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);

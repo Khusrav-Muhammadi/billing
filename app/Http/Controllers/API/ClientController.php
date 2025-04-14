@@ -127,6 +127,12 @@ class ClientController extends Controller
         ]);
     }
 
+    public function store(StoreRequest $request)
+    {
+        $this->repository->store($request->validated());
+        return response()->json(['success' => true]);
+    }
+
 
 
 }
