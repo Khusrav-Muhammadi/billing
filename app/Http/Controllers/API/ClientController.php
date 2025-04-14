@@ -113,6 +113,20 @@ class ClientController extends Controller
         ]);
     }
 
+    public function getPartners()
+    {
+        return response()->json([
+            'result' => Partner::query()->paginate(50),
+        ]);
+    }
+
+    public function sale()
+    {
+        return response()->json([
+            'result' => Sale::query()->paginate(50),
+        ]);
+    }
+
 
 
 }

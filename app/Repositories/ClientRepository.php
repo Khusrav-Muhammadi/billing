@@ -50,8 +50,6 @@ class ClientRepository implements ClientRepositoryInterface
             $client->validate_date = $this->calculateValidateDate($client);
             return $client;
         });
-
-
         $clients->setCollection($processedClients);
         return $clients;
     }
@@ -214,7 +212,7 @@ class ClientRepository implements ClientRepositoryInterface
             $query->where('partner_id', auth()->id());
         }
 
-        $clients = $query->with(['sale', 'tariff', 'city'])->paginate(20);
+        $clients = $query->with(['sale', 'tariff', 'city', 'partner'])->paginate(20);
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
