@@ -118,6 +118,23 @@
             </div>
 
             <div class="form-group">
+                <label for="partner_id">Страна</label>
+                <select class="form-control form-control-sm @error('country_id') is-invalid @enderror"
+                        name="country_id" required>
+                    <option value="">Выберите страну</option>
+                    @foreach($countries as $country)
+                        <option
+                            value="{{ $country->id }}" {{ (isset($partnerRequest) && $partnerRequest->country_id == $country->id) || old('country_id') == $country->id ? 'selected' : '' }}>
+                            {{ $country->name }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('country_id')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
                 <label for="sale_id">Скидка</label>
                 <select class="form-control form-control @error('sale_id') is-invalid @enderror"
                         name="sale_id">

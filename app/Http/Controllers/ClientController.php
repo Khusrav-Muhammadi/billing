@@ -9,6 +9,7 @@ use App\Http\Requests\Client\TransactionRequest;
 use App\Http\Requests\Client\UpdateRequest;
 use App\Models\BusinessType;
 use App\Models\Client;
+use App\Models\Country;
 use App\Models\Organization;
 use App\Models\Pack;
 use App\Models\Partner;
@@ -43,8 +44,9 @@ class ClientController extends Controller
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $partners = User::query()->where('role', 'partner')->get();
+        $countries = Country::get();
 
-        return view('admin.clients.create', compact( 'tariffs', 'sales', 'partners'));
+        return view('admin.clients.create', compact( 'tariffs', 'sales', 'partners', 'countries'));
     }
 
     public function store(StoreRequest $request)
@@ -64,14 +66,13 @@ class ClientController extends Controller
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $packs = Pack::all();
+        $countries = Country::all();
         $client = $client->load(['history.changes', 'history.user']);
         $partners = User::query()->where('role', 'partner')->get();
 
-
         $expirationDate = $this->calculateValidateDate($client);
 
-
-        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales', 'partners', 'expirationDate'));
+        return view('admin.clients.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales', 'partners', 'expirationDate', 'countries'));
     }
 
     protected function calculateDailyPayment(Client $client): float
@@ -136,6 +137,7 @@ class ClientController extends Controller
 
         return Carbon::now()->addDays($days);
     }
+
     public function update(Client $client, UpdateRequest $request)
     {
         $this->repository->update($client, $request->validated());
