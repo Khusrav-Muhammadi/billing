@@ -9,6 +9,7 @@ use App\Http\Requests\Client\TransactionRequest;
 use App\Http\Requests\Client\UpdateRequest;
 use App\Models\BusinessType;
 use App\Models\Client;
+use App\Models\Country;
 use App\Models\Organization;
 use App\Models\Pack;
 use App\Models\Partner;
@@ -133,6 +134,13 @@ class ClientController extends Controller
         return response()->json(['success' => true]);
     }
 
+
+    public function getCountries()
+    {
+        return response()->json([
+            'result' => Country::query()->paginate(50),
+        ]);
+    }
 
 
 }
