@@ -24,6 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('clients/store', [\App\Http\Controllers\API\ClientController::class, 'store']);
     Route::get('partners', [\App\Http\Controllers\API\ClientController::class, 'getPartners']);
     Route::get('countries', [\App\Http\Controllers\API\ClientController::class, 'getCountries']);
+    Route::get('businessType', [\App\Http\Controllers\API\ClientController::class, 'getBusinessTypes']);
     Route::get('sale', [\App\Http\Controllers\API\ClientController::class, 'sale']);
     Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);
     Route::patch('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'update']);

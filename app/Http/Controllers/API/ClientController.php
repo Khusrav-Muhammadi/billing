@@ -142,5 +142,12 @@ class ClientController extends Controller
         ]);
     }
 
+    public function getBusinessTypes()
+    {
+        return response()->json([
+            'result' => BusinessType::query()->paginate(50),
+        ]);
+    }
+
 
 }
