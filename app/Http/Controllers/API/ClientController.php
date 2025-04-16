@@ -31,7 +31,6 @@ class ClientController extends Controller
             'clients' => $this->repository->getByPartner($request->all()),
         ]);
     }
-
     public function show(Client $client)
     {
         $organizations = Organization::where('client_id', $client->id)->get();
@@ -214,6 +213,13 @@ class ClientController extends Controller
     {
         return response()->json([
             'result' => BusinessType::query()->paginate(50),
+        ]);
+    }
+
+    public function getHistory(Client $client)
+    {
+        return response()->json([
+            'result' => $client->load(['history.changes', 'history.user']),
         ]);
     }
 
