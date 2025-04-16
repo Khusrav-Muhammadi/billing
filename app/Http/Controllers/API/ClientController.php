@@ -17,6 +17,7 @@ use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
@@ -43,7 +44,7 @@ class ClientController extends Controller
         $tariffs = Tariff::all();
         $packs = Pack::all();
         $client = $client->load(['history.changes', 'history.user', 'tariff']);
-
+        $expirationDate = $this->calculateValidateDate($client);
         return response()->json([
             'organizations' => $organizations,
             'transactions' => $transactions,
@@ -51,9 +52,34 @@ class ClientController extends Controller
             'sales' => $sales,
             'tariffs' => $tariffs,
             'packs' => $packs,
-            'client' => $client
+            'client' => $client,
+            'expirationDate' => $expirationDate,
         ]);
     }
+
+
+    /**
+     * Calculate validation date for a client
+     *
+     * @param Client $client
+     * @return Carbon|null
+     */
+    protected function calculateValidateDate(Client $client)
+    {
+
+        if ($client->is_demo) {
+            return Carbon::parse($client->created_at)->addWeeks(2);
+        }
+
+
+        $dailyPayment = round($this->calculateDailyPayment($client), 4);
+
+        $days = (int)($client->balance / $dailyPayment);
+
+        return Carbon::now()->addDays($days);
+    }
+
+
 
     public function update(Client $client, UpdateRequest $request)
     {
