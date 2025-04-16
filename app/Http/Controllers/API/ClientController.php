@@ -43,7 +43,7 @@ class ClientController extends Controller
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $packs = Pack::all();
-        $client = $client->load(['history.changes', 'history.user', 'tariff']);
+        $client = $client->load(['history.changes', 'history.user', 'tariff', 'country', 'partner']);
         $expirationDate = $this->calculateValidateDate($client);
         return response()->json([
             'organizations' => $organizations,
@@ -178,7 +178,7 @@ class ClientController extends Controller
     public function getTransactions(Client $client)
     {
         return response()->json([
-            'result' => Transaction::query()->where('client_id', $client->id)->with('tariff',  'sale')->paginate(50),
+            'result' => Transaction::query()->where('client_id', $client->id)->with('tariff',  'sale', 'organization')->paginate(50),
         ]);
     }
 
