@@ -102,7 +102,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     }
 
-    public function createInSham(Organization $organization, $client, string $password)
+    public function createInSham(Organization $organization, Client $client, string $password)
     {
         $domain = env('APP_DOMAIN');
         $url = "https://{$client->sub_domain}-back.{$domain}/api/organization";
