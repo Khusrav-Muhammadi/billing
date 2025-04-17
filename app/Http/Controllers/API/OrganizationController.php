@@ -25,7 +25,6 @@ class OrganizationController extends Controller
 
     public function store(Client $client, \App\Http\Requests\Organization\StoreRequest $request): \Illuminate\Http\JsonResponse
     {
-        dd($client);
         $organization = $this->repository->store($client, $request->validated());
 
         if (!$organization) {

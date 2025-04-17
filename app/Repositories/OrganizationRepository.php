@@ -25,7 +25,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
         return DB::transaction(function () use ($client, $data) {
             $organization = Organization::create($data);
-
+            dd($client);
             $password = Str::random(12);
 
             $res = $this->createInSham($organization, $client, $password);
