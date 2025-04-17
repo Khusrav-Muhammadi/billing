@@ -89,7 +89,7 @@ class ClientController extends Controller
 
     public function activation(Client $client)
     {
-        $this->repository->activation($client);
+        $this->repository->activation($client, null);
 
         return response()->json(['success' => true]);
     }

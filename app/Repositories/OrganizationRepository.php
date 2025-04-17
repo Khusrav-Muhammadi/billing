@@ -106,7 +106,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     {
         $domain = env('APP_DOMAIN');
         $url = "https://{$client->sub_domain}-back.{$domain}/api/organization";
-  
+
         $tariff = Tariff::find($client->tariff_id);
 
         $response = Http::withHeaders([
