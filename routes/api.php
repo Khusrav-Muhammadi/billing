@@ -28,7 +28,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('sale', [\App\Http\Controllers\API\ClientController::class, 'sale']);
     Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);
     Route::patch('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'update']);
-    Route::get('clients/activation/{client}', [\App\Http\Controllers\API\ClientController::class, 'activation']);
+    Route::post('clients/activation/{client}', [\App\Http\Controllers\API\ClientController::class, 'activation']);
     Route::post('clients/create-transaction/{id}', [\App\Http\Controllers\API\ClientController::class, 'createTransaction']);
     Route::get('clients/getOrganizations/{client}', [\App\Http\Controllers\API\ClientController::class, 'getOrganizations']);
     Route::get('clients/getTransactions/{client}', [\App\Http\Controllers\API\ClientController::class, 'getTransactions']);

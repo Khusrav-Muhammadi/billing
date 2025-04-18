@@ -87,9 +87,12 @@ class ClientController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function activation(Client $client)
+    public function activation(Client $client, Request $request)
     {
-        $this->repository->activation($client, null);
+        $data = $request->validate([
+            'reject_cause' => 'nullable'
+        ]);
+        $this->repository->activation($client, $data);
 
         return response()->json(['success' => true]);
     }
