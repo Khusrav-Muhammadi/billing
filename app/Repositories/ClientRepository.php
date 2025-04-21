@@ -204,7 +204,7 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function getByPartner(array $data)
     {
-        $query = Client::query()->with('tariff')->filter($data);
+        $query = Client::query()->with(['tariff', 'country', 'partner'])->filter($data);
 
         if (auth()->user()->role == 'partner') {
             $query->where('partner_id', auth()->id());

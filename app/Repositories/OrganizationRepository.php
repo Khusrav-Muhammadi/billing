@@ -93,7 +93,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'organization_id' => $organization->id,
             'pack_id' => $data['pack_id'],
             'date' => $data['date'],
-            'amount' => $data['amount']                               
+            'amount' => $data['amount']
         ]);
 
         $res = $this->addPackInSham($organizationPack, $organization->client->sub_domain);
@@ -102,12 +102,12 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     }
 
-    public function createInSham(Organization $organization, $client, string $password)
+    public function createInSham(Organization $organization, Client $client, string $password)
     {
         $domain = env('APP_DOMAIN');
         $url = "https://{$client->sub_domain}-back.{$domain}/api/organization";
 
-        $tariff = Tariff::find($organization->client->tariff_id);
+        $tariff = Tariff::find($client->tariff_id);
 
         $response = Http::withHeaders([
             'Accept' => 'application/json',
@@ -118,7 +118,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'project_count' => $tariff->project_count,
             'b_organization_id' => $organization->id,
             'password' => $password,
-            'is_demo' => $client->is_demo    
+            'is_demo' => $client->is_demo
         ]);
 
         return $response->successful();
