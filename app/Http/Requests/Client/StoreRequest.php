@@ -21,7 +21,7 @@ class StoreRequest extends FormRequest
             'sub_domain' => ['required', Rule::unique('clients', 'sub_domain')],
             'tariff_id' => ['required', Rule::exists('tariffs', 'id')],
             'sale_id' => ['nullable'],
-            'is_demo' => ['nullable', 'boolean'],
+            'is_demo' => ['nullable'],
             'partner_id' => ['nullable', Rule::exists('users', 'id')],
             'country_id' => ['nullable', Rule::exists('countries', 'id')],
             'contact_person' => ['nullable', 'string'],

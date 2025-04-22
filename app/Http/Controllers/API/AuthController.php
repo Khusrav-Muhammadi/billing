@@ -21,6 +21,6 @@ class AuthController extends Controller
             return response()->json(['token' => $token->plainTextToken, 'user' => $user], 200);
         }
 
-        return response()->json(['error' => 'Unauthorized'], 401);
+        return response()->json(['error' => 'Unauthorized'], 400);
     }
 }
