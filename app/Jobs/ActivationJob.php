@@ -56,6 +56,10 @@ class ActivationJob implements ShouldQueue
                         'reject_cause' => $this->reject_cause
                     ]);
                 }
+                if (count($this->organizationIds) == 1)
+                {
+                    Organization::query()->whereIn('id', $this->organizationIds)->update(['has_access', true]);
+                }
 
                 if ($this->activation) {
                     $organization = Organization::whereIn('id', $this->organizationIds)->first();

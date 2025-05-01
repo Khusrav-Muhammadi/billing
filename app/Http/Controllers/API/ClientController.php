@@ -177,10 +177,10 @@ class ClientController extends Controller
         ]);
     }
 
-    public function getTransactions(Client $client)
+    public function getTransactions(Client $client, Request $request)
     {
         return response()->json([
-            'result' => Transaction::query()->where('client_id', $client->id)->with('tariff',  'sale', 'organization')->paginate(50),
+            'result' => Transaction::query()->where('client_id', $client->id)->when()->with('tariff',  'sale', 'organization')->paginate(50),
         ]);
     }
 
