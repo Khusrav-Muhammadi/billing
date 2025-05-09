@@ -58,7 +58,7 @@ class ActivationJob implements ShouldQueue
                 }
                 if (count($this->organizationIds) == 1)
                 {
-                    Organization::query()->whereIn('id', $this->organizationIds)->update(['has_access', true]);
+                    Organization::query()->whereIn('id', $this->organizationIds)->update(['has_access' => true]);
                 }
 
                 if ($this->activation) {
