@@ -92,6 +92,7 @@ class ClientController extends Controller
         $data = $request->validate([
             'reject_cause' => 'nullable'
         ]);
+
         $this->repository->activation($client, $data);
 
         return response()->json(['success' => true]);
