@@ -34,7 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('clients/getTransactions/{client}', [\App\Http\Controllers\API\ClientController::class, 'getTransactions']);
     Route::get('clients/getHistory/{client}', [\App\Http\Controllers\API\ClientController::class, 'getHistory']);
 
-    Route::post('organizations/access', [\App\Http\Controllers\API\OrganizationController::class, 'access']);
+    Route::post('organizations/access/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'access']);
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class)->except(['store']);
     Route::post('organizations/{client}', [\App\Http\Controllers\API\OrganizationController::class, 'store']);
     Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack']);

@@ -59,7 +59,7 @@ class OrganizationController extends Controller
 
     public function access(Organization $organization)
     {
-        $this->repository->access($organization);
+        $this->repository->access($organization, []);
 
         return response()->json(['success'=> true]);
     }
