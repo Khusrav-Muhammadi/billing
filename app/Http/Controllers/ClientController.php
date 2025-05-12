@@ -59,8 +59,8 @@ class ClientController extends Controller
 
         $client = $this->createDemoClient($data);
 
-
         SubDomainJob::dispatch($client);
+
         $data = [
             'name' => $client->name,
             'phone' => $client->phone,

@@ -6,108 +6,110 @@
 
 @section('content')
     <form method="POST" action="{{ route('client.update', $client->id) }}">
-        <a href="{{ route('client.index') }}" class="btn btn-outline-danger mb-2">Назад</a>
-        <button type="submit" class="btn btn-outline-primary mb-2"> Сохранить</button>
-        <a href="" data-bs-toggle="modal" data-bs-target="#history" type="button"
-           class="btn btn-outline-dark mb-2 ml-5">
-            <i class="mdi mdi-history" style="font-size: 30px"></i>
-        </a>
-        <a href="" data-bs-toggle="modal" data-bs-target="#activation" type="button"
-           class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }} mb-2 ml-5">
-            <i class="mdi mdi-power" style="font-size: 30px"></i>
-        </a>
-        <div class="card mb-3">
-            @csrf
-            @method('PATCH')
+        @csrf
+        @method('PATCH')
+
+        <div class="mb-3 d-flex justify-content-start gap-5">
+            <a href="{{ route('client.index') }}" class="btn btn-outline-danger">Назад</a>
+
+            <button type="submit" style="margin-left: 10px" class="btn btn-outline-primary">Сохранить</button>
+
+            <a href="#" style="margin-left: 10px" data-bs-toggle="modal" data-bs-target="#history" class="btn btn-outline-dark">
+                <i class="mdi mdi-history" style="font-size: 30px"></i>
+            </a>
+
+            <a href="#" style="margin-left: 10px" data-bs-toggle="modal" data-bs-target="#activation"
+               class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }}">
+                <i class="mdi mdi-power" style="font-size: 30px"></i>
+            </a>
+        </div>
+
+        <div class="card mb-3 p-3">
             <div class="row mb-3">
-                <div class="col-4 ml-5 mt-3">
+                <div class="col-md-4">
                     <label for="name">ФИО</label>
                     <input type="text" class="form-control" name="name" value="{{ $client->name }}">
                 </div>
-                <div class="col-4 mt-3">
+                <div class="col-md-4">
                     <label for="phone">Телефон</label>
                     <input type="text" class="form-control" name="phone" value="{{ $client->phone }}">
                 </div>
-                <div class="col-3 mt-3">
+                <div class="col-md-4">
                     <label for="email">Почта</label>
                     <input type="email" class="form-control" name="email" value="{{ $client->email }}">
                 </div>
             </div>
+
             <div class="row mb-3">
-                <div class="col-4 ml-5 mt-3">
+                <div class="col-md-4">
                     <label for="sub_domain">Поддомен</label>
-                    <input type="text" class="form-control" value="{{ $client->sub_domain }}">
+                    <input type="text" class="form-control" name="sub_domain" value="{{ $client->sub_domain }}">
                 </div>
-                <div class="col-3 mt-3">
+                <div class="col-md-4">
                     <label for="tariff_id">Тариф</label>
-                    <select class="form-control form-control-sm" name="tariff_id">
+                    <select class="form-control" name="tariff_id">
                         @foreach($tariffs as $tariff)
-                            <option
-                                value="{{ $tariff->id }}" {{ $client->tariff_id == $tariff->id ? 'selected': '' }}>{{ $tariff->name }}</option>
+                            <option value="{{ $tariff->id }}" {{ $client->tariff_id == $tariff->id ? 'selected' : '' }}>
+                                {{ $tariff->name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-4 mt-3">
-                    <label for="business_type_id">Партнер</label>
-                    <select class="form-control form-control-sm @error('partner_id') is-invalid @enderror"
-                            name="partner_id">
+                <div class="col-md-4">
+                    <label for="partner_id">Партнер</label>
+                    <select class="form-control @error('partner_id') is-invalid @enderror" name="partner_id">
                         <option value="">Выберите партнера</option>
                         @foreach($partners as $partner)
-                            <option
-                                value="{{ $partner->id }}" {{ $client->partner_id == $partner->id ? 'selected' : '' }}>
+                            <option value="{{ $partner->id }}" {{ $client->partner_id == $partner->id ? 'selected' : '' }}>
                                 {{ $partner->name }}
                             </option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-3 mt-3">
-                    <label for="sale_id">Страна</label>
-                    <select class="form-control form-control-sm" name="country_id">
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="country_id">Страна</label>
+                    <select class="form-control" name="country_id">
                         @foreach($countries as $country)
-                            <option
-                                value="{{ $country->id }}" {{ $client->country_id == $country->id ? 'selected': '' }}>{{ $country->name }}</option>
+                            <option value="{{ $country->id }}" {{ $client->country_id == $country->id ? 'selected' : '' }}>
+                                {{ $country->name }}
+                            </option>
                         @endforeach
                     </select>
+                </div>
+                <div class="col-md-4">
+                    <label>Дата создания</label>
+                    <div class="form-control bg-light">
+                        {{ \Carbon\Carbon::parse($client->created_at)->format('d.m.Y') }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label>Дата окончания доступа</label>
+                    <div class="form-control {{ $expirationDate && $expirationDate->isPast() ? 'bg-danger text-white' : 'bg-light' }}">
+                        {{ $expirationDate ? $expirationDate->format('d.m.Y') : 'Не определено' }}
+                    </div>
                 </div>
             </div>
 
             <div class="row mb-3">
-
-                <div class="col-4 mt-3">
-                    <label>Дата создания:</label>
-                    <div class="form-control bg-light">{{ \Carbon\Carbon::parse($client->created_at)->format('d.m.Y') }}</div>
-                </div>
-                <div class="col-3 mt-3">
-                    <label>Дата окончания доступа:</label>
-                    <div class="form-control {{ $expirationDate && $expirationDate->isPast() ? 'bg-danger text-white' : 'bg-light' }}">
-
-                            {{ $expirationDate ? $expirationDate->format('d.m.Y') : 'Не определено' }}
-
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-3 ml-4">
                 @if($client->is_demo)
-                    <div class="col-4 mt-3" style="display: flex; align-items: center;">
-                        <label for="is_demo" style="margin-right: 10px;">Демо версия:</label>
-                        <input type="checkbox" name="is_demo" class="form-control"
-                               style="width: 40px; margin: 0;" {{ $client->is_demo ? 'checked' : '' }}>
+                    <div style="margin-left: 20px" class="col-md-4 d-flex align-items-center">
+                        <label for="is_demo" class="me-2">Демо версия:</label>
+                        <input type="checkbox" name="is_demo" class="form-check-input"
+                            {{ $client->is_demo ? 'checked' : '' }}>
                     </div>
                 @endif
 
                 @if($client->nfr)
-                    <div class="col-4 ml-2 mt-3" style="display: flex; align-items: center;">
-                        <label for="is_demo" style="margin-right: 10px;">НФР:</label>
-                        <input type="checkbox" class="form-control"
-                               style="width: 40px; margin: 0;" {{ $client->nfr ? 'checked' : '' }}>
+                    <div class="col-md-4 d-flex align-items-center">
+                        <label for="nfr" class="me-2">НФР:</label>
+                        <input type="checkbox" class="form-check-input" {{ $client->nfr ? 'checked' : '' }}>
                     </div>
                 @endif
-
             </div>
         </div>
-
     </form>
 
     <div class="table-responsive">
@@ -348,32 +350,13 @@
                             @enderror
                         </div>
 
-                        <div class="form-group">
-                            <label for="INN">Инн <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="INN" placeholder="ИНН">
-                        </div>
-                        <div class="form-group">
-                            <label for="business_type_id">Тип бизнеса <span class="text-danger">*</span></label>
-                            <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
-                                    name="business_type_id" required>
-                                <option value="">Выберите тип бизнеса</option>
-                                @foreach($businessTypes as $businessType)
-                                    <option
-                                        value="{{ $businessType->id }}" {{ old('business_type_id') == $businessType->id ? 'selected' : '' }}>
-                                        {{ $businessType->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('business_type_id')
-                            <span class="text-danger">{{ $message }}</span>
-                            @enderror
-                        </div>
 
-                        <div class="form-group">
-                            <label for="sub_domain">Адрес <span class="text-danger">*</span></label>
-                            <textarea name="address" cols="30" rows="10" placeholder="Адрес"
-                                      class="form-control"></textarea>
-                        </div>
+
+{{--                        <div class="form-group">--}}
+{{--                            <label for="sub_domain">Адрес <span class="text-danger">*</span></label>--}}
+{{--                            <textarea name="address" cols="30" rows="10" placeholder="Адрес"--}}
+{{--                                      class="form-control"></textarea>--}}
+{{--                        </div>--}}
                     </div>
 
                     <div class="modal-footer">
