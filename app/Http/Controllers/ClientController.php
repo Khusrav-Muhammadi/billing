@@ -89,12 +89,12 @@ class ClientController extends Controller
     private function createDemoClient(array $data): ?Client
     {
         $clientData = [
-            'name' => $data['fio'],
+            'name' => $data['name'],
             'phone' => $data['phone'],
             'email' => $data['email'],
-            'country_id' => $data['region_id'] ?? 1,
+            'country_id' => $data['country_id'] ?? 1,
             'is_demo' => true,
-            'tariff_id' => 3,
+            'tariff_id' => $data['tariff_id'],
             'sub_domain' => $this->generateSubdomain($data['email'])
         ];
 
