@@ -18,17 +18,13 @@ class StoreRequest extends FormRequest
         return [
             'name' => ['required'],
             'phone' => ['required', Rule::unique('clients', 'phone')],
-            'sub_domain' => ['required', Rule::unique('clients', 'sub_domain')],
             'tariff_id' => ['required', Rule::exists('tariffs', 'id')],
-            'sale_id' => ['nullable'],
             'is_demo' => ['nullable'],
             'partner_id' => ['nullable', Rule::exists('users', 'id')],
             'country_id' => ['nullable', Rule::exists('countries', 'id')],
-            'contact_person' => ['nullable', 'string'],
             'email' => ['nullable', 'string', 'email', 'max:255', 'unique:clients'],
-            'client_type' => ['required', Rule::enum(ClientType::class)],
-            'partner_request_id' => ['nullable'],
-            'nfr' => ['nullable', 'boolean']
+            'nfr' => ['nullable', 'boolean'],
+            'id_demo' => ['nullable', 'boolean']
         ];
     }
 
@@ -38,8 +34,6 @@ class StoreRequest extends FormRequest
             'name.required' => 'Поле "ФИО" обязательно для заполнения.',
             'phone.required' => 'Поле "Телефон" обязательно для заполнения.',
             'phone.unique' => 'Поле "Телефон" уже зарегистриварон.',
-            'sub_domain.required' => 'Поле "Поддомен" обязательно для заполнения.',
-            'sub_domain.unique' => 'Поле "Поддомен" уже зарегистриварон.',
             'tariff_id.required' => 'Поле "Тариф" обязательно для выбора.',
             'country_id.required' => 'Поле "Страна" обязательно для выбора.',
             'email.email' => 'Введите корректный адрес электронной почты.',

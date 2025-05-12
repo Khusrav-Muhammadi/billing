@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Jobs\ActivationJob;
+use App\Jobs\CreateOrganizationJob;
 use App\Jobs\SendOrganizationLicense;
 use App\Mail\SendSiteDataMail;
 use App\Models\Client;
@@ -28,8 +29,8 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
             $password = Str::random(12);
 
-            $res = $this->createInSham($organization, $client, $password);
-
+            $this->createInSham($organization, $client, $password);
+            $res = true;
             if (!$res) $organization->delete();
             else {
                 $daysInMonth = Carbon::now()->daysInMonth;
@@ -64,7 +65,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
             }
 
-            if (Organization::where('client_id', $client->id)->count() == 1) Mail::to($client->email)->send(new SendSiteDataMail($client, $password));
+
             if (!$client->is_demo) {
                 SendOrganizationLicense::dispatch($organization);
             }
@@ -104,24 +105,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     public function createInSham(Organization $organization, Client $client, string $password)
     {
-        $domain = env('APP_DOMAIN');
-        $url = "https://{$client->sub_domain}-back.{$domain}/api/organization";
-
-        $tariff = Tariff::find($client->tariff_id);
-
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, [
-            'name' => $organization->name,
-            'tariff_id' => $tariff->id,
-            'user_count' => $tariff->user_count,
-            'project_count' => $tariff->project_count,
-            'b_organization_id' => $organization->id,
-            'password' => $password,
-            'is_demo' => $client->is_demo
-        ]);
-
-        return $response->successful();
+        CreateOrganizationJob::dispatch($client, $organization, $password)->delay(120);
     }
 
     public function addPackInSham(OrganizationPack $organizationPack, string $sub_domain)

@@ -12,7 +12,7 @@
         <form method="POST" action="{{ route('organization.store') }}">
             @csrf
             <div class="form-group">
-                <label for="name">ФИО</label>
+                <label for="name">ФИО/Название организации</label>
                 <input type="text" class="form-control" name="name" placeholder="ФИО">
             </div>
 
@@ -21,15 +21,6 @@
                 <input type="text" class="form-control" name="phone" placeholder="Телефон">
             </div>
 
-            <div class="form-group">
-                <label for="INN">Инн</label>
-                <input type="number" class="form-control" name="INN" placeholder="ИНН">
-            </div>
-
-            <div class="form-group">
-                <label for="license">Лицензия</label>
-                <input type="text" class="form-control" name="license" placeholder="Лицензия">
-            </div>
 
             <div class="form-group">
                 <label for="client_id">Клиент</label>

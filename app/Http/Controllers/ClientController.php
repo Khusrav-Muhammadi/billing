@@ -7,6 +7,7 @@ use App\Http\Requests\Client\RejectRequest;
 use App\Http\Requests\Client\StoreRequest;
 use App\Http\Requests\Client\TransactionRequest;
 use App\Http\Requests\Client\UpdateRequest;
+use App\Jobs\SubDomainJob;
 use App\Models\BusinessType;
 use App\Models\Client;
 use App\Models\Country;
@@ -18,8 +19,10 @@ use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use App\Repositories\OrganizationRepository;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ClientController extends Controller
 {
@@ -51,11 +54,56 @@ class ClientController extends Controller
 
     public function store(StoreRequest $request)
     {
-        $this->repository->store($request->validated());
+        $data = $request->validated();
+        if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
+
+        $client = $this->createDemoClient($data);
+
+        SubDomainJob::dispatch($client);
+
+        $data = [
+            'name' => $client->name,
+            'phone' => $client->phone,
+            'client_id' => $client->id,
+            'has_access' => true
+        ];
+
+
+        (new OrganizationRepository())->store($client, $data);
 
         return redirect()->route('client.index');
     }
+    private function generateSubdomain(string $email): string
+    {
+        [$local, $domain] = explode('@', $email);
+        $isPublic = in_array(strtolower($domain), config('app.public_domains'));
 
+        return Str::of($isPublic ? $local : $local . $domain)
+            ->replace('_', '')
+            ->lower()
+            ->replaceMatches('/[^a-z0-9-]/', '')
+            ->trim('-')
+            ->replaceMatches('/-+/', '-')
+            ->whenEmpty(fn() => 'default');
+    }
+    private function createDemoClient(array $data): ?Client
+    {
+        $clientData = [
+            'name' => $data['name'],
+            'phone' => $data['phone'],
+            'email' => $data['email'],
+            'country_id' => $data['country_id'] ?? 1,
+            'is_demo' => true,
+            'tariff_id' => $data['tariff_id'],
+            'sub_domain' => $this->generateSubdomain($data['email'])
+        ];
+
+        $client = Client::query()->where('sub_domain', $clientData['sub_domain'])->orWhere('phone',$clientData['phone'])->first();
+        if ($client) return null;
+
+
+        return Client::create($clientData);
+    }
     public function show(Client $client)
     {
         $organizations = Organization::where('client_id', $client->id)->get();
