@@ -4,12 +4,18 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\NewSiteRequestJob;
+use App\Jobs\SubDomainJob;
+use App\Models\Client;
 use App\Models\SiteApplications;
 use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Repositories\ClientRepository;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use App\Repositories\OrganizationRepository;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class SiteApplicationController extends Controller
 {
@@ -21,28 +27,88 @@ class SiteApplicationController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'fio' => 'required',
-            'phone' => 'required',
-            'email' => ['nullable', 'email'],
-            'organization' => 'nullable',
-            'region' => 'nullable',
-            'request_type' => 'required',
-        ]);
+        $validated = $this->validateRequest($request);
 
-        SiteApplications::create($data);
+        if ($validated['request_type'] === 'demo') {
+            $client = $this->createDemoClient($validated);
+            if (!$client) {
+                return response()->json([
+                    'success' => false
+                ], 400);
+            }
+            SubDomainJob::dispatch($client);
+            $data = [
+                'name' => $client->name,
+                'phone' => $client->phone,
+                'client_id' => $client->id,
+                'has_access' => true
+            ];
 
-        NewSiteRequestJob::dispatch(User::first(), $data['request_type']);
-        return response()->json([
-            'success' => true,
-        ]);
+           (new OrganizationRepository())->store($client, $data);
+        } else {
+            $this->createRegularApplication($validated);
+            NewSiteRequestJob::dispatch(User::first(), $validated['request_type']);
+        }
+
+        return response()->json(['success' => true]);
     }
 
-    public function destroy(SiteApplications $siteApplication)
+    private function validateRequest(Request $request): array
     {
-        $siteApplication->delete();
-
-        return redirect()->back()->with('success', 'Успешно удалено');
+        return $request->validate([
+            'fio' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'email' => [
+                Rule::requiredIf($request->input('request_type') === 'demo'),
+                'email',
+                'max:255'
+            ],
+            'region_id' => 'nullable|integer',
+            'request_type' => 'required|string|in:demo,partner,corporate',
+        ]);
     }
 
+    private function createDemoClient(array $data): ?Client
+    {
+        $clientData = [
+            'name' => $data['fio'],
+            'phone' => $data['phone'],
+            'email' => $data['email'],
+            'country_id' => $data['region_id'] ?? 1,
+            'is_demo' => true,
+            'tariff_id' => 3,
+            'sub_domain' => $this->generateSubdomain($data['email'])
+        ];
+
+        $client = Client::query()->where('sub_domain', $clientData['sub_domain'])->orWhere('phone',$clientData['phone'])->first();
+        if ($client) return null;
+
+
+        return Client::create($clientData);
+    }
+
+    private function generateSubdomain(string $email): string
+    {
+        [$local, $domain] = explode('@', $email);
+        $isPublic = in_array(strtolower($domain), config('app.public_domains'));
+
+        return Str::of($isPublic ? $local : $local . $domain)
+            ->replace('_', '')
+            ->lower()
+            ->replaceMatches('/[^a-z0-9-]/', '')
+            ->trim('-')
+            ->replaceMatches('/-+/', '-')
+            ->whenEmpty(fn() => 'default');
+    }
+
+    private function createRegularApplication(array $data): void
+    {
+        SiteApplications::create([
+            'fio' => $data['fio'],
+            'phone' => $data['phone'],
+            'email' => $data['email'],
+            'region_id' => $data['region_id'],
+            'request_type' => $data['request_type']
+        ]);
+    }
 }

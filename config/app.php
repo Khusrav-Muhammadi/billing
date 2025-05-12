@@ -42,7 +42,7 @@ return [
     |
     */
 
-    'debug' => (bool) env('APP_DEBUG', false),
+    'debug' => (bool)env('APP_DEBUG', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -186,4 +186,10 @@ return [
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
 
+    'public_domains' => [
+        'gmail.com',
+        'mail.ru',
+        'yahoo.com',
+        'yandex.ru'
+    ]
 ];

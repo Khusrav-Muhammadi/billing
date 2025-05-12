@@ -15,7 +15,7 @@
             @csrf
 
             <div class="form-group">
-                <label for="name">ФИО <span class="text-danger">*</span></label>
+                <label for="name">ФИО / Название организации <span class="text-danger">*</span></label>
                 <input type="text" class="form-control @error('name') is-invalid @enderror"
                        name="name" placeholder="ФИО" value="{{ $partnerRequest->name ?? old('name') }}" required>
                 @error('name')
@@ -41,26 +41,6 @@
             </div>
 
             <div class="form-group">
-                <label for="contact_person">Контактное лицо</label>
-                <input type="text" class="form-control @error('contact_person') is-invalid @enderror"
-                       name="contact_person" placeholder="Контактное лицо"
-                       value="{{ $partnerRequest->contact_person ?? old('contact_person') }}">
-                @error('contact_person')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <div class="form-group">
-                <label for="sub_domain">Поддомен <span class="text-danger">*</span></label>
-                <input type="text" class="form-control @error('sub_domain') is-invalid @enderror"
-                       name="sub_domain" placeholder="Поддомен сайта"
-                       value="{{ $partnerRequest->sub_domain ?? old('sub_domain') }}" required>
-                @error('sub_domain')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <div class="form-group">
                 <label for="partner_id">Партнер</label>
                 <select class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
                         name="partner_id">
@@ -73,29 +53,6 @@
                     @endforeach
                 </select>
                 @error('partner_id')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <div class="form-group">
-                <label for="client_type">Тип клиента <span class="text-danger">*</span></label>
-                <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
-                        name="client_type" required>
-                    <option value="">Выберите тип клиента</option>
-                    <option
-                        value="{{ \App\Enums\ClientType::LegalEntity->value }}" {{ (isset($partnerRequest) && $partnerRequest->client_type == \App\Enums\ClientType::LegalEntity->value) || old('client_type') == \App\Enums\ClientType::LegalEntity->value ? 'selected' : '' }}>
-                        {{ \App\Enums\ClientType::LegalEntity->value }}
-                    </option>
-                    <option
-                        value="{{ \App\Enums\ClientType::Individual->value }}" {{ (isset($partnerRequest) && $partnerRequest->client_type == \App\Enums\ClientType::Individual->value) || old('client_type') == \App\Enums\ClientType::Individual->value ? 'selected' : '' }}>
-                        {{ \App\Enums\ClientType::Individual->value }}
-                    </option>
-                    <option
-                        value="{{ \App\Enums\ClientType::Entrepreneur->value }}" {{ (isset($partnerRequest) && $partnerRequest->client_type == \App\Enums\ClientType::Entrepreneur->value) || old('client_type') == \App\Enums\ClientType::Entrepreneur->value ? 'selected' : '' }}>
-                        {{ \App\Enums\ClientType::Entrepreneur->value }}
-                    </option>
-                </select>
-                @error('client_type')
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
             </div>
@@ -132,27 +89,6 @@
                 @error('country_id')
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
-            </div>
-
-            <div class="form-group">
-                <label for="sale_id">Скидка</label>
-                <select class="form-control form-control @error('sale_id') is-invalid @enderror"
-                        name="sale_id">
-                    <option value="">Выберите скидку</option>
-                    @foreach($sales as $sale)
-                        <option value="{{ $sale->id }}" {{ old('sale_id') == $sale->id ? 'selected' : '' }}>
-                            {{ $sale->name }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('sale_id')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <div class="form-group col-2" id="partner_checkbox_container" style="display: none; align-items: center;">
-                <label for="partner_checkbox" style="margin-right: 10px;">НФР:</label>
-                <input type="checkbox" name="nfr" class="form-control" style="width: 30px; margin: 0;">
             </div>
 
             <div class="form-group col-2" style="display: flex; align-items: center;">
