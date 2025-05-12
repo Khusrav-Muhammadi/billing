@@ -38,25 +38,6 @@
                     <label for="sub_domain">Поддомен</label>
                     <input type="text" class="form-control" value="{{ $client->sub_domain }}">
                 </div>
-                <div class="col-4 mt-3">
-                    <label for="client_type">Тип клиента</label>
-                    <select class="form-control form-control-sm @error('client_type') is-invalid @enderror"
-                            name="client_type" required>
-                        <option value="">Выберите тип клиента</option>
-                        <option
-                            value="{{ \App\Enums\ClientType::LegalEntity->value }}" {{ $client->client_type == \App\Enums\ClientType::LegalEntity->value ? 'selected' : '' }}>
-                            {{ \App\Enums\ClientType::LegalEntity->value }}
-                        </option>
-                        <option
-                            value="{{ \App\Enums\ClientType::Individual->value }}" {{ $client->client_type == \App\Enums\ClientType::Individual->value ? 'selected' : '' }}>
-                            {{ \App\Enums\ClientType::Individual->value }}
-                        </option>
-                        <option
-                            value="{{ \App\Enums\ClientType::Entrepreneur->value }}" {{ $client->client_type == \App\Enums\ClientType::Entrepreneur->value ? 'selected' : '' }}>
-                            {{ \App\Enums\ClientType::Entrepreneur->value }}
-                        </option>
-                    </select>
-                </div>
                 <div class="col-3 mt-3">
                     <label for="tariff_id">Тариф</label>
                     <select class="form-control form-control-sm" name="tariff_id">
@@ -68,11 +49,6 @@
                 </div>
             </div>
             <div class="row mb-3">
-                <div class="col-4 ml-5 mt-3">
-                    <label for="contact_person">Контактное лицо</label>
-                    <input type="text" class="form-control @error('contact_person') is-invalid @enderror"
-                           name="contact_person" value="{{ $client->contact_person }}">
-                </div>
                 <div class="col-4 mt-3">
                     <label for="business_type_id">Партнер</label>
                     <select class="form-control form-control-sm @error('partner_id') is-invalid @enderror"
@@ -98,15 +74,6 @@
             </div>
 
             <div class="row mb-3">
-                <div class="col-4 ml-5 mt-3">
-                    <label for="sale_id">Скидка</label>
-                    <select class="form-control form-control-sm" name="sale_id">
-                        @foreach($sales as $sale)
-                            <option
-                                value="{{ $sale->id }}" {{ $client->sale_id == $sale->id ? 'selected': '' }}>{{ $sale->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
 
                 <div class="col-4 mt-3">
                     <label>Дата создания:</label>
@@ -171,7 +138,6 @@
                         <th>№</th>
                         <th>Имя</th>
                         <th>Телефон</th>
-                        <th>Тип бизнеса</th>
                         <th>Активный</th>
                         <th>Действие</th>
                     </tr>
@@ -182,7 +148,6 @@
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $organization->name }}</td>
                             <td>{{ $organization->phone }}</td>
-                            <td>{{ $organization->businessType?->name }}</td>
                             <td>
                                 <input type="checkbox" class="form-control" name="has_access" style="width: 30px"
                                        data-bs-toggle="modal"
@@ -258,30 +223,6 @@
                                                        value="{{ $organization->phone }}">
                                             </div>
 
-                                            <div class="form-group">
-                                                <label for="INN">Инн</label>
-                                                <input type="number" class="form-control" name="INN"
-                                                       value="{{ $organization->INN }}">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="business_type_id">Тип бизнеса <span
-                                                        class="text-danger">*</span></label>
-                                                <select
-                                                    class="form-control form-control-sm @error('business_type_id') is-invalid @enderror"
-                                                    name="business_type_id" required>
-                                                    <option value="">Выберите тип бизнеса</option>
-                                                    @foreach($businessTypes as $businessType)
-                                                        <option
-                                                            value="{{ $businessType->id }}" {{ $organization->business_type_id == $businessType->id ? 'selected' : '' }}>
-                                                            {{ $businessType->name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @error('business_type_id')
-                                                <span class="text-danger">{{ $message }}</span>
-                                                @enderror
-                                            </div>
 
                                             <div class="form-group">
                                                 <label for="sub_domain">Адрес</label>

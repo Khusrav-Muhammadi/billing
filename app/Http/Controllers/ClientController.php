@@ -54,8 +54,10 @@ class ClientController extends Controller
 
     public function store(StoreRequest $request)
     {
-        dd($request->validated());
-        $client = $this->createDemoClient($request->validated());
+        $data = $request->validated();
+        if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
+
+        $client = $this->createDemoClient($data);
 
 
         SubDomainJob::dispatch($client);
@@ -65,6 +67,7 @@ class ClientController extends Controller
             'client_id' => $client->id,
             'has_access' => true
         ];
+
 
         (new OrganizationRepository())->store($client, $data);
 
