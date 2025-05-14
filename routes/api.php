@@ -64,7 +64,7 @@ Route::options('/{any}', function (Request $request) {
         'Access-Control-Allow-Headers' => 'Content-Type, Authorization',
     ]);
 })->where('any', '.*');
-Route::post('sendRequest', [\App\Http\Controllers\API\SiteApplicationController::class, 'st ore']);
+Route::post('sendRequest', [\App\Http\Controllers\API\SiteApplicationController::class, 'store']);
 
 
 
