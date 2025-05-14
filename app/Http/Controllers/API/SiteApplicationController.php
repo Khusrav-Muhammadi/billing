@@ -30,6 +30,7 @@ class SiteApplicationController extends Controller
         $validated = $this->validateRequest($request);
 
         if ($validated['request_type'] === 'demo') {
+
             $client = $this->createDemoClient($validated);
             if (!$client) {
                 return response()->json([
@@ -45,6 +46,7 @@ class SiteApplicationController extends Controller
                 'partner_id' => $validated['partner_id'],
                 'country_id' => $validated['region_id']
             ];
+
 
            (new OrganizationRepository())->store($client, $data);
         } else {
@@ -80,8 +82,10 @@ class SiteApplicationController extends Controller
             'country_id' => $data['region_id'] ?? 1,
             'is_demo' => true,
             'tariff_id' => 3,
+            'partner_id' => $data['partner_id'],
             'sub_domain' => $this->generateSubdomain($data['email'])
         ];
+
 
         $client = Client::query()->where('sub_domain', $clientData['sub_domain'])->orWhere('phone',$clientData['phone'])->first();
         if ($client) return null;
