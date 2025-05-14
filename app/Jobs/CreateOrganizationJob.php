@@ -42,6 +42,8 @@ class CreateOrganizationJob implements ShouldQueue
             'Accept' => 'application/json',
         ])->post($url, [
             'name' => $this->organization->name,
+            'email' => $this->client->email,
+            'phone' => $this->client->phone,
             'tariff_id' => $tariff->id,
             'user_count' => $tariff->user_count,
             'project_count' => $tariff->project_count,
