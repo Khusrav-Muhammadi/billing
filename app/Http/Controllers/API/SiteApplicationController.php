@@ -67,6 +67,7 @@ class SiteApplicationController extends Controller
             ],
             'region_id' => 'nullable|integer',
             'request_type' => 'required|string|in:demo,partner,corporate',
+            'partner_id' => 'nullable'
         ]);
     }
 
