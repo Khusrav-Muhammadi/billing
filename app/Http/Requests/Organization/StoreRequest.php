@@ -17,10 +17,7 @@ class StoreRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'phone' => ['required'],
-            'INN' => ['nullable'],
-            'address' => ['required'],
-            'business_type_id' => ['nullable', Rule::exists('business_types', 'id')],
+            'phone' => ['required']
         ];
     }
 }

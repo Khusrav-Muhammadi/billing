@@ -41,7 +41,9 @@ class SiteApplicationController extends Controller
                 'name' => $client->name,
                 'phone' => $client->phone,
                 'client_id' => $client->id,
-                'has_access' => true
+                'has_access' => true,
+                'partner_id' => $validated['partner_id'],
+                'country_id' => $validated['region_id']
             ];
 
            (new OrganizationRepository())->store($client, $data);

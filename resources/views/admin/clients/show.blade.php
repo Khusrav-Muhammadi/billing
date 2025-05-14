@@ -350,8 +350,6 @@
                             @enderror
                         </div>
 
-
-
 {{--                        <div class="form-group">--}}
 {{--                            <label for="sub_domain">Адрес <span class="text-danger">*</span></label>--}}
 {{--                            <textarea name="address" cols="30" rows="10" placeholder="Адрес"--}}
