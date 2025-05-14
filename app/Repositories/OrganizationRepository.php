@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
     public function store(Client $client, array $data)
