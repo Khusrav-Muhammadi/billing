@@ -4,8 +4,10 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\NewSiteRequestJob;
+use App\Jobs\SendToShamJob;
 use App\Jobs\SubDomainJob;
 use App\Models\Client;
+use App\Models\Country;
 use App\Models\SiteApplications;
 use App\Models\Tariff;
 use App\Models\Transaction;
@@ -49,7 +51,14 @@ class SiteApplicationController extends Controller
 
 
            (new OrganizationRepository())->store($client, $data);
-        } else {
+
+           SendToShamJob::dispatch($client->phone, $client->tariff?->name, $client->email, $client->name, $client->country?->name, $client->partner?->name);
+        }
+        elseif ($validated['request_type'] === 'individual') {
+
+            SendToShamJob::dispatch($validated['phone'], 'Индивидуальный', $validated['email'], $validated['fio'], Country::find($validated['region_id']));
+        }
+        else {
             $this->createRegularApplication($validated);
             NewSiteRequestJob::dispatch(User::first(), $validated['request_type']);
         }
@@ -68,7 +77,7 @@ class SiteApplicationController extends Controller
                 'max:255'
             ],
             'region_id' => 'nullable|integer',
-            'request_type' => 'required|string|in:demo,partner,corporate',
+            'request_type' => 'required|string|in:demo,partner,corporate,individual',
             'partner_id' => 'nullable'
         ]);
     }
