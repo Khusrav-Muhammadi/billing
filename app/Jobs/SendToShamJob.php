@@ -29,7 +29,7 @@ class SendToShamJob implements ShouldQueue
     {
         $response = Http::withHeaders([
             'Accept' => 'application/json',
-        ])->post('https://sham-back.shamcrm.com/api/messengerSettings/site', [
+        ])->post('https://sham-back.shamcrm.com/api/messengerSettings/site/webhook', [
             'phone' => $this->phone,
             'tarif' => $this->tariff ?? '',
             'email' => $this->email,
