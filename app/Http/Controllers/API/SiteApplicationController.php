@@ -56,7 +56,7 @@ class SiteApplicationController extends Controller
         }
         elseif ($validated['request_type'] === 'individual') {
 
-            SendToShamJob::dispatch($validated['phone'], 'Индивидуальный', $validated['email'], $validated['fio'], Country::find($validated['region_id']));
+            SendToShamJob::dispatch($validated['phone'], 'Индивидуальный', $validated['email'], $validated['fio'], Country::find($validated['region_id'])?->name );
         }
         else {
             $this->createRegularApplication($validated);
