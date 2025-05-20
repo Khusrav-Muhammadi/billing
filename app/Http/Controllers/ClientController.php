@@ -230,13 +230,14 @@ class ClientController extends Controller
     public function createInvoice(Request $request)
     {
         $data = $request->validate([
-            'tariff_name' => ['required', Rule::exists('tariffs','name')]
+            'tariff_name' => ['required', Rule::exists('tariffs','name')],
+            'sub_domain' => ['required'],
         ]);
 
         $token = 'vaCx7qkNNahFb9LhN+ZF2EqhT/+9c8uK5LrGXvGoG/yf';
         $url = 'https://api-dev.alifpay.uz/v2/invoice';
 
-        $subdomain = parse_url($request->fullUrl(), PHP_URL_HOST);
+        $subdomain = $data['sub_domain'];
 
         $tariff = Tariff::where('name', $data['tariff_name'])->first();
         $client = Client::where('sub_domain', $subdomain)->first();
