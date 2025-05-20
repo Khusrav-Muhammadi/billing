@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
+Route::get('createInvoice', [\App\Http\Controllers\ClientController::class, 'createInvoice']);
 Route::middleware('auth.basic')->group(function () {
 });
 
