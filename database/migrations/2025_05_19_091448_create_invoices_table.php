@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
-            $table->string('invoice_id');
+            $table->string('invoice_id')->nullable();
             $table->boolean('receipt')->default(true);
             $table->string('phone');
             $table->string('cancel_url');

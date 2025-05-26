@@ -62,8 +62,7 @@ class PaymentRepository implements PaymentRepositoryInterface
             'invoice_status_id' => 1,
             'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$client->sub_domain}",
             'redirect_url' => "https://{$client->sub_domain}shamcrm.com/payment",
-            //            'webhook_url' => 'https://' . $client->sub_domain . '-back.shamcrm.com/api/payment/alif/webhook',
-            'webhook_url' => 'https://2cc0-95-142-94-22.ngrok-free.app/api/payment/alif/webhook',
+            'webhook_url' => 'https://' . $client->sub_domain . '-back.shamcrm.com/api/payment/alif/webhook',
 
         ];
     }
