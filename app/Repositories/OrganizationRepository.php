@@ -5,18 +5,16 @@ namespace App\Repositories;
 use App\Jobs\ActivationJob;
 use App\Jobs\CreateOrganizationJob;
 use App\Jobs\SendOrganizationLicense;
-use App\Mail\SendSiteDataMail;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
-use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
     public function store(Client $client, array $data)
@@ -37,6 +35,10 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                 $sum = $client->tariff->price / $daysInMonth;
 
                 if (!$client->is_demo) {
+                    $currency = $client->currency;
+
+                    $accountedAmount = $currency->symbol_code == 'USD' ? $sum / $currency->latestExchangeRate->kurs : $sum;
+
                     Transaction::create([
                         'client_id' => $client->id,
                         'organization_id' => $organization->id,
@@ -44,6 +46,8 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                         'sale_id' => $client->sale?->id,
                         'sum' => $sum,
                         'type' => 'Снятие',
+                        'accounted_amount' => $accountedAmount
+
                     ]);
                     if ($client->tariff->id == 1) {
                         $sum = 499;
@@ -52,6 +56,11 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                     } else {
                         $sum = 2599;
                     }
+
+                    $currency = $client->currency;
+
+                    $accountedAmount = $currency->symbol_code == 'USD' ? $sum / $currency->latestExchangeRate->kurs : $sum;
+
                     Transaction::create([
                         'client_id' => $client->id,
                         'organization_id' => $organization->id,
@@ -59,6 +68,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                         'sale_id' => $client->sale?->id,
                         'sum' => $sum,
                         'type' => 'Снятие',
+                        'accounted_amount' => $accountedAmount
                     ]);
                 }
 

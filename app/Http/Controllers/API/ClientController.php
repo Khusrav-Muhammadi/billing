@@ -34,6 +34,7 @@ class ClientController extends Controller
             'clients' => $this->repository->getByPartner($request->all()),
         ]);
     }
+
     public function show(Client $client)
     {
         $organizations = Organization::where('client_id', $client->id)->get();
@@ -59,13 +60,6 @@ class ClientController extends Controller
         ]);
     }
 
-
-    /**
-     * Calculate validation date for a client
-     *
-     * @param Client $client
-     * @return Carbon|null
-     */
     protected function calculateValidateDate(Client $client)
     {
 
@@ -80,8 +74,6 @@ class ClientController extends Controller
 
         return Carbon::now()->addDays($days);
     }
-
-
 
     public function update(Client $client, UpdateRequest $request)
     {

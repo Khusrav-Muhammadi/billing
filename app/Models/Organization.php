@@ -10,7 +10,7 @@ class Organization extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','INN','phone','address', 'client_id', 'has_access', 'business_type_id', 'reject_cause'];
+    protected $fillable = ['name','INN','phone','address', 'client_id', 'has_access', 'business_type_id', 'reject_cause', 'balance'];
 
     public function client()
     {

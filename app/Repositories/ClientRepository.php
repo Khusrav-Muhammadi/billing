@@ -7,7 +7,7 @@ use App\Jobs\ChangeRequestStatusJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
-use App\Models\Partner;
+use App\Models\Organization;
 use App\Models\PartnerRequest;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
@@ -66,14 +66,11 @@ class ClientRepository implements ClientRepositoryInterface
                 return 0;
             }
 
-
             $currentMonth = now();
             $daysInMonth = $currentMonth->daysInMonth;
 
-            // Base daily payment from tariff
             $dailyPayment = $client->tariff->price / $daysInMonth;
 
-            // Calculate additional daily cost from organization packs
             $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
                 return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
 
@@ -83,7 +80,6 @@ class ClientRepository implements ClientRepositoryInterface
                     return $pack ? ($pack->price / $daysInMonth) : 0;
                 });
             });
-            // Combine tariff and packs daily payment
 
             $totalDailyPayment = $dailyPayment + $packsDailyPayment;
 
@@ -91,10 +87,8 @@ class ClientRepository implements ClientRepositoryInterface
                 $sale = $client->sale;
 
                 if ($sale->sale_type === 'procent') {
-                    // Percentage discount on total daily payment
                     $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
                 } else {
-                    // Fixed amount discount
                     $totalDailyPayment -= $sale->amount / $daysInMonth;
                 }
             }
@@ -166,11 +160,11 @@ class ClientRepository implements ClientRepositoryInterface
     public function createTransaction(Client $client, array $data)
     {
         DB::transaction(function () use ($data, $client) {
+            $organization = Organization::find($data['organization_id']);
             $data['type'] = 'Пополнение';
             $data['client_id'] = $client->id;
             Transaction::create($data);
-            $client->disableObserver = true;
-            $client->increment('balance', $data['sum']);
+            $organization->increment('balance', $data['sum']);
         });
     }
 
