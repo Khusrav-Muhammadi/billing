@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Requests\Client;
+namespace App\Http\Requests\Payment;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class TransactionRequest extends FormRequest
+class InvoiceRequest extends FormRequest
 {
 
     public function authorize(): bool
@@ -16,9 +16,8 @@ class TransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'organization_id' => ['required', Rule::exists('organizations','id')],
-            'date' => ['required'],
-            'sum' => ['required'],
+            'tariff_name' => ['required', Rule::exists('tariffs','name')],
+            'organization_id' => ['required', Rule::exists('organizations','id')]
         ];
     }
 }

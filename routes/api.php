@@ -70,3 +70,8 @@ Route::post('sendRequest', [\App\Http\Controllers\API\SiteApplicationController:
 
 
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
+
+
+Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
+Route::post('alif-payment', [\App\Http\Controllers\API\PaymentController::class, 'createInvoice']);
+Route::post('payment/alif/webhook', [\App\Http\Controllers\API\PaymentController::class, 'webhook']);

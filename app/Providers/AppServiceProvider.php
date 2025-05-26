@@ -10,6 +10,8 @@ use App\Repositories\Contracts\PartnerRequestRepositoryInterface;
 use App\Repositories\OrganizationRepository;
 use App\Repositories\PartnerRepository;
 use App\Repositories\PartnerRequestRepository;
+use App\Repositories\Payment\Contracts\PaymentRepositoryInterface;
+use App\Repositories\Payment\PaymentRepository;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PartnerRepositoryInterface::class, PartnerRepository::class);
         $this->app->singleton(OrganizationRepositoryInterface::class, OrganizationRepository::class);
         $this->app->singleton(PartnerRequestRepositoryInterface::class, PartnerRequestRepository::class);
+
+
+        $this->app->singleton(PaymentRepositoryInterface::class, PaymentRepository::class);
     }
 
     /**

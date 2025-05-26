@@ -18,12 +18,15 @@ class WithdrawalService
         if ($client->nfr) return true;
         if ($client->is_demo) return true;
 
-        if ($client->balance >= $sum) {
+        if ($organization->balance >= $sum) {
             $this->handleMissedPayments($client, $organization);
 
-            $client->balance -= $sum;
-            $client->disableObserver = true;
-            $client->save();
+            $organization->balance -= $sum;
+            $organization->save();
+
+            $currency = $client->currency;
+
+            $accountedAmount = $currency->symbol_code == 'USD' ? $sum / $currency->latestExchangeRate->kurs : $sum;
 
             Transaction::create([
                 'client_id' => $client->id,
@@ -32,6 +35,7 @@ class WithdrawalService
                 'sale_id' => $client->sale?->id,
                 'sum' => $sum,
                 'type' => 'Снятие',
+                'accounted_amount' => $accountedAmount
             ]);
         } else {
             $repository = new ClientRepository();
@@ -66,14 +70,16 @@ class WithdrawalService
         $dailySum = $this->countSum($client);
         $totalMissedPayment = $dailySum * $daysToCharge;
 
-        if ($client->balance >= $totalMissedPayment) {
+        if ($organization->balance >= $totalMissedPayment) {
             DB::transaction(function () use ($client, $organization, $totalMissedPayment, $daysToCharge, $dailySum) {
 
-                $client->balance -= $totalMissedPayment;
-                $client->disableObserver = true;
-                $client->save();
+                $organization->balance -= $totalMissedPayment;
+                $organization->save();
 
-                // Create a transaction for missed payments
+                $currency = $client->currency;
+
+                $accountedAmount = $currency->symbol_code == 'USD' ? $totalMissedPayment / $currency->latestExchangeRate->kurs : $totalMissedPayment;
+
                 Transaction::create([
                     'client_id' => $client->id,
                     'organization_id' => $organization->id,
@@ -82,6 +88,7 @@ class WithdrawalService
                     'sum' => $totalMissedPayment,
                     'type' => 'Снятие (задолженность)',
                     'description' => "Оплата за пропущенные {$daysToCharge} дней по {$dailySum}",
+                    'accounted_amount' => $accountedAmount
                 ]);
             });
         }
@@ -93,7 +100,7 @@ class WithdrawalService
 
         $daysInMonth = $currentMonth->daysInMonth;
 
-        $sum = $client->tariff->price / $daysInMonth;
+        $sum = $client->tariffPrice->tariff_price / $daysInMonth;
 
 //            if ($client->sale_id) {
 //                if ($client->sale->sale_type == 'procent') {

@@ -3,21 +3,14 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Organization\AccessRequest;
 use App\Http\Requests\Organization\AddPackRequest;
-use App\Models\BusinessType;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\Pack;
-use App\Models\Partner;
-use App\Models\Sale;
-use App\Models\Tariff;
 use App\Models\Transaction;
-use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class OrganizationController extends Controller
 {
@@ -80,4 +73,30 @@ class OrganizationController extends Controller
         return response()->json(['success'=> true]);
     }
 
+    public function tariffInfo(Organization $organization)
+    {
+        $transaction = Transaction::where('organization_id', $organization->id)->first();
+
+        $client = $organization->client;
+
+        $tariffPrice = $client->tariffPrice;
+
+        $currentMonth = Carbon::now();
+
+        $daysInMonth = $currentMonth->daysInMonth;
+
+        $sum = $tariffPrice->tariff_price / $daysInMonth;
+
+        $days = $organization->balance / $sum;
+
+        $endDate = Carbon::now()->addDays($days);
+
+        return [
+            'name' => $tariffPrice->tariff?->name,
+            'start_date' => $transaction->created_at,
+            'end_date' => $endDate,
+            'users_count' => $tariffPrice->tariff->user_count,
+            'price' => $tariffPrice->tariff_price
+        ];
+    }
 }
