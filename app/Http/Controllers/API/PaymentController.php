@@ -16,8 +16,8 @@ class PaymentController extends Controller
     public function createInvoice(InvoiceRequest $request)
     {
         $data = $request->validated();
-     dd($data);
         $data['sub_domain'] = parse_url($request->fullUrl(), PHP_URL_HOST);
+
         return $this->repository->createInvoice($data);
     }
 
