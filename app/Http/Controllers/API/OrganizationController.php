@@ -80,8 +80,8 @@ class OrganizationController extends Controller
         $transaction = Transaction::where('organization_id', $organization->id)->first();
 
         $client = $organization->client;
-dd($client);
-        $tariffPrice = $client->tariffPrice()->first();
+
+        $tariffPrice = $client->tariffPrice;
 
         $currentMonth = Carbon::now();
 
