@@ -79,17 +79,27 @@ class OrganizationController extends Controller
     {
         $transaction = Transaction::where('organization_id', $organization->id)->first();
 
-        $tariff = $organization->client->tariff;
+        $client = $organization->client;
+
+        $tariffPrice = $client->tariffPrice;
+
         $currentMonth = Carbon::now();
 
         $daysInMonth = $currentMonth->daysInMonth;
 
-        $sum = $tariff->price / $daysInMonth;
+        $sum = $tariffPrice->tariff_price / $daysInMonth;
 
         $days = $organization->balance / $sum;
 
         $endDate = Carbon::now()->addDays($days);
 
+        return [
+            'name' => $tariffPrice->tariff?->name,
+            'start_date' => $transaction->created_at,
+            'end_date' => $endDate,
+            'users_count' => $tariffPrice->tariff->user_count,
+            'price' => $tariffPrice->tariff_price
+        ];
     }
 
 }
