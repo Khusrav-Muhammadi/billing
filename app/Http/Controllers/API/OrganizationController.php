@@ -12,8 +12,6 @@ use App\Models\Transaction;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Carbon\Carbon;
 
-;
-
 class OrganizationController extends Controller
 {
     public function __construct(public OrganizationRepositoryInterface $repository) { }
