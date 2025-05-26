@@ -99,5 +99,4 @@ class OrganizationController extends Controller
             'price' => $tariffPrice->tariff_price
         ];
     }
-
 }
