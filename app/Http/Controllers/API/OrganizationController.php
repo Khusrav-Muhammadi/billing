@@ -96,7 +96,9 @@ class OrganizationController extends Controller
             'start_date' => $transaction->created_at,
             'end_date' => $endDate,
             'users_count' => $tariffPrice->tariff->user_count,
-            'price' => $tariffPrice->tariff_price
+            'price' => $tariffPrice->tariff_price,
+            'balance' => $organization->balance,
+            'license_price' => $tariffPrice->license_price
         ];
     }
 }

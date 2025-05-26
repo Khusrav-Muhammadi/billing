@@ -269,5 +269,9 @@ class ClientController extends Controller
         ]);
     }
 
+    public function changeTariff()
+    {
+
+    }
 
 }
