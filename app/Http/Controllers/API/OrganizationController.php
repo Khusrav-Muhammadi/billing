@@ -81,7 +81,7 @@ class OrganizationController extends Controller
 
         $client = $organization->client;
 
-        $tariffPrice = $client->tariffPrice;
+        $tariffPrice = $client->tariffPrice()->first();
 
         $currentMonth = Carbon::now();
 
