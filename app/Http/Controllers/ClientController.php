@@ -22,7 +22,9 @@ use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\OrganizationRepository;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ClientController extends Controller
 {
@@ -225,6 +227,67 @@ class ClientController extends Controller
             'result' => 'success'
         ]);
     }
+    public function createInvoice(Request $request)
+    {
+        $data = $request->validate([
+            'tariff_name' => ['required', Rule::exists('tariffs','name')],
+            'sub_domain' => ['required'],
+        ]);
+
+        $token = 'vaCx7qkNNahFb9LhN+ZF2EqhT/+9c8uK5LrGXvGoG/yf';
+        $url = 'https://api-dev.alifpay.uz/v2/invoice';
+
+        $subdomain = $data['sub_domain'];
+
+        $tariff = Tariff::where('name', $data['tariff_name'])->first();
+        $client = Client::where('sub_domain', $subdomain)->first();
+
+        $response = Http::withHeaders([
+            'Token' => $token,
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
+
+        ])->post($url, [
+            'items' => [
+                [
+                    'name' => 'Лицензия для тарифа ' . $tariff->name,
+                    'amount' => 1,
+                    'spic' => '08517001001000000', // настоящий SPIC
+                    'price' => $tariff->price,
+                    'marking_code' => '111111', // если требуется
+                    'vat_percent' => 12,
+                    'discount' => 0
+                ],
+                [
+                    'name' => 'Ежемесячная оплата тарифа ' . $tariff->name,
+                    'spic' => '10399002001000000',
+                    'amount' => 1,
+                    'price' => $tariff->price,
+                    'vat_percent' => 12,
+                    'discount' => 0
+                ]
+            ],
+            'receipt' => true,
+            'phone' => $client->phone,
+            'cancel_url' => 'https://yourdomain.uz/payment/cancel',
+            'redirect_url' => 'https://yourdomain.uz/payment/complete',
+            'webhook_url' => 'https://yourdomain.uz/api/alifpay/webhook',
+            'timeout' => 86400,
+            'meta' => [
+                'client_id' => $client->id,
+                'tariff_id' => $tariff->id
+            ]
+        ]);
+
+        $data = $response->json();
+
+
+        return  response()->json([
+            'url' => 'https://checkout-dev.alifpay.uz?invoice=' . $data['id']
+        ]);
+
+    }
+
 
 
 }
