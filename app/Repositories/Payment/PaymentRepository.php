@@ -24,7 +24,7 @@ class PaymentRepository implements PaymentRepositoryInterface
     {
         $token = config('payments.alif.token');
         $url = config('payments.alif.url');
-dd($data);
+
         $tariff = Tariff::where('name', $data['tariff_name'])->firstOrFail();
         $client = Client::where('sub_domain', $data['sub_domain'])->firstOrFail();
 
