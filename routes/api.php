@@ -21,8 +21,6 @@ Route::middleware('auth.basic')->group(function () {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
-
     Route::get('clients', [\App\Http\Controllers\API\ClientController::class, 'index']);
     Route::post('clients/store', [\App\Http\Controllers\API\ClientController::class, 'store']);
     Route::get('partners', [\App\Http\Controllers\API\ClientController::class, 'getPartners']);
@@ -74,6 +72,6 @@ Route::post('sendRequest', [\App\Http\Controllers\API\SiteApplicationController:
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
 
 
-
+Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
 Route::post('alif-payment', [\App\Http\Controllers\API\PaymentController::class, 'createInvoice']);
 Route::post('payment/alif/webhook', [\App\Http\Controllers\API\PaymentController::class, 'webhook']);
