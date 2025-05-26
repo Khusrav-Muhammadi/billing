@@ -100,7 +100,7 @@ class WithdrawalService
 
         $daysInMonth = $currentMonth->daysInMonth;
 
-        $sum = $client->tariff->price / $daysInMonth;
+        $sum = $client->tariffPrice->tariff_price / $daysInMonth;
 
 //            if ($client->sale_id) {
 //                if ($client->sale->sale_type == 'procent') {
