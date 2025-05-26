@@ -133,9 +133,8 @@ class PaymentRepository implements PaymentRepositoryInterface
 
         $this->createTransaction($client, $organization, $price, $amounts['accounted_amount']);
 
-        if ($client->is_demo) {
-            $this->processDemoClient($client, $organization, $amounts);
-        }
+        $this->processDemoClient($client, $organization, $amounts);
+
     }
 
     private function calculateAmounts(Client $client, float $price, $currency, float $exchangeRate): array
@@ -167,24 +166,59 @@ class PaymentRepository implements PaymentRepositoryInterface
         ]);
     }
 
-    private function processDemoClient(Client $client, Organization $organization, array $amounts)
+    private function processDemoClient(Client $client, Organization $organization, array $amounts): void
     {
-        $client->update(['is_demo' => false]);
+        $transactions = [];
+        $needsUpdate = false;
 
-        $organization->decrement('balance', $amounts['tariff_sum']);
-        $organization->decrement('balance', $amounts['license_sum']);
+        if ($client->is_demo) {
+            $client->update(['is_demo' => false]);
 
-        $transactions = [
-            [
-                'sum' => $amounts['tariff_sum'],
-                'accounted_amount' => $amounts['tariff_accounted']
-            ],
-            [
-                'sum' => $amounts['license_sum'],
-                'accounted_amount' => $amounts['license_accounted']
-            ]
-        ];
+            $organization->decrement('balance', $amounts['tariff_sum']);
+            $organization->decrement('balance', $amounts['license_sum']);
 
+            $transactions = [
+                [
+                    'sum' => $amounts['tariff_sum'],
+                    'accounted_amount' => $amounts['tariff_accounted']
+                ],
+                [
+                    'sum' => $amounts['license_sum'],
+                    'accounted_amount' => $amounts['license_accounted']
+                ]
+            ];
+
+            $needsUpdate = true;
+        } else {
+            if (!$client->is_active) {
+                $client->update(['is_active' => true]);
+                $needsUpdate = true;
+            }
+
+            if (!$organization->has_access) {
+                $organization->update(['has_access' => true]);
+
+                if (!$client->wasChanged('is_demo')) {
+                    $transactions = [
+                        [
+                            'sum' => $amounts['tariff_sum'],
+                            'accounted_amount' => $amounts['tariff_accounted']
+                        ]
+                    ];
+                }
+
+                $needsUpdate = true;
+            }
+
+        }
+
+        if ($needsUpdate) {
+            $this->createTransactions($client, $organization, $transactions);
+        }
+    }
+
+    private function createTransactions(Client $client, Organization $organization, array $transactions): void
+    {
         foreach ($transactions as $transaction) {
             if ($transaction['sum'] > 0) {
                 Transaction::create([
