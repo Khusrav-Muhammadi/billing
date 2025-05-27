@@ -228,9 +228,9 @@ class ClientRepository implements ClientRepositoryInterface
     }
 
     public function countDifference(array $data)
-    {dd($data);
+    {
         $client = Client::where('sub_domain', $data['sub_domain'])->first();
-        dd($client);
+
         $organization = Organization::find($data['organization_id']);
         $newTariff = TariffCurrency::find($data['tariff_id']);
         $lastTariff = TariffCurrency::find($client->tariff_id);
