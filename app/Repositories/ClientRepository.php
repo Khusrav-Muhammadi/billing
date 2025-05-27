@@ -9,6 +9,8 @@ use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\PartnerRequest;
+use App\Models\Tariff;
+use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Services\WithdrawalService;
@@ -224,4 +226,77 @@ class ClientRepository implements ClientRepositoryInterface
 
         return $clients;
     }
+
+    public function countDifference(array $data)
+    {
+        $client = Client::where('sub_domain', $data['sub_domain'])->first();
+        $organization = Organization::find($data['organization_id']);
+        $newTariff = TariffCurrency::find($data['tariff_id']);
+        $lastTariff = TariffCurrency::find($client->tariff_id);
+
+        $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
+        $tariffPrice = $newTariff->tariff_price * $data['month'];
+
+        return [
+            'organization_balance' => $organization->balance,
+            'license_difference' => $licenseDifference,
+            'tariff_price' => $tariffPrice
+        ];
+    }
+
+    public function changeTariff(array $data)
+    {
+        $client = Client::where('sub_domain', $data['sub_domain'])->first();
+        $newTariff = TariffCurrency::find($data['tariff_id']);
+        $lastTariff = TariffCurrency::find($client->tariff_id);
+
+        $organizations = $client->organizations;
+
+        $currency = $client->currency;
+        $exchangeRate = $currency->latestExchangeRate?->kurs ?? 1;
+
+        if ($lastTariff->license_price < $newTariff->license_price) {
+            $difference = $newTariff->license_price - $lastTariff->license_price;
+
+            $amounts = $this->calculateAmounts($client, $difference, $currency, $exchangeRate);
+
+            foreach ($organizations as $organization) {
+                $organization->decrement('balance', $difference);
+                $transactions = [
+                    [
+                        'sum' => $difference,
+                        'accounted_amount' => $amounts['accounted_amount']
+                    ]
+                ];
+                $this->createTransactions($client, $organization, $transactions);
+            }
+        }
+    }
+
+    private function calculateAmounts(Client $client, float $price, $currency, float $exchangeRate): array
+    {
+        $isUSD = $currency->symbol_code != 'USD';
+
+        return [
+            'accounted_amount' => $isUSD ? $price / $exchangeRate : $price,
+        ];
+    }
+
+    private function createTransactions(Client $client, Organization $organization, array $transactions): void
+    {
+        foreach ($transactions as $transaction) {
+            if ($transaction['sum'] > 0) {
+                Transaction::create([
+                    'client_id' => $client->id,
+                    'organization_id' => $organization->id,
+                    'tariff_id' => $client->tariff?->id,
+                    'sale_id' => $client->sale?->id,
+                    'sum' => $transaction['sum'],
+                    'type' => 'Снятие',
+                    'accounted_amount' => $transaction['accounted_amount']
+                ]);
+            }
+        }
+    }
+
 }

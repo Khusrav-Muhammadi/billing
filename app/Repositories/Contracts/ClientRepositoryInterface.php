@@ -22,4 +22,8 @@ interface ClientRepositoryInterface
 
     public function getByPartner(array $data);
 
+    public function changeTariff(array $data);
+
+    public function countDifference(array $data);
+
 }

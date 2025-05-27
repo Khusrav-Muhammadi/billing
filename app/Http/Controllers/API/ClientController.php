@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Client\ChangeTariffRequest;
 use App\Http\Requests\Client\GetBalanceRequest;
 use App\Http\Requests\Client\StoreRequest;
 use App\Http\Requests\Client\TransactionRequest;
@@ -269,9 +270,18 @@ class ClientController extends Controller
         ]);
     }
 
-    public function changeTariff()
+    public function changeTariff(ChangeTariffRequest $request)
     {
+        $data = $request->validated();
+        $data['sub_domain'] = parse_url($request->fullUrl(), PHP_URL_HOST);
+        return $this->repository->changeTariff($data);
+    }
 
+    public function countDifference(ChangeTariffRequest $request)
+    {
+        $data = $request->validated();
+        $data['sub_domain'] = parse_url($request->fullUrl(), PHP_URL_HOST);
+        return $this->repository->countDifference($data);
     }
 
 }
