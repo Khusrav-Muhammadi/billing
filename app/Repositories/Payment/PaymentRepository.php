@@ -138,7 +138,7 @@ class PaymentRepository implements PaymentRepositoryInterface
 
     private function calculateAmounts(Client $client, float $price, $currency, float $exchangeRate): array
     {
-        $isUSD = $currency->symbol_code === 'USD';
+        $isUSD = $currency->symbol_code != 'USD';
 
         $licenseSum = $client->tariffPrice->license_price ?? 0;
         $tariffSum = $client->tariffPrice->tariff_price ?? 0;

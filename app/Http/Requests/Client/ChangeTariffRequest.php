@@ -16,7 +16,9 @@ class ChangeTariffRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', Rule::exists('tariffs','name')],
+            'tariff_id' => ['required', Rule::exists('tariffs','id')],
+            'organization_id' => ['required', Rule::exists('organizations','id')],
+            'month' => ['required']
         ];
     }
 }
