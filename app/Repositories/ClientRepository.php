@@ -324,7 +324,7 @@ class ClientRepository implements ClientRepositoryInterface
         }
 
         $res = $response->json();
-dd($res);
+
         $invoice->update(['invoice_id' => $res['id']]);
 
         return config('payments.alif.payment_page') . $res['id'];
