@@ -331,7 +331,7 @@ class ClientRepository implements ClientRepositoryInterface
     }
 
     private function prepareInvoiceData(int $organizationId, Client $client): array
-    {dd($organizationId);
+    {
         return [
             'receipt' => true,
             'organization_id' => $organizationId,
