@@ -99,7 +99,8 @@ class OrganizationController extends Controller
             'price' => $tariffPrice->tariff_price,
             'balance' => $organization->balance,
             'license_price' => $tariffPrice->license_price,
-            'id' => $tariffPrice->id
+            'id' => $tariffPrice->id,
+            'country' => $client->country
         ];
     }
 }
