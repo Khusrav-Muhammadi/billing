@@ -19,6 +19,7 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentRepository implements PaymentRepositoryInterface
 {
+
     public function createInvoice(array $data)
     {
         $token = config('payments.alif.token');
@@ -30,7 +31,7 @@ class PaymentRepository implements PaymentRepositoryInterface
         $invoiceData = $this->prepareInvoiceData($data['organization_id'], $client);
         $invoice = Invoice::create($invoiceData);
 
-        $invoiceItems = $this->prepareInvoiceItems($tariff, $invoice->id);
+        $invoiceItems = $this->prepareInvoiceItems($client, $invoice->id);
         InvoiceItem::insert($invoiceItems);
 
         $response = Http::withHeaders([
@@ -90,6 +91,7 @@ class PaymentRepository implements PaymentRepositoryInterface
         ];
     }
 
+
     public function webhook(Request $request)
     {
         try {
@@ -130,21 +132,26 @@ class PaymentRepository implements PaymentRepositoryInterface
         $currency = $client->currency;
         $exchangeRate = $currency->latestExchangeRate?->kurs ?? 1;
 
-        $amounts = $this->calculateAmounts($price, $currency, $exchangeRate);
+        $amounts = $this->calculateAmounts($client, $price, $currency, $exchangeRate);
 
         $this->createTransaction($client, $organization, $price, $amounts['accounted_amount']);
 
         $this->processDemoClient($client, $organization, $amounts);
-
     }
 
-    private function calculateAmounts(float $price, $currency, float $exchangeRate): array
+    private function calculateAmounts(Client $client, float $price, $currency, float $exchangeRate): array
     {
         $isUSD = $currency->symbol_code != 'USD';
 
+        $licenseSum = $client->tariffPrice->license_price ?? 0;
+        $tariffSum = $client->tariffPrice->tariff_price ?? 0;
+
         return [
-            'sum' => $price,
+            'license_sum' => $licenseSum,
+            'tariff_sum' => $tariffSum,
             'accounted_amount' => $isUSD ? $price / $exchangeRate : $price,
+            'license_accounted' => $isUSD ? $licenseSum / $exchangeRate : $licenseSum,
+            'tariff_accounted' => $isUSD ? $tariffSum / $exchangeRate : $tariffSum,
         ];
     }
 
