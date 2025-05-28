@@ -98,7 +98,8 @@ class OrganizationController extends Controller
             'users_count' => $tariffPrice->tariff->user_count,
             'price' => $tariffPrice->tariff_price,
             'balance' => $organization->balance,
-            'license_price' => $tariffPrice->license_price
+            'license_price' => $tariffPrice->license_price,
+            'id' => $tariffPrice->id
         ];
     }
 }

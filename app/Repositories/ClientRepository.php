@@ -7,6 +7,8 @@ use App\Jobs\ChangeRequestStatusJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Organization;
 use App\Models\PartnerRequest;
 use App\Models\Tariff;
@@ -18,6 +20,9 @@ use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use function Pest\Laravel\put;
 
 class ClientRepository implements ClientRepositoryInterface
 {
@@ -238,6 +243,12 @@ class ClientRepository implements ClientRepositoryInterface
         $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
         $tariffPrice = $newTariff->tariff_price * $data['month'];
 
+        $difference = $organization->balance - ($licenseDifference + $tariffPrice);
+
+        if ($difference < 0) {
+            $this->createInvoice($client, $difference, $organization->id);
+        }
+
         return [
             'organization_balance' => $organization->balance,
             'license_difference' => $licenseDifference,
@@ -299,5 +310,62 @@ class ClientRepository implements ClientRepositoryInterface
             }
         }
     }
+
+    public function createInvoice(Client $client, int $price, int $organizationId)
+    {
+        $token = config('payments.alif.token');
+        $url = config('payments.alif.url');
+
+        $invoiceData = $this->prepareInvoiceData($organizationId, $client);
+        $invoice = Invoice::create($invoiceData);
+
+        $invoiceItems = $this->prepareInvoiceItems($price, $invoice->id);
+        InvoiceItem::insert($invoiceItems);
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Token' => $token,
+            'Accept' => 'application/json'
+        ])->post($url, array_merge($invoiceData, ['items' => $invoiceItems]));
+
+        if ($response->failed()) {
+            Log::error('Alif invoice creation failed', ['response' => $response->body()]);
+            throw new \Exception('Ошибка при создании счета в Alif');
+        }
+
+        $res = $response->json();
+        $invoice->update(['invoice_id' => $res['id']]);
+
+        return config('payments.alif.payment_page') . $res['id'];
+    }
+
+    private function prepareInvoiceData(int $organizationId, Client $client): array
+    {
+        return [
+            'receipt' => true,
+            'organization_id' => $organizationId,
+            'phone' => $client->phone,
+            'timeout' => 86400,
+            'meta' => (object)[],
+            'invoice_status_id' => 1,
+            'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$client->sub_domain}",
+            'redirect_url' => "https://{$client->sub_domain}shamcrm.com/payment",
+            'webhook_url' => 'https://' . $client->sub_domain . '-back.shamcrm.com/api/payment/alif/webhook',
+        ];
+    }
+
+    private function prepareInvoiceItems($price, int $invoiceId): array
+    {
+        return [
+            [
+                'name' => 'Изменение тарифа',
+                'spic' => '11201001001000000',
+                'amount' => 1,
+                'price' => $price,
+                'invoice_id' => $invoiceId,
+            ],
+        ];
+    }
+
 
 }
