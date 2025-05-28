@@ -10,4 +10,9 @@ class Invoice extends Model
     use HasFactory;
 
     protected $fillable = ['receipt', 'phone', 'cancel_url', 'redirect_url', 'webhook_url', 'timeout', 'invoice_status_id', 'invoice_id', 'organization_id'];
+
+    public function invoiceItems()
+    {
+        return $this->hasMany(InvoiceItem::class);
+    }
 }

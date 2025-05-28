@@ -19,7 +19,6 @@ use Illuminate\Validation\ValidationException;
 
 class PaymentRepository implements PaymentRepositoryInterface
 {
-
     public function createInvoice(array $data)
     {
         $token = config('payments.alif.token');
@@ -67,26 +66,29 @@ class PaymentRepository implements PaymentRepositoryInterface
         ];
     }
 
-    private function prepareInvoiceItems(Tariff $tariff, int $invoiceId): array
+    private function prepareInvoiceItems(Client $client, int $invoiceId): array
     {
+        $tariffPrice = $client->tariffPrice;
+        $licenseSum = $tariffPrice->license_price ?? 0;
+        $tariffSum = $tariffPrice->tariff_price ?? 0;
+
         return [
             [
-                'name' => 'Лицензия для тарифа ' . $tariff->name,
+                'name' => 'Лицензия для тарифа ' . $tariffPrice->tariff->name,
                 'spic' => '11201001001000000',
                 'amount' => 1,
-                'price' => $tariff->price,
+                'price' => $licenseSum,
                 'invoice_id' => $invoiceId,
             ],
             [
-                'name' => 'Ежемесячная оплата тарифа ' . $tariff->name,
+                'name' => 'Ежемесячная оплата тарифа ' . $tariffPrice->tariff->name,
                 'spic' => '11201001001000000',
                 'amount' => 1,
-                'price' => $tariff->price,
+                'price' => $tariffSum,
                 'invoice_id' => $invoiceId,
             ]
         ];
     }
-
 
     public function webhook(Request $request)
     {
@@ -128,7 +130,7 @@ class PaymentRepository implements PaymentRepositoryInterface
         $currency = $client->currency;
         $exchangeRate = $currency->latestExchangeRate?->kurs ?? 1;
 
-        $amounts = $this->calculateAmounts($client, $price, $currency, $exchangeRate);
+        $amounts = $this->calculateAmounts($price, $currency, $exchangeRate);
 
         $this->createTransaction($client, $organization, $price, $amounts['accounted_amount']);
 
@@ -136,19 +138,13 @@ class PaymentRepository implements PaymentRepositoryInterface
 
     }
 
-    private function calculateAmounts(Client $client, float $price, $currency, float $exchangeRate): array
+    private function calculateAmounts(float $price, $currency, float $exchangeRate): array
     {
         $isUSD = $currency->symbol_code != 'USD';
 
-        $licenseSum = $client->tariffPrice->license_price ?? 0;
-        $tariffSum = $client->tariffPrice->tariff_price ?? 0;
-
         return [
-            'license_sum' => $licenseSum,
-            'tariff_sum' => $tariffSum,
+            'sum' => $price,
             'accounted_amount' => $isUSD ? $price / $exchangeRate : $price,
-            'license_accounted' => $isUSD ? $licenseSum / $exchangeRate : $licenseSum,
-            'tariff_accounted' => $isUSD ? $tariffSum / $exchangeRate : $tariffSum,
         ];
     }
 
