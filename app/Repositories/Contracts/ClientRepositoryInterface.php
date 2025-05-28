@@ -5,6 +5,7 @@ namespace App\Repositories\Contracts;
 use App\Models\Client;
 use App\Models\Partner;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 interface ClientRepositoryInterface
 {
@@ -25,5 +26,7 @@ interface ClientRepositoryInterface
     public function changeTariff(array $data);
 
     public function countDifference(array $data);
+
+    public function webhookChangeTariff(Request $request);
 
 }

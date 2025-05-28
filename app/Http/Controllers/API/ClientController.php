@@ -284,4 +284,9 @@ class ClientController extends Controller
         return $this->repository->countDifference($data);
     }
 
+    public function webhookChangeTariff(Request $request)
+    {
+        return $this->repository->webhookChangeTariff($request);
+    }
+
 }

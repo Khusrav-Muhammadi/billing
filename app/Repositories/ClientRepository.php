@@ -9,6 +9,7 @@ use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoiceStatus;
 use App\Models\Organization;
 use App\Models\PartnerRequest;
 use App\Models\Tariff;
@@ -17,11 +18,14 @@ use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Services\WithdrawalService;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use function Pest\Laravel\put;
 
 class ClientRepository implements ClientRepositoryInterface
@@ -245,14 +249,17 @@ class ClientRepository implements ClientRepositoryInterface
 
         $difference = $organization->balance - ($licenseDifference + $tariffPrice);
 
+        $invoicePayment = '';
+
         if ($difference < 0) {
-            $this->createInvoice($client, $difference, $organization->id);
+            $invoicePayment = $this->createInvoice($client, -$difference, $organization->id);
         }
 
         return [
             'organization_balance' => $organization->balance,
             'license_difference' => $licenseDifference,
-            'tariff_price' => $tariffPrice
+            'tariff_price' => $tariffPrice,
+            'invoice_payment' => $invoicePayment
         ];
     }
 
@@ -270,7 +277,7 @@ class ClientRepository implements ClientRepositoryInterface
         if ($lastTariff->license_price < $newTariff->license_price) {
             $difference = $newTariff->license_price - $lastTariff->license_price;
 
-            $amounts = $this->calculateAmounts($client, $difference, $currency, $exchangeRate);
+            $amounts = $this->calculateAmounts($difference, $currency, $exchangeRate);
 
             foreach ($organizations as $organization) {
                 $organization->decrement('balance', $difference);
@@ -285,30 +292,13 @@ class ClientRepository implements ClientRepositoryInterface
         }
     }
 
-    private function calculateAmounts(Client $client, float $price, $currency, float $exchangeRate): array
+    private function calculateAmounts(float $price, $currency, float $exchangeRate): array
     {
         $isUSD = $currency->symbol_code != 'USD';
 
         return [
             'accounted_amount' => $isUSD ? $price / $exchangeRate : $price,
         ];
-    }
-
-    private function createTransactions(Client $client, Organization $organization, array $transactions): void
-    {
-        foreach ($transactions as $transaction) {
-            if ($transaction['sum'] > 0) {
-                Transaction::create([
-                    'client_id' => $client->id,
-                    'organization_id' => $organization->id,
-                    'tariff_id' => $client->tariff?->id,
-                    'sale_id' => $client->sale?->id,
-                    'sum' => $transaction['sum'],
-                    'type' => 'Снятие',
-                    'accounted_amount' => $transaction['accounted_amount']
-                ]);
-            }
-        }
     }
 
     public function createInvoice(Client $client, int $price, int $organizationId)
@@ -334,13 +324,14 @@ class ClientRepository implements ClientRepositoryInterface
         }
 
         $res = $response->json();
+
         $invoice->update(['invoice_id' => $res['id']]);
 
         return config('payments.alif.payment_page') . $res['id'];
     }
 
     private function prepareInvoiceData(int $organizationId, Client $client): array
-    {
+    {dd($organizationId);
         return [
             'receipt' => true,
             'organization_id' => $organizationId,
@@ -350,7 +341,8 @@ class ClientRepository implements ClientRepositoryInterface
             'invoice_status_id' => 1,
             'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$client->sub_domain}",
             'redirect_url' => "https://{$client->sub_domain}shamcrm.com/payment",
-            'webhook_url' => 'https://' . $client->sub_domain . '-back.shamcrm.com/api/payment/alif/webhook',
+//            'webhook_url' => 'https://' . $client->sub_domain . '-back.shamcrm.com/api/payment/alif/webhook/change-tariff',
+            'webhook_url' => 'https://357b-95-142-94-22.ngrok-free.app/api/payment/alif/webhook/change-tariff',
         ];
     }
 
@@ -365,6 +357,64 @@ class ClientRepository implements ClientRepositoryInterface
                 'invoice_id' => $invoiceId,
             ],
         ];
+    }
+
+    public function webhookChangeTariff(Request $request)
+    {
+        try {
+            $invoice = Invoice::where('invoice_id', $request->id)->first();
+
+            if ($request->payment['status'] !== 'SUCCEEDED') {
+                return response()->json(['message' => 'Payment not succeeded'], 200);
+            }
+
+            DB::transaction(function () use ($invoice, $request) {
+                $this->processSuccessfulPayment($invoice, $request->price);
+            });
+
+            return response()->json(['message' => 'Webhook processed successfully'], 200);
+
+        } catch (ValidationException $e) {
+
+            return response()->json(['error' => $e->getMessage()], 422);
+
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    private function processSuccessfulPayment(Invoice $invoice, float $price)
+    {
+        $successStatus = InvoiceStatus::where('is_success', true)->first();
+
+        $invoice->update(['invoice_status_id' => $successStatus->id]);
+
+        $organization = Organization::findOrFail($invoice->organization_id);
+        $organization->increment('balance', $price);
+
+        $client = Client::with(['currency.latestExchangeRate', 'tariff', 'tariffPrice', 'sale'])
+            ->where('phone', $invoice->phone)
+            ->firstOrFail();
+
+        $currency = $client->currency;
+        $exchangeRate = $currency->latestExchangeRate?->kurs ?? 1;
+
+        $amounts = $this->calculateAmounts($price, $currency, $exchangeRate);
+
+        $this->transaction($client, $organization, $price, $amounts['accounted_amount']);
+    }
+
+    private function transaction(Client $client, Organization $organization, float $sum, float $accountedAmount)
+    {
+        Transaction::create([
+            'client_id' => $client->id,
+            'organization_id' => $organization->id,
+            'tariff_id' => $client->tariff?->id,
+            'sale_id' => $client->sale?->id,
+            'sum' => $sum,
+            'type' => 'Пополнение',
+            'accounted_amount' => $accountedAmount
+        ]);
     }
 
 
