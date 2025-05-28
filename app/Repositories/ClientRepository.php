@@ -250,7 +250,7 @@ class ClientRepository implements ClientRepositoryInterface
         $difference = $organization->balance - ($licenseDifference + $tariffPrice);
 
         $invoicePayment = '';
-
+dd($organization);
         if ($difference < 0) {
             $invoicePayment = $this->createInvoice($client, -$difference, $organization->id);
         }
