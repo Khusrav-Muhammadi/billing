@@ -75,4 +75,6 @@ Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API
 Route::post('alif-payment', [\App\Http\Controllers\API\PaymentController::class, 'createInvoice']);
 Route::post('payment/alif/webhook', [\App\Http\Controllers\API\PaymentController::class, 'webhook']);
 
+Route::post('payment/alif/webhook/change-tariff', [\App\Http\Controllers\API\ClientController::class, 'webhookChangeTariff']);
+
 Route::get('tariff-difference', [\App\Http\Controllers\API\ClientController::class, 'countDifference']);
