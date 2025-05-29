@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -72,6 +73,8 @@ Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login'])
 
 
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
+Route::post('/payment', [PaymentController::class, 'createInvoice']);
+Route::post('/payment/webhook/{provider}', [PaymentController::class, 'handleWebhook']);
 Route::post('alif-payment', [\App\Http\Controllers\API\PaymentController::class, 'createInvoice']);
 Route::post('payment/alif/webhook', [\App\Http\Controllers\API\PaymentController::class, 'webhook']);
 

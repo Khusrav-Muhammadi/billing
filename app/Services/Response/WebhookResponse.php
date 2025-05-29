@@ -2,13 +2,16 @@
 
 namespace App\Services\Response;
 
+use App\Services\Billing\Enum\PaymentOperationType;
+
 class WebhookResponse
 {
     public function __construct(
-        public readonly bool $success,
-        public readonly ?string $operationId = null,
-        public readonly ?string $message = null,
-        public readonly ?array $providerResponse = null
+        public bool $success,
+        public ?string $operationId = null,
+        public PaymentOperationType $operationType,
+        public ?string $message = null,
+        public ?array $providerResponse = null
     ) {}
 
     public function toArray(): array
@@ -16,6 +19,7 @@ class WebhookResponse
         $response = [
             'success' => $this->success,
             'operation_id' => $this->operationId,
+            'operation_type' => $this->operationType,
             'message' => $this->message
         ];
 

@@ -17,7 +17,7 @@ class PaymentProviderFactory
     public function __construct()
     {
         $this->registerProvider(PaymentProviderType::ALIF, AlifPayProvider::class);
-        $this->registerProvider(PaymentProviderType::ALIF, OctoBankProvider::class);
+        $this->registerProvider(PaymentProviderType::OCTOBANK, OctoBankProvider::class);
         $this->registerProvider(PaymentProviderType::INVOICE, InvoiceProvider::class);
     }
 

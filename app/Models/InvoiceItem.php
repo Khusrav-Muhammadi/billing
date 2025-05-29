@@ -9,5 +9,5 @@ class InvoiceItem extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'marking_code', 'spic', 'amount', 'price', 'discount', 'vat_percent'];
+    protected $fillable = ['name','price', ];
 }

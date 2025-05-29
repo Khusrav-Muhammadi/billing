@@ -10,6 +10,8 @@ use App\Models\InvoiceStatus;
 use App\Services\Billing\Enum\PaymentOperationType;
 use App\Services\Payment\Contracts\PaymentProviderInterface;
 use App\Services\Payment\DTO\CreateInvoiceDTO;
+use App\Services\Payment\Enums\PaymentProviderType;
+use App\Services\Payment\Enums\PaymentStatus;
 use App\Services\Response\PaymentResponse;
 use App\Services\Response\WebhookResponse;
 use GuzzleHttp\Promise\Create;
@@ -21,13 +23,16 @@ class AlifPayProvider implements PaymentProviderInterface
     public function createInvoice(CreateInvoiceDTO $dto): PaymentResponse
     {
         $invoice = $this->createInvoiceRecord($dto);
+
         $invoiceItems = $this->prepareInvoiceItems($invoice->id, $dto);
 
-        $response = $this->sendToAlif($invoice, $invoiceItems);
+        $response = $this->sendToAlif($dto, $invoiceItems);
+        $invoice->payment_provider_id = $response['id'];
+        $invoice->save();
 
         return new PaymentResponse(
             success: true,
-            paymentUrl: $response['id'],
+            paymentUrl: config('payments.alif.payment_page') . $response['id'],
             providerInvoiceId: $response['id']
         );
     }
@@ -35,15 +40,14 @@ class AlifPayProvider implements PaymentProviderInterface
     private function createInvoiceRecord(CreateInvoiceDTO $dto): Invoice
     {
         return Invoice::create([
-            'receipt' => true,
-            'organization_id' => $dto->metadata['organization_id'],
-            'phone' => $dto->metadata['phone'],
-            'timeout' => 86400,
-            'meta' => (object)[],
-            'invoice_status_id' => InvoiceStatus::where('is_new', true)->first()->id,
-            'cancel_url' => $this->generateUrl($dto, 'payment-failed'),
-            'redirect_url' => $this->generateUrl($dto, 'payment'),
-            'webhook_url' => $this->generateUrl($dto, 'api/payment/webhook/alif'),
+            'organization_id' => $dto->metadata['operation_data']['organization_id'],
+            'status' => PaymentStatus::PENDING,
+            'currency_id' => $dto->metadata['currency_id'],
+            'email' => $dto->metadata['email'],
+            'total_amount' => $dto->metadata['license_price']  + $dto->metadata['tariff_price'],
+            'provider' => PaymentProviderType::ALIF,
+            'additional_data' => json_encode([]),
+            'operation_type' => $dto->operationType
         ]);
     }
 
@@ -126,20 +130,29 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         return [
             'name' => $name,
-            'spic' => '11201001001000000',
             'amount' => 1,
             'price' => $price,
             'invoice_id' => $invoiceId,
+            'spic' => '11201001001000000'
         ];
     }
 
-    private function sendToAlif(Invoice $invoice, array $items): array
+    private function sendToAlif(CreateInvoiceDTO $DTO, array $items): array
     {
         $response = Http::withHeaders([
             'Token' => config('payments.alif.token'),
             'Content-Type' => 'application/json',
             'Accept' => 'application/json'
-        ])->post(config('payments.alif.url'), [array_merge($invoice->toArray(), $items)]);
+        ])->post(config('payments.alif.url'), [
+            'items' => $items,
+            'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$DTO->metadata['subdomain']}",
+            'redirect_url' => "https://{$DTO->metadata['subdomain']}.shamcrm.com/payment",
+            'webhook_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/alif',
+            'meta' => (object)[],
+            'receipt' => true,
+            'phone' => $DTO->metadata['phone'],
+            'timeout' => 86400,
+        ]);
 
         if ($response->failed()) {
             Log::error('Alif API error', ['response' => $response->body()]);
@@ -157,17 +170,17 @@ class AlifPayProvider implements PaymentProviderInterface
 
     public function handleWebhook(array $data): WebhookResponse
     {
-        $this->verifySignature($data);
-
-        $invoice = Invoice::where('invoice_id', $data['id'])->firstOrFail();
+        $invoice = Invoice::where('payment_provider_id', $data['id'])->firstOrFail();
 
         return new WebhookResponse(
             success: $data['payment']['status'] === 'SUCCEEDED',
             operationId: $invoice->id,
+            operationType: PaymentOperationType::from($invoice->operation_type),
             message: $data['payment']['status'],
             providerResponse: ['alif_status' => $data['payment']['status']]
         );
     }
+
 
     private function verifySignature(array $data): void
     {

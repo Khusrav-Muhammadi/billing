@@ -2,6 +2,7 @@
 
 namespace App\Services\Payment;
 
+use App\Models\Invoice;
 use App\Services\Billing\BillingService;
 use App\Services\Billing\Enum\PaymentOperationType;
 use App\Services\Payment\DTO\CreateInvoiceDTO;
@@ -21,7 +22,7 @@ class PaymentService
         array $operationData,
         string $provider
     ): PaymentResponse {
-        $operationResult = $this->billingService->executeOperation(
+        $operationResult = $this->billingService->calculateOperation(
             $operationType,
             $operationData
         );
@@ -33,22 +34,17 @@ class PaymentService
             metadata: $operationResult->metadata
         );
 
-        $provider = $this->providerFactory->create($provider);
+        return $this->providerFactory
+            ->create($provider)
+            ->createInvoice($invoiceDto);
 
-        return $provider->createInvoice($invoiceDto);
     }
 
-    public function handleWebhook(string $providerSlug, array $data): WebhookResponse
+    /**
+     * Подтверждает платеж и выполняет бизнес-логику
+     */
+    public function confirmPayment(PaymentOperationType $operationType, string $providerInvoiceId): void
     {
-        $provider = $this->providerFactory->create($providerSlug);
-        $response = $provider->handleWebhook($data);
-
-        if ($response->success) {
-            $this->billingService->confirmOperation(
-                $response->operationId
-            );
-        }
-
-        return $response;
+        $this->billingService->executeOperation($operationType, $providerInvoiceId);
     }
 }
