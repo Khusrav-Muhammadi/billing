@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services\Payment\Enums;
+namespace App\Services\Billing\Enum;
 
-enum PaymentOperations: string
+enum TransactionSourceType: string
 {
     case DEMO_TO_LIVE = 'demo_to_live';
     case TARIFF_RENEWAL = 'tariff_renewal';
