@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Payment\Contracts\PaymentRepositoryInterface;
+use App\Services\WithdrawalService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -144,7 +145,9 @@ class PaymentRepository implements PaymentRepositoryInterface
         $isUSD = $currency->symbol_code != 'USD';
 
         $licenseSum = $client->tariffPrice->license_price ?? 0;
-        $tariffSum = $client->tariffPrice->tariff_price ?? 0;
+
+        $service = new WithdrawalService();
+        $tariffSum = $service->countSum($client);
 
         return [
             'license_sum' => $licenseSum,
