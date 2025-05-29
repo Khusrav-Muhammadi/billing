@@ -269,6 +269,8 @@ class ClientRepository implements ClientRepositoryInterface
         $newTariff = TariffCurrency::find($data['tariff_id']);
         $lastTariff = TariffCurrency::find($client->tariff_id);
 
+        $tariffPrice = $newTariff->tariff_price * $data['month'];
+
         $organizations = $client->organizations;
 
         $currency = $client->currency;
@@ -288,6 +290,38 @@ class ClientRepository implements ClientRepositoryInterface
                     ]
                 ];
                 $this->createTransactions($client, $organization, $transactions);
+            }
+        }
+
+        $service = new WithdrawalService();
+        $tariffSum = $service->countSum($client);
+        $amounts = $this->calculateAmounts($tariffSum, $currency, $exchangeRate);
+
+        foreach ($organizations as $organization) {
+            $organization->decrement('balance', $tariffPrice);
+            $transactions = [
+                [
+                    'sum' => $tariffSum,
+                    'accounted_amount' => $amounts['accounted_amount']
+                ]
+            ];
+            $this->createTransactions($client, $organization, $transactions);
+        }
+    }
+
+    private function createTransactions(Client $client, Organization $organization, array $transactions): void
+    {
+        foreach ($transactions as $transaction) {
+            if ($transaction['sum'] > 0) {
+                Transaction::create([
+                    'client_id' => $client->id,
+                    'organization_id' => $organization->id,
+                    'tariff_id' => $client->tariff?->id,
+                    'sale_id' => $client->sale?->id,
+                    'sum' => $transaction['sum'],
+                    'type' => 'Снятие',
+                    'accounted_amount' => $transaction['accounted_amount']
+                ]);
             }
         }
     }
