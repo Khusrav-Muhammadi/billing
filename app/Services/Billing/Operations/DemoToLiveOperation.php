@@ -7,8 +7,6 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Organization;
 use App\Models\Transaction;
-use App\Services\Billing\DTO\OperationResultDTO;
-use App\Services\Billing\Enum\PaymentOperationType;
 use App\Services\Billing\Enum\TransactionType;
 use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\WithdrawalService;

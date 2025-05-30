@@ -52,7 +52,7 @@ class BillingService
         $organization = Organization::find($operationData["organization_id"]);
 
         return match ($operationType) {
-            PaymentOperationType::DEMO_TO_LIVE => new DemoToLiveOperation($organization, $operationData ?? null),
+            PaymentOperationType::DEMO_TO_LIVE => new DemoToLiveOperation($organization, $operationData),
             PaymentOperationType::TARIFF_CHANGE => new TariffChangeOperation(),
             PaymentOperationType::ADDON_PURCHASE => new AddonPurchaseOperation(),
         };

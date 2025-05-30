@@ -30,6 +30,7 @@ class AlifPayProvider implements PaymentProviderInterface
         foreach ($invoiceItems as $invoiceItem) {
             InvoiceItem::query()->create($invoiceItem);
         }
+
         $response = $this->sendToAlif($dto, $invoiceItems);
         $invoice->payment_provider_id = $response['id'];
         $invoice->save();
