@@ -27,7 +27,6 @@ class PaymentService
             $operationData
         );
 
-
         $invoiceDto = new CreateInvoiceDTO(
             amount: $operationResult->amount,
             operationType: $operationType,
@@ -38,9 +37,7 @@ class PaymentService
         return $this->providerFactory
             ->create($provider)
             ->createInvoice($invoiceDto);
-
     }
-
 
     public function confirmPayment(PaymentOperationType $operationType, string $providerInvoiceId): void
     {

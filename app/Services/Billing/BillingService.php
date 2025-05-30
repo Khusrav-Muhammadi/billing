@@ -14,7 +14,6 @@ use App\Services\Payment\Enums\PaymentStatus;
 
 class BillingService
 {
-
     public function calculateOperation(
         PaymentOperationType $operationType,
         array                $operationData
@@ -32,7 +31,6 @@ class BillingService
             ]),
         );
     }
-
 
     public function executeOperation(
         PaymentOperationType $operationType,
@@ -57,7 +55,6 @@ class BillingService
             PaymentOperationType::ADDON_PURCHASE => new AddonPurchaseOperation(),
         };
     }
-
 
     private function updateInvoiceStatus(int $invoice_id, $operationType)
     {
