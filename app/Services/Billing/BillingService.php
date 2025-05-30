@@ -50,11 +50,9 @@ class BillingService
     )
     {
         $organization = Organization::find($operationData["organization_id"]);
-        $client = $organization->client;
-
 
         return match ($operationType) {
-            PaymentOperationType::DEMO_TO_LIVE => new DemoToLiveOperation($client, $organization),
+            PaymentOperationType::DEMO_TO_LIVE => new DemoToLiveOperation($organization, $operationData ?? null),
             PaymentOperationType::TARIFF_CHANGE => new TariffChangeOperation(),
             PaymentOperationType::ADDON_PURCHASE => new AddonPurchaseOperation(),
         };
@@ -69,7 +67,7 @@ class BillingService
         $invoice->status = PaymentStatus::SUCCESS;
         $invoice->save();
 
-        return $this->createOperationInstance($operationType, ['organization_id' => $organization->id]);
+        return $this->createOperationInstance($operationType, ['organization_id' => $organization->id, 'invoice_id' => $invoice_id]);
     }
 
     public function calculateDailyPayment(Client $client): float

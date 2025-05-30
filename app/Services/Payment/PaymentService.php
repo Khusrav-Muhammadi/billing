@@ -27,6 +27,7 @@ class PaymentService
             $operationData
         );
 
+
         $invoiceDto = new CreateInvoiceDTO(
             amount: $operationResult->amount,
             operationType: $operationType,

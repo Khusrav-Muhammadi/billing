@@ -15,7 +15,7 @@ class Client extends Model
     public bool $disableObserver = false;
 
     protected $fillable = ['name','phone', 'sub_domain', 'INN', 'address', 'balance', 'tariff_id', 'reject_cause', 'sale_id',
-        'is_active', 'is_demo', 'last_activity', 'email', 'contact_person', 'client_type', 'partner_id', 'city_id', 'nfr', 'country_id', 'currency_id'];
+        'is_active', 'is_demo', 'last_activity', 'email', 'contact_person', 'client_type', 'partner_id', 'city_id', 'nfr', 'country_id', 'currency_id', 'license_paid'];
 
     protected $casts = [
         'is_active' => 'boolean',

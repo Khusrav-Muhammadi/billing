@@ -10,6 +10,7 @@ use App\Models\InvoiceStatus;
 use App\Services\Billing\Enum\PaymentOperationType;
 use App\Services\Payment\Contracts\PaymentProviderInterface;
 use App\Services\Payment\DTO\CreateInvoiceDTO;
+use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\Payment\Enums\PaymentProviderType;
 use App\Services\Payment\Enums\PaymentStatus;
 use App\Services\Response\PaymentResponse;
@@ -26,6 +27,9 @@ class AlifPayProvider implements PaymentProviderInterface
 
         $invoiceItems = $this->prepareInvoiceItems($invoice->id, $dto);
 
+        foreach ($invoiceItems as $invoiceItem) {
+            InvoiceItem::query()->create($invoiceItem);
+        }
         $response = $this->sendToAlif($dto, $invoiceItems);
         $invoice->payment_provider_id = $response['id'];
         $invoice->save();
@@ -44,7 +48,7 @@ class AlifPayProvider implements PaymentProviderInterface
             'status' => PaymentStatus::PENDING,
             'currency_id' => $dto->metadata['currency_id'],
             'email' => $dto->metadata['email'],
-            'total_amount' => $dto->metadata['license_price']  + $dto->metadata['tariff_price'],
+            'total_amount' => $dto->metadata['license_price']  + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
             'provider' => PaymentProviderType::ALIF,
             'additional_data' => json_encode([]),
             'operation_type' => $dto->operationType
@@ -68,12 +72,16 @@ class AlifPayProvider implements PaymentProviderInterface
             $this->makeItem(
                 name: "Лицензия для тарифа {$dto->metadata['tariff_name']}",
                 price: $dto->metadata['license_price'],
-                invoiceId: $invoiceId
+                months: $dto->metadata['operation_data']['months'],
+                invoiceId: $invoiceId,
+                purpose: TransactionPurpose::LICENSE,
             ),
             $this->makeItem(
                 name: "Активация тарифа {$dto->metadata['tariff_name']}",
                 price: $dto->metadata['tariff_price'],
-                invoiceId: $invoiceId
+                months: $dto->metadata['operation_data']['months'],
+                invoiceId: $invoiceId,
+                purpose: TransactionPurpose::TARIFF,
             )
         ];
     }
@@ -87,7 +95,9 @@ class AlifPayProvider implements PaymentProviderInterface
             $this->makeItem(
                 name: "Продление тарифа {$dto->metadata['tariff_name']} на {$months} мес.",
                 price: $monthlyPrice * $months,
-                invoiceId: $invoiceId
+                months: $dto->metadata['operation_data']['months'],
+                invoiceId: $invoiceId,
+                purpose: TransactionPurpose::TARIFF,
             )
         ];
     }
@@ -100,14 +110,18 @@ class AlifPayProvider implements PaymentProviderInterface
             $items[] = $this->makeItem(
                 name: "Разница лицензии ({$dto->metadata['old_tariff']} → {$dto->metadata['new_tariff']})",
                 price: $dto->metadata['license_diff'],
-                invoiceId: $invoiceId
+                months: $dto->metadata['operation_data']['months'],
+                invoiceId: $invoiceId,
+                purpose: TransactionPurpose::LICENSE,
             );
         }
 
         $items[] = $this->makeItem(
             name: "Смена тарифа на {$dto->metadata['new_tariff']}",
             price: $dto->metadata['tariff_price'],
-            invoiceId: $invoiceId
+            months: $dto->metadata['operation_data']['months'],
+            invoiceId: $invoiceId,
+            purpose: TransactionPurpose::TARIFF,
         );
 
         return $items;
@@ -121,19 +135,23 @@ class AlifPayProvider implements PaymentProviderInterface
                     ? "Пакет {$dto->metadata['addon_name']}"
                     : "Пакет {$dto->metadata['addon_name']} (ежемесячно)",
                 price: $dto->metadata['addon_price'],
-                invoiceId: $invoiceId
+                months: $dto->metadata['operation_data']['months'],
+                invoiceId: $invoiceId,
+                purpose: TransactionPurpose::ADDON_PACKAGE,
             )
         ];
     }
 
-    private function makeItem(string $name, float $price, int $invoiceId): array
+    private function makeItem(string $name, float $price, int $months, int $invoiceId, TransactionPurpose $purpose, int $sale_id = null): array
     {
         return [
             'name' => $name,
             'amount' => 1,
-            'price' => $price,
+            'price' => $purpose == TransactionPurpose::TARIFF ? $price * $months : $price,
             'invoice_id' => $invoiceId,
-            'spic' => '11201001001000000'
+            'spic' => '11201001001000000',
+            'purpose' => $purpose,
+            'sale_id' => $sale_id
         ];
     }
 
@@ -165,7 +183,7 @@ class AlifPayProvider implements PaymentProviderInterface
     private function generateUrl(CreateInvoiceDTO $dto, string $path): string
     {
         $subdomain = $dto->metadata['subdomain'];
-        return "https://{$subdomain}shamcrm.com/{$path}";
+        return "https://{$subdomain}.shamcrm.com/{$path}";
     }
 
     public function handleWebhook(array $data): WebhookResponse

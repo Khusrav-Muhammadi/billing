@@ -7,6 +7,8 @@ use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Transaction;
 use App\Repositories\ClientRepository;
+use App\Services\Billing\Enum\TransactionType;
+use App\Services\Payment\Enums\TransactionPurpose;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -26,16 +28,17 @@ class WithdrawalService
 
             $currency = $client->currency;
 
-            $accountedAmount = $currency->symbol_code == 'USD' ? $sum / $currency->latestExchangeRate->kurs : $sum;
+            $accountedAmount = $currency->symbol_code == 'USD' ? $sum : $sum / $currency->latestExchangeRate->kurs ;
 
             Transaction::create([
                 'client_id' => $client->id,
                 'organization_id' => $organization->id,
-                'tariff_id' => $client->tariff->id,
+                'tariff_id' => $client->tariffPrice->id,
                 'sale_id' => $client->sale?->id,
                 'sum' => $sum,
-                'type' => 'Снятие',
-                'accounted_amount' => $accountedAmount
+                'type' => TransactionType::DEBIT,
+                'accounted_amount' => $accountedAmount,
+                'purpose' => TransactionPurpose::TARIFF,
             ]);
         } else {
             $repository = new ClientRepository();

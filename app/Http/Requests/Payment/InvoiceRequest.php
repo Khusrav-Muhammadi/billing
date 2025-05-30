@@ -21,7 +21,8 @@ class InvoiceRequest extends FormRequest
             'operation_type' => ['required', Rule::enum(PaymentOperationType::class)],
             'provider' => ['required', Rule::enum(PaymentProviderType::class)],
             'tariff_name' => ['required', Rule::exists('tariffs','name')],
-            'organization_id' => ['required', Rule::exists('organizations','id')]
+            'organization_id' => ['required', Rule::exists('organizations','id')],
+            'months' => ['required', 'in:6,12'],
         ];
     }
 }

@@ -30,6 +30,7 @@ class PaymentController extends Controller
     public function handleWebhook(string $provider, Request $request)
     {
         $provider = $this->providerFactory->create($provider);
+
         $response = $provider->handleWebhook($request->all());
 
         if ($response->success) {

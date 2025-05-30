@@ -73,12 +73,12 @@ Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login'])
 
 
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
-Route::post('/payment', [PaymentController::class, 'createInvoice']);
-Route::post('/payment/webhook/{provider}', [PaymentController::class, 'handleWebhook']);
-Route::post('alif-payment', [\App\Http\Controllers\API\PaymentController::class, 'createInvoice']);
-Route::post('payment/alif/webhook', [\App\Http\Controllers\API\PaymentController::class, 'webhook']);
 
 Route::post('payment/alif/webhook/change-tariff', [\App\Http\Controllers\API\ClientController::class, 'webhookChangeTariff']);
 
 Route::get('tariff-difference', [\App\Http\Controllers\API\ClientController::class, 'countDifference']);
 Route::post('change-tariff', [\App\Http\Controllers\API\ClientController::class, 'changeTariff']);
+
+
+Route::post('/payment', [PaymentController::class, 'createInvoice']);
+Route::post('/payment/webhook/{provider}', [PaymentController::class, 'handleWebhook']);
