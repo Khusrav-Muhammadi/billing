@@ -41,4 +41,29 @@ class TariffChangeOperation extends BaseBillingOperation
             'months' => $this->operationData["months"],
         ];
     }
+
+    public function execute(): void
+    {
+        DB::transaction(function () {
+            $this->client->update(['is_demo' => false]);
+            $invoiceItems = InvoiceItem::query()->where('invoice_id', $this->operationData['invoice_id'])->get();
+
+            foreach ($invoiceItems as $invoiceItem) {
+                $this->createTransaction($invoiceItem, TransactionType::CREDIT);
+                $this->organization->increment('balance', $invoiceItem->price);
+            }
+            foreach ($invoiceItems as $invoiceItem) {
+                if ($invoiceItem->purpose == TransactionPurpose::LICENSE->value){
+                    $this->createTransaction($invoiceItem, TransactionType::DEBIT);
+                    $this->organization->decrement('balance', $invoiceItem->price);
+                    $this->organization->update(['license_paid' => true]);
+                }
+                else {
+                    $service = new WithdrawalService();
+                    $sum = $service->countSum($this->client);
+                    $service->handle($this->organization, $sum);
+                }
+            }
+        });
+    }
 }

@@ -71,21 +71,6 @@ class DemoToLiveOperation extends BaseBillingOperation
                     $service->handle($this->organization, $sum);
                 }
             }
-
-
-//
-//            $total = $this->calculateAmount();
-//            $this->organization->increment('balance', $price);
-//            $this->organization->decrement('balance', $total);
-//
-//            Transaction::create([
-//                'client_id' => $this->client->id,
-//                'organization_id' => $this->organization->id,
-//                'type' => TransactionType::DEBIT,
-//                'amount' => $total,
-//                'currency' => $this->getCurrency(),
-//                'status' => 'completed'
-//            ]);
         });
     }
 

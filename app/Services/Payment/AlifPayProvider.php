@@ -33,6 +33,8 @@ class AlifPayProvider implements PaymentProviderInterface
             $item['price'] = intval($item['price'] * 100);
             return $item;
         })->toArray();
+
+
         $response = $this->sendToAlif($dto, $items);
         $invoice->payment_provider_id = $response['id'];
         $invoice->save();
