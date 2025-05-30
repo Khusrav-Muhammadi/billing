@@ -6,7 +6,6 @@ use App\Exceptions\PaymentException;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
-use App\Models\InvoiceStatus;
 use App\Services\Billing\Enum\PaymentOperationType;
 use App\Services\Payment\Contracts\PaymentProviderInterface;
 use App\Services\Payment\DTO\CreateInvoiceDTO;
@@ -147,7 +146,7 @@ class AlifPayProvider implements PaymentProviderInterface
         return [
             'name' => $name,
             'amount' => 1,
-            'price' => $purpose == TransactionPurpose::TARIFF ? $price * $months : $price,
+            'price' => $purpose == TransactionPurpose::TARIFF ? ($price * $months) * 100 : $price * 100,
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
             'purpose' => $purpose,
@@ -165,10 +164,10 @@ class AlifPayProvider implements PaymentProviderInterface
             'items' => $items,
             'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$DTO->metadata['subdomain']}",
             'redirect_url' => "https://{$DTO->metadata['subdomain']}.shamcrm.com/payment",
-            'webhook_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/alif',
+            'webhook_url' => 'https://billing-back.sham360.com/api/payment/webhook/ALIF',
             'meta' => (object)[],
             'receipt' => true,
-            'phone' => $DTO->metadata['phone'],
+            'phone' => ltrim($DTO->metadata['phone'], '+'),
             'timeout' => 86400,
         ]);
 
@@ -209,8 +208,4 @@ class AlifPayProvider implements PaymentProviderInterface
             providerResponse: ['alif_status' => $data['payment']['status']]
         );
     }
-
-
-
-
 }
