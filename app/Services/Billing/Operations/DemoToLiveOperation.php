@@ -12,7 +12,7 @@ use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
 
-class DemoToLiveOperation
+class DemoToLiveOperation extends BaseBillingOperation
 {
     public Client $client;
     public function __construct(

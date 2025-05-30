@@ -49,7 +49,7 @@ class AlifPayProvider implements PaymentProviderInterface
             'status' => PaymentStatus::PENDING,
             'currency_id' => $dto->metadata['currency_id'],
             'email' => $dto->metadata['email'],
-            'total_amount' => $dto->metadata['license_price']  + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+            'total_amount' => $this->calculateTotalSum($dto),
             'provider' => PaymentProviderType::ALIF,
             'additional_data' => json_encode([]),
             'operation_type' => $dto->operationType
@@ -106,8 +106,7 @@ class AlifPayProvider implements PaymentProviderInterface
     private function tariffChangeItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
         $items = [];
-
-        if ($dto->metadata['license_diff'] > 0) {
+        if ($dto->metadata['license_difference'] > 0) {
             $items[] = $this->makeItem(
                 name: "Разница лицензии ({$dto->metadata['old_tariff']} → {$dto->metadata['new_tariff']})",
                 price: $dto->metadata['license_diff'],
@@ -187,6 +186,17 @@ class AlifPayProvider implements PaymentProviderInterface
         return "https://{$subdomain}.shamcrm.com/{$path}";
     }
 
+
+    private function calculateTotalSum(CreateInvoiceDTO $dto) :float
+    {
+        return match ($dto->operationType) {
+            PaymentOperationType::DEMO_TO_LIVE => $dto->metadata['license_price']  + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+            PaymentOperationType::TARIFF_CHANGE => $dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+
+        };
+
+    }
+
     public function handleWebhook(array $data): WebhookResponse
     {
         $invoice = Invoice::where('payment_provider_id', $data['id'])->firstOrFail();
@@ -199,6 +209,8 @@ class AlifPayProvider implements PaymentProviderInterface
             providerResponse: ['alif_status' => $data['payment']['status']]
         );
     }
+
+
 
 
 }

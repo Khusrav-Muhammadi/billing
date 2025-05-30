@@ -51,7 +51,7 @@ class BillingService
 
         return match ($operationType) {
             PaymentOperationType::DEMO_TO_LIVE => new DemoToLiveOperation($organization, $operationData),
-            PaymentOperationType::TARIFF_CHANGE => new TariffChangeOperation(),
+            PaymentOperationType::TARIFF_CHANGE => new TariffChangeOperation($organization, $operationData),
             PaymentOperationType::ADDON_PURCHASE => new AddonPurchaseOperation(),
         };
     }
