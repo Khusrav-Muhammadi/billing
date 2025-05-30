@@ -29,8 +29,11 @@ class AlifPayProvider implements PaymentProviderInterface
         foreach ($invoiceItems as $invoiceItem) {
             InvoiceItem::query()->create($invoiceItem);
         }
-
-        $response = $this->sendToAlif($dto, $invoiceItems);
+        $items = collect($invoiceItems)->map(function ($item) {
+            $item['price'] = intval($item['price'] * 100);
+            return $item;
+        })->toArray();
+        $response = $this->sendToAlif($dto, $items);
         $invoice->payment_provider_id = $response['id'];
         $invoice->save();
 
@@ -146,7 +149,7 @@ class AlifPayProvider implements PaymentProviderInterface
         return [
             'name' => $name,
             'amount' => 1,
-            'price' => $purpose == TransactionPurpose::TARIFF ? ($price * $months) * 100 : $price * 100,
+            'price' => $purpose == TransactionPurpose::TARIFF ? ($price * $months) : $price,
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
             'purpose' => $purpose,
