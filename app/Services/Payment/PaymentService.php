@@ -40,9 +40,7 @@ class PaymentService
 
     }
 
-    /**
-     * Подтверждает платеж и выполняет бизнес-логику
-     */
+
     public function confirmPayment(PaymentOperationType $operationType, string $providerInvoiceId): void
     {
         $this->billingService->executeOperation($operationType, $providerInvoiceId);

@@ -14,10 +14,7 @@ use App\Services\Payment\Enums\PaymentStatus;
 
 class BillingService
 {
-    /**
-     * Рассчитывает параметры операции БЕЗ выполнения бизнес-логики
-     * Используется для создания счета на оплату
-     */
+
     public function calculateOperation(
         PaymentOperationType $operationType,
         array                $operationData
@@ -36,9 +33,7 @@ class BillingService
         );
     }
 
-    /**
-     * Выполняет бизнес-логику операции ПОСЛЕ успешной оплаты
-     */
+
     public function executeOperation(
         PaymentOperationType $operationType,
         int                  $invoice_id
@@ -49,9 +44,6 @@ class BillingService
         $operation->execute();
     }
 
-    /**
-     * Создает экземпляр операции
-     */
     private function createOperationInstance(
         PaymentOperationType $operationType,
         array                $operationData
@@ -63,13 +55,8 @@ class BillingService
 
         return match ($operationType) {
             PaymentOperationType::DEMO_TO_LIVE => new DemoToLiveOperation($client, $organization),
-            PaymentOperationType::ADDON_PURCHASE => new AddOnPurchaseOperation(
-                Client::findOrFail($operationData['client_id']),
-                Organization::findOrFail($operationData['organization_id']),
-                $operationData['addon_id'],
-                $operationData['quantity'] ?? 1
-            ),
-            default => throw new \InvalidArgumentException("Unsupported operation: " . $operationType->value)
+            PaymentOperationType::TARIFF_CHANGE => new TariffChangeOperation(),
+            PaymentOperationType::ADDON_PURCHASE => new AddonPurchaseOperation(),
         };
     }
 
@@ -85,9 +72,6 @@ class BillingService
         return $this->createOperationInstance($operationType, ['organization_id' => $organization->id]);
     }
 
-    /**
-     * Рассчитывает ежедневное списание для клиента
-     */
     public function calculateDailyPayment(Client $client): float
     {
         if (!$client->tariff) return 0;

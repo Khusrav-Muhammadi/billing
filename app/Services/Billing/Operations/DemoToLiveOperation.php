@@ -43,9 +43,6 @@ class DemoToLiveOperation
         ];
     }
 
-    /**
-     * Выполняется ТОЛЬКО после успешной оплаты
-     */
     public function execute(): void
     {
         DB::transaction(function () {

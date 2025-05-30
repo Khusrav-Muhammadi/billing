@@ -182,8 +182,4 @@ class AlifPayProvider implements PaymentProviderInterface
     }
 
 
-    private function verifySignature(array $data): void
-    {
-        // Реализация проверки подписи Alif
-    }
 }
