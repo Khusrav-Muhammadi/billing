@@ -108,8 +108,8 @@ class AlifPayProvider implements PaymentProviderInterface
         $items = [];
         if ($dto->metadata['license_difference'] > 0) {
             $items[] = $this->makeItem(
-                name: "Разница лицензии ({$dto->metadata['old_tariff']} → {$dto->metadata['new_tariff']})",
-                price: $dto->metadata['license_diff'],
+                name: "Разница лицензии ({$dto->metadata['currentTarif']->name} → {$dto->metadata['newTariff']->tariff->name})",
+                price: $dto->metadata['license_difference'],
                 months: $dto->metadata['operation_data']['months'],
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::LICENSE,
@@ -117,7 +117,7 @@ class AlifPayProvider implements PaymentProviderInterface
         }
 
         $items[] = $this->makeItem(
-            name: "Смена тарифа на {$dto->metadata['new_tariff']}",
+            name: "Смена тарифа на {$dto->metadata['currentTarif']->name}",
             price: $dto->metadata['tariff_price'],
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
