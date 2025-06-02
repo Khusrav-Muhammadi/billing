@@ -28,6 +28,7 @@ class AlifPayProvider implements PaymentProviderInterface
         foreach ($invoiceItems as $invoiceItem) {
             InvoiceItem::query()->create($invoiceItem);
         }
+        dd($invoice);
         $items = collect($invoiceItems)->map(function ($item) {
             $item['price'] = intval($item['price'] * 100);
             return $item;
