@@ -3,9 +3,7 @@
 namespace App\Services\Billing\Operations;
 
 use App\Models\Client;
-use App\Models\Invoice;
 use App\Models\InvoiceItem;
-use App\Models\InvoiceStatus;
 use App\Models\Organization;
 use App\Models\TariffCurrency;
 use App\Models\Transaction;

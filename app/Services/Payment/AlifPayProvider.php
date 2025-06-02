@@ -3,7 +3,6 @@
 namespace App\Services\Payment;
 
 use App\Exceptions\PaymentException;
-use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Services\Billing\Enum\PaymentOperationType;
@@ -14,7 +13,6 @@ use App\Services\Payment\Enums\PaymentProviderType;
 use App\Services\Payment\Enums\PaymentStatus;
 use App\Services\Response\PaymentResponse;
 use App\Services\Response\WebhookResponse;
-use GuzzleHttp\Promise\Create;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use function Symfony\Component\Translation\t;
@@ -34,8 +32,6 @@ class AlifPayProvider implements PaymentProviderInterface
             $item['price'] = intval($item['price'] * 100);
             return $item;
         })->toArray();
-
-
         $response = $this->sendToAlif($dto, $items);
         $invoice->payment_provider_id = $response['id'];
         $invoice->save();
@@ -74,22 +70,30 @@ class AlifPayProvider implements PaymentProviderInterface
 
     private function demoToLiveItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
-        return [
-            $this->makeItem(
+        $items = [];
+
+        if (($dto->metadata['license_price'] ?? 0) > 0) {
+            $items[] = $this->makeItem(
                 name: "Лицензия для тарифа {$dto->metadata['tariff_name']}",
                 price: $dto->metadata['license_price'],
                 months: $dto->metadata['operation_data']['months'],
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::LICENSE,
-            ),
-            $this->makeItem(
-                name: "Активация тарифа {$dto->metadata['tariff_name']}",
-                price: $dto->metadata['tariff_price'],
-                months: $dto->metadata['operation_data']['months'],
-                invoiceId: $invoiceId,
-                purpose: TransactionPurpose::TARIFF,
-            )
-        ];
+                sale_id: $dto->metadata['sale_id'] ?? null
+            );
+        }
+
+        $items[] = $this->makeItem(
+            name: "Активация тарифа {$dto->metadata['tariff_name']}",
+            price: $dto->metadata['tariff_price'],
+            months: $dto->metadata['operation_data']['months'],
+            invoiceId: $invoiceId,
+            purpose: TransactionPurpose::TARIFF,
+            sale_id: $dto->metadata['sale_id'] ?? null
+        );
+
+
+        return $items;
     }
 
     private function tariffRenewalItems(int $invoiceId, CreateInvoiceDTO $dto): array

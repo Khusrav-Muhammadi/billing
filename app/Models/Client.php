@@ -17,6 +17,17 @@ class Client extends Model
     protected $fillable = ['name','phone', 'sub_domain', 'INN', 'address', 'balance', 'tariff_id', 'reject_cause', 'sale_id',
         'is_active', 'is_demo', 'last_activity', 'email', 'contact_person', 'client_type', 'partner_id', 'city_id', 'nfr', 'country_id', 'currency_id', 'license_paid'];
 
+    public function activeSales()
+    {
+        return $this->belongsToMany(Sale::class, 'client_sale')
+            ->where('is_active', true)
+            ->where(function($q) {
+                $q->whereNull('start_date')->orWhere('start_date', '<=', now());
+            })
+            ->where(function($q) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', now());
+            });
+    }
     protected $casts = [
         'is_active' => 'boolean',
         'is_demo' => 'boolean',

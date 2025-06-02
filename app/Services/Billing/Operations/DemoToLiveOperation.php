@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Organization;
+use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Services\Billing\Enum\TransactionType;
 use App\Services\Payment\Enums\TransactionPurpose;
@@ -15,17 +16,20 @@ use Illuminate\Support\Facades\DB;
 class DemoToLiveOperation extends BaseBillingOperation
 {
     public Client $client;
+    public TariffCurrency $newTariff;
+
     public function __construct(
         private Organization $organization,
         private array $operationData,
     ) {
         $this->client = $this->organization->client;
+        $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
     }
 
     public function calculateAmount(): float
     {
-        return $this->client->tariffPrice->license_price +
-            $this->client->tariffPrice->tariff_price;
+        return $this->newTariff->license_price +
+            $this->newTariff->tariff_price;
     }
 
     public function getMetadata(): array
@@ -82,7 +86,6 @@ class DemoToLiveOperation extends BaseBillingOperation
             'type' => $transactionType,
             'sum' => $invoiceItem->price,
             'currency' => $this->getCurrency(),
-            'status' => 'completed',
             'purpose' =>  $invoiceItem->purpose,
             'provider' => $transactionType == TransactionType::DEBIT ? 'manual' : $invoiceItem->invoice->provider,
             'accounted_amount' => $isUSD ? $invoiceItem->price : $invoiceItem->price / $exchangeRate
