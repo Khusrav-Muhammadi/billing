@@ -3,6 +3,7 @@
 namespace App\Services\Billing\Operations;
 
 use App\Models\Client;
+use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Organization;
 use App\Models\TariffCurrency;
@@ -18,7 +19,14 @@ class TariffChangeOperation extends BaseBillingOperation
     public function __construct(public Organization $organization, public array $operationData)
     {
         $this->client = $organization->client;
-        $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
+
+        if (isset($this->operationData['invoice_id'])) {
+            $invoice = Invoice::query()->where('id', $this->operationData['invoice_id'])->first();
+            $this->newTariff = TariffCurrency::find($invoice->tariff_id);
+        }
+        else {
+            $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
+        }
     }
 
     public function getMetadata(): array
