@@ -32,11 +32,6 @@ class DemoToLiveOperation extends BaseBillingOperation
             $this->newTariff->tariff_price;
     }
 
-    public function getCurrency(): string
-    {
-        return $this->client->currency->symbol_code;
-    }
-
     public function getMetadata(): array
     {
         return [

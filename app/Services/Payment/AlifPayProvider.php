@@ -15,6 +15,7 @@ use App\Services\Response\PaymentResponse;
 use App\Services\Response\WebhookResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use function Symfony\Component\Translation\t;
 
 class AlifPayProvider implements PaymentProviderInterface
 {
@@ -114,22 +115,12 @@ class AlifPayProvider implements PaymentProviderInterface
     private function tariffChangeItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
         $items = [];
-        if ($dto->metadata['license_difference'] > 0) {
-            $items[] = $this->makeItem(
-                name: "Разница лицензии ({$dto->metadata['currentTarif']->name} → {$dto->metadata['newTariff']->tariff->name})",
-                price: $dto->metadata['license_difference'],
-                months: $dto->metadata['operation_data']['months'],
-                invoiceId: $invoiceId,
-                purpose: TransactionPurpose::LICENSE,
-            );
-        }
-
         $items[] = $this->makeItem(
-            name: "Смена тарифа на {$dto->metadata['currentTarif']->name}",
-            price: $dto->metadata['tariff_price'],
+            name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
+            price: ($dto->metadata['organization_balance'] - ($dto->metadata['license_price'] + ($dto->metadata['tariff_price'] * $dto->metadata['months']))),
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
-            purpose: TransactionPurpose::TARIFF,
+            purpose: TransactionPurpose::CHANGE_TARIFF,
         );
 
         return $items;
@@ -195,14 +186,12 @@ class AlifPayProvider implements PaymentProviderInterface
     }
 
 
-    private function calculateTotalSum(CreateInvoiceDTO $dto) :float
+    private function calculateTotalSum(CreateInvoiceDTO $dto): float
     {
         return match ($dto->operationType) {
-            PaymentOperationType::DEMO_TO_LIVE => $dto->metadata['license_price']  + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+            PaymentOperationType::DEMO_TO_LIVE => $dto->metadata['license_price'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
             PaymentOperationType::TARIFF_CHANGE => $dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
-
         };
-
     }
 
     public function handleWebhook(array $data): WebhookResponse
