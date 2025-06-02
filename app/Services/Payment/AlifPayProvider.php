@@ -113,7 +113,7 @@ class AlifPayProvider implements PaymentProviderInterface
     }
 
     private function tariffChangeItems(int $invoiceId, CreateInvoiceDTO $dto): array
-    {dd($dto);
+    {
         $items = [];
         $items[] = $this->makeItem(
             name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
