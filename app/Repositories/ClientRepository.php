@@ -272,7 +272,7 @@ class ClientRepository implements ClientRepositoryInterface
             'sale_license_price' => round($saleLicensePrice, 2),
             'tariff_price' => $tariffPrice,
             'sale_tariff_price' => round($saleTariffPrice, 2),
-            'must_pay' => $difference < 0
+            'must_pay' => false//$difference < 0
         ];
     }
 
