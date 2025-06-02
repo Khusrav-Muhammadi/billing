@@ -165,7 +165,7 @@ class AlifPayProvider implements PaymentProviderInterface
             'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$DTO->metadata['subdomain']}",
 //            'redirect_url' => "https://{$DTO->metadata['subdomain']}.shamcrm.com/payment",
             'redirect_url' => "https://hello.sham360.com/payment",
-            'webhook_url' => 'https://billing-back.sham360.com/api/payment/webhook/ALIF',
+            'webhook_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/ALIF',
 //            'webhook_url' => 'https://5b05-95-142-94-22.ngrok-free.app/api/payment/webhook/ALIF',
             'meta' => (object)[],
             'receipt' => true,
