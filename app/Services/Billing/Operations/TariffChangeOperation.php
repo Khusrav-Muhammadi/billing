@@ -50,7 +50,10 @@ class TariffChangeOperation extends BaseBillingOperation
     public function execute(): void
     {
         DB::transaction(function () {
-            $invoiceItem = InvoiceItem::where('invoice_id', $this->operationData['invoice_id'])->first();
+            $invoice = Invoice::find($this->operationData['invoice_id']);
+            $invoiceItem = InvoiceItem::where('invoice_id', $invoice->id)->first();
+
+            $this->client->update(['tariff_id' => $invoice->tariff_id]);
 
             DB::transaction(function () use ($invoiceItem) {
                 $this->processSuccessfulPayment($invoiceItem);
