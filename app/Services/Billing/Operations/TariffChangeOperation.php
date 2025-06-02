@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Services\WithdrawalService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -21,8 +22,6 @@ class TariffChangeOperation extends BaseBillingOperation
         $this->client = $organization->client;
         $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
     }
-
-
 
 
     public function getMetadata(): array
@@ -38,7 +37,7 @@ class TariffChangeOperation extends BaseBillingOperation
             'license_difference' => $this->newTariff->license_price > $this->client->tariffPrice->license_price ? ($this->newTariff->license_price - $this->client->tariffPrice->license_price) : 0,
             'tariff_price' => $this->client->tariffPrice->tariff_price,
             'currency_id' => $this->client->currency_id,
-            'months' => $this->operationData["months"],
+            'months' => $this->operationData["months"]
         ];
     }
 

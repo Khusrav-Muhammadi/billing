@@ -8,4 +8,5 @@ enum TransactionPurpose: string
     case LICENSE = 'license';
 
     case ADDON_PACKAGE = 'addon_package';
+    case DISCOUNT = 'discount';
 }

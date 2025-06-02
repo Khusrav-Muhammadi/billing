@@ -11,15 +11,30 @@ use App\Services\Billing\Operations\AddonPurchaseOperation;
 use App\Services\Billing\Operations\DemoToLiveOperation;
 use App\Services\Billing\Operations\TariffChangeOperation;
 use App\Services\Payment\Enums\PaymentStatus;
+use App\Services\Sale\SaleService;
 
 class BillingService
 {
+    public function __construct(public SaleService $saleService)
+    {
+    }
+
     public function calculateOperation(
         PaymentOperationType $operationType,
         array                $operationData
     ): OperationResultDTO
     {
         $operation = $this->createOperationInstance($operationType, $operationData);
+
+        $metadata = $operation->getMetadata();
+
+        $activeSales = $this->saleService->getActiveSales();
+
+        $this->saleService->applyDiscounts(
+            $activeSales,
+            $operationData,
+            $metadata
+        );
 
         return new OperationResultDTO(
             amount: $operation->calculateAmount(),
