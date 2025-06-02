@@ -4,13 +4,9 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\InvoiceRequest;
-use App\Jobs\ProcessPaymentJob;
-use App\Repositories\Payment\Contracts\PaymentRepositoryInterface;
 use App\Services\Billing\Enum\PaymentOperationType;
-use App\Services\Payment\Contracts\PaymentProviderInterface;
 use App\Services\Payment\Factory\PaymentProviderFactory;
 use App\Services\Payment\PaymentService;
-use Dflydev\DotAccessData\Data;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller

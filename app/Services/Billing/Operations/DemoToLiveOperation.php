@@ -13,7 +13,7 @@ use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
 
-class DemoToLiveOperation extends BaseBillingOperation
+    class DemoToLiveOperation extends BaseBillingOperation
 {
     public Client $client;
     public TariffCurrency $newTariff;
@@ -23,7 +23,8 @@ class DemoToLiveOperation extends BaseBillingOperation
         private array $operationData,
     ) {
         $this->client = $this->organization->client;
-        $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
+//        $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
+        $this->newTariff = TariffCurrency::find($this->client->tariff_id);
     }
 
     public function calculateAmount(): float
