@@ -93,7 +93,7 @@ class OrganizationController extends Controller
 
         return [
             'name' => $tariffPrice->tariff?->name,
-            'start_date' => $transaction->created_at,
+            'start_date' => $transaction->created_at ?? '',
             'end_date' => $endDate,
             'users_count' => $tariffPrice->tariff->user_count,
             'price' => $tariffPrice->tariff_price,
