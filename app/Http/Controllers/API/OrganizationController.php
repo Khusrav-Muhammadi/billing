@@ -100,7 +100,8 @@ class OrganizationController extends Controller
             'balance' => $organization->balance,
             'license_price' => $tariffPrice->license_price,
             'id' => $tariffPrice->id,
-            'country' => $client->country
+            'country' => $client->country,
+            'is_demo' => $client->is_demo
         ];
     }
 }
