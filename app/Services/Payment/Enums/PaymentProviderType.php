@@ -2,7 +2,7 @@
 
 namespace App\Services\Payment\Enums;
 
-enum PaymentType: string
+enum PaymentProviderType: string
 {
     case ALIF = 'ALIF';
     case OCTOBANK = 'OCTOBANK';

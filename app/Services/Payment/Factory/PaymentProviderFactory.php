@@ -5,7 +5,7 @@ namespace App\Services\Payment\Factory;
 
 use App\Services\Payment\AlifPayProvider;
 use App\Services\Payment\Contracts\PaymentProviderInterface;
-use App\Services\Payment\Enums\PaymentType;
+use App\Services\Payment\Enums\PaymentProviderType;
 use App\Services\Payment\InvoiceProvider;
 use App\Services\Payment\OctoBankProvider;
 use InvalidArgumentException;
@@ -16,12 +16,12 @@ class PaymentProviderFactory
 
     public function __construct()
     {
-        $this->registerProvider(PaymentType::ALIF, AlifPayProvider::class);
-        $this->registerProvider(PaymentType::ALIF, OctoBankProvider::class);
-        $this->registerProvider(PaymentType::INVOICE, InvoiceProvider::class);
+        $this->registerProvider(PaymentProviderType::ALIF, AlifPayProvider::class);
+        $this->registerProvider(PaymentProviderType::OCTOBANK, OctoBankProvider::class);
+        $this->registerProvider(PaymentProviderType::INVOICE, InvoiceProvider::class);
     }
 
-    public function registerProvider(PaymentType $paymentType, string $serviceClass): void
+    public function registerProvider(PaymentProviderType $paymentType, string $serviceClass): void
     {
         $this->providers[$paymentType->value] = $serviceClass;
     }

@@ -9,7 +9,7 @@ class Invoice extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['receipt', 'phone', 'cancel_url', 'redirect_url', 'webhook_url', 'timeout', 'invoice_status_id', 'invoice_id', 'organization_id'];
+    protected $fillable = ['payment_provider_id', 'organization_id', 'status','email', 'total_amount', 'currency_id', 'provider', 'operation_type', 'additional_data'];
 
     public function invoiceItems()
     {

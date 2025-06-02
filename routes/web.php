@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\InvoiceController;
 use App\Http\Controllers\BusinessTypeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\OrganizationController;
@@ -26,7 +27,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('auth.login');
 });
-
+Route::get('{invoice}/download', [InvoiceController::class, 'download'])
+    ->name('invoice.download');
 Route::get('/dashboard', [\App\Http\Controllers\DashBoardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

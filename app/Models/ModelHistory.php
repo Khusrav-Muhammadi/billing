@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ModelHistory extends Model
 {
     use HasFactory;
-
     protected $fillable = ['model_id', 'status', 'user_id', 'model_type'];
 
     public function changes() :HasMany
