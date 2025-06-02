@@ -262,8 +262,8 @@ class ClientRepository implements ClientRepositoryInterface
 
             if ($data['type'] == 'demo_to_live' && $activeSale->min_months == $data['month']) {
 
-                if ($activeSale->apply_to == 'tariff') $saleTariffPrice = $tariffPrice - $tariffPrice * $activeSale->amount / 100;
-                else $saleLicensePrice = $licensePrice - $licensePrice * $activeSale->amount / 100;
+                if ($activeSale->apply_to == 'tariff') round(($saleTariffPrice = $tariffPrice - $tariffPrice * $activeSale->amount / 100),2);
+                else $saleLicensePrice = round(($licensePrice - $licensePrice * $activeSale->amount / 100), 2);
             }
         }
 
