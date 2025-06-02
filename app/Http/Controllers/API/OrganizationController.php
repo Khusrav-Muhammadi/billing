@@ -10,6 +10,7 @@ use App\Models\OrganizationPack;
 use App\Models\Pack;
 use App\Models\Transaction;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Services\Sale\SaleService;
 use Carbon\Carbon;
 
 class OrganizationController extends Controller
@@ -101,7 +102,7 @@ class OrganizationController extends Controller
             'license_price' => $tariffPrice->license_price,
             'id' => $tariffPrice->id,
             'country' => $client->country,
-            'is_demo' => $client->is_demo
+            'is_demo' => $client->is_demo,
         ];
     }
 }
