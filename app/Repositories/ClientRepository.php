@@ -259,12 +259,8 @@ class ClientRepository implements ClientRepositoryInterface
         $saleTariffPrice = 0;
 
         foreach ($activeSales as $activeSale) {
-
-            if ($data['type'] == 'demo_to_live' && $activeSale->min_months == $data['month']) {
-
-                if ($activeSale->apply_to == 'tariff') $saleTariffPrice = $tariffPrice - $tariffPrice * $activeSale->amount / 100;
-                else $saleLicensePrice = $licensePrice - $licensePrice * $activeSale->amount / 100;
-            }
+            if ($activeSale->apply_to == 'tariff') $saleTariffPrice = $tariffPrice - $tariffPrice * $activeSale->amount / 100;
+            else $saleLicensePrice = $licensePrice - $licensePrice * $activeSale->amount / 100;
         }
 
         $difference = $organization->balance - ($licenseDifference + $tariffPrice);
@@ -273,9 +269,9 @@ class ClientRepository implements ClientRepositoryInterface
             'organization_balance' => $organization->balance,
             'license_difference' => $licenseDifference,
             'license_price' => $licensePrice,
-            'sale_license_price' => round($saleLicensePrice,2),
+            'sale_license_price' => round($saleLicensePrice, 2),
             'tariff_price' => $tariffPrice,
-            'sale_tariff_price' => round($saleTariffPrice,2),
+            'sale_tariff_price' => round($saleTariffPrice, 2),
             'must_pay' => $difference < 0
         ];
     }
