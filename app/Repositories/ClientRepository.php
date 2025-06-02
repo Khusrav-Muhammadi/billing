@@ -249,17 +249,11 @@ class ClientRepository implements ClientRepositoryInterface
 
         $difference = $organization->balance - ($licenseDifference + $tariffPrice);
 
-        $invoicePayment = '';
-
-        if ($difference < 0) {
-            $invoicePayment = $this->createInvoice($client, -$difference, $organization->id);
-        }
-
         return [
             'organization_balance' => $organization->balance,
             'license_difference' => $licenseDifference,
             'tariff_price' => $tariffPrice,
-            'invoice_payment' => $invoicePayment
+            'must_pay' => $difference < 0
         ];
     }
 
