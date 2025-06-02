@@ -16,6 +16,7 @@ use App\Models\Tariff;
 use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use App\Services\Sale\SaleService;
 use App\Services\WithdrawalService;
 use Carbon\Carbon;
 use Exception;
@@ -30,6 +31,10 @@ use function Pest\Laravel\put;
 
 class ClientRepository implements ClientRepositoryInterface
 {
+    public function __construct(public SaleService $saleService)
+    {
+    }
+
     public function index(array $data): LengthAwarePaginator
     {
         $query = Client::query();
@@ -71,60 +76,60 @@ class ClientRepository implements ClientRepositoryInterface
      * @param Client $client
      * @return float
      */
-        protected function calculateDailyPayment(Client $client): float
-        {
-            if (!$client->tariff) {
-                return 0;
-            }
+    protected function calculateDailyPayment(Client $client): float
+    {
+        if (!$client->tariff) {
+            return 0;
+        }
 
-            $currentMonth = now();
-            $daysInMonth = $currentMonth->daysInMonth;
+        $currentMonth = now();
+        $daysInMonth = $currentMonth->daysInMonth;
 
-            $dailyPayment = $client->tariff->price / $daysInMonth;
+        $dailyPayment = $client->tariff->price / $daysInMonth;
 
-            $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
-                return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
+        $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
+            return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
 
-                    $pack = $organizationPack->pack()->first();
+                $pack = $organizationPack->pack()->first();
 
 
-                    return $pack ? ($pack->price / $daysInMonth) : 0;
-                });
+                return $pack ? ($pack->price / $daysInMonth) : 0;
             });
+        });
 
-            $totalDailyPayment = $dailyPayment + $packsDailyPayment;
+        $totalDailyPayment = $dailyPayment + $packsDailyPayment;
 
-            if ($client->sale_id) {
-                $sale = $client->sale;
+        if ($client->sale_id) {
+            $sale = $client->sale;
 
-                if ($sale->sale_type === 'procent') {
-                    $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
-                } else {
-                    $totalDailyPayment -= $sale->amount / $daysInMonth;
-                }
+            if ($sale->sale_type === 'procent') {
+                $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
+            } else {
+                $totalDailyPayment -= $sale->amount / $daysInMonth;
             }
-
-            return max(0, $totalDailyPayment);
         }
 
-        /**
-         * Calculate validation date for a client
-         *
-         * @param Client $client
-         * @return Carbon|null
-         */
-        protected function calculateValidateDate(Client $client)
-        {
-            if ($client->is_demo) {
-                return Carbon::parse($client->created_at)->addWeeks(2)  ;
-            }
+        return max(0, $totalDailyPayment);
+    }
 
-            $dailyPayment = round($this->calculateDailyPayment($client), 4);
-
-            $days = (int)($client->balance / $dailyPayment);
-
-            return Carbon::now()->addDays($days);
+    /**
+     * Calculate validation date for a client
+     *
+     * @param Client $client
+     * @return Carbon|null
+     */
+    protected function calculateValidateDate(Client $client)
+    {
+        if ($client->is_demo) {
+            return Carbon::parse($client->created_at)->addWeeks(2);
         }
+
+        $dailyPayment = round($this->calculateDailyPayment($client), 4);
+
+        $days = (int)($client->balance / $dailyPayment);
+
+        return Carbon::now()->addDays($days);
+    }
 
     public function store(array $data)
     {
@@ -246,20 +251,32 @@ class ClientRepository implements ClientRepositoryInterface
 
         $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
         $tariffPrice = $newTariff->tariff_price * $data['month'];
+        $licensePrice = $newTariff->license_price;
+
+        $activeSales = $this->saleService->getActiveSales();
+
+        $saleLicensePrice = 0;
+        $saleTariffPrice = 0;
+
+        foreach ($activeSales as $activeSale) {
+
+            if ($data['type'] == 'demo_to_live' && $activeSale->min_months == $data['month']) {
+
+                if ($activeSale->apply_to == 'tariff') $saleTariffPrice = $tariffPrice - $tariffPrice * $activeSale->amount / 100;
+                else $saleLicensePrice = $licensePrice - $licensePrice * $activeSale->amount / 100;
+            }
+        }
 
         $difference = $organization->balance - ($licenseDifference + $tariffPrice);
-
-        $invoicePayment = '';
-
-        if ($difference < 0) {
-            $invoicePayment = $this->createInvoice($client, -$difference, $organization->id);
-        }
 
         return [
             'organization_balance' => $organization->balance,
             'license_difference' => $licenseDifference,
+            'license_price' => $licensePrice,
+            'sale_license_price' => $saleLicensePrice,
             'tariff_price' => $tariffPrice,
-            'invoice_payment' => $invoicePayment
+            'sale_tariff_price' => $saleTariffPrice,
+            'must_pay' => $difference < 0
         ];
     }
 

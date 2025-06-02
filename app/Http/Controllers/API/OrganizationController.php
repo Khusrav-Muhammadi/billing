@@ -10,6 +10,7 @@ use App\Models\OrganizationPack;
 use App\Models\Pack;
 use App\Models\Transaction;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Services\Sale\SaleService;
 use Carbon\Carbon;
 
 class OrganizationController extends Controller
@@ -93,14 +94,15 @@ class OrganizationController extends Controller
 
         return [
             'name' => $tariffPrice->tariff?->name,
-            'start_date' => $transaction->created_at,
+            'start_date' => $transaction->created_at ?? '',
             'end_date' => $endDate,
             'users_count' => $tariffPrice->tariff->user_count,
             'price' => $tariffPrice->tariff_price,
             'balance' => $organization->balance,
             'license_price' => $tariffPrice->license_price,
             'id' => $tariffPrice->id,
-            'country' => $client->country
+            'country' => $client->country,
+            'is_demo' => $client->is_demo,
         ];
     }
 }

@@ -21,8 +21,6 @@ class WithdrawalService
         if ($client->is_demo) return true;
 
         if ($organization->balance >= $sum) {
-            $this->handleMissedPayments($client, $organization);
-
             $organization->balance -= $sum;
             $organization->save();
 

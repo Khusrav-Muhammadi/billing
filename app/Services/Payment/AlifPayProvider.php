@@ -118,7 +118,7 @@ class AlifPayProvider implements PaymentProviderInterface
         $items = [];
         $items[] = $this->makeItem(
             name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
-            price: ($dto->metadata['organization_balance'] - ($dto->metadata['license_price'] + ($dto->metadata['tariff_price'] * $dto->metadata['months']))),
+            price: ($dto->metadata['organization_balance'] - ($dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['months']))),
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
             purpose: TransactionPurpose::CHANGE_TARIFF,
@@ -164,8 +164,10 @@ class AlifPayProvider implements PaymentProviderInterface
         ])->post(config('payments.alif.url'), [
             'items' => $items,
             'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$DTO->metadata['subdomain']}",
-            'redirect_url' => "https://{$DTO->metadata['subdomain']}.shamcrm.com/payment",
-            'webhook_url' => 'https://billing-back.sham360.com/api/payment/webhook/ALIF',
+//            'redirect_url' => "https://{$DTO->metadata['subdomain']}.shamcrm.com/payment",
+            'redirect_url' => "https://hello.sham360.com/payment",
+            'webhook_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/ALIF',
+//            'webhook_url' => 'https://5b05-95-142-94-22.ngrok-free.app/api/payment/webhook/ALIF',
             'meta' => (object)[],
             'receipt' => true,
             'phone' => ltrim($DTO->metadata['phone'], '+'),
