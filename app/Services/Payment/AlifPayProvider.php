@@ -111,7 +111,7 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         $months = $dto->metadata['months'];
 
-        $originalMonthlyPrice = $dto->metadata['monthly_price'];
+        $originalMonthlyPrice = $dto->metadata['tariff_price'];
         $monthlyPrice = $this->applyDiscount($originalMonthlyPrice, 'tariff', $dto->metadata);
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
 
@@ -261,7 +261,7 @@ class AlifPayProvider implements PaymentProviderInterface
     private function calculateTariffRenewalTotal(CreateInvoiceDTO $dto): float
     {
 
-        $monthlyPrice = $this->applyDiscount($dto->metadata['monthly_price'], 'tariff', $dto->metadata);
+        $monthlyPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
         return $monthlyPrice * $dto->metadata['months'];
     }
 
