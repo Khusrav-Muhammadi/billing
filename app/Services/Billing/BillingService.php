@@ -42,7 +42,7 @@ class BillingService
         foreach ($metadata['discounts'] as $sale) {
             ClientSale::query()->create([
                 'sale_id' => $sale['sale_id'],
-                'client_id' => $client->id,
+                'client_id' => $client->id
             ]);
         }
 
