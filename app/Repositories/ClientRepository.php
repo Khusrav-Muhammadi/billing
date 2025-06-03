@@ -250,7 +250,8 @@ class ClientRepository implements ClientRepositoryInterface
         $lastTariff = TariffCurrency::find($client->tariff_id);
 
         $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
-        $tariffPrice = $newTariff->tariff_price * $data['month'];
+        $tariffPrice = $newTariff->tariff_price;
+        $tariffPriceByMonth = $newTariff->tariff_price * $data['month'];
         $licensePrice = $newTariff->license_price;
 
         $activeSales = $this->saleService->getActiveSales();
@@ -273,6 +274,7 @@ class ClientRepository implements ClientRepositoryInterface
             'license_price' => $licensePrice,
             'sale_license_price' => round($saleLicensePrice, 2),
             'tariff_price' => $tariffPrice,
+            'tariff_price_by_month' => $tariffPriceByMonth,
             'sale_tariff_price' => round($saleTariffPrice, 2),
             'must_pay' => false,//$difference < 0,
             'upgrade' => $organization->sum_paid_for_license,
