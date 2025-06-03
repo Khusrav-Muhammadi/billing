@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Repositories\ClientRepository;
 use App\Services\Billing\Enum\TransactionType;
 use App\Services\Payment\Enums\TransactionPurpose;
+use App\Services\Sale\Enum\SaleApplies;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -44,17 +45,33 @@ class WithdrawalService
         }
     }
 
-    /**
-     * Check and process missed payments when client adds funds
-     */
+
     public function countSum(Client $client)
     {
         $currentMonth = Carbon::now();
-
         $daysInMonth = $currentMonth->daysInMonth;
 
-        $sum = $client->tariffPrice->tariff_price / $daysInMonth;
+        $dailySum = $client->tariffPrice->tariff_price / $daysInMonth;
 
-        return $sum;
+
+        $clientSale = $client->clientSales()->whereHas('sale', function($query) {
+            $query->where('apply_to', SaleApplies::PROGRESSIVE);
+        })->first();
+
+        if ($clientSale && $clientSale->sale->isActive()) {
+            $sale = $clientSale->sale;
+
+            if ($sale->sale_type === 'procent') {
+                $discount = ($dailySum * $sale->amount) / 100;
+                $dailySum -= $discount;
+            } elseif ($sale->sale_type === 'fixed') {
+                $dailyDiscount = $sale->amount / $daysInMonth;
+                $dailySum -= $dailyDiscount;
+            }
+
+            $dailySum = max(0, $dailySum);
+        }
+
+        return $dailySum;
     }
 }

@@ -31,7 +31,7 @@ use function Pest\Laravel\put;
 
 class ClientRepository implements ClientRepositoryInterface
 {
-    public function __construct(public SaleService $saleService)
+    public function __construct()
     {
     }
 
@@ -253,30 +253,33 @@ class ClientRepository implements ClientRepositoryInterface
         $tariffPrice = $newTariff->tariff_price * $data['month'];
         $licensePrice = $newTariff->license_price;
 
-        $activeSales = $this->saleService->getActiveSales();
+        $saleService = new SaleService();
+        $activeSales = $saleService->getActiveSales();
 
         $saleLicensePrice = 0;
         $saleTariffPrice = 0;
 
         foreach ($activeSales as $activeSale) {
-
-            if ($data['type'] == 'demo_to_live' && $activeSale->min_months == $data['month']) {
-
-                if ($activeSale->apply_to == 'tariff') $saleTariffPrice = $tariffPrice - $tariffPrice * $activeSale->amount / 100;
-                else $saleLicensePrice = $licensePrice - $licensePrice * $activeSale->amount / 100;
-            }
+            if ($activeSale->apply_to == 'tariff') $saleTariffPrice = $tariffPrice * $activeSale->amount * $data['month'] / 100;
+            else $saleLicensePrice = $licensePrice * $activeSale->amount / 100;
         }
 
-        $difference = $organization->balance - ($licenseDifference + $tariffPrice);
+        $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
+        $tariffForPay = $tariffPrice - $saleTariffPrice;
+        $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
 
         return [
             'organization_balance' => $organization->balance,
             'license_difference' => $licenseDifference,
             'license_price' => $licensePrice,
-            'sale_license_price' => $saleLicensePrice,
+            'sale_license_price' => round($saleLicensePrice, 2),
             'tariff_price' => $tariffPrice,
-            'sale_tariff_price' => $saleTariffPrice,
-            'must_pay' => $difference < 0
+            'sale_tariff_price' => round($saleTariffPrice, 2),
+            'must_pay' => false,//$difference < 0,
+            'upgrade' => $organization->sum_paid_for_license,
+            'license_for_pay' => $licenseForPay,
+            'tariff_for_pay' => $tariffForPay,
+            'sum_for_pay' => $sumForPay,
         ];
     }
 

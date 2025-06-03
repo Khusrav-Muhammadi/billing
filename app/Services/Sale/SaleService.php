@@ -24,6 +24,7 @@ class SaleService
 
     public function applyDiscounts(Collection $sales, array $operationData, array &$metadata): array
     {
+
         $discounts = [];
         $metadata['discounts'] = []; // Для хранения информации о скидках
 
@@ -67,7 +68,6 @@ class SaleService
             return false;
         }
 
-        // Проверка дат активности скидки
         $now = now();
         if ($sale->start_date && $now < $sale->start_date) {
             return false;
@@ -75,12 +75,11 @@ class SaleService
         if ($sale->end_date && $now > $sale->end_date) {
             return false;
         }
-
-        // Для прогрессивных скидок проверяем минимальное количество месяцев
         if ($sale->apply_to === SaleApplies::PROGRESSIVE->value) {
             $months = $operationData['months'] ?? 1;
             return $months >= $sale->min_months;
         }
+
 
         return true;
     }
