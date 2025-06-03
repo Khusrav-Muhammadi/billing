@@ -51,6 +51,7 @@ use Illuminate\Support\Facades\DB;
 
     public function execute(): void
     {
+        dd($this->operationData);
         DB::transaction(function () {
             $this->client->update(['is_demo' => false]);
             $invoiceItems = InvoiceItem::query()->where('invoice_id', $this->operationData['invoice_id'])->get();
