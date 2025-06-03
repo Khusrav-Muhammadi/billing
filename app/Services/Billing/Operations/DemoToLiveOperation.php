@@ -63,12 +63,15 @@ class DemoToLiveOperation extends BaseBillingOperation
             foreach ($invoiceItems as $invoiceItem) {
                 $this->createTransaction($invoiceItem, TransactionType::CREDIT);
                 $this->organization->increment('balance', $invoiceItem->price);
+
             }
             foreach ($invoiceItems as $invoiceItem) {
                 if ($invoiceItem->purpose == TransactionPurpose::LICENSE->value) {
                     $this->createTransaction($invoiceItem, TransactionType::DEBIT);
                     $this->organization->decrement('balance', $invoiceItem->price);
                     $this->organization->update(['license_paid' => true]);
+                    $this->organization->increment('sum_paid_for_license', $invoiceItem->price);
+
                 } else {
                     $service = new WithdrawalService();
                     $sum = $service->countSum($this->client);
