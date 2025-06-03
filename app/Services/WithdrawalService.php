@@ -10,13 +10,13 @@ use App\Repositories\ClientRepository;
 use App\Services\Billing\Enum\TransactionType;
 use App\Services\Payment\Enums\TransactionPurpose;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class WithdrawalService
 {
     public function handle(Organization $organization, $sum)
     {
         $client = $organization->client()->first();
+
         if ($client->nfr) return true;
         if ($client->is_demo) return true;
 
