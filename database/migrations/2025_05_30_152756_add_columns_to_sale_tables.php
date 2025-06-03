@@ -15,8 +15,8 @@ return new class extends Migration
             $table->string('apply_to');
             $table->integer('min_months');
             $table->boolean('is_active');
-            $table->date('start_date');
-            $table->date('end_date');
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
 
         });
     }
