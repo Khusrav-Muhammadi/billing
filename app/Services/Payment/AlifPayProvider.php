@@ -141,7 +141,7 @@ class AlifPayProvider implements PaymentProviderInterface
         $items[] = $this->makeItem(
             name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
             price: abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months'])))),
-            months: $dto->metadata['operation_data']['months'],
+            months: 1,
             invoiceId: $invoiceId,
             purpose: TransactionPurpose::CHANGE_TARIFF,
             sale_id: $tariffSaleId
