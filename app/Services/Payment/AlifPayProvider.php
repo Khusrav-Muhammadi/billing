@@ -57,7 +57,6 @@ class AlifPayProvider implements PaymentProviderInterface
             'additional_data' => json_encode([]),
             'operation_type' => $dto->operationType,
             'tariff_id' => $dto->metadata['operation_data']['tariff_id']
-
         ]);
     }
 
@@ -133,8 +132,6 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         $items = [];
 
-        // Для смены тарифа скидки могут не применяться или применяться по-особому
-        // Оставляю логику как была, но добавляю возможность sale_id
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
 
         $items[] = $this->makeItem(
