@@ -13,15 +13,16 @@ use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
 
-    class DemoToLiveOperation extends BaseBillingOperation
+class DemoToLiveOperation extends BaseBillingOperation
 {
     public Client $client;
     public TariffCurrency $newTariff;
 
     public function __construct(
         private Organization $organization,
-        private array $operationData,
-    ) {
+        private array        $operationData,
+    )
+    {
         $this->client = $this->organization->client;
 //        $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
         $this->newTariff = TariffCurrency::find($this->client->tariff_id);
@@ -51,22 +52,24 @@ use Illuminate\Support\Facades\DB;
 
     public function execute(): void
     {
-        dd($this->operationData);
         DB::transaction(function () {
-            $this->client->update(['is_demo' => false]);
-            $invoiceItems = InvoiceItem::query()->where('invoice_id', $this->operationData['invoice_id'])->get();
+            $invoice = Invoice::find($this->operationData['invoice_id']);
+            $this->client->update([
+                'is_demo' => false,
+                'tariff_id' => $invoice->tariff_id
+            ]);
+            $invoiceItems = InvoiceItem::query()->where('invoice_id', $invoice->id)->get();
 
             foreach ($invoiceItems as $invoiceItem) {
                 $this->createTransaction($invoiceItem, TransactionType::CREDIT);
                 $this->organization->increment('balance', $invoiceItem->price);
             }
             foreach ($invoiceItems as $invoiceItem) {
-                if ($invoiceItem->purpose == TransactionPurpose::LICENSE->value){
+                if ($invoiceItem->purpose == TransactionPurpose::LICENSE->value) {
                     $this->createTransaction($invoiceItem, TransactionType::DEBIT);
                     $this->organization->decrement('balance', $invoiceItem->price);
                     $this->organization->update(['license_paid' => true]);
-                }
-                else {
+                } else {
                     $service = new WithdrawalService();
                     $sum = $service->countSum($this->client);
                     $service->handle($this->organization, $sum);
@@ -78,7 +81,7 @@ use Illuminate\Support\Facades\DB;
     private function createTransaction(InvoiceItem $invoiceItem, TransactionType $transactionType): void
     {
         $isUSD = $this->getCurrency() === 'USD';
-        if(!$isUSD) {
+        if (!$isUSD) {
             $exchangeRate = $this->client->currency->latestExchangeRate?->kurs ?? 1;
         }
         Transaction::create([
@@ -88,7 +91,7 @@ use Illuminate\Support\Facades\DB;
             'type' => $transactionType,
             'sum' => $invoiceItem->price,
             'currency' => $this->getCurrency(),
-            'purpose' =>  $invoiceItem->purpose,
+            'purpose' => $invoiceItem->purpose,
             'provider' => $transactionType == TransactionType::DEBIT ? 'manual' : $invoiceItem->invoice->provider,
             'accounted_amount' => $isUSD ? $invoiceItem->price : $invoiceItem->price / $exchangeRate
         ]);
