@@ -40,7 +40,7 @@ class BillingService
             amount: $operation->calculateAmount(),
             currency: $operation->getCurrency(),
             operationType: $operationType,
-            metadata: array_merge($operation->getMetadata(), [
+            metadata: array_merge($metadata, [
                 'operation_type' => $operationType->value,
                 'operation_data' => $operationData
             ]),

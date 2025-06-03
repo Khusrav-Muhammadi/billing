@@ -28,7 +28,7 @@ class AlifPayProvider implements PaymentProviderInterface
         foreach ($invoiceItems as $invoiceItem) {
             InvoiceItem::query()->create($invoiceItem);
         }
-        dd($invoice);
+
         $items = collect($invoiceItems)->map(function ($item) {
             $item['price'] = intval($item['price'] * 100);
             return $item;
@@ -53,7 +53,10 @@ class AlifPayProvider implements PaymentProviderInterface
             'email' => $dto->metadata['email'],
             'total_amount' => $this->calculateTotalSum($dto),
             'provider' => PaymentProviderType::ALIF,
-            'additional_data' => json_encode([]),
+            'additional_data' => json_encode([
+                'applied_discounts' => $dto->metadata['applied_discounts'] ?? [],
+                'discounts' => $dto->metadata['discounts'] ?? []
+            ]),
             'operation_type' => $dto->operationType
         ]);
     }
@@ -73,26 +76,35 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         $items = [];
 
+        // Обработка лицензии со скидкой
         if (($dto->metadata['license_price'] ?? 0) > 0) {
+            $originalLicensePrice = $dto->metadata['license_price'];
+            $licensePrice = $this->applyDiscount($originalLicensePrice, 'license', $dto->metadata);
+            $licenseSaleId = $dto->metadata['discounts']['license']['sale_id'] ?? null;
+
             $items[] = $this->makeItem(
                 name: "Лицензия для тарифа {$dto->metadata['tariff_name']}",
-                price: $dto->metadata['license_price'],
+                price: $licensePrice,
                 months: $dto->metadata['operation_data']['months'],
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::LICENSE,
-                sale_id: $dto->metadata['sale_id'] ?? null
+                sale_id: $licenseSaleId
             );
         }
 
+        // Обработка тарифа со скидкой
+        $originalTariffPrice = $dto->metadata['tariff_price'];
+        $tariffPrice = $this->applyDiscount($originalTariffPrice, 'tariff', $dto->metadata);
+        $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
+
         $items[] = $this->makeItem(
             name: "Активация тарифа {$dto->metadata['tariff_name']}",
-            price: $dto->metadata['tariff_price'],
+            price: $tariffPrice,
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
             purpose: TransactionPurpose::TARIFF,
-            sale_id: $dto->metadata['sale_id'] ?? null
+            sale_id: $tariffSaleId
         );
-
 
         return $items;
     }
@@ -100,7 +112,9 @@ class AlifPayProvider implements PaymentProviderInterface
     private function tariffRenewalItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
         $months = $dto->metadata['months'];
-        $monthlyPrice = $dto->metadata['monthly_price'];
+        $originalMonthlyPrice = $dto->metadata['monthly_price'];
+        $monthlyPrice = $this->applyDiscount($originalMonthlyPrice, 'tariff', $dto->metadata);
+        $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
 
         return [
             $this->makeItem(
@@ -109,6 +123,7 @@ class AlifPayProvider implements PaymentProviderInterface
                 months: $dto->metadata['operation_data']['months'],
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::TARIFF,
+                sale_id: $tariffSaleId
             )
         ];
     }
@@ -116,12 +131,18 @@ class AlifPayProvider implements PaymentProviderInterface
     private function tariffChangeItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
         $items = [];
+
+        // Для смены тарифа скидки могут не применяться или применяться по-особому
+        // Оставляю логику как была, но добавляю возможность sale_id
+        $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
+
         $items[] = $this->makeItem(
             name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
             price: ($dto->metadata['organization_balance'] - ($dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['months']))),
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
             purpose: TransactionPurpose::CHANGE_TARIFF,
+            sale_id: $tariffSaleId
         );
 
         return $items;
@@ -129,17 +150,48 @@ class AlifPayProvider implements PaymentProviderInterface
 
     private function addonItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
+        // Для аддонов скидки могут применяться по аналогии
+        $originalAddonPrice = $dto->metadata['addon_price'];
+        $addonPrice = $this->applyDiscount($originalAddonPrice, 'addon', $dto->metadata);
+        $addonSaleId = $dto->metadata['discounts']['addon']['sale_id'] ?? null;
+
         return [
             $this->makeItem(
                 name: $dto->metadata['addon_type'] === 'one-time'
                     ? "Пакет {$dto->metadata['addon_name']}"
                     : "Пакет {$dto->metadata['addon_name']} (ежемесячно)",
-                price: $dto->metadata['addon_price'],
+                price: $addonPrice,
                 months: $dto->metadata['operation_data']['months'],
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::ADDON_PACKAGE,
+                sale_id: $addonSaleId
             )
         ];
+    }
+
+    /**
+     * Применяет скидку к цене
+     */
+    private function applyDiscount(float $originalPrice, string $discountType, array $metadata): float
+    {
+        if (!isset($metadata['discounts'][$discountType])) {
+            return $originalPrice;
+        }
+
+        $discount = $metadata['discounts'][$discountType];
+        $percent = floatval($discount['percent']);
+
+        // Проверяем требования к месяцам для тарифных скидок
+        if ($discountType === 'tariff' && isset($discount['months_required'])) {
+            $months = $metadata['months'] ?? $metadata['operation_data']['months'] ?? 1;
+            if ($months < $discount['months_required']) {
+                return $originalPrice;
+            }
+        }
+
+        // Применяем скидку
+        $discountAmount = ($originalPrice * $percent) / 100;
+        return max(0, $originalPrice - $discountAmount);
     }
 
     private function makeItem(string $name, float $price, int $months, int $invoiceId, TransactionPurpose $purpose, int $sale_id = null): array
@@ -173,7 +225,9 @@ class AlifPayProvider implements PaymentProviderInterface
             'phone' => ltrim($DTO->metadata['phone'], '+'),
             'timeout' => 86400,
         ]);
+        dd($items);
 
+        dd($response->body());
         if ($response->failed()) {
             Log::error('Alif API error', ['response' => $response->body()]);
             throw new PaymentException('Failed to create invoice in Alif');
@@ -188,13 +242,43 @@ class AlifPayProvider implements PaymentProviderInterface
         return "https://{$subdomain}.shamcrm.com/{$path}";
     }
 
-
     private function calculateTotalSum(CreateInvoiceDTO $dto): float
     {
         return match ($dto->operationType) {
-            PaymentOperationType::DEMO_TO_LIVE => $dto->metadata['license_price'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+            PaymentOperationType::DEMO_TO_LIVE => $this->calculateDemoToLiveTotal($dto),
+            PaymentOperationType::TARIFF_RENEWAL => $this->calculateTariffRenewalTotal($dto),
             PaymentOperationType::TARIFF_CHANGE => $dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+            PaymentOperationType::ADDON_PURCHASE => $this->calculateAddonTotal($dto),
+            default => 0
         };
+    }
+
+    private function calculateDemoToLiveTotal(CreateInvoiceDTO $dto): float
+    {
+        $total = 0;
+
+        // Лицензия со скидкой
+        if (($dto->metadata['license_price'] ?? 0) > 0) {
+            $licensePrice = $this->applyDiscount($dto->metadata['license_price'], 'license', $dto->metadata);
+            $total += $licensePrice;
+        }
+
+        // Тариф со скидкой
+        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
+        $total += $tariffPrice * $dto->metadata['operation_data']['months'];
+
+        return $total;
+    }
+
+    private function calculateTariffRenewalTotal(CreateInvoiceDTO $dto): float
+    {
+        $monthlyPrice = $this->applyDiscount($dto->metadata['monthly_price'], 'tariff', $dto->metadata);
+        return $monthlyPrice * $dto->metadata['months'];
+    }
+
+    private function calculateAddonTotal(CreateInvoiceDTO $dto): float
+    {
+        return $this->applyDiscount($dto->metadata['addon_price'], 'addon', $dto->metadata);
     }
 
     public function handleWebhook(array $data): WebhookResponse

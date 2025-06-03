@@ -21,6 +21,7 @@ class SaleService
             })
             ->get();
     }
+
     public function applyDiscounts(Collection $sales, array $operationData, array &$metadata): array
     {
         $discounts = [];
@@ -35,7 +36,8 @@ class SaleService
 
                 $metadata['discounts']['tariff'] = [
                     'percent' => $sale->amount,
-                    'months_required' => $sale->min_months
+                    'months_required' => $sale->min_months,
+                    'sale_id' => $sale->id
                 ];
                 $metadata['applied_discounts'][] = $sale->name;
 
@@ -44,7 +46,8 @@ class SaleService
             if ($sale->apply_to === SaleApplies::LICENSE->value) {
                 $metadata['discounts']['license'] = [
                     'percent' => $sale->amount,
-                    'type' => $sale->sale_type
+                    'type' => $sale->sale_type,
+                    'sale_id' => $sale->id
                 ];
                 $metadata['applied_discounts'][] = $sale->name;
                 continue;
