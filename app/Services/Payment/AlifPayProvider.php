@@ -133,9 +133,10 @@ class AlifPayProvider implements PaymentProviderInterface
 
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
 
-        $licenseDifference = $dto->metadata['license_difference'];
-        $tariffPrice = $dto->metadata['tariff_price'];
+        $licenseDifference = $this->applyDiscount($dto->metadata['license_difference'], 'license', $dto->metadata);
+        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
 
+        Log::error($licenseDifference . ' fsd ' . $tariffPrice .  ' fsd ' . $dto->metadata['months']);
         $items[] = $this->makeItem(
             name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
             price: abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months'])))),
