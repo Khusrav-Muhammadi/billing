@@ -21,7 +21,6 @@ class AlifPayProvider implements PaymentProviderInterface
 {
     public function createInvoice(CreateInvoiceDTO $dto): PaymentResponse
     {
-
         $invoice = $this->createInvoiceRecord($dto);
 
         $invoiceItems = $this->prepareInvoiceItems($invoice->id, $dto);
@@ -57,7 +56,6 @@ class AlifPayProvider implements PaymentProviderInterface
             'additional_data' => json_encode([]),
             'operation_type' => $dto->operationType,
             'tariff_id' => $dto->metadata['operation_data']['tariff_id']
-
         ]);
     }
 
@@ -133,13 +131,13 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         $items = [];
 
-        // Для смены тарифа скидки могут не применяться или применяться по-особому
-        // Оставляю логику как была, но добавляю возможность sale_id
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
+        $licenseDifference = $this->applyDiscount($dto->metadata['license_difference'], 'license', $dto->metadata);
+        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
 
         $items[] = $this->makeItem(
             name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
-            price: abs(($dto->metadata['organization_balance'] - ($dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['months'])))),
+            price: abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months'])))),
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
             purpose: TransactionPurpose::CHANGE_TARIFF,
@@ -240,8 +238,8 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         return match ($dto->operationType) {
             PaymentOperationType::DEMO_TO_LIVE => $this->calculateDemoToLiveTotal($dto),
-            PaymentOperationType::TARIFF_RENEWAL => $dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months'],
-            PaymentOperationType::TARIFF_CHANGE => $dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+            PaymentOperationType::TARIFF_RENEWAL => $this->calculateTariffChangeTotal($dto),
+            PaymentOperationType::TARIFF_CHANGE => $this->calculateTariffRenewalTotal($dto),
         };
     }
 
@@ -262,6 +260,7 @@ class AlifPayProvider implements PaymentProviderInterface
 
     private function calculateTariffRenewalTotal(CreateInvoiceDTO $dto): float
     {
+        
         $monthlyPrice = $this->applyDiscount($dto->metadata['monthly_price'], 'tariff', $dto->metadata);
         return $monthlyPrice * $dto->metadata['months'];
     }
@@ -269,6 +268,21 @@ class AlifPayProvider implements PaymentProviderInterface
     private function calculateAddonTotal(CreateInvoiceDTO $dto): float
     {
         return $this->applyDiscount($dto->metadata['addon_price'], 'addon', $dto->metadata);
+    }
+
+    private function calculateTariffChangeTotal(CreateInvoiceDTO $dto): float
+    {
+        $total = 0;
+
+        if (($dto->metadata['license_difference'] ?? 0) > 0) {
+            $licensePrice = $this->applyDiscount($dto->metadata['license_difference'], 'license', $dto->metadata);
+            $total += $licensePrice;
+        }
+
+        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
+        $total += $tariffPrice * $dto->metadata['operation_data']['months'];
+
+        return $total;
     }
 
     public function handleWebhook(array $data): WebhookResponse
