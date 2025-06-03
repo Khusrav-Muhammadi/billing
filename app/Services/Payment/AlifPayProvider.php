@@ -100,7 +100,7 @@ class AlifPayProvider implements PaymentProviderInterface
     private function tariffRenewalItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
         $months = $dto->metadata['months'];
-        $monthlyPrice = $dto->metadata['monthly_price'];
+        $monthlyPrice = $dto->metadata['tariff_price'];
 
         return [
             $this->makeItem(
@@ -194,6 +194,7 @@ class AlifPayProvider implements PaymentProviderInterface
         return match ($dto->operationType) {
             PaymentOperationType::DEMO_TO_LIVE => $dto->metadata['license_price'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
             PaymentOperationType::TARIFF_CHANGE => $dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+            PaymentOperationType::TARIFF_RENEWAL => $dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months'],
         };
     }
 
