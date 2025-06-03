@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-
     public function __construct(public PaymentService $service, public PaymentProviderFactory $providerFactory) { }
 
     public function createInvoice(InvoiceRequest $request)
