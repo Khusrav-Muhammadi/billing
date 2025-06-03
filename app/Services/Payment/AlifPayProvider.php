@@ -238,8 +238,8 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         return match ($dto->operationType) {
             PaymentOperationType::DEMO_TO_LIVE => $this->calculateDemoToLiveTotal($dto),
-            PaymentOperationType::TARIFF_RENEWAL => $this->calculateTariffChangeTotal($dto),
-            PaymentOperationType::TARIFF_CHANGE => $this->calculateTariffRenewalTotal($dto),
+            PaymentOperationType::TARIFF_RENEWAL => $this->calculateTariffRenewalTotal($dto),
+            PaymentOperationType::TARIFF_CHANGE => $this->calculateTariffChangeTotal($dto),
         };
     }
 
