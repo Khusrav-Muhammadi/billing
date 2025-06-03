@@ -21,8 +21,10 @@ class SaleService
             })
             ->get();
     }
+
     public function applyDiscounts(Collection $sales, array $operationData, array &$metadata): array
     {
+
         $discounts = [];
         $metadata['discounts'] = []; // Для хранения информации о скидках
 
@@ -35,7 +37,8 @@ class SaleService
 
                 $metadata['discounts']['tariff'] = [
                     'percent' => $sale->amount,
-                    'months_required' => $sale->min_months
+                    'months_required' => $sale->min_months,
+                    'sale_id' => $sale->id
                 ];
                 $metadata['applied_discounts'][] = $sale->name;
 
@@ -44,7 +47,8 @@ class SaleService
             if ($sale->apply_to === SaleApplies::LICENSE->value) {
                 $metadata['discounts']['license'] = [
                     'percent' => $sale->amount,
-                    'type' => $sale->sale_type
+                    'type' => $sale->sale_type,
+                    'sale_id' => $sale->id
                 ];
                 $metadata['applied_discounts'][] = $sale->name;
                 continue;
@@ -64,7 +68,6 @@ class SaleService
             return false;
         }
 
-        // Проверка дат активности скидки
         $now = now();
         if ($sale->start_date && $now < $sale->start_date) {
             return false;
@@ -72,12 +75,11 @@ class SaleService
         if ($sale->end_date && $now > $sale->end_date) {
             return false;
         }
-
-        // Для прогрессивных скидок проверяем минимальное количество месяцев
         if ($sale->apply_to === SaleApplies::PROGRESSIVE->value) {
             $months = $operationData['months'] ?? 1;
             return $months >= $sale->min_months;
         }
+
 
         return true;
     }

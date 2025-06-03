@@ -79,4 +79,9 @@ class Client extends Model
         return $this->belongsTo(Currency::class);
     }
 
+    public function clientSales()
+    {
+        return $this->hasMany(ClientSale::class);
+    }
+
 }

@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('invoices', function (Blueprint $table) {
-            $table->unsignedInteger('tariff_id')->nullable();
+        Schema::table('invoice_items', function (Blueprint $table) {
+            $table->unsignedBigInteger('sale_id')->nullable()->after('purpose');
         });
     }
 
@@ -21,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('invoices', function (Blueprint $table) {
+        Schema::table('percents', function (Blueprint $table) {
             //
         });
     }

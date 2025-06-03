@@ -3,6 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Models\Client;
+use App\Models\ClientSale;
 use App\Models\Invoice;
 use App\Models\Organization;
 use App\Services\Billing\DTO\OperationResultDTO;
@@ -37,11 +38,20 @@ class BillingService
             $metadata
         );
 
+        $client = Client::query()->where('email', $metadata['email'])->first();
+
+        foreach ($metadata['discounts'] as $sale) {
+            ClientSale::query()->create([
+                'sale_id' => $sale['sale_id'],
+                'client_id' => $client->id
+            ]);
+        }
+
         return new OperationResultDTO(
             amount: $operation->calculateAmount(),
             currency: $operation->getCurrency(),
             operationType: $operationType,
-            metadata: array_merge($operation->getMetadata(), [
+            metadata: array_merge($metadata, [
                 'operation_type' => $operationType->value,
                 'operation_data' => $operationData
             ]),

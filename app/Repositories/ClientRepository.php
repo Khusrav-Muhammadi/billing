@@ -31,7 +31,7 @@ use function Pest\Laravel\put;
 
 class ClientRepository implements ClientRepositoryInterface
 {
-    public function __construct(public SaleService $saleService)
+    public function __construct()
     {
     }
 
@@ -254,7 +254,8 @@ class ClientRepository implements ClientRepositoryInterface
         $tariffPriceByMonth = $newTariff->tariff_price * $data['month'];
         $licensePrice = $newTariff->license_price;
 
-        $activeSales = $this->saleService->getActiveSales();
+        $saleService = new SaleService();
+        $activeSales = $saleService->getActiveSales();
 
         $saleLicensePrice = 0;
         $saleTariffPrice = 0;

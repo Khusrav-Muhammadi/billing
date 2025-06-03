@@ -60,11 +60,12 @@ class DemoToLiveOperation extends BaseBillingOperation
             ]);
             $invoiceItems = InvoiceItem::query()->where('invoice_id', $invoice->id)->get();
 
+            // Пополняем баланс на полную сумму оплаты
             foreach ($invoiceItems as $invoiceItem) {
                 $this->createTransaction($invoiceItem, TransactionType::CREDIT);
                 $this->organization->increment('balance', $invoiceItem->price);
-
             }
+
             foreach ($invoiceItems as $invoiceItem) {
                 if ($invoiceItem->purpose == TransactionPurpose::LICENSE->value) {
                     $this->createTransaction($invoiceItem, TransactionType::DEBIT);
@@ -73,6 +74,7 @@ class DemoToLiveOperation extends BaseBillingOperation
                     $this->organization->increment('sum_paid_for_license', $invoiceItem->price);
 
                 } else {
+                    // Используем обновленный сервис снятия средств со скидками
                     $service = new WithdrawalService();
                     $sum = $service->countSum($this->client);
                     $service->handle($this->organization, $sum);
@@ -87,6 +89,7 @@ class DemoToLiveOperation extends BaseBillingOperation
         if (!$isUSD) {
             $exchangeRate = $this->client->currency->latestExchangeRate?->kurs ?? 1;
         }
+
         Transaction::create([
             'client_id' => $this->client->id,
             'tariff_id' => $this->client->tariff_id,
@@ -96,7 +99,8 @@ class DemoToLiveOperation extends BaseBillingOperation
             'currency' => $this->getCurrency(),
             'purpose' => $invoiceItem->purpose,
             'provider' => $transactionType == TransactionType::DEBIT ? 'manual' : $invoiceItem->invoice->provider,
-            'accounted_amount' => $isUSD ? $invoiceItem->price : $invoiceItem->price / $exchangeRate
+            'accounted_amount' => $isUSD ? $invoiceItem->price : $invoiceItem->price / $exchangeRate,
+            'sale_id' => $invoiceItem->sale_id
         ]);
     }
 }
