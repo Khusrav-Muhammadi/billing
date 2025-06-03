@@ -137,6 +137,7 @@ class AlifPayProvider implements PaymentProviderInterface
         $tariffPrice = $this->applyDiscount($dto->metadata['newTariff']->tariff_price, 'tariff', $dto->metadata);
 
         Log::error($dto->metadata['organization_balance'] . ' llicense: ' . $licenseDifference . ' tariff ' . $tariffPrice .  ' month ' . $dto->metadata['months']);
+        Log::error(abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months'])))));
         $items[] = $this->makeItem(
             name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
             price: abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months'])))),
