@@ -11,6 +11,7 @@ use App\Services\Billing\Enum\PaymentOperationType;
 use App\Services\Billing\Operations\AddonPurchaseOperation;
 use App\Services\Billing\Operations\DemoToLiveOperation;
 use App\Services\Billing\Operations\TariffChangeOperation;
+use App\Services\Billing\Operations\TariffRenewalOperation;
 use App\Services\Payment\Enums\PaymentStatus;
 use App\Services\Sale\SaleService;
 
@@ -77,6 +78,7 @@ class BillingService
         return match ($operationType) {
             PaymentOperationType::DEMO_TO_LIVE => new DemoToLiveOperation($organization, $operationData),
             PaymentOperationType::TARIFF_CHANGE => new TariffChangeOperation($organization, $operationData),
+            PaymentOperationType::TARIFF_RENEWAL => new TariffRenewalOperation($organization, $operationData),
             PaymentOperationType::ADDON_PURCHASE => new AddonPurchaseOperation(),
         };
     }

@@ -112,6 +112,7 @@ class AlifPayProvider implements PaymentProviderInterface
     private function tariffRenewalItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
         $months = $dto->metadata['months'];
+
         $originalMonthlyPrice = $dto->metadata['monthly_price'];
         $monthlyPrice = $this->applyDiscount($originalMonthlyPrice, 'tariff', $dto->metadata);
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
@@ -213,8 +214,8 @@ class AlifPayProvider implements PaymentProviderInterface
             'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$DTO->metadata['subdomain']}",
 //            'redirect_url' => "https://{$DTO->metadata['subdomain']}.shamcrm.com/payment",
             'redirect_url' => "https://hello.sham360.com/payment",
-            'webhook_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/ALIF',
-//            'webhook_url' => 'https://5b05-95-142-94-22.ngrok-free.app/api/payment/webhook/ALIF',
+//            'webhook_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/ALIF',
+            'webhook_url' => 'https://3e62-95-142-94-22.ngrok-free.app/api/payment/webhook/ALIF',
             'meta' => (object)[],
             'receipt' => true,
             'phone' => ltrim($DTO->metadata['phone'], '+'),
@@ -239,10 +240,8 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         return match ($dto->operationType) {
             PaymentOperationType::DEMO_TO_LIVE => $this->calculateDemoToLiveTotal($dto),
-            PaymentOperationType::TARIFF_RENEWAL => $this->calculateTariffRenewalTotal($dto),
+            PaymentOperationType::TARIFF_RENEWAL => $dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months'],
             PaymentOperationType::TARIFF_CHANGE => $dto->metadata['license_difference'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
-            PaymentOperationType::ADDON_PURCHASE => $this->calculateAddonTotal($dto),
-            default => 0
         };
     }
 

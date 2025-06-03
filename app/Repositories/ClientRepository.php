@@ -250,7 +250,8 @@ class ClientRepository implements ClientRepositoryInterface
         $lastTariff = TariffCurrency::find($client->tariff_id);
 
         $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
-        $tariffPrice = $newTariff->tariff_price * $data['month'];
+        $tariffPrice = $newTariff->tariff_price;
+        $tariffPriceByMonth = $newTariff->tariff_price * $data['month'];
         $licensePrice = $newTariff->license_price;
 
         $saleService = new SaleService();
@@ -265,7 +266,7 @@ class ClientRepository implements ClientRepositoryInterface
         }
 
         $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
-        $tariffForPay = $tariffPrice - $saleTariffPrice;
+        $tariffForPay = $tariffPriceByMonth - $saleTariffPrice;
         $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
 
         return [
@@ -274,12 +275,14 @@ class ClientRepository implements ClientRepositoryInterface
             'license_price' => $licensePrice,
             'sale_license_price' => round($saleLicensePrice, 2),
             'tariff_price' => $tariffPrice,
+            'tariff_price_by_month' => $tariffPriceByMonth,
             'sale_tariff_price' => round($saleTariffPrice, 2),
             'must_pay' => false,//$difference < 0,
             'upgrade' => $organization->sum_paid_for_license,
             'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
-            'sum_for_pay' => $sumForPay,
+            'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay,2)) : 0,
+            'currency' => $client->currency
         ];
     }
 
