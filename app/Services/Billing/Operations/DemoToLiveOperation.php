@@ -60,7 +60,6 @@ class DemoToLiveOperation extends BaseBillingOperation
             ]);
             $invoiceItems = InvoiceItem::query()->where('invoice_id', $invoice->id)->get();
 
-            // Пополняем баланс на полную сумму оплаты
             foreach ($invoiceItems as $invoiceItem) {
                 $this->createTransaction($invoiceItem, TransactionType::CREDIT);
                 $this->organization->increment('balance', $invoiceItem->price);
@@ -74,7 +73,6 @@ class DemoToLiveOperation extends BaseBillingOperation
                     $this->organization->increment('sum_paid_for_license', $invoiceItem->price);
 
                 } else {
-                    // Используем обновленный сервис снятия средств со скидками
                     $service = new WithdrawalService();
                     $sum = $service->countSum($this->client);
                     $service->handle($this->organization, $sum);

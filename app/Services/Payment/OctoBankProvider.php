@@ -51,10 +51,11 @@ class OctoBankProvider implements PaymentProviderInterface
             'status' => PaymentStatus::PENDING,
             'currency_id' => $dto->metadata['currency_id'],
             'email' => $dto->metadata['email'],
-            'total_amount' => $dto->metadata['license_price'] + ($dto->metadata['tariff_price'] * $dto->metadata['operation_data']['months']),
+            'total_amount' => $this->calculateTotalSum($dto),
             'provider' => PaymentProviderType::OCTOBANK,
             'additional_data' => json_encode([]),
-            'operation_type' => $dto->operationType
+            'operation_type' => $dto->operationType,
+            'tariff_id' => $dto->metadata['operation_data']['tariff_id']
         ]);
     }
 
@@ -71,30 +72,50 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function demoToLiveItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
-        return [
-            $this->makeItem(
-                name: "Лицензия для тарифа {$dto->metadata['tariff_name']}",
-                price: $dto->metadata['license_price'],
-                months: $dto->metadata['operation_data']['months'],
-                invoiceId: $invoiceId,
-                purpose: TransactionPurpose::LICENSE,
-                count: 1
-            ),
-            $this->makeItem(
-                name: "Активация тарифа {$dto->metadata['tariff_name']}",
-                price: $dto->metadata['tariff_price'],
-                months: $dto->metadata['operation_data']['months'],
-                invoiceId: $invoiceId,
-                purpose: TransactionPurpose::TARIFF,
-                count: $dto->metadata['operation_data']['months']
-            )
-        ];
+        $items = [];
+
+        if (($dto->metadata['license_price'] ?? 0) > 0) {
+            $originalLicensePrice = $dto->metadata['license_price'];
+            $licensePrice = $this->applyDiscount($originalLicensePrice, 'license', $dto->metadata);
+            $licenseSaleId = $dto->metadata['discounts']['license']['sale_id'] ?? null;
+
+            if ($licensePrice > 0) {
+                $items[] = $this->makeItem(
+                    name: "Лицензия для тарифа {$dto->metadata['tariff_name']}",
+                    price: $licensePrice,
+                    months: $dto->metadata['operation_data']['months'],
+                    invoiceId: $invoiceId,
+                    purpose: TransactionPurpose::LICENSE,
+                    count: 1,
+                    sale_id: $licenseSaleId
+                );
+            }
+        }
+
+        $originalTariffPrice = $dto->metadata['tariff_price'];
+        $tariffPrice = $this->applyDiscount($originalTariffPrice, 'tariff', $dto->metadata);
+        $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
+
+        $items[] = $this->makeItem(
+            name: "Активация тарифа {$dto->metadata['tariff_name']}",
+            price: $tariffPrice,
+            months: $dto->metadata['operation_data']['months'],
+            invoiceId: $invoiceId,
+            purpose: TransactionPurpose::TARIFF,
+            count: $dto->metadata['operation_data']['months'],
+            sale_id: $tariffSaleId
+        );
+
+        return $items;
     }
 
     private function tariffRenewalItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
         $months = $dto->metadata['months'];
-        $monthlyPrice = $dto->metadata['monthly_price'];
+
+        $originalMonthlyPrice = $dto->metadata['tariff_price'];
+        $monthlyPrice = $this->applyDiscount($originalMonthlyPrice, 'tariff', $dto->metadata);
+        $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
 
         return [
             $this->makeItem(
@@ -103,7 +124,8 @@ class OctoBankProvider implements PaymentProviderInterface
                 months: $months,
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::TARIFF,
-                count: $months
+                count: $months,
+                sale_id: $tariffSaleId
             )
         ];
     }
@@ -112,24 +134,18 @@ class OctoBankProvider implements PaymentProviderInterface
     {
         $items = [];
 
-        if ($dto->metadata['license_diff'] > 0) {
-            $items[] = $this->makeItem(
-                name: "Разница лицензии ({$dto->metadata['old_tariff']} → {$dto->metadata['new_tariff']})",
-                price: $dto->metadata['license_diff'],
-                months: $dto->metadata['operation_data']['months'],
-                invoiceId: $invoiceId,
-                purpose: TransactionPurpose::LICENSE,
-                count: 1
-            );
-        }
+        $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
+        $licenseDifference = $this->applyDiscount($dto->metadata['license_difference'], 'license', $dto->metadata);
+        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
 
         $items[] = $this->makeItem(
-            name: "Смена тарифа на {$dto->metadata['new_tariff']}",
-            price: $dto->metadata['tariff_price'],
+            name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
+            price: abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months'])))),
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
-            purpose: TransactionPurpose::TARIFF,
-            count: $dto->metadata['operation_data']['months']
+            purpose: TransactionPurpose::CHANGE_TARIFF,
+            count: 1,
+            sale_id: $tariffSaleId
         );
 
         return $items;
@@ -137,18 +153,43 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function addonItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
+        $originalAddonPrice = $dto->metadata['addon_price'];
+        $addonPrice = $this->applyDiscount($originalAddonPrice, 'addon', $dto->metadata);
+        $addonSaleId = $dto->metadata['discounts']['addon']['sale_id'] ?? null;
+
         return [
             $this->makeItem(
                 name: $dto->metadata['addon_type'] === 'one-time'
                     ? "Пакет {$dto->metadata['addon_name']}"
                     : "Пакет {$dto->metadata['addon_name']} (ежемесячно)",
-                price: $dto->metadata['addon_price'],
+                price: $addonPrice,
                 months: $dto->metadata['operation_data']['months'],
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::ADDON_PACKAGE,
-                count: $dto->metadata['addon_type'] === 'one-time' ? 1 : $dto->metadata['operation_data']['months']
+                count: $dto->metadata['addon_type'] === 'one-time' ? 1 : $dto->metadata['operation_data']['months'],
+                sale_id: $addonSaleId
             )
         ];
+    }
+
+    private function applyDiscount(float $originalPrice, string $discountType, array $metadata): float
+    {
+        if (!isset($metadata['discounts'][$discountType])) {
+            return round($originalPrice, 2);
+        }
+
+        $discount = $metadata['discounts'][$discountType];
+        $percent = floatval($discount['percent']);
+
+        if ($discountType === 'tariff' && isset($discount['months_required'])) {
+            $months = $metadata['months'] ?? $metadata['operation_data']['months'] ?? 1;
+            if ($months < $discount['months_required']) {
+                return round($originalPrice, 2);
+            }
+        }
+
+        $discountAmount = ($originalPrice * $percent) / 100;
+        return round(max(0, $originalPrice - $discountAmount), 2);
     }
 
     private function makeItem(string $name, float $price, int $months, int $invoiceId, TransactionPurpose $purpose, int $count, int $sale_id = null): array
@@ -172,10 +213,17 @@ class OctoBankProvider implements PaymentProviderInterface
             return [
                 'position_desc' => $item['position_desc'],
                 'count' => $item['count'],
-                'price' => $item['price'],
+                'price' => round($item['price'], 2),
                 'spic' => $item['spic']
             ];
         }, $items);
+
+        // Пересчитываем total_sum на основе корзины для точности
+        $calculatedTotal = 0;
+        foreach ($basket as $item) {
+            $calculatedTotal += $item['price'] * $item['count'];
+        }
+        $calculatedTotal = round($calculatedTotal, 2);
 
         $shopTransactionId = $this->generateShopTransactionId($invoice->id);
 
@@ -188,10 +236,10 @@ class OctoBankProvider implements PaymentProviderInterface
             'init_time' => now()->format('Y-m-d H:i:s'),
             'user_data' => [
                 'user_id' => $dto->metadata['operation_data']['organization_id'],
-                'phone' => $dto->metadata['phone'],
+                'phone' => ltrim($dto->metadata['phone'], '+'),
                 'email' => $dto->metadata['email']
             ],
-            'total_sum' => (float) $invoice->total_amount,
+            'total_sum' => $calculatedTotal,
             'currency' => 'USD',
             'description' => $this->getPaymentDescription($dto->operationType, $dto->metadata),
             'basket' => $basket,
@@ -232,7 +280,6 @@ class OctoBankProvider implements PaymentProviderInterface
         return $invoiceId;
     }
 
-
     private function getPaymentDescription(PaymentOperationType $operationType, array $metadata): string
     {
         return match ($operationType) {
@@ -250,9 +297,53 @@ class OctoBankProvider implements PaymentProviderInterface
         return "https://{$subdomain}.shamcrm.com/payment";
     }
 
+    private function calculateTotalSum(CreateInvoiceDTO $dto): float
+    {
+        return match ($dto->operationType) {
+            PaymentOperationType::DEMO_TO_LIVE => $this->calculateDemoToLiveTotal($dto),
+            PaymentOperationType::TARIFF_RENEWAL => $this->calculateTariffRenewalTotal($dto),
+            PaymentOperationType::TARIFF_CHANGE => $this->calculateTariffChangeTotal($dto),
+            PaymentOperationType::ADDON_PURCHASE => $this->calculateAddonTotal($dto),
+        };
+    }
+
+    private function calculateDemoToLiveTotal(CreateInvoiceDTO $dto): float
+    {
+        $total = 0;
+
+        if (($dto->metadata['license_price'] ?? 0) > 0) {
+            $licensePrice = $this->applyDiscount($dto->metadata['license_price'], 'license', $dto->metadata);
+            $total += $licensePrice;
+        }
+
+        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
+        $total += $tariffPrice * $dto->metadata['operation_data']['months'];
+
+        return round($total, 2);
+    }
+
+    private function calculateTariffRenewalTotal(CreateInvoiceDTO $dto): float
+    {
+        $monthlyPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
+        return round($monthlyPrice * $dto->metadata['months'], 2);
+    }
+
+    private function calculateAddonTotal(CreateInvoiceDTO $dto): float
+    {
+        return round($this->applyDiscount($dto->metadata['addon_price'], 'addon', $dto->metadata), 2);
+    }
+
+    private function calculateTariffChangeTotal(CreateInvoiceDTO $dto): float
+    {
+        $licenseDifference = $this->applyDiscount($dto->metadata['license_difference'], 'license', $dto->metadata);
+        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
+
+        $total = abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months']))));
+        return round($total, 2);
+    }
+
     public function handleWebhook(array $data): WebhookResponse
     {
-
         $invoice = Invoice::where('payment_provider_id', $data['octo_payment_UUID'])->firstOrFail();
 
         $success = $data['status'] === 'succeeded';
