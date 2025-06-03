@@ -280,7 +280,8 @@ class ClientRepository implements ClientRepositoryInterface
             'upgrade' => $organization->sum_paid_for_license,
             'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
-            'sum_for_pay' => $sumForPay,
+            'sum_for_pay' => $sumForPay < 0 ? $sumForPay : 0,
+            'currency' => $client->currency
         ];
     }
 
