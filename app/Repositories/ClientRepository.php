@@ -265,6 +265,7 @@ class ClientRepository implements ClientRepositoryInterface
 
         $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
         $tariffForPay = $tariffPrice - $saleTariffPrice;
+        $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
 
         return [
             'organization_balance' => $organization->balance,
@@ -276,7 +277,8 @@ class ClientRepository implements ClientRepositoryInterface
             'must_pay' => false,//$difference < 0,
             'upgrade' => $organization->sum_paid_for_license,
             'license_for_pay' => $licenseForPay,
-            'tariff_for_pay' => $tariffForPay
+            'tariff_for_pay' => $tariffForPay,
+            'sum_for_pay' => $sumForPay,
         ];
     }
 
