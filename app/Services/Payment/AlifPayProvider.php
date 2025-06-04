@@ -206,7 +206,6 @@ class AlifPayProvider implements PaymentProviderInterface
 
     private function sendToAlif(CreateInvoiceDTO $DTO, array $items): array
     {
-
         $response = Http::withHeaders([
             'Token' => config('payments.alif.token'),
             'Content-Type' => 'application/json',
