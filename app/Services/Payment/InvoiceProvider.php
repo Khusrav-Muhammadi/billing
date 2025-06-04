@@ -38,6 +38,7 @@ class InvoiceProvider implements PaymentProviderInterface
             'created_date' => now()->format('d.m.Y'),
             'due_date' => now()->addDays(7)->format('d.m.Y')
         ]);
+
         $invoice->save();
 
         $downloadUrl = route('invoice.download', ['invoice' => $invoice->id, 'token' => $this->generateSecureToken($invoice->id)]);
