@@ -269,7 +269,7 @@ class OctoBankProvider implements PaymentProviderInterface
                 'error' => $responseData['error'],
                 'message' => $responseData['apiMessageForDevelopers'] ?? 'Unknown error'
             ]);
-            throw new PaymentException('OctoBank returned error: ' . ($responseData['apiMessageForDevelopers'] ?? 'Unknown error'));
+            throw new PaymentException('OctoBank returned error: ' . ($responseData['apiMessageForDevelopers'] . ' ' . json_encode(Content) ?? 'Unknown error'));
         }
 
         return $responseData['data'] ?? $responseData;
