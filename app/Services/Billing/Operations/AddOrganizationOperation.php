@@ -2,6 +2,7 @@
 
 namespace App\Services\Billing\Operations;
 
+use App\Jobs\CreateOrganizationJob;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -12,6 +13,7 @@ use App\Services\Billing\Enum\TransactionType;
 use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AddOrganizationOperation extends BaseBillingOperation
 {
@@ -76,7 +78,16 @@ class AddOrganizationOperation extends BaseBillingOperation
                     $service->handle($this->organization, $sum);
                 }
             }
+
+            $password = Str::random(12);
+
+            $this->createInSham($this->organization, $this->client, $password);
         });
+    }
+
+    public function createInSham(Organization $organization, Client $client, string $password)
+    {
+        CreateOrganizationJob::dispatch($client, $organization, $password)->delay(120);
     }
 
     private function createTransaction(InvoiceItem $invoiceItem, TransactionType $transactionType): void
