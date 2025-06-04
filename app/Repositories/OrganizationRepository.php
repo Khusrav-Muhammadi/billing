@@ -139,4 +139,15 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
         return $response->successful();
     }
+
+    public function addLegalInfo(Organization $organization, array $data)
+    {
+        $organization->update([
+            'legal_name' => $data['legal_name'] ?? $organization->legal_name,
+            'legal_address' => $data['legal_address'] ?? $organization->legal_address,
+            'INN' => $data['INN'] ?? $organization->INN,
+            'phone' => $data['phone'] ?? $organization->phone,
+            'director' => $data['director'] ?? $organization->director,
+        ]);
+    }
 }

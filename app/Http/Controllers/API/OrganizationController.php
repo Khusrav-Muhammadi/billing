@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organization\AddPackRequest;
+use App\Http\Requests\Organization\LegalInfoRequest;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
@@ -105,4 +106,21 @@ class OrganizationController extends Controller
             'is_demo' => $client->is_demo,
         ];
     }
+
+    public function getLegalInfo(Organization $organization)
+    {
+        return response()->json([
+            'legal_name' => $organization->legal_name,
+            'legal_legal_address' => $organization->legal_address,
+            'legal_INN' => $organization->INN,
+            'legal_phone' => $organization->phone,
+            'legal_director' => $organization->director,
+        ]);
+    }
+
+    public function addLegalInfo(Organization $organization, LegalInfoRequest $request)
+    {
+        return $this->repository->addLegalInfo($organization, $request->validated());
+    }
+
 }

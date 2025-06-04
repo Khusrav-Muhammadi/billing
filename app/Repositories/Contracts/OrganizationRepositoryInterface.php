@@ -16,5 +16,6 @@ interface OrganizationRepositoryInterface
 
     public function addPack(Organization $organization, array $data);
 
+    public function addLegalInfo(Organization $organization, array $data);
 
 }
