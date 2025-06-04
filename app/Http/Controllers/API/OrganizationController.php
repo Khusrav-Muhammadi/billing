@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organization\AddPackRequest;
 use App\Http\Requests\Organization\LegalInfoRequest;
+use App\Http\Requests\Organization\StoreRequest;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
@@ -13,12 +14,13 @@ use App\Models\Transaction;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Services\Sale\SaleService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 
 class OrganizationController extends Controller
 {
     public function __construct(public OrganizationRepositoryInterface $repository) { }
 
-    public function store(Client $client, \App\Http\Requests\Organization\StoreRequest $request): \Illuminate\Http\JsonResponse
+    public function store(Client $client, StoreRequest $request): JsonResponse
     {
         $organization = $this->repository->store($client, $request->validated());
 
@@ -121,6 +123,18 @@ class OrganizationController extends Controller
     public function addLegalInfo(Organization $organization, LegalInfoRequest $request)
     {
         return $this->repository->addLegalInfo($organization, $request->validated());
+    }
+
+    public function addOrganization(StoreRequest $request)
+    {
+        $data = $request->validated();
+        $data['sub_domain'] = parse_url($request->fullUrl(), PHP_URL_HOST);
+
+        $organization = $this->repository->addOrganization($data);
+
+        return [
+            'organization' => $organization
+        ];
     }
 
 }

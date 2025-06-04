@@ -75,6 +75,7 @@ Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login'])
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
 Route::get('organization/legal-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'getLegalInfo']);
 Route::post('organization/legal-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'addLegalInfo']);
+Route::post('add-organization', [\App\Http\Controllers\API\OrganizationController::class, 'addOrganization']);
 
 Route::post('payment/alif/webhook/change-tariff', [\App\Http\Controllers\API\ClientController::class, 'webhookChangeTariff']);
 

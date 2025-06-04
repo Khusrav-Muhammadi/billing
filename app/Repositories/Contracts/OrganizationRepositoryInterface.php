@@ -18,4 +18,6 @@ interface OrganizationRepositoryInterface
 
     public function addLegalInfo(Organization $organization, array $data);
 
+    public function addOrganization(array $data);
+
 }
