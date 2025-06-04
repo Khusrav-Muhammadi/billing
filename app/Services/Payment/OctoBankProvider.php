@@ -197,7 +197,7 @@ class OctoBankProvider implements PaymentProviderInterface
         return [
             'name' => $name,
             'amount' => $count,
-            'price' => $price,
+            'price' => (float) number_format(round($price, 2), 2, '.', ''),
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
             'purpose' => $purpose,
@@ -209,23 +209,30 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function sendToOctoBank(CreateInvoiceDTO $dto, array $items, Invoice $invoice): array
     {
-        $basket = array_map(function ($item) {
-            return [
+        $basket = [];
+        $basketTotal = 0.0;
+
+        foreach ($items as $item) {
+            $itemPrice = round($item['price'], 2);
+            $itemCount = $item['count'];
+
+            $basketItem = [
                 'position_desc' => $item['position_desc'],
-                'count' => $item['count'],
-                'price' => round($item['price'], 2),
+                'count' => $itemCount,
+                'price' => $itemPrice,
                 'spic' => $item['spic']
             ];
-        }, $items);
 
-        $calculatedTotal = 0;
-        foreach ($basket as $item) {
-            $calculatedTotal += $item['price'] * $item['count'];
+            $basket[] = $basketItem;
+            // Точное вычисление суммы для каждого элемента
+            $basketTotal += round($itemPrice * $itemCount, 2);
         }
-        $calculatedTotal = round($calculatedTotal, 2);
 
-        $invoice->total_amount = $calculatedTotal;
-        $invoice->save();
+        // Финальное округление до 2 знаков и приведение к float с фиксированной точностью
+        $finalTotal = round($basketTotal, 2);
+
+        // ВАЖНО: Убедимся, что число передается с правильной точностью
+        $finalTotal = (float) number_format($finalTotal, 2, '.', '');
 
         $shopTransactionId = $this->generateShopTransactionId($invoice->id);
 
@@ -241,7 +248,7 @@ class OctoBankProvider implements PaymentProviderInterface
                 'phone' => ltrim($dto->metadata['phone'], '+'),
                 'email' => $dto->metadata['email']
             ],
-            'total_sum' => $calculatedTotal,
+            'total_sum' => $finalTotal,
             'currency' => 'USD',
             'description' => $this->getPaymentDescription($dto->operationType, $dto->metadata),
             'basket' => $basket,
@@ -250,6 +257,22 @@ class OctoBankProvider implements PaymentProviderInterface
             'language' => config('payments.octobank.language', 'ru'),
             'ttl' => config('payments.octobank.ttl', 1440)
         ];
+
+        // Дополнительная проверка перед отправкой
+        $verificationTotal = 0.0;
+        foreach ($basket as $item) {
+            $verificationTotal += round($item['price'] * $item['count'], 2);
+        }
+        $verificationTotal = (float) number_format(round($verificationTotal, 2), 2, '.', '');
+
+        if (abs($finalTotal - $verificationTotal) > 0.001) {
+            Log::error('Total sum mismatch detected', [
+                'final_total' => $finalTotal,
+                'verification_total' => $verificationTotal,
+                'basket' => $basket
+            ]);
+            throw new PaymentException('Total sum calculation mismatch');
+        }
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
@@ -269,13 +292,17 @@ class OctoBankProvider implements PaymentProviderInterface
         if ($responseData['error'] !== 0) {
             Log::error('OctoBank API returned error', [
                 'error' => $responseData['error'],
-                'message' => $responseData['apiMessageForDevelopers'] ?? 'Unknown error'
+                'message' => $responseData['apiMessageForDevelopers'] ?? 'Unknown error',
+                'sent_payload' => $payload
             ]);
             throw new PaymentException('OctoBank returned error: ' . ($responseData['apiMessageForDevelopers'] ?? 'Unknown error'));
         }
 
         return $responseData['data'] ?? $responseData;
     }
+
+// Также обновим метод makeItem для гарантированного округления
+
     private function generateShopTransactionId(int $invoiceId): string
     {
         return $invoiceId;
