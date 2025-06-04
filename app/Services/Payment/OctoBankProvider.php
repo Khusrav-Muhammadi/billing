@@ -210,7 +210,7 @@ class OctoBankProvider implements PaymentProviderInterface
     private function sendToOctoBank(CreateInvoiceDTO $dto, array $items, Invoice $invoice): array
     {
         $basket = [];
-        $basketTotal = 0.0;
+        $basketTotal = 0;
 
         foreach ($items as $item) {
             $itemPrice = round($item['price'], 2);
@@ -224,15 +224,13 @@ class OctoBankProvider implements PaymentProviderInterface
             ];
 
             $basket[] = $basketItem;
-            // Точное вычисление суммы для каждого элемента
-            $basketTotal += round($itemPrice * $itemCount, 2);
+            $basketTotal += $itemPrice * $itemCount;
         }
 
-        // Финальное округление до 2 знаков и приведение к float с фиксированной точностью
-        $finalTotal = round($basketTotal, 2);
+        $basketTotal = round($basketTotal, 2);
 
-        // ВАЖНО: Убедимся, что число передается с правильной точностью
-        $finalTotal = (float) number_format($finalTotal, 2, '.', '');
+        // КЛЮЧЕВОЙ МОМЕНТ: отправляем total_sum как строку с фиксированным форматом
+        $totalSumString = number_format($basketTotal, 2, '.', '');
 
         $shopTransactionId = $this->generateShopTransactionId($invoice->id);
 
@@ -248,7 +246,7 @@ class OctoBankProvider implements PaymentProviderInterface
                 'phone' => ltrim($dto->metadata['phone'], '+'),
                 'email' => $dto->metadata['email']
             ],
-            'total_sum' => $finalTotal,
+            'total_sum' => $totalSumString, // СТРОКА, а не float!
             'currency' => 'USD',
             'description' => $this->getPaymentDescription($dto->operationType, $dto->metadata),
             'basket' => $basket,
@@ -258,21 +256,13 @@ class OctoBankProvider implements PaymentProviderInterface
             'ttl' => config('payments.octobank.ttl', 1440)
         ];
 
-        // Дополнительная проверка перед отправкой
-        $verificationTotal = 0.0;
-        foreach ($basket as $item) {
-            $verificationTotal += round($item['price'] * $item['count'], 2);
-        }
-        $verificationTotal = (float) number_format(round($verificationTotal, 2), 2, '.', '');
-
-        if (abs($finalTotal - $verificationTotal) > 0.001) {
-            Log::error('Total sum mismatch detected', [
-                'final_total' => $finalTotal,
-                'verification_total' => $verificationTotal,
-                'basket' => $basket
-            ]);
-            throw new PaymentException('Total sum calculation mismatch');
-        }
+        Log::info('OctoBank final payload debug', [
+            'total_sum' => $payload['total_sum'],
+            'total_sum_type' => gettype($payload['total_sum']),
+            'basket_verification' => array_sum(array_map(function($item) {
+                return $item['price'] * $item['count'];
+            }, $basket))
+        ]);
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
@@ -300,7 +290,6 @@ class OctoBankProvider implements PaymentProviderInterface
 
         return $responseData['data'] ?? $responseData;
     }
-
 // Также обновим метод makeItem для гарантированного округления
 
     private function generateShopTransactionId(int $invoiceId): string
