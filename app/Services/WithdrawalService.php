@@ -26,7 +26,7 @@ class WithdrawalService
 
             $currency = $client->currency;
 
-            $accountedAmount = $currency->symbol_code == 'USD' ? $sum : $sum / $currency->latestExchangeRate->kurs ;
+            $accountedAmount = $currency->symbol_code == 'USD' ? $sum : $sum / $currency->latestExchangeRate->kurs;
 
             Transaction::create([
                 'client_id' => $client->id,
