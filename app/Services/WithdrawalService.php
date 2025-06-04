@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Services;
 
 use App\Models\Client;
@@ -44,7 +43,6 @@ class WithdrawalService
             $repository->activation($client, null);
         }
     }
-
 
     public function countSum(Client $client)
     {

@@ -202,7 +202,7 @@
         </tr>
         <tr>
             <td class="label">ИНН:</td>
-            <td>{{ $organization['INN'] }}</td>
+            <td>{{ $organization['inn'] }}</td>
         </tr>
         <tr>
             <td class="label">Телефон:</td>
