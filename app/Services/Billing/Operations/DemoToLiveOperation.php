@@ -25,7 +25,7 @@ class DemoToLiveOperation extends BaseBillingOperation
     {
         $this->client = $this->organization->client;
         $tariffId = Invoice::query()->where('id', $this->operationData['invoice_id'])->first()->tariff_id;
-       $this->newTariff = TariffCurrency::find($tariffId);
+        $this->newTariff = TariffCurrency::find($tariffId);
        // $this->newTariff = TariffCurrency::find($this->client->tariff_id);
     }
 
