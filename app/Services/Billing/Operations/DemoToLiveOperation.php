@@ -20,12 +20,13 @@ class DemoToLiveOperation extends BaseBillingOperation
 
     public function __construct(
         private Organization $organization,
-        private array        $operationData,
+        private array       $operationData,
     )
     {
         $this->client = $this->organization->client;
-       // $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
-        $this->newTariff = TariffCurrency::find($this->client->tariff_id);
+        $tariffId = Invoice::query()->where('id', $this->operationData['invoice_id'])->first()->tariff_id;
+        $this->newTariff = TariffCurrency::find($tariffId);
+       // $this->newTariff = TariffCurrency::find($this->client->tariff_id);
     }
 
     public function calculateAmount(): float
