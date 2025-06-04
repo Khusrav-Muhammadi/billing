@@ -219,7 +219,7 @@ class OctoBankProvider implements PaymentProviderInterface
             $basketItem = [
                 'position_desc' => $item['position_desc'],
                 'count' => $itemCount,
-                'price' => $itemPrice,
+                'price' => number_format($itemPrice, 2, '.', ''), // Цена как строка с .00
                 'spic' => $item['spic']
             ];
 
@@ -290,8 +290,6 @@ class OctoBankProvider implements PaymentProviderInterface
 
         return $responseData['data'] ?? $responseData;
     }
-// Также обновим метод makeItem для гарантированного округления
-
     private function generateShopTransactionId(int $invoiceId): string
     {
         return $invoiceId;
