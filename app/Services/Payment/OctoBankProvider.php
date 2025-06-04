@@ -321,8 +321,7 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function generateReturnUrl(CreateInvoiceDTO $dto): string
     {
-        $subdomain = $dto->metadata['subdomain'];
-        return "https://{$subdomain}.shamcrm.com/payment";
+        return "https://hello.sham360.com/payment";
     }
 
     private function calculateTotalSum(CreateInvoiceDTO $dto): float
