@@ -195,7 +195,7 @@ class AlifPayProvider implements PaymentProviderInterface
     {
         return [
             'name' => $name,
-            'amount' => $months,
+            'amount' => 1,
             'price' => $purpose == TransactionPurpose::TARIFF ? ($price * $months) : $price,
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
@@ -206,7 +206,6 @@ class AlifPayProvider implements PaymentProviderInterface
 
     private function sendToAlif(CreateInvoiceDTO $DTO, array $items): array
     {
-
         $response = Http::withHeaders([
             'Token' => config('payments.alif.token'),
             'Content-Type' => 'application/json',
