@@ -218,12 +218,14 @@ class OctoBankProvider implements PaymentProviderInterface
             ];
         }, $items);
 
-        // Пересчитываем total_sum на основе корзины для точности
         $calculatedTotal = 0;
         foreach ($basket as $item) {
             $calculatedTotal += $item['price'] * $item['count'];
         }
         $calculatedTotal = round($calculatedTotal, 2);
+
+        $invoice->total_amount = $calculatedTotal;
+        $invoice->save();
 
         $shopTransactionId = $this->generateShopTransactionId($invoice->id);
 
@@ -269,12 +271,11 @@ class OctoBankProvider implements PaymentProviderInterface
                 'error' => $responseData['error'],
                 'message' => $responseData['apiMessageForDevelopers'] ?? 'Unknown error'
             ]);
-            throw new PaymentException('OctoBank returned error: ' . ($responseData['apiMessageForDevelopers'] . ' ' . json_encode(Content) ?? 'Unknown error'));
+            throw new PaymentException('OctoBank returned error: ' . ($responseData['apiMessageForDevelopers'] ?? 'Unknown error'));
         }
 
         return $responseData['data'] ?? $responseData;
     }
-
     private function generateShopTransactionId(int $invoiceId): string
     {
         return $invoiceId;
