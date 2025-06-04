@@ -299,7 +299,7 @@ class OctoBankProvider implements PaymentProviderInterface
         return match ($operationType) {
             PaymentOperationType::DEMO_TO_LIVE => "Активация лицензии и тарифа {$metadata['tariff_name']}",
             PaymentOperationType::TARIFF_RENEWAL => "Продление тарифа {$metadata['tariff_name']}",
-            PaymentOperationType::TARIFF_CHANGE => "Смена тарифа на {$metadata['new_tariff']}",
+            PaymentOperationType::TARIFF_CHANGE => "Смена тарифа на {$metadata['newTariff']->tariff->name}",
             PaymentOperationType::ADDON_PURCHASE => "Покупка пакета {$metadata['addon_name']}",
             default => 'Оплата услуг ShamCRM'
         };
