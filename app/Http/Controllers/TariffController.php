@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Tariff\StoreRequest;
 use App\Http\Requests\Tariff\UpdateRequest;
+use App\Models\Client;
 use App\Models\Tariff;
+use App\Models\TariffCurrency;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class TariffController extends Controller
 {
@@ -38,5 +42,16 @@ class TariffController extends Controller
         $tariff->delete();
 
         return redirect()->back();
+    }
+
+    public function getTariffByCurrency(Request $request)
+    {
+        $subdomain = parse_url($request->fullUrl(), PHP_URL_HOST);
+
+        $client = Client::query()->where('sub_domain', $subdomain)->first();
+
+        $tariffs = TariffCurrency::query()->where('currency_id', $client->currency_id)->with('tariff')->get();
+
+        return response()->json($tariffs);
     }
 }
