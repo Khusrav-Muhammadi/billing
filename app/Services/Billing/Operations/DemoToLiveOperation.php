@@ -23,7 +23,6 @@ class DemoToLiveOperation extends BaseBillingOperation
         private array        $operationData,
     )
     {
-        dd($this->operationData);
         $this->client = $this->organization->client;
         $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
 //        $this->newTariff = TariffCurrency::find($this->new);
