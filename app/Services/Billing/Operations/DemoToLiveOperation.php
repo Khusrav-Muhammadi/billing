@@ -24,8 +24,8 @@ class DemoToLiveOperation extends BaseBillingOperation
     )
     {
         $this->client = $this->organization->client;
-//        $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
-        $this->newTariff = TariffCurrency::find($this->newTariff->id);
+        $this->newTariff = TariffCurrency::find($this->operationData['tariff_id']);
+//        $this->newTariff = TariffCurrency::find($this->new);
     }
 
     public function calculateAmount(): float
