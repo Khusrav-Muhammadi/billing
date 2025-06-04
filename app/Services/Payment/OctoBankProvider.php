@@ -197,7 +197,7 @@ class OctoBankProvider implements PaymentProviderInterface
         return [
             'name' => $name,
             'amount' => $count,
-            'price' => $price,
+            'price' => (float) number_format(round($price, 2), 2, '.', ''),
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
             'purpose' => $purpose,
@@ -209,21 +209,28 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function sendToOctoBank(CreateInvoiceDTO $dto, array $items, Invoice $invoice): array
     {
-        $basket = array_map(function ($item) {
-            return [
+        $basket = [];
+        $basketTotal = 0;
+
+        foreach ($items as $item) {
+            $itemPrice = round($item['price'], 2);
+            $itemCount = $item['count'];
+
+            $basketItem = [
                 'position_desc' => $item['position_desc'],
-                'count' => $item['count'],
-                'price' => round($item['price'], 2),
+                'count' => $itemCount,
+                'price' => number_format($itemPrice, 2, '.', ''), // Цена как строка с .00
                 'spic' => $item['spic']
             ];
-        }, $items);
 
-        // Пересчитываем total_sum на основе корзины для точности
-        $calculatedTotal = 0;
-        foreach ($basket as $item) {
-            $calculatedTotal += $item['price'] * $item['count'];
+            $basket[] = $basketItem;
+            $basketTotal += $itemPrice * $itemCount;
         }
-        $calculatedTotal = round($calculatedTotal, 2);
+
+        $basketTotal = round($basketTotal, 2);
+
+        // КЛЮЧЕВОЙ МОМЕНТ: отправляем total_sum как строку с фиксированным форматом
+        $totalSumString = number_format($basketTotal, 2, '.', '');
 
         $shopTransactionId = $this->generateShopTransactionId($invoice->id);
 
@@ -239,7 +246,7 @@ class OctoBankProvider implements PaymentProviderInterface
                 'phone' => ltrim($dto->metadata['phone'], '+'),
                 'email' => $dto->metadata['email']
             ],
-            'total_sum' => $calculatedTotal,
+            'total_sum' => $totalSumString, // СТРОКА, а не float!
             'currency' => 'USD',
             'description' => $this->getPaymentDescription($dto->operationType, $dto->metadata),
             'basket' => $basket,
@@ -248,6 +255,14 @@ class OctoBankProvider implements PaymentProviderInterface
             'language' => config('payments.octobank.language', 'ru'),
             'ttl' => config('payments.octobank.ttl', 1440)
         ];
+
+        Log::info('OctoBank final payload debug', [
+            'total_sum' => $payload['total_sum'],
+            'total_sum_type' => gettype($payload['total_sum']),
+            'basket_verification' => array_sum(array_map(function($item) {
+                return $item['price'] * $item['count'];
+            }, $basket))
+        ]);
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
@@ -267,14 +282,14 @@ class OctoBankProvider implements PaymentProviderInterface
         if ($responseData['error'] !== 0) {
             Log::error('OctoBank API returned error', [
                 'error' => $responseData['error'],
-                'message' => $responseData['apiMessageForDevelopers'] ?? 'Unknown error'
+                'message' => $responseData['apiMessageForDevelopers'] ?? 'Unknown error',
+                'sent_payload' => $payload
             ]);
             throw new PaymentException('OctoBank returned error: ' . ($responseData['apiMessageForDevelopers'] ?? 'Unknown error'));
         }
 
         return $responseData['data'] ?? $responseData;
     }
-
     private function generateShopTransactionId(int $invoiceId): string
     {
         return $invoiceId;
@@ -293,8 +308,7 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function generateReturnUrl(CreateInvoiceDTO $dto): string
     {
-        $subdomain = $dto->metadata['subdomain'];
-        return "https://{$subdomain}.shamcrm.com/payment";
+        return "https://hello.sham360.com/payment";
     }
 
     private function calculateTotalSum(CreateInvoiceDTO $dto): float

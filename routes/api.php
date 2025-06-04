@@ -80,6 +80,7 @@ Route::post('add-organization', [\App\Http\Controllers\API\OrganizationControlle
 Route::post('payment/alif/webhook/change-tariff', [\App\Http\Controllers\API\ClientController::class, 'webhookChangeTariff']);
 
 Route::get('tariff-difference', [\App\Http\Controllers\API\ClientController::class, 'countDifference']);
+Route::get('tariff', [\App\Http\Controllers\TariffController::class, 'getTariffByCurrency']);
 Route::post('change-tariff', [\App\Http\Controllers\API\ClientController::class, 'changeTariff']);
 
 

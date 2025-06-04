@@ -10,4 +10,9 @@ class Tariff extends Model
     use HasFactory;
 
     protected $fillable = ['name', 'price', 'user_count', 'project_count'];
+
+    public function currencies()
+    {
+        return $this->hasMany(TariffCurrency::class);
+    }
 }
