@@ -295,6 +295,7 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function getPaymentDescription(PaymentOperationType $operationType, array $metadata): string
     {
+        Log::error(json_encode($metadata));
         return match ($operationType) {
             PaymentOperationType::DEMO_TO_LIVE => "Активация лицензии и тарифа {$metadata['tariff_name']}",
             PaymentOperationType::TARIFF_RENEWAL => "Продление тарифа {$metadata['tariff_name']}",
