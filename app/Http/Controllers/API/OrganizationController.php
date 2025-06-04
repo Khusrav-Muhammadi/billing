@@ -109,13 +109,13 @@ class OrganizationController extends Controller
 
     public function getLegalInfo(Organization $organization)
     {
-        return response()->json([
+        return [
             'legal_name' => $organization->legal_name,
             'legal_legal_address' => $organization->legal_address,
             'legal_INN' => $organization->INN,
             'legal_phone' => $organization->phone,
             'legal_director' => $organization->director,
-        ]);
+        ];
     }
 
     public function addLegalInfo(Organization $organization, LegalInfoRequest $request)
