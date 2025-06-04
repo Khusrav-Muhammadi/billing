@@ -261,7 +261,7 @@ class ClientRepository implements ClientRepositoryInterface
         $saleTariffPrice = 0;
 
         foreach ($activeSales as $activeSale) {
-            if ($activeSale->apply_to == 'tariff') $saleTariffPrice = $tariffPrice * $activeSale->amount * $data['month'] / 100;
+            if ($activeSale->apply_to == 'progressive') $saleTariffPrice = $tariffPrice * $activeSale->amount * $data['month'] / 100;
             else $saleLicensePrice = $licensePrice * $activeSale->amount / 100;
         }
 
