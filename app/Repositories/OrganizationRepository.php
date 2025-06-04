@@ -71,9 +71,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                         'accounted_amount' => $accountedAmount
                     ]);
                 }
-
             }
-
 
             if (!$client->is_demo) {
                 SendOrganizationLicense::dispatch($organization);
@@ -150,4 +148,16 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             'director' => $data['director'] ?? $organization->director,
         ]);
     }
+
+    public function addOrganization(array $data)
+    {
+        $client = Client::where('sub_domain', $data['sub_domain'])->first();
+
+        return Organization::create([
+            'client_id' => $client->id,
+            'name' => $data['name'],
+            'phone' => $data['phone']
+        ]);
+    }
+
 }
