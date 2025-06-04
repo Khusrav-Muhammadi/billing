@@ -133,7 +133,8 @@ class OrganizationController extends Controller
         $organization = $this->repository->addOrganization($data);
 
         return [
-            'organization' => $organization
+            'organization' => $organization,
+            'tariff_id' => $organization->client->tariff_id
         ];
     }
 

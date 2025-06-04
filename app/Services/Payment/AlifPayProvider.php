@@ -66,6 +66,7 @@ class AlifPayProvider implements PaymentProviderInterface
             PaymentOperationType::TARIFF_RENEWAL => $this->tariffRenewalItems($invoiceId, $dto),
             PaymentOperationType::TARIFF_CHANGE => $this->tariffChangeItems($invoiceId, $dto),
             PaymentOperationType::ADDON_PURCHASE => $this->addonItems($invoiceId, $dto),
+            PaymentOperationType::ADD_ORGANIZATION => $this->demoToLiveItems($invoiceId, $dto),
             default => throw new \InvalidArgumentException('Unsupported operation type')
         };
     }
@@ -215,8 +216,8 @@ class AlifPayProvider implements PaymentProviderInterface
             'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$DTO->metadata['subdomain']}",
 //            'redirect_url' => "https://{$DTO->metadata['subdomain']}.shamcrm.com/payment",
             'redirect_url' => "https://hello.sham360.com/payment",
-           'webhook_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/ALIF',
-//            'webhook_url' => 'https://3e62-95-142-94-22.ngrok-free.app/api/payment/webhook/ALIF',
+//           'webhook_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/ALIF',
+            'webhook_url' => 'https://2328-95-142-94-22.ngrok-free.app/api/payment/webhook/ALIF',
             'meta' => (object)[],
             'receipt' => true,
             'phone' => ltrim($DTO->metadata['phone'], '+'),
@@ -243,6 +244,7 @@ class AlifPayProvider implements PaymentProviderInterface
             PaymentOperationType::DEMO_TO_LIVE => $this->calculateDemoToLiveTotal($dto),
             PaymentOperationType::TARIFF_RENEWAL => $this->calculateTariffRenewalTotal($dto),
             PaymentOperationType::TARIFF_CHANGE => $this->calculateTariffChangeTotal($dto),
+            PaymentOperationType::ADD_ORGANIZATION => $this->calculateDemoToLiveTotal($dto),
         };
     }
 

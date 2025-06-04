@@ -8,4 +8,5 @@ enum PaymentOperationType: string
     case TARIFF_RENEWAL = 'tariff_renewal';
     case TARIFF_CHANGE = 'tariff_change';
     case ADDON_PURCHASE = 'addon_purchase';
+    case ADD_ORGANIZATION = 'add_organization';
 }
