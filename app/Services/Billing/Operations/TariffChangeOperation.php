@@ -76,6 +76,7 @@ class TariffChangeOperation extends BaseBillingOperation
         $licenseDifference = $tariffPrice->license_price - $this->organization->sum_paid_for_license;
 
         $this->organization->decrement('balance', $licenseDifference);
+        $this->organization->increment('sum_paid_for_license', $licenseDifference);
 
         $this->createTransaction($invoiceItem, TransactionType::DEBIT);
 
@@ -84,7 +85,7 @@ class TariffChangeOperation extends BaseBillingOperation
         $service->handle($this->organization, $sum);
 
 
-//Todo  надо обновить тариф в срм
+        //Todo  надо обновить тариф в срм
     }
 
     private function createTransaction(InvoiceItem $invoiceItem, TransactionType $transactionType): void
