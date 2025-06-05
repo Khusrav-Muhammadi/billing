@@ -284,7 +284,7 @@ class ClientRepository implements ClientRepositoryInterface
             'tariff_price_by_month' => $tariffPriceByMonth,
             'sale_tariff_price' => round($saleTariffPrice, 2),
             'must_pay' => false,//$difference < 0,
-            'upgrade' => $organization->sum_paid_for_license,
+            'upgrade' => $organization->sum_paid_for_license > 0 ? $organization->sum_paid_for_license : 0 ,
             'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
             'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay, 2)) : 0,
