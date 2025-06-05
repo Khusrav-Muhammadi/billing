@@ -110,7 +110,7 @@ class OctoBankProvider implements PaymentProviderInterface
     }
 
     private function tariffRenewalItems(int $invoiceId, CreateInvoiceDTO $dto): array
-    {
+    {dd($dto);
         $months = $dto->metadata['months'];
 
         $originalMonthlyPrice = $dto->metadata['tariff_price'];
@@ -191,6 +191,7 @@ class OctoBankProvider implements PaymentProviderInterface
         $discountAmount = ($originalPrice * $percent) / 100;
         return max(0, $originalPrice - $discountAmount);
     }
+
     private function makeItem(string $name, float $price, int $months, int $invoiceId, TransactionPurpose $purpose, int $count, int $sale_id = null): array
     {
         return [
