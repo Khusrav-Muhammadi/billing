@@ -53,9 +53,9 @@ class TariffRenewalOperation extends BaseBillingOperation
             foreach ($invoiceItems as $invoiceItem) {
                 $this->createTransaction($invoiceItem, TransactionType::CREDIT);
 
+                dump($invoiceItem->price);
                 $this->organization->balance += $invoiceItem->price;
                 $this->organization->save();
-
             }
 
             $service = new WithdrawalService();
