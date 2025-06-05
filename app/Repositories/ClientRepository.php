@@ -12,7 +12,6 @@ use App\Models\InvoiceItem;
 use App\Models\InvoiceStatus;
 use App\Models\Organization;
 use App\Models\PartnerRequest;
-use App\Models\Tariff;
 use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
