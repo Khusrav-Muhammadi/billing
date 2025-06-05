@@ -49,9 +49,8 @@ class TariffRenewalOperation extends BaseBillingOperation
     {
         DB::transaction(function () {
             $invoiceItems = InvoiceItem::query()->where('invoice_id', $this->operationData['invoice_id'])->get();
-           dd($invoiceItems);
+
             foreach ($invoiceItems as $invoiceItem) {
-                dd($invoiceItem->price);
                 $this->createTransaction($invoiceItem, TransactionType::CREDIT);
 
                 $this->organization->balance += $invoiceItem->price;
