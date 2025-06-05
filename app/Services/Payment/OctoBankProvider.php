@@ -195,7 +195,7 @@ class OctoBankProvider implements PaymentProviderInterface
     {
         return [
             'name' => $name,
-            'amount' => $months,
+            'amount' => 1,
             'price' => (float) number_format(round(($price * $months), 2), 2, '.', ''),
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
