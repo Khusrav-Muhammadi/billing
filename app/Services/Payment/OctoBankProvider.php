@@ -110,7 +110,7 @@ class OctoBankProvider implements PaymentProviderInterface
     }
 
     private function tariffRenewalItems(int $invoiceId, CreateInvoiceDTO $dto): array
-    {dd($dto);
+    {
         $months = $dto->metadata['months'];
 
         $originalMonthlyPrice = $dto->metadata['tariff_price'];
@@ -121,7 +121,7 @@ class OctoBankProvider implements PaymentProviderInterface
             $this->makeItem(
                 name: "Продление тарифа {$dto->metadata['tariff_name']} на {$months} мес.",
                 price: $monthlyPrice,
-                months: $months,
+                months: 1,
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::EXTEND_TARIFF,
                 count: $months,
@@ -197,7 +197,7 @@ class OctoBankProvider implements PaymentProviderInterface
         return [
             'name' => $name,
             'amount' => 1,
-            'price' => (float) number_format(round($price, 2), 2, '.', ''),
+            'price' => (float) number_format(round(($price*$months), 2), 2, '.', ''),
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
             'purpose' => $purpose,
