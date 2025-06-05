@@ -24,7 +24,7 @@ class AlifPayProvider implements PaymentProviderInterface
         $invoice = $this->createInvoiceRecord($dto);
 
         $invoiceItems = $this->prepareInvoiceItems($invoice->id, $dto);
-dump($invoiceItems, $dto);
+//dump($invoiceItems, $dto);
         foreach ($invoiceItems as $invoiceItem) {
 
             InvoiceItem::query()->create($invoiceItem);
@@ -116,7 +116,7 @@ dump($invoiceItems, $dto);
         $originalMonthlyPrice = $dto->metadata['tariff_price'];
         $monthlyPrice = $this->applyDiscount($originalMonthlyPrice, 'tariff', $dto->metadata);
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
-
+dump($monthlyPrice, $months);
         return [
             $this->makeItem(
                 name: "Продление тарифа {$dto->metadata['tariff_name']} на {$months} мес.",
