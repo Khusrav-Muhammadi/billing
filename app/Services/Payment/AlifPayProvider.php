@@ -24,7 +24,7 @@ class AlifPayProvider implements PaymentProviderInterface
         $invoice = $this->createInvoiceRecord($dto);
 
         $invoiceItems = $this->prepareInvoiceItems($invoice->id, $dto);
-
+dump($invoiceItems);
         foreach ($invoiceItems as $invoiceItem) {
             InvoiceItem::query()->create($invoiceItem);
         }
