@@ -261,7 +261,7 @@ class ClientRepository implements ClientRepositoryInterface
         $saleTariffPrice = 0;
 
         foreach ($activeSales as $activeSale) {
-            dd($activeSale->min_months !== $data['month']);
+            dd($activeSale->min_months != $data['month']);
             if ($activeSale->min_months !== $data['month']) {
                 continue;
             }
