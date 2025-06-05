@@ -264,8 +264,8 @@ class ClientRepository implements ClientRepositoryInterface
             if ($activeSale->min_months !== $data['month']) {
                 continue;
             }
-
-            if ($activeSale->apply_to === 'progressive') {
+dd(2);
+            if ($activeSale->apply_to == 'progressive') {
                 $saleTariffPrice = $tariffPrice * ($activeSale->amount / 100) * $data['month'];
             } else {
                 $saleLicensePrice = $licensePrice * ($activeSale->amount / 100);
