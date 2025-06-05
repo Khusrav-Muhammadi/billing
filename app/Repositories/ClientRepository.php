@@ -302,6 +302,8 @@ class ClientRepository implements ClientRepositoryInterface
 
         $organization = Organization::find($data['organization_id']);
 
+        $client->update(['tariff_id' => $data['tariff_id']]);
+
         $currency = $client->currency;
         $exchangeRate = $currency->latestExchangeRate?->kurs ?? 1;
 
