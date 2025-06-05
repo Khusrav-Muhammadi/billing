@@ -175,7 +175,7 @@ class OctoBankProvider implements PaymentProviderInterface
     private function applyDiscount(float $originalPrice, string $discountType, array $metadata): float
     {
         if (!isset($metadata['discounts'][$discountType])) {
-            return round($originalPrice, 2);
+            return $originalPrice;
         }
 
         $discount = $metadata['discounts'][$discountType];
@@ -184,19 +184,18 @@ class OctoBankProvider implements PaymentProviderInterface
         if ($discountType === 'tariff' && isset($discount['months_required'])) {
             $months = $metadata['months'] ?? $metadata['operation_data']['months'] ?? 1;
             if ($months < $discount['months_required']) {
-                return round($originalPrice, 2);
+                return $originalPrice;
             }
         }
 
         $discountAmount = ($originalPrice * $percent) / 100;
-        return round(max(0, $originalPrice - $discountAmount), 2);
+        return max(0, $originalPrice - $discountAmount);
     }
-
     private function makeItem(string $name, float $price, int $months, int $invoiceId, TransactionPurpose $purpose, int $count, int $sale_id = null): array
     {
         return [
             'name' => $name,
-            'amount' => $count,
+            'amount' => $months,
             'price' => (float) number_format(round($price, 2), 2, '.', ''),
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
@@ -219,7 +218,7 @@ class OctoBankProvider implements PaymentProviderInterface
             $basketItem = [
                 'position_desc' => $item['position_desc'],
                 'count' => $itemCount,
-                'price' => number_format($itemPrice, 2, '.', ''), // Цена как строка с .00
+                'price' => number_format($itemPrice, 2, '.', ''),
                 'spic' => $item['spic']
             ];
 
@@ -229,7 +228,6 @@ class OctoBankProvider implements PaymentProviderInterface
 
         $basketTotal = round($basketTotal, 2);
 
-        // КЛЮЧЕВОЙ МОМЕНТ: отправляем total_sum как строку с фиксированным форматом
         $totalSumString = number_format($basketTotal, 2, '.', '');
 
         $shopTransactionId = $this->generateShopTransactionId($invoice->id);
@@ -297,10 +295,11 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function getPaymentDescription(PaymentOperationType $operationType, array $metadata): string
     {
+        Log::error(json_encode($metadata));
         return match ($operationType) {
             PaymentOperationType::DEMO_TO_LIVE => "Активация лицензии и тарифа {$metadata['tariff_name']}",
             PaymentOperationType::TARIFF_RENEWAL => "Продление тарифа {$metadata['tariff_name']}",
-            PaymentOperationType::TARIFF_CHANGE => "Смена тарифа на {$metadata['new_tariff']}",
+            PaymentOperationType::TARIFF_CHANGE => "Смена тарифа на {$metadata['newTariff']->tariff->name}",
             PaymentOperationType::ADDON_PURCHASE => "Покупка пакета {$metadata['addon_name']}",
             default => 'Оплата услуг ShamCRM'
         };
