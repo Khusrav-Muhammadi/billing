@@ -281,7 +281,7 @@ Log::error($licensePrice .'  ' . $saleLicensePrice . '  ' . $organization->sum_p
             'upgrade' => $organization->sum_paid_for_license,
             'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
-            'sum_for_pay' => $sumForPay < 0 ? abs($sumForPay) : 0,
+            'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay,2)) : 0,
             'currency' => $client->currency
         ];
     }
