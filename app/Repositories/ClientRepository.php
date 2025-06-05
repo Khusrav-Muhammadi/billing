@@ -274,7 +274,7 @@ class ClientRepository implements ClientRepositoryInterface
         $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
         $tariffForPay = $tariffPriceByMonth - $saleTariffPrice;
         $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
-
+dump($tariffForPay, $organization->balance, $licenseForPay);
         return [
             'organization_balance' => $organization->balance,
             'license_difference' => $licenseDifference,
@@ -296,46 +296,42 @@ class ClientRepository implements ClientRepositoryInterface
     {
         $client = Client::where('sub_domain', $data['sub_domain'])->first();
         $newTariff = TariffCurrency::find($data['tariff_id']);
-        $lastTariff = TariffCurrency::find($client->tariff_id);
 
         $tariffPrice = $newTariff->tariff_price * $data['month'];
 
-        $organizations = $client->organizations;
+        $organization = Organization::find($data['organization_id']);
 
         $currency = $client->currency;
         $exchangeRate = $currency->latestExchangeRate?->kurs ?? 1;
 
-        if ($lastTariff->license_price < $newTariff->license_price) {
-            $difference = $newTariff->license_price - $lastTariff->license_price;
+        if ($organization->sum_paid_for_license < $newTariff->license_price) {
+            $difference = $newTariff->license_price - $organization->sum_paid_for_license;
 
             $amounts = $this->calculateAmounts($difference, $currency, $exchangeRate);
 
-            foreach ($organizations as $organization) {
-                $organization->decrement('balance', $difference);
-                $transactions = [
-                    [
-                        'sum' => $difference,
-                        'accounted_amount' => $amounts['accounted_amount']
-                    ]
-                ];
-                $this->createTransactions($client, $organization, $transactions);
-            }
+            $organization->decrement('balance', $difference);
+            $transactions = [
+                [
+                    'sum' => $difference,
+                    'accounted_amount' => $amounts['accounted_amount']
+                ]
+            ];
+            $this->createTransactions($client, $organization, $transactions);
         }
 
         $service = new WithdrawalService();
         $tariffSum = $service->countSum($client);
         $amounts = $this->calculateAmounts($tariffSum, $currency, $exchangeRate);
 
-        foreach ($organizations as $organization) {
-            $organization->decrement('balance', $tariffPrice);
-            $transactions = [
-                [
-                    'sum' => $tariffSum,
-                    'accounted_amount' => $amounts['accounted_amount']
-                ]
-            ];
-            $this->createTransactions($client, $organization, $transactions);
-        }
+        $organization->decrement('balance', $tariffPrice);
+        $transactions = [
+            [
+                'sum' => $tariffSum,
+                'accounted_amount' => $amounts['accounted_amount']
+            ]
+        ];
+        $this->createTransactions($client, $organization, $transactions);
+
     }
 
     private function createTransactions(Client $client, Organization $organization, array $transactions): void

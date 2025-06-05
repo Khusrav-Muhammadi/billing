@@ -3,13 +3,11 @@
 namespace App\Services\Billing\Operations;
 
 use App\Models\Client;
-use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Organization;
 use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Services\Billing\Enum\TransactionType;
-use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
 
