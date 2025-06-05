@@ -44,9 +44,9 @@ class DemoToLiveOperation extends BaseBillingOperation
     public function getMetadata(): array
     {
         return [
-            'description' => "Активация тарифа {$this->client->tariffPrice->tariff->name}",
+            'description' => "Активация тарифа {$this->newTariff->tariff->name}",
             'client_name' => $this->client->name,
-            'tariff_name' => $this->client->tariffPrice->tariff->name,
+            'tariff_name' => $this->newTariff->tariff->name,
             'phone' => $this->client->phone,
             'email' => $this->client->email,
             'subdomain' => $this->client->sub_domain,
