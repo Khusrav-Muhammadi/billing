@@ -121,10 +121,10 @@ class OctoBankProvider implements PaymentProviderInterface
             $this->makeItem(
                 name: "Продление тарифа {$dto->metadata['tariff_name']} на {$months} мес.",
                 price: $monthlyPrice,
-                months: 1,
+                months: $months,
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::EXTEND_TARIFF,
-                count: $months,
+                count: 1,
                 sale_id: $tariffSaleId
             )
         ];
