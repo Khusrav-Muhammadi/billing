@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Services\Billing\Enum\TransactionType;
+use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
 
 class TariffChangeOperation extends BaseBillingOperation
@@ -65,13 +66,25 @@ class TariffChangeOperation extends BaseBillingOperation
 
     private function processSuccessfulPayment(InvoiceItem $invoiceItem)
     {
+        $invoice = $invoiceItem->invoice;
+        $tariffPrice = TariffCurrency::find($invoice->tariff_id);
+
         $this->organization->increment('balance', $invoiceItem->price);
 
         $this->createTransaction($invoiceItem, TransactionType::CREDIT);
 
-        $this->organization->decrement('balance', $invoiceItem->price);
+        $licenseDifference = $tariffPrice->license_price - $this->organization->sum_paid_for_license;
+
+        $this->organization->decrement('balance', $licenseDifference);
 
         $this->createTransaction($invoiceItem, TransactionType::DEBIT);
+
+        $service = new WithdrawalService();
+        $sum = $service->countSum($this->organization->client);
+        $service->handle($this->organization, $sum);
+
+
+//Todo  надо обновить тариф в срм
     }
 
     private function createTransaction(InvoiceItem $invoiceItem, TransactionType $transactionType): void
