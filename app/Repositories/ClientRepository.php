@@ -261,14 +261,21 @@ class ClientRepository implements ClientRepositoryInterface
         $saleTariffPrice = 0;
 
         foreach ($activeSales as $activeSale) {
-            if ($activeSale->apply_to == 'progressive') $saleTariffPrice = $tariffPrice * $activeSale->amount * $data['month'] / 100;
-            else $saleLicensePrice = $licensePrice * $activeSale->amount / 100;
+            if ($activeSale->min_months !== $data['month']) {
+                continue;
+            }
+
+            if ($activeSale->apply_to === 'progressive') {
+                $saleTariffPrice = $tariffPrice * ($activeSale->amount / 100) * $data['month'];
+            } else {
+                $saleLicensePrice = $licensePrice * ($activeSale->amount / 100);
+            }
         }
 
         $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
         $tariffForPay = $tariffPriceByMonth - $saleTariffPrice;
         $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
-Log::error($licensePrice .'  ' . $saleLicensePrice . '  ' . $organization->sum_paid_for_license);
+
         return [
             'organization_balance' => $organization->balance,
             'license_difference' => $licenseDifference,
@@ -281,7 +288,7 @@ Log::error($licensePrice .'  ' . $saleLicensePrice . '  ' . $organization->sum_p
             'upgrade' => $organization->sum_paid_for_license,
             'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
-            'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay,2)) : 0,
+            'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay, 2)) : 0,
             'currency' => $client->currency
         ];
     }
