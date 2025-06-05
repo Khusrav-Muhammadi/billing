@@ -26,7 +26,7 @@ class AlifPayProvider implements PaymentProviderInterface
         $invoiceItems = $this->prepareInvoiceItems($invoice->id, $dto);
 
         foreach ($invoiceItems as $invoiceItem) {
-            dd($invoiceItem);
+
             InvoiceItem::query()->create($invoiceItem);
         }
 
@@ -61,7 +61,7 @@ class AlifPayProvider implements PaymentProviderInterface
     }
 
     private function prepareInvoiceItems(int $invoiceId, CreateInvoiceDTO $dto): array
-    {
+    {dd($dto->operationType);
         return match ($dto->operationType) {
             PaymentOperationType::DEMO_TO_LIVE => $this->demoToLiveItems($invoiceId, $dto),
             PaymentOperationType::TARIFF_RENEWAL => $this->tariffRenewalItems($invoiceId, $dto),
