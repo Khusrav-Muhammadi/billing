@@ -123,7 +123,7 @@ class AlifPayProvider implements PaymentProviderInterface
                 price: $monthlyPrice,
                 months: $dto->metadata['operation_data']['months'],
                 invoiceId: $invoiceId,
-                purpose: TransactionPurpose::TARIFF,
+                purpose: TransactionPurpose::EXTEND_TARIFF,
                 sale_id: $tariffSaleId
             )
         ];

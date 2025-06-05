@@ -129,7 +129,7 @@ class InvoiceProvider implements PaymentProviderInterface
                 price: $monthlyPrice,
                 months: $months,
                 invoiceId: $invoiceId,
-                purpose: TransactionPurpose::TARIFF,
+                purpose: TransactionPurpose::EXTEND_TARIFF,
                 quantity: $months,
                 sale_id: $tariffSaleId
             )

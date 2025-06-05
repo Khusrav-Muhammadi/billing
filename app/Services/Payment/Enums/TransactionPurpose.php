@@ -6,6 +6,8 @@ enum TransactionPurpose: string
 {
     case TARIFF = 'tariff';
 
+    case EXTEND_TARIFF = 'extend_tariff';
+
     case LICENSE = 'license';
 
     case ADDON_PACKAGE = 'addon_package';

@@ -123,7 +123,7 @@ class OctoBankProvider implements PaymentProviderInterface
                 price: $monthlyPrice,
                 months: $months,
                 invoiceId: $invoiceId,
-                purpose: TransactionPurpose::TARIFF,
+                purpose: TransactionPurpose::EXTEND_TARIFF,
                 count: $months,
                 sale_id: $tariffSaleId
             )
@@ -196,7 +196,7 @@ class OctoBankProvider implements PaymentProviderInterface
         return [
             'name' => $name,
             'amount' => 1,
-            'price' => (float) number_format(round(($price * $months), 2), 2, '.', ''),
+            'price' => (float) number_format(round($price, 2), 2, '.', ''),
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
             'purpose' => $purpose,
