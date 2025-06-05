@@ -40,7 +40,7 @@ class TariffChangeOperation extends BaseBillingOperation
             'email' => $this->client->email,
             'subdomain' => $this->client->sub_domain,
             'license_difference' => $this->newTariff->license_price > $this->client->tariffPrice->license_price ? ($this->newTariff->license_price - $this->organization->sum_paid_for_license) : 0,
-            'tariff_price' => $this->client->tariffPrice->tariff_price,
+            'tariff_price' => $this->newTariff->tariff_price,
             'currency_id' => $this->client->currency_id,
             'months' => $this->operationData["months"],
             'organization_balance' => $this->organization->balance
