@@ -274,7 +274,8 @@ class ClientRepository implements ClientRepositoryInterface
         $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
         $licenseForPay = max($licenseForPay, 0);
         $tariffForPay = $tariffPriceByMonth - $saleTariffPrice;
-        $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
+        if ($data['type' == 'tariff_renewal']) $sumForPay = $tariffForPay;
+        else $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
 
         return [
             'organization_balance' => $organization->balance,
@@ -284,7 +285,7 @@ class ClientRepository implements ClientRepositoryInterface
             'tariff_price' => $tariffPrice,
             'tariff_price_by_month' => $tariffPriceByMonth,
             'sale_tariff_price' => round($saleTariffPrice, 2),
-            'must_pay' => false,//$difference < 0,
+            'must_pay' => false, //$difference < 0,
             'upgrade' => $organization->sum_paid_for_license,
             'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
