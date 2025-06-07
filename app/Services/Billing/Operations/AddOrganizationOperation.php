@@ -7,12 +7,14 @@ use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Organization;
+use App\Models\Tariff;
 use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Services\Billing\Enum\TransactionType;
 use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class AddOrganizationOperation extends BaseBillingOperation
@@ -87,7 +89,25 @@ class AddOrganizationOperation extends BaseBillingOperation
 
     public function createInSham(Organization $organization, Client $client, string $password)
     {
-        CreateOrganizationJob::dispatch($client, $organization, $password)->delay(120);
+        $url = "https://hello-back.sham360.com/api/organization";
+
+        $tariff = Tariff::find($this->client->tariff_id);
+
+        Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->post($url, [
+            'name' => $this->organization->name,
+            'email' => $this->client->email,
+            'phone' => $this->client->phone,
+            'tariff_id' => $tariff->id,
+            'user_count' => $tariff->user_count,
+            'project_count' => $tariff->project_count,
+            'b_organization_id' => $this->organization->id,
+            'password' => $password,
+            'is_demo' => $this->client->is_demo
+        ]);
+
+//        CreateOrganizationJob::dispatch($client, $organization, $password)->delay(120);
     }
 
     private function createTransaction(InvoiceItem $invoiceItem, TransactionType $transactionType): void
