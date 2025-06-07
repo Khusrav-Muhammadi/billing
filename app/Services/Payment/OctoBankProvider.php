@@ -66,7 +66,7 @@ class OctoBankProvider implements PaymentProviderInterface
             PaymentOperationType::TARIFF_RENEWAL => $this->tariffRenewalItems($invoiceId, $dto),
             PaymentOperationType::TARIFF_CHANGE => $this->tariffChangeItems($invoiceId, $dto),
             PaymentOperationType::ADDON_PURCHASE => $this->addonItems($invoiceId, $dto),
-            PaymentOperationType::ADD_ORGANIZATION => $this->demoToLiveItems($invoiceId, $dto), // Добавлено как в AlifPayProvider
+            PaymentOperationType::ADD_ORGANIZATION => $this->demoToLiveItems($invoiceId, $dto),
             default => throw new \InvalidArgumentException('Unsupported operation type')
         };
     }

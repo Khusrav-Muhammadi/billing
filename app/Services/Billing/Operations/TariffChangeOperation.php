@@ -71,7 +71,7 @@ class TariffChangeOperation extends BaseBillingOperation
         $tariffPrice = TariffCurrency::find($invoice->tariff_id);
 
         $this->organization->increment('balance', $invoiceItem->price);
-Log::error($invoiceItem->price);
+
         $this->createTransaction($invoiceItem, TransactionType::CREDIT);
 
         $licenseDifference = $tariffPrice->license_price - $this->organization->sum_paid_for_license;
