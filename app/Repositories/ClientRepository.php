@@ -7,9 +7,6 @@ use App\Jobs\ChangeRequestStatusJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
-use App\Models\Invoice;
-use App\Models\InvoiceItem;
-use App\Models\InvoiceStatus;
 use App\Models\Organization;
 use App\Models\PartnerRequest;
 use App\Models\TariffCurrency;
@@ -18,15 +15,9 @@ use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Services\Sale\SaleService;
 use App\Services\WithdrawalService;
 use Carbon\Carbon;
-use Exception;
-use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
-use function Pest\Laravel\put;
 
 class ClientRepository implements ClientRepositoryInterface
 {
