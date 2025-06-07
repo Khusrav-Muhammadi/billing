@@ -66,6 +66,7 @@ class OctoBankProvider implements PaymentProviderInterface
             PaymentOperationType::TARIFF_RENEWAL => $this->tariffRenewalItems($invoiceId, $dto),
             PaymentOperationType::TARIFF_CHANGE => $this->tariffChangeItems($invoiceId, $dto),
             PaymentOperationType::ADDON_PURCHASE => $this->addonItems($invoiceId, $dto),
+            PaymentOperationType::ADD_ORGANIZATION => $this->demoToLiveItems($invoiceId, $dto), // Добавлено как в AlifPayProvider
             default => throw new \InvalidArgumentException('Unsupported operation type')
         };
     }
@@ -102,7 +103,7 @@ class OctoBankProvider implements PaymentProviderInterface
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
             purpose: TransactionPurpose::TARIFF,
-            count: $dto->metadata['operation_data']['months'],
+            count: $dto->metadata['operation_data']['months'], // Исправлено: убран лишний параметр
             sale_id: $tariffSaleId
         );
 
@@ -121,7 +122,7 @@ class OctoBankProvider implements PaymentProviderInterface
             $this->makeItem(
                 name: "Продление тарифа {$dto->metadata['tariff_name']} на {$months} мес.",
                 price: $monthlyPrice,
-                months: $months,
+                months: $dto->metadata['operation_data']['months'], // Исправлено: используем operation_data как в AlifPayProvider
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::EXTEND_TARIFF,
                 count: 1,
@@ -136,12 +137,13 @@ class OctoBankProvider implements PaymentProviderInterface
 
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
         $licenseDifference = $this->applyDiscount($dto->metadata['license_difference'], 'license', $dto->metadata);
-        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
+        // Исправлено: используем newTariff->tariff_price как в AlifPayProvider
+        $tariffPrice = $this->applyDiscount($dto->metadata['newTariff']->tariff_price, 'tariff', $dto->metadata);
 
         $items[] = $this->makeItem(
             name: "Изменение тарифа ({$dto->metadata['currentTariff']->name} → {$dto->metadata['newTariff']->tariff->name})",
             price: abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months'])))),
-            months: $dto->metadata['operation_data']['months'],
+            months: 1, // Исправлено: как в AlifPayProvider
             invoiceId: $invoiceId,
             purpose: TransactionPurpose::CHANGE_TARIFF,
             count: 1,
@@ -192,12 +194,13 @@ class OctoBankProvider implements PaymentProviderInterface
         return max(0, $originalPrice - $discountAmount);
     }
 
+    // Исправлено: убрана логика подсчета цены с месяцами, как в AlifPayProvider
     private function makeItem(string $name, float $price, int $months, int $invoiceId, TransactionPurpose $purpose, int $count, int $sale_id = null): array
     {
         return [
             'name' => $name,
             'amount' => 1,
-            'price' => (float) number_format(round(($price*$months), 2), 2, '.', ''),
+            'price' => $purpose == TransactionPurpose::TARIFF ? ($price * $months) : $price, // Логика как в AlifPayProvider
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
             'purpose' => $purpose,
@@ -245,7 +248,7 @@ class OctoBankProvider implements PaymentProviderInterface
                 'phone' => ltrim($dto->metadata['phone'], '+'),
                 'email' => $dto->metadata['email']
             ],
-            'total_sum' => $totalSumString, // СТРОКА, а не float!
+            'total_sum' => $totalSumString,
             'currency' => 'USD',
             'description' => $this->getPaymentDescription($dto->operationType, $dto->metadata),
             'basket' => $basket,
@@ -289,6 +292,7 @@ class OctoBankProvider implements PaymentProviderInterface
 
         return $responseData['data'] ?? $responseData;
     }
+
     private function generateShopTransactionId(int $invoiceId): string
     {
         return $invoiceId;
@@ -318,6 +322,7 @@ class OctoBankProvider implements PaymentProviderInterface
             PaymentOperationType::TARIFF_RENEWAL => $this->calculateTariffRenewalTotal($dto),
             PaymentOperationType::TARIFF_CHANGE => $this->calculateTariffChangeTotal($dto),
             PaymentOperationType::ADDON_PURCHASE => $this->calculateAddonTotal($dto),
+            PaymentOperationType::ADD_ORGANIZATION => $this->calculateDemoToLiveTotal($dto), // Добавлено как в AlifPayProvider
         };
     }
 
@@ -333,27 +338,34 @@ class OctoBankProvider implements PaymentProviderInterface
         $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
         $total += $tariffPrice * $dto->metadata['operation_data']['months'];
 
-        return round($total, 2);
+        return $total; // Убрано round() как в AlifPayProvider
     }
 
     private function calculateTariffRenewalTotal(CreateInvoiceDTO $dto): float
     {
         $monthlyPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
-        return round($monthlyPrice * $dto->metadata['months'], 2);
+        return $monthlyPrice * $dto->metadata['months']; // Убрано round() как в AlifPayProvider
     }
 
     private function calculateAddonTotal(CreateInvoiceDTO $dto): float
     {
-        return round($this->applyDiscount($dto->metadata['addon_price'], 'addon', $dto->metadata), 2);
+        return $this->applyDiscount($dto->metadata['addon_price'], 'addon', $dto->metadata); // Убрано round() как в AlifPayProvider
     }
 
     private function calculateTariffChangeTotal(CreateInvoiceDTO $dto): float
     {
-        $licenseDifference = $this->applyDiscount($dto->metadata['license_difference'], 'license', $dto->metadata);
-        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
+        // Исправлено: используем логику как в AlifPayProvider
+        $total = 0;
 
-        $total = abs(($dto->metadata['organization_balance'] - ($licenseDifference + ($tariffPrice * $dto->metadata['months']))));
-        return round($total, 2);
+        if (($dto->metadata['license_difference'] ?? 0) > 0) {
+            $licensePrice = $this->applyDiscount($dto->metadata['license_difference'], 'license', $dto->metadata);
+            $total += $licensePrice;
+        }
+
+        $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
+        $total += $tariffPrice * $dto->metadata['operation_data']['months'];
+
+        return $total; // Убрано round() и изменена логика как в AlifPayProvider
     }
 
     public function handleWebhook(array $data): WebhookResponse
