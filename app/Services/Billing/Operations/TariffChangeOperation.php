@@ -69,7 +69,8 @@ class TariffChangeOperation extends BaseBillingOperation
         $invoice = $invoiceItem->invoice;
         $tariffPrice = TariffCurrency::find($invoice->tariff_id);
 
-        $this->organization->increment('balance', $invoiceItem->price);
+        $this->organization->balance += $invoiceItem->price;
+        $this->organization->save();
 
         $this->createTransaction($invoiceItem, TransactionType::CREDIT);
 
