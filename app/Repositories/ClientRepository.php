@@ -307,21 +307,6 @@ class ClientRepository implements ClientRepositoryInterface
         $currency = $client->currency;
         $exchangeRate = $currency->latestExchangeRate?->kurs ?? 1;
 
-        if ($organization->sum_paid_for_license < $newTariff->license_price) {
-            $difference = $newTariff->license_price - $organization->sum_paid_for_license;
-
-            $amounts = $this->calculateAmounts($difference, $currency, $exchangeRate);
-
-            $organization->decrement('balance', $difference);
-            $transactions = [
-                [
-                    'sum' => $difference,
-                    'accounted_amount' => $amounts['accounted_amount']
-                ]
-            ];
-            $this->createTransactions($client, $organization, $transactions);
-        }
-
         $service = new WithdrawalService();
         $tariffSum = $service->countSum($client);
         $amounts = $this->calculateAmounts($tariffSum, $currency, $exchangeRate);
