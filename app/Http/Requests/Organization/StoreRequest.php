@@ -17,7 +17,7 @@ class StoreRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'phone' => ['required']
+            'phone' => ['required', Rule::unique('organizations','phone')]
         ];
     }
 }
