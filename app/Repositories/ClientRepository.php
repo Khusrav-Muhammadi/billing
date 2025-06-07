@@ -236,8 +236,8 @@ class ClientRepository implements ClientRepositoryInterface
         $client = Client::where('sub_domain', $data['sub_domain'])->first();
 
         $organization = Organization::find($data['organization_id']);
-        $newTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('id', $data['tariff_id'])->first();
-        $lastTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('id',  $client->tariff_id)->first();
+        $newTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('tariff_id', $data['tariff_id'])->first();
+        $lastTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('tariff_id',  $client->tariff_id)->first();
 
         $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
         $tariffPrice = $newTariff->tariff_price;
