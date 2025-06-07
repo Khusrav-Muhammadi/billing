@@ -69,13 +69,13 @@ class TariffChangeOperation extends BaseBillingOperation
     {
         $invoice = $invoiceItem->invoice;
         $tariffPrice = TariffCurrency::find($invoice->tariff_id);
-Log::error($this->organization);
+
         $this->organization->increment('balance', $invoiceItem->price);
 
         $this->createTransaction($invoiceItem, TransactionType::CREDIT);
 
         $licenseDifference = $tariffPrice->license_price - $this->organization->sum_paid_for_license;
-Log::error($licenseDifference . '  ' . $this->organization);
+
         $this->organization->decrement('balance', $licenseDifference);
         $this->organization->increment('sum_paid_for_license', $licenseDifference);
 
@@ -83,6 +83,7 @@ Log::error($licenseDifference . '  ' . $this->organization);
 
         $service = new WithdrawalService();
         $sum = $service->countSum($this->organization->client);
+        Log::error($sum);
         $service->handle($this->organization, $sum);
 
 
