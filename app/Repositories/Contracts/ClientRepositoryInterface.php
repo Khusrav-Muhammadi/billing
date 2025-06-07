@@ -27,6 +27,5 @@ interface ClientRepositoryInterface
 
     public function countDifference(array $data);
 
-    public function webhookChangeTariff(Request $request);
 
 }
