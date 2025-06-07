@@ -23,7 +23,7 @@ class InvoiceRequest extends FormRequest
             'tariff_name' => ['required', Rule::exists('tariffs','name')],
             'organization_id' => ['required', Rule::exists('organizations','id')],
             'months' => ['required', 'in:6,12'],
-            'tariff_id' => ['required', Rule::exists('tariffs','id')],
+            'tariff_id' => ['required', Rule::exists('tariff_currencies','id')],
         ];
     }
 }
