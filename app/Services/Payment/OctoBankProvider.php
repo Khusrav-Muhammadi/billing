@@ -99,11 +99,11 @@ class OctoBankProvider implements PaymentProviderInterface
 
         $items[] = $this->makeItem(
             name: "Активация тарифа {$dto->metadata['tariff_name']}",
-            price: $tariffPrice,
+            price: $tariffPrice * $dto->metadata['operation_data']['months'], // Умножаем цену на месяцы здесь
             months: $dto->metadata['operation_data']['months'],
             invoiceId: $invoiceId,
             purpose: TransactionPurpose::TARIFF,
-            count: $dto->metadata['operation_data']['months'], // Исправлено: убран лишний параметр
+            count: 1, // Исправлено: count должен быть 1, а цена уже умножена на месяцы
             sale_id: $tariffSaleId
         );
 
@@ -121,8 +121,8 @@ class OctoBankProvider implements PaymentProviderInterface
         return [
             $this->makeItem(
                 name: "Продление тарифа {$dto->metadata['tariff_name']} на {$months} мес.",
-                price: $monthlyPrice,
-                months: $dto->metadata['operation_data']['months'], // Исправлено: используем operation_data как в AlifPayProvider
+                price: $monthlyPrice * $dto->metadata['operation_data']['months'], // Умножаем цену на месяцы здесь
+                months: $dto->metadata['operation_data']['months'],
                 invoiceId: $invoiceId,
                 purpose: TransactionPurpose::EXTEND_TARIFF,
                 count: 1,
@@ -194,13 +194,13 @@ class OctoBankProvider implements PaymentProviderInterface
         return max(0, $originalPrice - $discountAmount);
     }
 
-    // Исправлено: убрана логика подсчета цены с месяцами, как в AlifPayProvider
+    // Исправлено: убрана автоматическая логика умножения на месяцы
     private function makeItem(string $name, float $price, int $months, int $invoiceId, TransactionPurpose $purpose, int $count, int $sale_id = null): array
     {
         return [
             'name' => $name,
             'amount' => 1,
-            'price' => $purpose == TransactionPurpose::TARIFF ? ($price * $months) : $price, // Логика как в AlifPayProvider
+            'price' => (float) number_format(round($price, 2), 2, '.', ''), // Просто передаем цену как есть
             'invoice_id' => $invoiceId,
             'spic' => '11201001001000000',
             'purpose' => $purpose,
