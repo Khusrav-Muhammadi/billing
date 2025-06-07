@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Services\Billing\Enum\TransactionType;
 use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TariffChangeOperation extends BaseBillingOperation
 {
@@ -68,14 +69,13 @@ class TariffChangeOperation extends BaseBillingOperation
     {
         $invoice = $invoiceItem->invoice;
         $tariffPrice = TariffCurrency::find($invoice->tariff_id);
-
-        $this->organization->balance += $invoiceItem->price;
-        $this->organization->save();
+Log::error($this->organization);
+        $this->organization->increment('balance', $invoiceItem->price);
 
         $this->createTransaction($invoiceItem, TransactionType::CREDIT);
 
         $licenseDifference = $tariffPrice->license_price - $this->organization->sum_paid_for_license;
-
+Log::error($licenseDifference . '  ' . $this->organization);
         $this->organization->decrement('balance', $licenseDifference);
         $this->organization->increment('sum_paid_for_license', $licenseDifference);
 
