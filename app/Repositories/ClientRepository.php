@@ -173,7 +173,7 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function createTransaction(Client $client, array $data)
     {
-        $organization = Organization::find($data['organization_id']) ?? $client->organizations()->first();
+        $organization = Organization::find($data['organization_id'] ?? null) ?? $client->organizations()->first();
         DB::transaction(function () use ($data, $client, $organization) {
             $organization = $organization;
             $data['type'] = TransactionType::CREDIT;
