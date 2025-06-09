@@ -46,7 +46,11 @@ class TariffController extends Controller
 
     public function getTariffByCurrency(Request $request)
     {
-        $subdomain = parse_url($request->fullUrl(), PHP_URL_HOST);
+        $referer = $request->header('referer');
+        $host = parse_url($referer, PHP_URL_HOST);
+
+        $parts = explode('.', $host);
+        $subdomain = count($parts) > 2 ? $parts[0] : null;
 
         $client = Client::query()->where('sub_domain', $subdomain)->first();
 
