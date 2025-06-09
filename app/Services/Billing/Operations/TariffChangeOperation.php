@@ -74,7 +74,7 @@ class TariffChangeOperation extends BaseBillingOperation
 
         $this->organization->increment('balance', $invoiceItem->price);
 
-        $this->createTransaction($invoiceItem, TransactionType::CREDIT);
+        $this->createTransaction($invoiceItem, TransactionType::CREDIT, $invoiceItem->price);
 
         $licenseDifference = $tariffPrice->license_price - $this->organization->sum_paid_for_license;
         $licenseDifference = max($licenseDifference, 0);
@@ -82,7 +82,7 @@ class TariffChangeOperation extends BaseBillingOperation
         $this->organization->decrement('balance', $licenseDifference);
         $this->organization->increment('sum_paid_for_license', $licenseDifference);
 
-        $this->createTransaction($invoiceItem, TransactionType::DEBIT);
+        $this->createTransaction($invoiceItem, TransactionType::DEBIT, $licenseDifference);
 
         $service = new WithdrawalService();
         $sum = $service->countSum($this->organization->client);
@@ -93,7 +93,7 @@ class TariffChangeOperation extends BaseBillingOperation
         //Todo  надо обновить тариф в срм
     }
 
-    private function createTransaction(InvoiceItem $invoiceItem, TransactionType $transactionType): void
+    private function createTransaction(InvoiceItem $invoiceItem, TransactionType $transactionType, $price): void
     {
         $isUSD = $this->getCurrency() === 'USD';
         if(!$isUSD) {
