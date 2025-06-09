@@ -91,7 +91,21 @@ class OrganizationController extends Controller
 
         $sum = $tariffPrice->tariff_price / $daysInMonth;
 
-        $days = $organization->balance / $sum;
+        $saleTariffPrice = 0;
+
+        $saleService = new SaleService();
+        $activeSales = $saleService->getActiveSales();
+        foreach ($activeSales as $activeSale) {
+            if ($activeSale->min_months != 12) {
+                continue;
+            }
+            if ($activeSale->apply_to == 'progressive') {
+                $saleTariffPrice = $tariffPrice * ($activeSale->amount / 100) * 12;
+            }
+        }
+
+
+        $days = ($organization->balance + $saleTariffPrice) / $sum;
 
         $endDate = Carbon::now()->addDays($days);
 
