@@ -45,6 +45,7 @@ Route::middleware('auth')->group(function () {
 
     Route::group(['prefix' => 'payment'], function () {
         Route::get('/', [\App\Http\Controllers\PaymentController::class, 'index'])->name('payment.index');
+        Route::get('/approve-invoice/{invoice}', [\App\Http\Controllers\PaymentController::class, 'approveInvoice'])->name('payment.approve-invoice');
     });
 
     Route::group(['prefix' => 'organization'], function () {
