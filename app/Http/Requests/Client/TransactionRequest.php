@@ -16,7 +16,7 @@ class TransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'organization_id' => ['required', Rule::exists('organizations','id')],
+            'organization_id' => ['nullable', Rule::exists('organizations','id')],
             'date' => ['required'],
             'sum' => ['required'],
         ];

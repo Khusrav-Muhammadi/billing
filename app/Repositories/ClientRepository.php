@@ -12,6 +12,7 @@ use App\Models\PartnerRequest;
 use App\Models\TariffCurrency;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use App\Services\Billing\Enum\TransactionType;
 use App\Services\Sale\SaleService;
 use App\Services\WithdrawalService;
 use Carbon\Carbon;
@@ -172,9 +173,10 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function createTransaction(Client $client, array $data)
     {
-        DB::transaction(function () use ($data, $client) {
-            $organization = Organization::find($data['organization_id']);
-            $data['type'] = 'Пополнение';
+        $organization = Organization::find($data['organization_id']) ?? $client->organizations()->first();
+        DB::transaction(function () use ($data, $client, $organization) {
+            $organization = $organization;
+            $data['type'] = TransactionType::CREDIT;
             $data['client_id'] = $client->id;
             Transaction::create($data);
             $organization->increment('balance', $data['sum']);
