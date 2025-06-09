@@ -100,7 +100,7 @@ class OrganizationController extends Controller
                 continue;
             }
             if ($activeSale->apply_to == 'progressive') {
-                $saleTariffPrice = $tariffPrice * ($activeSale->amount / 100) * 12;
+                $saleTariffPrice = $tariffPrice->tariff_price * ($activeSale->amount / 100) * 12;
             }
         }
 
