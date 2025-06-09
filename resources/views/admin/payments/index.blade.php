@@ -84,9 +84,9 @@
 
                                 <div class="d-flex justify-content-end p-3">
                                     <button type="button" class="btn btn-secondary mr-2" data-bs-dismiss="modal">Закрыть</button>
-{{--                                    @if($invoice->provider == 'INVOICE')--}}
+                                    @if($invoice->provider == 'INVOICE')
                                         <a type="submit" href="{{ route('payment.approve-invoice', $invoice->id) }}" class="btn btn-primary">Одобрить</a>
-{{--                                    @endif--}}
+                                    @endif
                                 </div>
                             </div>
                         </div>
