@@ -183,7 +183,14 @@ class ClientController extends Controller
 
         $dailyPayment = round($this->calculateDailyPayment($client), 4);
 
-        $days = (int)($client->balance / $dailyPayment);
+        if ($client->balance > 0)
+        {
+
+            $days = (int)($client->balance / $dailyPayment);
+        }
+        else {
+            $days = 0;
+        }
 
         return Carbon::now()->addDays($days);
     }
