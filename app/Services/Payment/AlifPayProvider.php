@@ -55,7 +55,8 @@ class AlifPayProvider implements PaymentProviderInterface
             'provider' => PaymentProviderType::ALIF,
             'additional_data' => json_encode([]),
             'operation_type' => $dto->operationType,
-            'tariff_id' => $dto->metadata['operation_data']['tariff_id']
+            'tariff_id' => $dto->metadata['operation_data']['tariff_id'],
+            'months' => $dto->metadata['operation_data']['months']
         ]);
     }
 

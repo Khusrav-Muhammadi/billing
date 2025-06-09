@@ -23,7 +23,9 @@ class TariffChangeOperation extends BaseBillingOperation
         $this->client = $organization->client;
 
         if (isset($this->operationData['invoice_id'])) {
+
             $invoice = Invoice::query()->where('id', $this->operationData['invoice_id'])->first();
+
             $this->newTariff = TariffCurrency::find($invoice->tariff_id);
         }
         else {

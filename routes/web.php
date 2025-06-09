@@ -43,6 +43,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/create-transaction/{client}', [ClientController::class, 'createTransaction'])->name('client.createTransaction');
     });
 
+    Route::group(['prefix' => 'payment'], function () {
+        Route::get('/', [\App\Http\Controllers\PaymentController::class, 'index'])->name('payment.index');
+        Route::get('/approve-invoice/{invoice}', [\App\Http\Controllers\PaymentController::class, 'approveInvoice'])->name('payment.approve-invoice');
+    });
+
     Route::group(['prefix' => 'organization'], function () {
         Route::get('/', [OrganizationController::class, 'index'])->name('organization.index');
         Route::post('/store/{client}', [OrganizationController::class, 'store'])->name('organization.store');
