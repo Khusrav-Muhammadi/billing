@@ -280,7 +280,11 @@ class ClientController extends Controller
     public function countDifference(ChangeTariffRequest $request)
     {
         $data = $request->validated();
-        $data['sub_domain'] = parse_url($request->fullUrl(), PHP_URL_HOST);
+        $referer = $request->header('referer');
+        $host = parse_url($referer, PHP_URL_HOST);
+
+        $parts = explode('.', $host);
+        $data['sub_domain'] = count($parts) > 2 ? $parts[0] : null;
         return $this->repository->countDifference($data);
     }
 
