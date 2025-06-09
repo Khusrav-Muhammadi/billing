@@ -15,6 +15,7 @@ use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Services\Sale\SaleService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class OrganizationController extends Controller
 {
@@ -104,7 +105,7 @@ class OrganizationController extends Controller
             }
         }
 
-
+Log::error($saleTariffPrice);
         $days = ($organization->balance + $saleTariffPrice) / $sum;
 
         $endDate = Carbon::now()->addDays($days);
