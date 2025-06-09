@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\ClientHistoryEvent;
 use App\Events\OrganizationHistoryEvent;
+use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\Tariff;
@@ -61,6 +62,9 @@ class ActivationJob implements ShouldQueue
                     Organization::query()->whereIn('id', $this->organizationIds)->update(['has_access' => true]);
                 }
 
+                $client = Organization::query()->whereIn('id', $this->organizationIds)->first()->client;
+                $client->is_active = true;
+                $client->save();
                 if ($this->activation) {
                     $organization = Organization::whereIn('id', $this->organizationIds)->first();
                     $service = new WithdrawalService();
