@@ -2,6 +2,7 @@
 
 namespace App\Services\Billing\Operations;
 
+use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -91,6 +92,7 @@ class TariffChangeOperation extends BaseBillingOperation
 
 
         //Todo  надо обновить тариф в срм
+//        UpdateTariffJob::dispatch($this->client, $this->client->tariff_id, $this->client->sub_domain);
     }
 
     private function createTransaction(InvoiceItem $invoiceItem, TransactionType $transactionType, $price): void
