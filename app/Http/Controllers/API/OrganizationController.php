@@ -119,6 +119,7 @@ class OrganizationController extends Controller
             'id' => $tariffPrice->id,
             'country' => $client->country,
             'is_demo' => $client->is_demo,
+            'days_left' => $days
         ];
     }
 
