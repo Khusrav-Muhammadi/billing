@@ -52,7 +52,7 @@ class TariffController extends Controller
 
         $parts = explode('.', $host);
         $subdomain = count($parts) > 2 ? $parts[0] : null;
-Log::error($parts[0] . ' ' . $referer);
+Log::error($parts[0] . ' ' . $referer . ' ' . count($parts));
         $client = Client::query()->where('sub_domain', $subdomain)->first();
 
         $tariffs = TariffCurrency::query()->where('currency_id', $client->currency_id)->with('tariff')->get();
