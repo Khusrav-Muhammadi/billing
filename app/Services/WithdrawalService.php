@@ -57,6 +57,7 @@ class WithdrawalService
             }
 
         } else {
+            Log::error(3);
             $repository = new ClientRepository();
             $repository->activation($client, null);
         }
