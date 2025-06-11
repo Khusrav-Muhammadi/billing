@@ -20,7 +20,6 @@ class WithdrawalService
 
         if ($client->nfr) return true;
         if ($client->is_demo) return true;
-Log::error($organization);
         if ($organization->balance >= $sum) {
             $organization->balance -= $sum;
             $organization->save();
