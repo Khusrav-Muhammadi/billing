@@ -45,9 +45,9 @@ class WithdrawalService
                 Transaction::create([
                     'client_id' => $client->id,
                     'organization_id' => $organization->id,
-                    'tariff_id' => $client->tariffPrice->license_price,
+                    'tariff_id' => $client->tariffPrice->id,
                     'sale_id' => $client->sale?->id,
-                    'sum' => $sum,
+                    'sum' => $client->tariffPrice->license_price,
                     'type' => TransactionType::DEBIT,
                     'accounted_amount' => $accountedAmount,
                     'purpose' => TransactionPurpose::LICENSE,
