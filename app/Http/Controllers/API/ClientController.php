@@ -273,7 +273,6 @@ class ClientController extends Controller
     public function changeTariff(ChangeTariffRequest $request)
     {
         $data = $request->validated();
-        $data['sub_domain'] = parse_url($request->fullUrl(), PHP_URL_HOST);
         return $this->repository->changeTariff($data);
     }
 
