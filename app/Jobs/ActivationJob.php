@@ -78,7 +78,7 @@ class ActivationJob implements ShouldQueue
         }
 
 
-        if ($this->activation) {
+        if (!$this->activation) {
             if ($this->organizationIds == []) return;
             $organization = Organization::whereIn('id', $this->organizationIds)->first();
             $client = $organization->client()->first();
