@@ -65,7 +65,7 @@ class ActivationJob implements ShouldQueue
                 $client = Organization::query()->whereIn('id', $this->organizationIds)->first()->client;
                 $client->is_active = true;
                 $client->save();
-Log::error($this->activation);
+
                 if ($this->activation) {
                     $organization = Organization::whereIn('id', $this->organizationIds)->first();
                     $service = new WithdrawalService();
