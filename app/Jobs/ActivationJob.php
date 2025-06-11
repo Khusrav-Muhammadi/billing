@@ -70,7 +70,7 @@ class ActivationJob implements ShouldQueue
                     $organization = Organization::whereIn('id', $this->organizationIds)->first();
                     $service = new WithdrawalService();
                     $sum = $service->countSum($organization->client()->first());
-                    Log::error($sum);
+
                     $service->handle($organization, $sum);
 
                 }

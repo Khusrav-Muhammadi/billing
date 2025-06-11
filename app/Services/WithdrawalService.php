@@ -10,6 +10,7 @@ use App\Services\Billing\Enum\TransactionType;
 use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\Sale\Enum\SaleApplies;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class WithdrawalService
 {
@@ -19,7 +20,7 @@ class WithdrawalService
 
         if ($client->nfr) return true;
         if ($client->is_demo) return true;
-
+Log::error($organization);
         if ($organization->balance >= $sum) {
             $organization->balance -= $sum;
             $organization->save();
