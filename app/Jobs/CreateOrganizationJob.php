@@ -34,8 +34,8 @@ class CreateOrganizationJob implements ShouldQueue
     public function handle(): void
     {
         $domain = env('APP_DOMAIN');
-//        $url = "https://{$this->client->sub_domain}-back.{$domain}/api/organization";
-        $url = "https://hello-back.sham360.com/api/organization";
+        $url = "https://{$this->client->sub_domain}-back.{$domain}/api/organization";
+     //   $url = "https://hello-back.sham360.com/api/organization";
 
         $tariff = Tariff::find($this->client->tariff_id);
 
