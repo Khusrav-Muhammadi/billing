@@ -47,7 +47,7 @@ class ActivationJob implements ShouldQueue
             'Accept' => 'application/json',
         ])->post($url, $data);
 
-        if ($res->successful())
+        if ($res->successful()) {
             DB::transaction(function () {
                 $organizations = Organization::whereIn('id', $this->organizationIds)->get();
 
@@ -64,13 +64,18 @@ class ActivationJob implements ShouldQueue
                 $client = Organization::query()->whereIn('id', $this->organizationIds)->first()->client;
                 $client->is_active = true;
                 $client->save();
+
                 if ($this->activation) {
                     $organization = Organization::whereIn('id', $this->organizationIds)->first();
                     $service = new WithdrawalService();
                     $sum = $service->countSum($organization->client()->first());
+
                     $service->handle($organization, $sum);
+
                 }
             });
+        }
+
 
         if ($this->updateClient) {
             if ($this->organizationIds == []) return;
