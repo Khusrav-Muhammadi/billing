@@ -50,7 +50,8 @@ class CreateOrganizationJob implements ShouldQueue
             'project_count' => $tariff->project_count,
             'b_organization_id' => $this->organization->id,
             'password' => $this->password,
-            'is_demo' => $this->client->is_demo
+            'is_demo' => $this->client->is_demo,
+            'channels_count' => $tariff->channels_count ?? 3,
         ]);
 
         if (Organization::where('client_id', $this->client->id)->count() == 1) Mail::to($this->client->email)->send(new SendSiteDataMail($this->client, $this->password));
