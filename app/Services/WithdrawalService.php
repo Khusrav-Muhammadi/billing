@@ -38,6 +38,24 @@ class WithdrawalService
                 'accounted_amount' => $accountedAmount,
                 'purpose' => TransactionPurpose::TARIFF,
             ]);
+
+            if (!$organization->license_paid) {
+                $accountedAmount = $currency->symbol_code == 'USD' ? $client->tariffPrice->license_price : $client->tariffPrice->license_price / $currency->latestExchangeRate->kurs;
+
+                Transaction::create([
+                    'client_id' => $client->id,
+                    'organization_id' => $organization->id,
+                    'tariff_id' => $client->tariffPrice->license_price,
+                    'sale_id' => $client->sale?->id,
+                    'sum' => $sum,
+                    'type' => TransactionType::DEBIT,
+                    'accounted_amount' => $accountedAmount,
+                    'purpose' => TransactionPurpose::LICENSE,
+                ]);
+
+                $organization->update(['license_paid' => true]);
+            }
+
         } else {
             $repository = new ClientRepository();
             $repository->activation($client, null);
