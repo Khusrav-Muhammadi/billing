@@ -9,6 +9,7 @@ use App\Models\Tariff;
 use App\Models\TariffCurrency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 
 class TariffController extends Controller
 {
@@ -52,7 +53,7 @@ class TariffController extends Controller
         $parts = explode('.', $host);
         $subdomain = count($parts) > 2 ? $parts[0] : null;
 
-        $client = Client::query()->where('sub_domain', $subdomain)->first();
+        $client = Client::query()->where('sub_domain', $parts[0])->first();
 
         $tariffs = TariffCurrency::query()->where('currency_id', $client->currency_id)->with('tariff')->get();
 
