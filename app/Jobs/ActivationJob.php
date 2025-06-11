@@ -16,6 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ActivationJob implements ShouldQueue
 {
@@ -64,7 +65,7 @@ class ActivationJob implements ShouldQueue
                 $client = Organization::query()->whereIn('id', $this->organizationIds)->first()->client;
                 $client->is_active = true;
                 $client->save();
-
+Log::error($this->activation);
                 if ($this->activation) {
                     $organization = Organization::whereIn('id', $this->organizationIds)->first();
                     $service = new WithdrawalService();
