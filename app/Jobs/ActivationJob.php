@@ -16,6 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ActivationJob implements ShouldQueue
 {
@@ -43,34 +44,39 @@ class ActivationJob implements ShouldQueue
             'has_access' => $this->activation
         ];
 
-//        $res = Http::withHeaders([
-//            'Accept' => 'application/json',
-//        ])->post($url, $data);
+        $res = Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->post($url, $data);
 
-//        if ($res->successful())
-        DB::transaction(function () {
-            $organizations = Organization::whereIn('id', $this->organizationIds)->get();
+        if ($res->successful()) {
+            DB::transaction(function () {
+                $organizations = Organization::whereIn('id', $this->organizationIds)->get();
 
-            foreach ($organizations as $organization) {
-                $organization->update([
-                    'has_access' => $this->activation,
-                    'reject_cause' => $this->reject_cause
-                ]);
-            }
-            if (count($this->organizationIds) == 1) {
-                Organization::query()->whereIn('id', $this->organizationIds)->update(['has_access' => true]);
-            }
+                foreach ($organizations as $organization) {
+                    $organization->update([
+                        'has_access' => $this->activation,
+                        'reject_cause' => $this->reject_cause
+                    ]);
+                }
+                if (count($this->organizationIds) == 1) {
+                    Organization::query()->whereIn('id', $this->organizationIds)->update(['has_access' => true]);
+                }
 
-            $client = Organization::query()->whereIn('id', $this->organizationIds)->first()->client;
-            $client->is_active = true;
-            $client->save();
-            if ($this->activation) {
-                $organization = Organization::whereIn('id', $this->organizationIds)->first();
-                $service = new WithdrawalService();
-                $sum = $service->countSum($organization->client()->first());
-                $service->handle($organization, $sum);
-            }
-        });
+                $client = Organization::query()->whereIn('id', $this->organizationIds)->first()->client;
+                $client->is_active = true;
+                $client->save();
+
+                if ($this->activation) {
+                    $organization = Organization::whereIn('id', $this->organizationIds)->first();
+                    $service = new WithdrawalService();
+                    $sum = $service->countSum($organization->client()->first());
+
+                    $service->handle($organization, $sum);
+
+                }
+            });
+        }
+
 
         if ($this->updateClient) {
             if ($this->organizationIds == []) return;

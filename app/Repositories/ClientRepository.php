@@ -177,6 +177,7 @@ class ClientRepository implements ClientRepositoryInterface
         DB::transaction(function () use ($data, $client, $organization) {
             $data['type'] = TransactionType::CREDIT;
             $data['client_id'] = $client->id;
+            $data['organization_id'] = $organization->id;
             Transaction::create($data);
             $organization->increment('balance', $data['sum']);
         });
