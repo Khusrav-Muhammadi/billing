@@ -12,7 +12,9 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "phpoffice/phpword": "^1.3",
-        "tucker-eric/eloquentfilter": "^3.4"
+        "tucker-eric/eloquentfilter": "^3.4",
+        "spatie/db-dumper": "^3.8",
+        "ext-zip": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
