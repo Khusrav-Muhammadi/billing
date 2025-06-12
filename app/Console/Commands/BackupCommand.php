@@ -57,8 +57,6 @@ class BackupCommand extends Command
         }
 
         $this->uploadToGoogleDrive($archivePath, $accessToken);
-        $this->sendTelegramFile($archivePath);
-
 
         File::deleteDirectory($backupDir);
         $this->info("Local backup files deleted.");
