@@ -146,7 +146,7 @@ class ClientController extends Controller
                 $totalDailyPayment -= $sale->amount / $daysInMonth;
             }
         }
-
+dd($totalDailyPayment);
         return max(0, $totalDailyPayment);
     }
 
