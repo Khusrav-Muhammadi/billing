@@ -71,7 +71,7 @@ class ClientController extends Controller
 
 
         $dailyPayment = round($this->calculateDailyPayment($client), 4);
-dd($dailyPayment);
+
         $days = (int)($client->balance / $dailyPayment);
 
         return Carbon::now()->addDays($days);
@@ -112,7 +112,7 @@ dd($dailyPayment);
     }
     protected function calculateDailyPayment(Client $client): float
     {
-        if (!$client->tariff) {
+        if (!$client->tariffPrice) {
             return 0;
         }
 
@@ -145,7 +145,7 @@ dd($dailyPayment);
                 $totalDailyPayment -= $sale->amount / $daysInMonth;
             }
         }
-dd($totalDailyPayment);
+
         return max(0, $totalDailyPayment);
     }
 
