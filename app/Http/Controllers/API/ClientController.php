@@ -71,7 +71,7 @@ class ClientController extends Controller
 
 
         $dailyPayment = round($this->calculateDailyPayment($client), 4);
-
+dd($dailyPayment);
         $days = (int)($client->balance / $dailyPayment);
 
         return Carbon::now()->addDays($days);
@@ -119,7 +119,6 @@ class ClientController extends Controller
 
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
-        Log::error($daysInMonth);
         $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
         $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
