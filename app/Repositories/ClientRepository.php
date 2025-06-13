@@ -99,7 +99,7 @@ class ClientRepository implements ClientRepositoryInterface
                 $totalDailyPayment -= $sale->amount / $daysInMonth;
             }
         }
-dump($totalDailyPayment);
+
         return max(0, $totalDailyPayment);
     }
 
