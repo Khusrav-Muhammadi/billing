@@ -221,19 +221,14 @@ class ClientRepository implements ClientRepositoryInterface
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
-
                 return $organization->packs->sum(function ($organizationPack) {
                     return $organizationPack->amount ?? 0;
                 });
             });
 
-
             $totalUsersFromOrganizations = $client->organizations->sum(function ($organization) {
                 return $organization->client->tariff->user_count ?? 0;
             });
-
-            $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
-            $client->validate_date = $this->calculateValidateDate($client);
 
             $organizations = $client->organizations;
             $balance = 0;
@@ -241,14 +236,19 @@ class ClientRepository implements ClientRepositoryInterface
             foreach ($organizations as $organization) {
                 $balance += $organization->balance;
             }
+
+            // Обновляем только поля, которые существуют в таблице
             $client->balance = $balance;
-            $client->save();
+            $client->save(); // Сохранит только измененные поля, которые есть в таблице
+
+            // Добавляем вычисляемые поля как виртуальные атрибуты
+            $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
+            $client->validate_date = $this->calculateValidateDate($client);
 
             return $client;
         });
 
         $clients->setCollection($processedClients);
-
         return $clients;
     }
 
