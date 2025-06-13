@@ -119,7 +119,7 @@ class ClientController extends Controller
 
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
-Log::error($client->tariffPrice->tariff_price);
+        Log::error($daysInMonth);
         $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
         $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
