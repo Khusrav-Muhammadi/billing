@@ -234,6 +234,16 @@ class ClientRepository implements ClientRepositoryInterface
 
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
             $client->validate_date = $this->calculateValidateDate($client);
+
+            $organizations = $client->organizations;
+            $balance = 0;
+
+            foreach ($organizations as $organization) {
+                $balance += $organization->balance;
+            }
+            $client->balance = $balance;
+            $client->save();
+
             return $client;
         });
 
