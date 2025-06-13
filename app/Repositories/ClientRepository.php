@@ -69,7 +69,7 @@ class ClientRepository implements ClientRepositoryInterface
      */
     protected function calculateDailyPayment(Client $client): float
     {
-        if (!$client->tariff) {
+        if (!$client->tariffPrice) {
             return 0;
         }
 
