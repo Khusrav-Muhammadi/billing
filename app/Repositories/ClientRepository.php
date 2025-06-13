@@ -99,7 +99,7 @@ class ClientRepository implements ClientRepositoryInterface
                 $totalDailyPayment -= $sale->amount / $daysInMonth;
             }
         }
-
+dd($totalDailyPayment);
         return max(0, $totalDailyPayment);
     }
 
@@ -237,11 +237,9 @@ class ClientRepository implements ClientRepositoryInterface
                 $balance += $organization->balance;
             }
 
-            // Обновляем только поля, которые существуют в таблице
             $client->balance = $balance;
-            $client->save(); // Сохранит только измененные поля, которые есть в таблице
+            $client->save();
 
-            // Добавляем вычисляемые поля как виртуальные атрибуты
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
             $client->validate_date = $this->calculateValidateDate($client);
 
