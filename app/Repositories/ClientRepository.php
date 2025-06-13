@@ -179,7 +179,7 @@ class ClientRepository implements ClientRepositoryInterface
             $data['client_id'] = $client->id;
             $data['organization_id'] = $organization->id;
             Transaction::create($data);
-            $organization->increment('balance', $data['sum']);
+            $organization->balance += $data['sum'];
         });
     }
 
