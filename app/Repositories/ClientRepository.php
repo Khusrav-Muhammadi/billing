@@ -237,7 +237,7 @@ class ClientRepository implements ClientRepositoryInterface
                 $balance += $organization->balance;
             }
 
-            $client->balance = $balance;
+            $client->balance = (string) $balance;
             $client->save();
 
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
