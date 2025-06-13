@@ -76,7 +76,7 @@ class ClientRepository implements ClientRepositoryInterface
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
 
-        $dailyPayment = $client->tariff->price / $daysInMonth;
+        $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
         $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
             return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
