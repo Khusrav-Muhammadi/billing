@@ -22,6 +22,7 @@ use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\OrganizationRepository;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ClientController extends Controller
@@ -118,11 +119,9 @@ class ClientController extends Controller
 
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
-
-        // Base daily payment from tariff
+Log::error($client->tariffPrice->tariff_price);
         $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
-        // Calculate additional daily cost from organization packs
         $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
             return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
 
