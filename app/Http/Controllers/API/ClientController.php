@@ -120,7 +120,7 @@ class ClientController extends Controller
         $daysInMonth = $currentMonth->daysInMonth;
 
         // Base daily payment from tariff
-        $dailyPayment = $client->tariffPrice->price / $daysInMonth;
+        $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
         // Calculate additional daily cost from organization packs
         $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
