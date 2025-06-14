@@ -34,7 +34,7 @@ class ClientController extends Controller
     public function index(Request $request)
     {
         $clients = $this->repository->index($request->all());
-        $partners = Partner::all();
+        $partners = User::query()->where('role', 'partner')->get();
         $tariffs = Tariff::all();
 
         if ($request->ajax()) {
@@ -115,6 +115,7 @@ class ClientController extends Controller
         $businessTypes = BusinessType::all();
         $sales = Sale::all();
         $tariffs = Tariff::all();
+
         $packs = Pack::all();
         $countries = Country::all();
         $client = $client->load(['history.changes', 'history.user']);

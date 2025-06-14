@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Client;
 use App\Models\Tariff;
+use App\Models\TariffCurrency;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,7 +34,8 @@ class UpdateTariffJob implements ShouldQueue
 
         $organizations = $this->client->organizations()->get();
         foreach ($organizations as $organization) {
-            $tariff = Tariff::find($this->tariff_id);
+            $tariff = TariffCurrency::query()->where('tariff_id', $this->tariff_id)->first()->tarifd_id;
+
 
             Http::withHeaders([
                 'Accept' => 'application/json',
