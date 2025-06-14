@@ -122,7 +122,6 @@ class ClientController extends Controller
             return 0;
         }
 
-
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
         $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
