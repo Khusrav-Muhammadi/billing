@@ -49,7 +49,7 @@
                     <label for="tariff_id">Тариф</label>
                     <select class="form-control" name="tariff_id">
                         @foreach($tariffs as $tariff)
-                            <option value="{{ $tariff->id }}" {{ $client->tariff_id == $tariff->id ? 'selected' : '' }}>
+                            <option value="{{ $tariff->id }}" {{ $client->tariffPrice->tariff_id == $tariff->id ? 'selected' : '' }}>
                                 {{ $tariff->name }}
                             </option>
                         @endforeach
