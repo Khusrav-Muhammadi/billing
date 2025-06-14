@@ -56,7 +56,7 @@ class Client extends Model
 
     public function partner() :BelongsTo
     {
-        return $this->belongsTo(Partner::class);
+        return $this->belongsTo(User::class);
     }
 
     public function city() : BelongsTo

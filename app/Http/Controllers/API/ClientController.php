@@ -301,7 +301,7 @@ class ClientController extends Controller
     {
         return $this->repository->webhookChangeTariff($request);
     }
-    
+
     public function getPartnersByCountry(int $country_id)
     {
         return response()->json([
