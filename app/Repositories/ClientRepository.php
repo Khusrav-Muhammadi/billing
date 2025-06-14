@@ -34,7 +34,7 @@ class ClientRepository implements ClientRepositoryInterface
 
         $clients = $query
             ->withCount('organizations')
-            ->with(['tariff', 'partner', 'organizations.packs.pack' => function ($query) {
+            ->with(['tariffPrice.tariff', 'partner', 'organizations.packs.pack' => function ($query) {
                 $query->where('type', 'user');
             }])
             ->orderByDesc('created_at')
@@ -94,7 +94,7 @@ class ClientRepository implements ClientRepositoryInterface
             $sale = $client->sale;
 
             if ($sale->sale_type === 'procent') {
-                $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
+                $totalDailyPayment -= ($client->tariffPrice->tariff_price * $sale->amount) / (100 * $daysInMonth);
             } else {
                 $totalDailyPayment -= $sale->amount / $daysInMonth;
             }
@@ -191,7 +191,7 @@ class ClientRepository implements ClientRepositoryInterface
 
         return response()->json([
             'balance' => $client->balance,
-            'tariff' => $client->tariff->name
+            'tariff' => $client->tariffPrice?->tariff?->name
         ]);
     }
 

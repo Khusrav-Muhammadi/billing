@@ -101,7 +101,7 @@ class BillingService
         if (!$client->tariff) return 0;
 
         $daysInMonth = now()->daysInMonth;
-        $dailyPayment = $client->tariff->price / $daysInMonth;
+        $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
         $packsDailyPayment = $client->organizations->sum(function ($org) use ($daysInMonth) {
             return $org->packs->sum(fn($pack) => ($pack->price / $daysInMonth));
@@ -115,7 +115,7 @@ class BillingService
         if (!$client->sale) return 0;
 
         return $client->sale->sale_type === 'procent'
-            ? ($client->tariff->price * $client->sale->amount) / (100 * $daysInMonth)
+            ? ($client->tariffPrice->tariff_price * $client->sale->amount) / (100 * $daysInMonth)
             : $client->sale->amount / $daysInMonth;
     }
 }

@@ -37,6 +37,7 @@ class ClientController extends Controller
         $partners = Partner::all();
         $tariffs = Tariff::all();
 
+
         if ($request->ajax()) {
             return view('admin.partials.clients', compact('clients'))->render();
         }

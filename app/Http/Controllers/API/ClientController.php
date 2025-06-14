@@ -122,7 +122,6 @@ class ClientController extends Controller
             return 0;
         }
 
-
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
         $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
@@ -144,8 +143,7 @@ class ClientController extends Controller
             $sale = $client->sale;
 
             if ($sale->sale_type === 'procent') {
-                // Percentage discount on total daily payment
-                $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
+                $totalDailyPayment -= ($client->tariffPrice->tariff_price * $sale->amount) / (100 * $daysInMonth);
             } else {
                 // Fixed amount discount
                 $totalDailyPayment -= $sale->amount / $daysInMonth;
