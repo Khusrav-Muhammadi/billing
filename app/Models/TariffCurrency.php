@@ -9,7 +9,7 @@ class TariffCurrency extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['currency_id', 'tariff_id', 'price', 'license_price'];
+    protected $fillable = ['currency_id', 'tariff_id', 'tariff_price', 'license_price'];
 
     public function tariff()
     {

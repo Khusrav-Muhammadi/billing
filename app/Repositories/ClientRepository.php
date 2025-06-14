@@ -69,14 +69,14 @@ class ClientRepository implements ClientRepositoryInterface
      */
     protected function calculateDailyPayment(Client $client): float
     {
-        if (!$client->tariff) {
+        if (!$client->tariffPrice) {
             return 0;
         }
 
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
 
-        $dailyPayment = $client->tariff->price / $daysInMonth;
+        $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
         $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
             return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
@@ -179,7 +179,9 @@ class ClientRepository implements ClientRepositoryInterface
             $data['client_id'] = $client->id;
             $data['organization_id'] = $organization->id;
             Transaction::create($data);
-            $organization->increment('balance', $data['sum']);
+
+            $organization->balance += $data['sum'];
+            $organization->save();
         });
     }
 
@@ -209,7 +211,9 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function getByPartner(array $data)
     {
-        $query = Client::query()->with(['tariff', 'country', 'partner'])->filter($data);
+        $query = Client::query()
+            ->where('nfr', false)
+            ->with(['tariff', 'country', 'partner'])->filter($data);
 
         if (auth()->user()->role == 'partner') {
             $query->where('partner_id', auth()->id());
@@ -219,24 +223,78 @@ class ClientRepository implements ClientRepositoryInterface
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
-
                 return $organization->packs->sum(function ($organizationPack) {
                     return $organizationPack->amount ?? 0;
                 });
             });
 
+            $totalUsersFromOrganizations = $client->organizations->sum(function ($organization) {
+                return $organization->client->tariff->user_count ?? 0;
+            });
+
+            $organizations = $client->organizations;
+            $balance = 0;
+
+            foreach ($organizations as $organization) {
+                $balance += $organization->balance;
+            }
+
+            $currency = $client->currency;
+
+            $client->balance = $balance;
+
+            $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
+            $client->validate_date = $this->calculateValidateDate($client);
+
+            $client->balance = "$balance $currency?->symbol_code";
+
+            return $client;
+        });
+
+        $clients->setCollection($processedClients);
+        return $clients;
+    }
+
+    public function getNfr(array $data)
+    {
+        $query = Client::query()
+            ->where('nfr', true)
+            ->with(['tariff', 'country', 'partner'])->filter($data);
+
+        if (auth()->user()->role == 'partner') {
+            $query->where('partner_id', auth()->id());
+        }
+
+        $clients = $query->with(['sale', 'tariff', 'city', 'partner'])->paginate(20);
+
+        $processedClients = $clients->getCollection()->map(function ($client) {
+            $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
+                return $organization->packs->sum(function ($organizationPack) {
+                    return $organizationPack->amount ?? 0;
+                });
+            });
 
             $totalUsersFromOrganizations = $client->organizations->sum(function ($organization) {
                 return $organization->client->tariff->user_count ?? 0;
             });
 
+            $organizations = $client->organizations;
+            $balance = 0;
+
+            foreach ($organizations as $organization) {
+                $balance += $organization->balance;
+            }
+
+            $client->balance = (string) $balance;
+            $client->save();
+
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
             $client->validate_date = $this->calculateValidateDate($client);
+
             return $client;
         });
 
         $clients->setCollection($processedClients);
-
         return $clients;
     }
 

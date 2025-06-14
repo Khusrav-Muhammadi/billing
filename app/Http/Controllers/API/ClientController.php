@@ -36,6 +36,13 @@ class ClientController extends Controller
         ]);
     }
 
+    public function getNfr(Request $request)
+    {
+        return response()->json([
+            'clients' => $this->repository->getNfr($request->all()),
+        ]);
+    }
+
     public function show(Client $client)
     {
         $organizations = Organization::where('client_id', $client->id)->get();
@@ -111,18 +118,15 @@ class ClientController extends Controller
     }
     protected function calculateDailyPayment(Client $client): float
     {
-        if (!$client->tariff) {
+        if (!$client->tariffPrice) {
             return 0;
         }
 
 
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
+        $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
-        // Base daily payment from tariff
-        $dailyPayment = $client->tariff->price / $daysInMonth;
-
-        // Calculate additional daily cost from organization packs
         $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {
             return $organization->packs->sum(function ($organizationPack) use ($daysInMonth) {
 
@@ -150,7 +154,6 @@ class ClientController extends Controller
 
         return max(0, $totalDailyPayment);
     }
-
 
     public function updateActivity(Request $request, string $subdomain)
     {

@@ -127,16 +127,15 @@ class ClientController extends Controller
 
     protected function calculateDailyPayment(Client $client): float
     {
-        if (!$client->tariff) {
+        if (!$client->tariffPrice) {
             return 0;
         }
-
 
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
 
         // Base daily payment from tariff
-        $dailyPayment = $client->tariff->price / $daysInMonth;
+        $dailyPayment = $client->tariffPrice->tariff_price / $daysInMonth;
 
         // Calculate additional daily cost from organization packs
         $packsDailyPayment = $client->organizations->sum(function ($organization) use ($daysInMonth) {

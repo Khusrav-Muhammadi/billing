@@ -31,4 +31,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_DRIVE_SECRET_ID'),
+        'refresh_token' => env('GOOGLE_REFRESH_TOKEN'),
+        'folder_id' => env('GOOGLE_FOLDER_ID'),
+    ],
+
 ];
