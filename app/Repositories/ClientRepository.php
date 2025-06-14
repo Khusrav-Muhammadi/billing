@@ -34,7 +34,7 @@ class ClientRepository implements ClientRepositoryInterface
 
         $clients = $query
             ->withCount('organizations')
-            ->with(['tariff', 'partner', 'organizations.packs.pack' => function ($query) {
+            ->with(['tariffPrice.tariff', 'partner', 'organizations.packs.pack' => function ($query) {
                 $query->where('type', 'user');
             }])
             ->orderByDesc('created_at')
@@ -191,7 +191,7 @@ class ClientRepository implements ClientRepositoryInterface
 
         return response()->json([
             'balance' => $client->balance,
-            'tariff' => $client->tariff->name
+            'tariff' => $client->tariffPrice?->tariff?->name
         ]);
     }
 
