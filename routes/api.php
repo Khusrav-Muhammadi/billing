@@ -23,6 +23,7 @@ Route::middleware('auth.basic')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('clients', [\App\Http\Controllers\API\ClientController::class, 'index']);
+    Route::get('clients/nfr', [\App\Http\Controllers\API\ClientController::class, 'getNfr']);
     Route::post('clients/store', [\App\Http\Controllers\API\ClientController::class, 'store']);
     Route::get('partners', [\App\Http\Controllers\API\ClientController::class, 'getPartners']);
     Route::get('countries', [\App\Http\Controllers\API\ClientController::class, 'getCountries']);
