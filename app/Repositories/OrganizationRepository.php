@@ -32,7 +32,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             else {
                 $daysInMonth = Carbon::now()->daysInMonth;
 
-                $sum = $client->tariff->price / $daysInMonth;
+                $sum = $client->tariffPrice->tariff_price / $daysInMonth;
 
                 if (!$client->is_demo) {
                     $currency = $client->currency;
