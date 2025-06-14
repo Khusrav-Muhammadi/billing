@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 interface ClientRepositoryInterface
 {
     public function index(array $data);
-
+ //fdg
     public function store(array $data);
 
     public function update(Client $client, array $data);
