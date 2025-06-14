@@ -84,24 +84,41 @@ class SiteApplicationController extends Controller
 
     private function createDemoClient(array $data): ?Client
     {
+        $countryId = $data['region_id'] ?? 1;
+
+        $tariffId = match ($countryId) {
+            2 => 8,
+            default => 4,
+        };
+        $currency_id = match ($countryId) {
+            2 => 2,
+            default => 1,
+        };
+
         $clientData = [
             'name' => $data['fio'],
             'phone' => $data['phone'],
             'email' => $data['email'],
-            'country_id' => $data['region_id'] ?? 1,
+            'country_id' => $countryId,
             'is_demo' => true,
-            'tariff_id' => 3,
+            'tariff_id' => $tariffId,
             'partner_id' => $data['partner_id'],
-            'sub_domain' => $this->generateSubdomain($data['email'])
+            'sub_domain' => $this->generateSubdomain($data['email']),
+            'currency_id' => $currency_id,
         ];
 
+        $client = Client::query()
+            ->where('sub_domain', $clientData['sub_domain'])
+            ->orWhere('phone', $clientData['phone'])
+            ->first();
 
-        $client = Client::query()->where('sub_domain', $clientData['sub_domain'])->orWhere('phone',$clientData['phone'])->first();
-        if ($client) return null;
-
+        if ($client) {
+            return null;
+        }
 
         return Client::create($clientData);
     }
+
 
     private function generateSubdomain(string $email): string
     {

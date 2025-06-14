@@ -10,6 +10,7 @@ use App\Services\Billing\Enum\TransactionType;
 use App\Services\Payment\Enums\TransactionPurpose;
 use App\Services\Sale\Enum\SaleApplies;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class WithdrawalService
@@ -18,48 +19,91 @@ class WithdrawalService
     {
         $client = $organization->client()->first();
 
-        if ($client->nfr) return true;
-        if ($client->is_demo) return true;
-        if ($organization->balance >= $sum) {
+        if ($client->nfr || $client->is_demo) {
+            return true;
+        }
+
+        $totalSum = $sum;
+        $licensePrice = 0;
+
+        if (!$organization->license_paid) {
+            $licensePrice = $client->tariffPrice->license_price;
+            $totalSum += $licensePrice;
+        }
+
+        if ($organization->balance < $totalSum) {
+            $repository = new ClientRepository();
+            $repository->activation($client, null);
+            return false;
+        }
+
+        return DB::transaction(function () use ($organization, $client, $sum, $licensePrice) {
+            $currency = $client->currency;
+
             $organization->balance -= $sum;
             $organization->save();
 
-            $currency = $client->currency;
+            $this->createTransaction(
+                $client,
+                $organization,
+                $sum,
+                $currency,
+                TransactionPurpose::TARIFF
+            );
 
-            $accountedAmount = $currency->symbol_code == 'USD' ? $sum : $sum / $currency->latestExchangeRate->kurs;
+            if (!$organization->license_paid && $licensePrice > 0) {
+                $organization->decrement('balance', $licensePrice);
 
-            Transaction::create([
-                'client_id' => $client->id,
-                'organization_id' => $organization->id,
-                'tariff_id' => $client->tariffPrice->id,
-                'sale_id' => $client->sale?->id,
-                'sum' => $sum,
-                'type' => TransactionType::DEBIT,
-                'accounted_amount' => $accountedAmount,
-                'purpose' => TransactionPurpose::TARIFF,
-            ]);
-
-            if (!$organization->license_paid) {
-                $accountedAmount = $currency->symbol_code == 'USD' ? $client->tariffPrice->license_price : $client->tariffPrice->license_price / $currency->latestExchangeRate->kurs;
-
-                Transaction::create([
-                    'client_id' => $client->id,
-                    'organization_id' => $organization->id,
-                    'tariff_id' => $client->tariffPrice->id,
-                    'sale_id' => $client->sale?->id,
-                    'sum' => $client->tariffPrice->license_price,
-                    'type' => TransactionType::DEBIT,
-                    'accounted_amount' => $accountedAmount,
-                    'purpose' => TransactionPurpose::LICENSE,
-                ]);
+                $this->createTransaction(
+                    $client,
+                    $organization,
+                    $licensePrice,
+                    $currency,
+                    TransactionPurpose::LICENSE
+                );
 
                 $organization->update(['license_paid' => true]);
             }
 
-        } else {
-            $repository = new ClientRepository();
-            $repository->activation($client, null);
+            return true;
+        });
+    }
+
+    /**
+     * Создает транзакцию с правильным расчетом accounted_amount
+     */
+    private function createTransaction(
+        $client,
+        $organization,
+        $sum,
+        $currency,
+        $purpose
+    ) {
+        $accountedAmount = $this->calculateAccountedAmount($sum, $currency);
+
+        Transaction::create([
+            'client_id' => $client->id,
+            'organization_id' => $organization->id,
+            'tariff_id' => $client->tariffPrice->id,
+            'sale_id' => $client->sale?->id,
+            'sum' => $sum,
+            'type' => TransactionType::DEBIT,
+            'accounted_amount' => $accountedAmount,
+            'purpose' => $purpose,
+        ]);
+    }
+
+    /**
+     * Рассчитывает сумму в учетной валюте
+     */
+    private function calculateAccountedAmount($sum, $currency)
+    {
+        if ($currency->symbol_code === 'USD') {
+            return $sum;
         }
+
+        $exchangeRate = $currency->latestExchangeRate->kurs ?? 1;
+        return $sum / $exchangeRate;
     }
 
     public function countSum(Client $client)
@@ -69,10 +113,11 @@ class WithdrawalService
 
         $dailySum = $client->tariffPrice->tariff_price / $daysInMonth;
 
-
-        $clientSale = $client->clientSales()->whereHas('sale', function($query) {
-            $query->where('apply_to', SaleApplies::PROGRESSIVE);
-        })->first();
+        $clientSale = $client->clientSales()
+            ->whereHas('sale', function($query) {
+                $query->where('apply_to', SaleApplies::PROGRESSIVE);
+            })
+            ->first();
 
         if ($clientSale && $clientSale->sale->isActive()) {
             $sale = $clientSale->sale;
