@@ -127,10 +127,9 @@ class ClientController extends Controller
 
     protected function calculateDailyPayment(Client $client): float
     {
-        if (!$client->tariff) {
+        if (!$client->tariffPrice) {
             return 0;
         }
-
 
         $currentMonth = now();
         $daysInMonth = $currentMonth->daysInMonth;
