@@ -12,6 +12,7 @@ use App\Jobs\SubDomainJob;
 use App\Models\BusinessType;
 use App\Models\Client;
 use App\Models\Country;
+use App\Models\Currency;
 use App\Models\Organization;
 use App\Models\Pack;
 use App\Models\Partner;
@@ -249,11 +250,17 @@ class ClientController extends Controller
         return Client::create($clientData);
     }
 
-
     public function getCountries()
     {
         return response()->json([
             'result' => Country::query()->paginate(50),
+        ]);
+    }
+
+    public function getCurrencies()
+    {
+        return response()->json([
+            'result' => Currency::query()->paginate(50),
         ]);
     }
 
@@ -293,5 +300,6 @@ class ClientController extends Controller
     {
         return $this->repository->webhookChangeTariff($request);
     }
+
 
 }

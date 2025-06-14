@@ -213,13 +213,13 @@ class ClientRepository implements ClientRepositoryInterface
     {
         $query = Client::query()
             ->where('nfr', false)
-            ->with(['tariff', 'country', 'partner'])->filter($data);
+            ->with(['tariffPrice.tariff', 'country', 'partner'])->filter($data);
 
         if (auth()->user()->role == 'partner') {
             $query->where('partner_id', auth()->id());
         }
 
-        $clients = $query->with(['sale', 'tariff', 'city', 'partner'])->paginate(20);
+        $clients = $query->with(['sale', 'tariffPrice.tariff', 'city', 'partner'])->paginate(20);
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
@@ -259,13 +259,14 @@ class ClientRepository implements ClientRepositoryInterface
     {
         $query = Client::query()
             ->where('nfr', true)
-            ->with(['tariff', 'country', 'partner'])->filter($data);
+            ->with(['tariffPrice.tariff', 'country', 'partner'])
+            ->filter($data);
 
         if (auth()->user()->role == 'partner') {
             $query->where('partner_id', auth()->id());
         }
 
-        $clients = $query->with(['sale', 'tariff', 'city', 'partner'])->paginate(20);
+        $clients = $query->with(['sale', 'tariffPrice.tariff', 'city', 'partner'])->paginate(20);
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
