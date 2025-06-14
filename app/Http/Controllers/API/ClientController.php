@@ -22,7 +22,6 @@ use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\OrganizationRepository;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ClientController extends Controller
@@ -34,6 +33,13 @@ class ClientController extends Controller
     {
         return response()->json([
             'clients' => $this->repository->getByPartner($request->all()),
+        ]);
+    }
+
+    public function getNfr(Request $request)
+    {
+        return response()->json([
+            'clients' => $this->repository->getNfr($request->all()),
         ]);
     }
 

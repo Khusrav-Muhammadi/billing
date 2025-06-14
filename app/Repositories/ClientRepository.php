@@ -211,7 +211,52 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function getByPartner(array $data)
     {
-        $query = Client::query()->with(['tariff', 'country', 'partner'])->filter($data);
+        $query = Client::query()
+            ->where('nfr', false)
+            ->with(['tariff', 'country', 'partner'])->filter($data);
+
+        if (auth()->user()->role == 'partner') {
+            $query->where('partner_id', auth()->id());
+        }
+
+        $clients = $query->with(['sale', 'tariff', 'city', 'partner'])->paginate(20);
+
+        $processedClients = $clients->getCollection()->map(function ($client) {
+            $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
+                return $organization->packs->sum(function ($organizationPack) {
+                    return $organizationPack->amount ?? 0;
+                });
+            });
+
+            $totalUsersFromOrganizations = $client->organizations->sum(function ($organization) {
+                return $organization->client->tariff->user_count ?? 0;
+            });
+
+            $organizations = $client->organizations;
+            $balance = 0;
+
+            foreach ($organizations as $organization) {
+                $balance += $organization->balance;
+            }
+
+            $client->balance = (string) $balance;
+            $client->save();
+
+            $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
+            $client->validate_date = $this->calculateValidateDate($client);
+
+            return $client;
+        });
+
+        $clients->setCollection($processedClients);
+        return $clients;
+    }
+
+    public function getNfr(array $data)
+    {
+        $query = Client::query()
+            ->where('nfr', true)
+            ->with(['tariff', 'country', 'partner'])->filter($data);
 
         if (auth()->user()->role == 'partner') {
             $query->where('partner_id', auth()->id());
