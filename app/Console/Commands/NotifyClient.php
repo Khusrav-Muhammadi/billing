@@ -46,7 +46,7 @@ class NotifyClient extends Command
 
             $daysInMonth = $currentMonth->daysInMonth;
 
-            $validity_period = floor($client->balance / ($organizationCount * ($client->tariff->price / $daysInMonth)));
+            $validity_period = floor($client->balance / ($organizationCount * ($client->tariffPrice->tariff_price / $daysInMonth)));
 
             if ($validity_period <= 10) {
                 Mail::to($client->email)->send(new NotifyClientMail($client, $validity_period));

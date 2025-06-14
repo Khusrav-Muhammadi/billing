@@ -143,7 +143,6 @@ class ClientController extends Controller
             $sale = $client->sale;
 
             if ($sale->sale_type === 'procent') {
-                // Percentage discount on total daily payment
                 $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
             } else {
                 // Fixed amount discount

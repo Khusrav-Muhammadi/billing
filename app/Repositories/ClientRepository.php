@@ -94,7 +94,7 @@ class ClientRepository implements ClientRepositoryInterface
             $sale = $client->sale;
 
             if ($sale->sale_type === 'procent') {
-                $totalDailyPayment -= ($client->tariff->price * $sale->amount) / (100 * $daysInMonth);
+                $totalDailyPayment -= ($client->tariffPrice->tariff_price * $sale->amount) / (100 * $daysInMonth);
             } else {
                 $totalDailyPayment -= $sale->amount / $daysInMonth;
             }
