@@ -39,8 +39,6 @@ class CreateOrganizationJob implements ShouldQueue
      //   $url = "https://hello-back.sham360.com/api/organization";
 
 
-
-
         $tariff = TariffCurrency::find($this->client->tariff_id)->tariff;
 
         Http::withHeaders([
