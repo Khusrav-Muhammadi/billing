@@ -26,6 +26,16 @@ class ClientFilter  extends ModelFilter
         return $this->where('partner_id', $partner);
     }
 
+    public function currency($currencyId) :self
+    {
+        return $this->where('currency_id', $currencyId);
+    }
+
+    public function country($countryId) :self
+    {
+        return $this->where('country_id', $countryId);
+    }
+
     public function search($search) :self
     {
         $searchTerm = '%' . $search . '%';
