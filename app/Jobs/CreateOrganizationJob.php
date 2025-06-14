@@ -6,6 +6,7 @@ use App\Mail\SendSiteDataMail;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Tariff;
+use App\Models\TariffCurrency;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,7 +38,8 @@ class CreateOrganizationJob implements ShouldQueue
         $url = "https://{$this->client->sub_domain}-back.{$domain}/api/organization";
      //   $url = "https://hello-back.sham360.com/api/organization";
 
-        $tariff = Tariff::find($this->client->tariff_id);
+
+        $tariff = TariffCurrency::find($this->client->tariff_id)->tariff;
 
         Http::withHeaders([
             'Accept' => 'application/json',
