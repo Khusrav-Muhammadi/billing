@@ -239,7 +239,9 @@ class ClientRepository implements ClientRepositoryInterface
                 $balance += $organization->balance;
             }
 
-            $client->balance = (string) $balance;
+            $currency = $client->currency;
+
+            $client->balance = "$balance $currency->symbol_code";
             $client->save();
 
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
