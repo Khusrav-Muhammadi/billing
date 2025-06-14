@@ -53,10 +53,22 @@ class TariffController extends Controller
         $parts = explode('.', $host);
         $subdomain = count($parts) > 2 ? $parts[0] : null;
 
-        $client = Client::query()->where('sub_domain', $parts[0])->first();
+        $client = Client::query()->where('sub_domain', $subdomain)->first();
 
         $tariffs = TariffCurrency::query()->where('currency_id', $client->currency_id)->with('tariff')->get();
 
         return response()->json($tariffs);
+    }
+
+    public function tariff(Request $request)
+    {
+        if ($request->code == 998) {
+            $tariff = TariffCurrency::query()->where('currency_id', 2)->with('tariff')->get();
+        } else {
+            $tariff = TariffCurrency::query()->where('currency_id', 1)->with('tariff')->get();
+        }
+
+        return response()->json($tariff);
+
     }
 }
