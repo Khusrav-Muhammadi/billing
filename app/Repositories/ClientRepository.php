@@ -242,7 +242,6 @@ class ClientRepository implements ClientRepositoryInterface
             $currency = $client->currency;
 
             $client->balance = "$balance $currency->symbol_code";
-            $client->save();
 
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
             $client->validate_date = $this->calculateValidateDate($client);
