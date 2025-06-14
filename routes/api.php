@@ -85,3 +85,4 @@ Route::post('change-tariff', [\App\Http\Controllers\API\ClientController::class,
 
 Route::post('/payment', [PaymentController::class, 'createInvoice']);
 Route::post('/payment/webhook/{provider}', [PaymentController::class, 'handleWebhook']);
+Route::get('partners/{country_id}', [\App\Http\Controllers\API\ClientController::class, 'getPartnersByCountry']);

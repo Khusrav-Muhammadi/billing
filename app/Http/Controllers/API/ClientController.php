@@ -19,6 +19,7 @@ use App\Models\Partner;
 use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\OrganizationRepository;
 use Carbon\Carbon;
@@ -300,6 +301,11 @@ class ClientController extends Controller
     {
         return $this->repository->webhookChangeTariff($request);
     }
-
-
+    
+    public function getPartnersByCountry(int $country_id)
+    {
+        return response()->json([
+            'result' => User::query()->where('role', 'partner')->where('country_id', $country_id)->paginate(50),
+        ]);
+    }
 }

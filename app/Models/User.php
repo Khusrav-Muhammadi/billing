@@ -27,6 +27,7 @@ class User extends Authenticatable
         'role',
         'partner_status_id',
         'partner_id',
+        'country_id'
     ];
 
     /**
