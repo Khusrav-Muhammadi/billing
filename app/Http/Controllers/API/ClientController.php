@@ -293,8 +293,8 @@ class ClientController extends Controller
         $host = parse_url($referer, PHP_URL_HOST);
 
         $parts = explode('.', $host);
-//        $data['sub_domain'] = count($parts) > 2 ? $parts[0] : null;
-        $data['sub_domain'] = 'localhost';
+        $data['sub_domain'] = count($parts) > 2 ? $parts[0] : null;
+
         return $this->repository->countDifference($data);
     }
 
