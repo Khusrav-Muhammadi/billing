@@ -41,23 +41,6 @@
             </div>
 
             <div class="form-group">
-                <label for="login">Логин</label>
-                <input type="text" class="form-control @error('login') is-invalid @enderror" name="login" placeholder="логин" value="{{ old('login') }}">
-                @error('login')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <div class="form-group">
-                <label for="password">Пароль</label>
-                <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="Пароль">
-                @error('password')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-                <input type="hidden" class="form-control" name="role" value="partner">
-            </div>
-
-            <div class="form-group">
                 <label for="address">Адрес</label>
                 <textarea name="address" cols="30" rows="10" class="form-control @error('address') is-invalid @enderror">{{ old('address') }}</textarea>
                 @error('address')

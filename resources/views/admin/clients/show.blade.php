@@ -22,6 +22,10 @@
                class="btn btn-outline-{{ $client->is_active ? 'success' : 'danger' }}">
                 <i class="mdi mdi-power" style="font-size: 30px"></i>
             </a>
+            <a href="#" style="margin-left: 10px" data-bs-toggle="modal" data-bs-target="#deleteAll"
+               class="btn btn-outline-danger">
+                <i class="mdi mdi-trash-can" style="font-size: 30px"></i>
+            </a>
         </div>
 
         <div class="card mb-3 p-3">
@@ -422,6 +426,32 @@
                                     class="btn btn-{{ $client->is_active ? 'danger' : 'success' }}"
                                     @if($client->is_active) data-bs-toggle="modal"
                                     data-bs-target="#reject_cause" @endif>{{ $client->is_active ? 'Деактивировать' : 'Активировать' }}</button>
+                        </div>
+                    </div>
+                </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteAll" tabindex="-1"
+         aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+                <form action="{{ route('client.deleteAll', $client->id) }}" method="POST">
+                    @csrf
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"
+                                id="exampleModalLabel"> Полное удаление</h5>
+                        </div>
+                        <div class="modal-body">
+                            Вы уверены что хотите полностью удалить  данные клиента?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Отмена
+                            </button>
+                            <button type="submit"
+                                    class="btn btn-danger"
+                                   data-bs-toggle="modal" data-bs-target="#deleteAll">Удалить данные</button>
                         </div>
                     </div>
                 </form>

@@ -16,8 +16,10 @@ use App\Repositories\ClientRepository;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\OrganizationRepository;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+
 
 class SiteApplicationController extends Controller
 {
@@ -36,7 +38,8 @@ class SiteApplicationController extends Controller
             $client = $this->createDemoClient($validated);
             if (!$client) {
                 return response()->json([
-                    'success' => false
+                    'success' => false,
+                    'message' => 'Не удалось создать демо-аккаунт. Проверьте корректность email адреса.'
                 ], 400);
             }
             SubDomainJob::dispatch($client);
@@ -49,13 +52,11 @@ class SiteApplicationController extends Controller
                 'country_id' => $validated['region_id']
             ];
 
+            (new OrganizationRepository())->store($client, $data);
 
-           (new OrganizationRepository())->store($client, $data);
-
-           SendToShamJob::dispatch($client->phone, $client->tariff?->name, $client->email, $client->name, $client->country?->name, $client->partner?->name);
+            SendToShamJob::dispatch($client->phone, $client->tariff?->name, $client->email, $client->name, $client->country?->name, $client->partner?->name);
         }
         elseif ($validated['request_type'] === 'individual') {
-
             SendToShamJob::dispatch($validated['phone'], 'Тариф: Индивидуальный тариф', $validated['email'], $validated['fio'], Country::find($validated['region_id'])?->name );
         }
         else {
@@ -78,12 +79,60 @@ class SiteApplicationController extends Controller
             ],
             'region_id' => 'nullable|integer',
             'request_type' => 'required|string|in:demo,partner,corporate,individual',
-            'partner_id' => 'nullable'
+            'partner_id' => 'nullable',
+            'manager_id' => 'nullable'
         ]);
     }
 
+    private function isValidEmail(string $email): bool
+    {
+        try {
+            $response = Http::timeout(10)->get('https://api.emailvalidation.io/v1/info', [
+                'apikey' => 'ema_live_pLU3hBeUBOIc2NJqRuJOt6wh2TsqDilv9FBduowR',
+                'email' => $email
+            ]);
+
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                $isDeliverable = ($data['state'] ?? '') === 'deliverable';
+                $hasValidFormat = ($data['format_valid'] ?? false);
+                $passesSmtpCheck = ($data['smtp_check'] ?? false);
+                $isNotDisposable = !($data['disposable'] ?? true);
+
+                return $isDeliverable || ($hasValidFormat && $passesSmtpCheck && $isNotDisposable);
+            }
+            else {
+                $domain = substr(strrchr($email, "@"), 1);
+                $hasRecords = checkdnsrr($domain, 'MX') || checkdnsrr($domain, 'A');
+
+                // Проверяем на известные временные домены
+                $tempDomains = ['10minutemail.com', 'tempmail.org', 'guerrillamail.com', 'mailinator.com'];
+                $isNotTemp = !in_array(strtolower($domain), $tempDomains);
+
+                return $hasRecords && $isNotTemp;
+            }
+        } catch (\Exception $e) {
+            // Если API недоступен, используем простую DNS проверку
+            $domain = substr(strrchr($email, "@"), 1);
+            $hasRecords = checkdnsrr($domain, 'MX') || checkdnsrr($domain, 'A');
+
+            // Проверяем на известные временные домены
+            $tempDomains = ['10minutemail.com', 'tempmail.org', 'guerrillamail.com', 'mailinator.com'];
+            $isNotTemp = !in_array(strtolower($domain), $tempDomains);
+
+            return $hasRecords && $isNotTemp;
+        }
+
+        return false;
+    }
     private function createDemoClient(array $data): ?Client
     {
+        if (!empty($data['email']) && !$this->isValidEmail($data['email'])) {
+            return null;
+        }
+
         $countryId = $data['region_id'] ?? 1;
 
         $tariffId = match ($countryId) {
@@ -102,10 +151,19 @@ class SiteApplicationController extends Controller
             'country_id' => $countryId,
             'is_demo' => true,
             'tariff_id' => $tariffId,
-            'partner_id' => $data['partner_id'],
             'sub_domain' => $this->generateSubdomain($data['email']),
             'currency_id' => $currency_id,
+            'manager_id' => $data['manager_id'] ?? null,
+            'partner_id' => $data['partner_id'] ?? null,
         ];
+
+        if (!empty($clientData['manager_id'])) {
+            $manager = \App\Models\User::query()->find($clientData['manager_id']);
+
+            if ($manager && !empty($manager->partner_id)) {
+                $clientData['partner_id'] = $manager->partner_id;
+            }
+        }
 
         $client = Client::query()
             ->where('sub_domain', $clientData['sub_domain'])
@@ -118,7 +176,6 @@ class SiteApplicationController extends Controller
 
         return Client::create($clientData);
     }
-
 
     private function generateSubdomain(string $email): string
     {

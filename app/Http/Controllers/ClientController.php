@@ -35,13 +35,14 @@ class ClientController extends Controller
     {
         $clients = $this->repository->index($request->all());
         $partners = User::query()->where('role', 'partner')->get();
+        $managers = User::query()->where('role', 'manager')->get();
         $tariffs = Tariff::all();
 
         if ($request->ajax()) {
             return view('admin.partials.clients', compact('clients'))->render();
         }
 
-        return view('admin.clients.index', compact('clients', 'partners', 'tariffs'));
+        return view('admin.clients.index', compact('clients', 'partners', 'tariffs', 'managers'));
     }
 
     public function create()
@@ -235,6 +236,15 @@ class ClientController extends Controller
         ]);
     }
 
+    public function deleteAll(Client $client)
+    {
+        $subdomain = $client->sub_domain;
+        $client->organizations()->delete();
+        $client->delete();
 
+        Http::delete('https://shamcrm.com/api/deleteClient/' . $subdomain);
+
+        return redirect()->route('client.index');
+    }
 
 }

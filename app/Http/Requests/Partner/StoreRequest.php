@@ -18,11 +18,12 @@ class StoreRequest extends FormRequest
         return [
             'name' => ['required'],
             'email' => ['required', 'unique:users,email'],
-            'address' => ['required'],
-            'login'  => ['required', 'unique:users,login'],
-            'password'  => ['required'],
-            'role'  => ['required'],
-            'phone' => ['required', 'unique:users,phone']
+            'address' => ['nullable'],
+            'login'  => ['nullable', 'unique:users,login'],
+            'password'  => [ 'nullable'],
+            'role'  => ['nullable'],
+            'phone' => ['required', 'unique:users,phone'],
+            'partner_id' => ['nullable']
         ];
     }
 }
