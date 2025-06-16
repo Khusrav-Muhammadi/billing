@@ -305,4 +305,26 @@ class AlifPayProvider implements PaymentProviderInterface
             providerResponse: ['alif_status' => $data['payment']['status']]
         );
     }
+
+//    public function handleWebhook(array $data, string $signature = null, string $rawBody = null): WebhookResponse
+//    {
+//        if ($signature && $rawBody) {
+//            $secretKey = config('alifpay.secret_key');
+//            $expectedSignature = base64_encode(hash_hmac('sha256', $rawBody, $secretKey, true));
+//
+//            if (!hash_equals($expectedSignature, $signature)) {
+//                throw new \Exception('Invalid webhook signature');
+//            }
+//        }
+//
+//        $invoice = Invoice::where('payment_provider_id', $data['id'])->firstOrFail();
+//
+//        return new WebhookResponse(
+//            success: $data['payment']['status'] === 'SUCCEEDED',
+//            operationId: $invoice->id,
+//            operationType: PaymentOperationType::from($invoice->operation_type),
+//            message: $data['payment']['status'],
+//            providerResponse: ['alif_status' => $data['payment']['status']]
+//        );
+//    }
 }

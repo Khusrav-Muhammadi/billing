@@ -118,11 +118,9 @@ class ClientRepository implements ClientRepositoryInterface
 
         $dailyPayment = round($this->calculateDailyPayment($client), 4);
 
-        if ($client->balance > 0)
-        {
+        if ($client->balance > 0) {
             $days = (int)($client->balance / $dailyPayment);
-        }
-        else {
+        } else {
             $days = 0;
         }
 
@@ -152,7 +150,7 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function update(Client $client, array $data)
     {
-        $tariff_id = $client->country_id  == 2 ? TariffCurrency::query()->where('tariff_id', $data['tariff_id'])->where('currency_id', $client->currency_id)->first()->id : $data['tariff_id'];
+        $tariff_id = $client->country_id == 2 ? TariffCurrency::query()->where('tariff_id', $data['tariff_id'])->where('currency_id', $client->currency_id)->first()->id : $data['tariff_id'];
 
         if ($client->tariff_id != $tariff_id) UpdateTariffJob::dispatch($client, $tariff_id, $client->sub_domain);
 
@@ -288,7 +286,7 @@ class ClientRepository implements ClientRepositoryInterface
                 $balance += $organization->balance;
             }
 
-            $client->balance = (string) $balance;
+            $client->balance = (string)$balance;
             $client->save();
 
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
@@ -307,17 +305,17 @@ class ClientRepository implements ClientRepositoryInterface
 
         $organization = Organization::find($data['organization_id']);
         $newTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('id', $data['tariff_id'])->first();
-        $lastTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('id',  $client->tariff_id)->first();
+        $lastTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('id', $client->tariff_id)->first();
 
-        $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
+//        $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
         $tariffPrice = $newTariff->tariff_price;
         $tariffPriceByMonth = $newTariff->tariff_price * $data['month'];
-        $licensePrice = $newTariff->license_price;
+//        $licensePrice = $newTariff->license_price;
 
         $saleService = new SaleService();
         $activeSales = $saleService->getActiveSales();
 
-        $saleLicensePrice = 0;
+//        $saleLicensePrice = 0;
         $saleTariffPrice = 0;
 
         foreach ($activeSales as $activeSale) {
@@ -327,30 +325,34 @@ class ClientRepository implements ClientRepositoryInterface
             if ($activeSale->apply_to == 'progressive') {
                 $saleTariffPrice = $tariffPrice * ($activeSale->amount / 100) * $data['month'];
             } else {
-                $saleLicensePrice = $licensePrice * ($activeSale->amount / 100);
+//                $saleLicensePrice = $licensePrice * ($activeSale->amount / 100);
             }
         }
 
-        $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
-        $licenseForPay = max($licenseForPay, 0);
+        $implementation = $organization->implementation ?? 0;
+
+//        $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
+//        $licenseForPay = max($licenseForPay, 0);
         $tariffForPay = $tariffPriceByMonth - $saleTariffPrice;
         if ($data['type'] == 'tariff_renewal') $sumForPay = $tariffForPay;
-        else $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
+//        else $sumForPay = $organization->balance - $licenseForPay - $tariffForPay;
+        else $sumForPay = $organization->balance - $implementation - $tariffForPay;
 
         return [
             'organization_balance' => $organization->balance,
-            'license_difference' => $licenseDifference,
-            'license_price' => $licensePrice,
-            'sale_license_price' => round($saleLicensePrice, 2),
+//            'license_difference' => $licenseDifference,
+//            'license_price' => $licensePrice,
+//            'sale_license_price' => round($saleLicensePrice, 2),
             'tariff_price' => $tariffPrice,
             'tariff_price_by_month' => $tariffPriceByMonth,
             'sale_tariff_price' => round($saleTariffPrice, 2),
             'must_pay' => false, //$difference < 0,
             'upgrade' => $organization->sum_paid_for_license,
-            'license_for_pay' => $licenseForPay,
+//            'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
             'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay, 2)) : 0,
-            'currency' => $client->currency
+            'currency' => $client->currency,
+            'implementation' => $implementation
         ];
     }
 
