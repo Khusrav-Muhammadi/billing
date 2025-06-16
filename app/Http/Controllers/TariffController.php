@@ -51,8 +51,8 @@ class TariffController extends Controller
         $host = parse_url($referer, PHP_URL_HOST);
 
         $parts = explode('.', $host);
-        $subdomain = count($parts) > 2 ? $parts[0] : null;
-
+//        $subdomain = count($parts) > 2 ? $parts[0] : null;
+        $subdomain = 'localhost';
         $client = Client::query()->where('sub_domain', $subdomain)->first();
 
         $tariffs = TariffCurrency::query()->where('currency_id', $client->currency_id)->with('tariff')->get();
