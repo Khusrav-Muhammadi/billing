@@ -92,11 +92,11 @@ class AlifPayProvider implements PaymentProviderInterface
                 );
             }
         }
-dd($dto->metadata['tariff_price']);
+
         $originalTariffPrice = $dto->metadata['tariff_price'];
         $tariffPrice = $this->applyDiscount($originalTariffPrice, 'tariff', $dto->metadata);
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
-
+dd($tariffPrice);
         $items[] = $this->makeItem(
             name: "Активация тарифа {$dto->metadata['tariff_name']}",
             price: $tariffPrice * $dto->metadata['operation_data']['months'], // Умножаем цену на месяцы здесь
@@ -106,7 +106,7 @@ dd($dto->metadata['tariff_price']);
             count: 1, // Исправлено: count должен быть 1, а цена уже умножена на месяцы
             sale_id: $tariffSaleId
         );
-dd($items);
+
         return $items;
     }
 
