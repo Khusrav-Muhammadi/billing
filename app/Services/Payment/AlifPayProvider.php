@@ -83,7 +83,7 @@ class AlifPayProvider implements PaymentProviderInterface
 
             if ($licensePrice > 0) {
                 $items[] = $this->makeItem(
-                    name: "Лицензия для тарифа {$dto->metadata['tariff_name']}",
+                    name: "Внедрение для тарифа {$dto->metadata['tariff_name']}",
                     price: $licensePrice,
                     months: $dto->metadata['operation_data']['months'],
                     invoiceId: $invoiceId,
