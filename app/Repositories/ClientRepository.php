@@ -329,7 +329,7 @@ class ClientRepository implements ClientRepositoryInterface
             }
         }
 
-        $implementation = $organization->implementation ?? 0;
+        $implementation = $organization->implementation_sum ?? 0;
 
 //        $licenseForPay = $licensePrice - $saleLicensePrice - $organization->sum_paid_for_license;
 //        $licenseForPay = max($licenseForPay, 0);

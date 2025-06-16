@@ -50,7 +50,7 @@ class DemoToLiveOperation extends BaseBillingOperation
             'phone' => $this->client->phone,
             'email' => $this->client->email,
             'subdomain' => $this->client->sub_domain,
-            'license_price' => $this->organization->implementation,
+            'license_price' => $this->organization->implementation_sum,
             'tariff_price' => $this->newTariff->tariff_price,
             'currency_id' => $this->client->currency_id,
             'months' => $this->operationData["months"],
