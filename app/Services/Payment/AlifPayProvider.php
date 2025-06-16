@@ -75,7 +75,6 @@ class AlifPayProvider implements PaymentProviderInterface
     private function demoToLiveItems(int $invoiceId, CreateInvoiceDTO $dto): array
     {
         $items = [];
-
         if (($dto->metadata['license_price'] ?? 0) > 0) {
             $originalLicensePrice = $dto->metadata['license_price'];
             $licensePrice = $this->applyDiscount($originalLicensePrice, 'license', $dto->metadata);

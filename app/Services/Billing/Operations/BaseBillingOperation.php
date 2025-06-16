@@ -12,8 +12,7 @@ abstract class BaseBillingOperation
 {
     public function calculateAmount(): float
     {
-        return $this->client->tariffPrice->license_price +
-            $this->client->tariffPrice->tariff_price;
+        return $this->client->tariffPrice->tariff_price;
     }
 
     public function getCurrency(): string

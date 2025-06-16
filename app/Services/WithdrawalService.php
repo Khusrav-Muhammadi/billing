@@ -39,22 +39,22 @@ class WithdrawalService
                 'purpose' => TransactionPurpose::TARIFF,
             ]);
 
-            if (!$organization->license_paid) {
-                $accountedAmount = $currency->symbol_code == 'USD' ? $client->tariffPrice->license_price : $client->tariffPrice->license_price / $currency->latestExchangeRate->kurs;
-
-                Transaction::create([
-                    'client_id' => $client->id,
-                    'organization_id' => $organization->id,
-                    'tariff_id' => $client->tariffPrice->id,
-                    'sale_id' => $client->sale?->id,
-                    'sum' => $client->tariffPrice->license_price,
-                    'type' => TransactionType::DEBIT,
-                    'accounted_amount' => $accountedAmount,
-                    'purpose' => TransactionPurpose::LICENSE,
-                ]);
-
-                $organization->update(['license_paid' => true]);
-            }
+//            if (!$organization->license_paid) {
+//                $accountedAmount = $currency->symbol_code == 'USD' ? $client->tariffPrice->license_price : $client->tariffPrice->license_price / $currency->latestExchangeRate->kurs;
+//
+//                Transaction::create([
+//                    'client_id' => $client->id,
+//                    'organization_id' => $organization->id,
+//                    'tariff_id' => $client->tariffPrice->id,
+//                    'sale_id' => $client->sale?->id,
+//                    'sum' => $client->tariffPrice->license_price,
+//                    'type' => TransactionType::DEBIT,
+//                    'accounted_amount' => $accountedAmount,
+//                    'purpose' => TransactionPurpose::LICENSE,
+//                ]);
+//
+//                $organization->update(['license_paid' => true]);
+//            }
 
         } else {
             Log::error(3);

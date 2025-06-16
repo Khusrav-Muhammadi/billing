@@ -37,7 +37,7 @@ class DemoToLiveOperation extends BaseBillingOperation
 
     public function calculateAmount(): float
     {
-        return $this->newTariff->license_price +
+        return $this->organization->implementation_sum +
             $this->newTariff->tariff_price;
     }
 
