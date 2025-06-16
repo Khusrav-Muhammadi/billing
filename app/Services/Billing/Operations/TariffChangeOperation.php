@@ -44,7 +44,7 @@ class TariffChangeOperation extends BaseBillingOperation
             'phone' => $this->client->phone,
             'email' => $this->client->email,
             'subdomain' => $this->client->sub_domain,
-            'license_difference' => $this->newTariff->license_price > $this->organization->sum_paid_for_license? ($this->newTariff->license_price - $this->organization->sum_paid_for_license) : 0,
+            'license_difference' => $this->organization->implementation, //$this->newTariff->license_price > $this->organization->sum_paid_for_license? ($this->newTariff->license_price - $this->organization->sum_paid_for_license) : 0,
             'tariff_price' => $this->newTariff->tariff_price,
             'currency_id' => $this->client->currency_id,
             'months' => $this->operationData["months"],

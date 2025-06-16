@@ -46,7 +46,7 @@ class AddOrganizationOperation extends BaseBillingOperation
             'phone' => $this->client->phone,
             'email' => $this->client->email,
             'subdomain' => $this->client->sub_domain,
-            'license_price' => $this->client->tariffPrice->license_price,
+            'license_price' => $this->organization->implementation,
             'tariff_price' => $this->client->tariffPrice->tariff_price,
             'currency_id' => $this->client->currency_id,
             'months' => $this->operationData["months"],
