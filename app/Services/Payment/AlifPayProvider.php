@@ -106,7 +106,7 @@ class AlifPayProvider implements PaymentProviderInterface
             count: 1, // Исправлено: count должен быть 1, а цена уже умножена на месяцы
             sale_id: $tariffSaleId
         );
-
+dd($items);
         return $items;
     }
 
