@@ -92,7 +92,7 @@ class AlifPayProvider implements PaymentProviderInterface
                 );
             }
         }
-
+dd($dto->metadata);
         $originalTariffPrice = $dto->metadata['tariff_price'];
         $tariffPrice = $this->applyDiscount($originalTariffPrice, 'tariff', $dto->metadata);
         $tariffSaleId = $dto->metadata['discounts']['tariff']['sale_id'] ?? null;
