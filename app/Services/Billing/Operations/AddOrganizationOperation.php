@@ -33,8 +33,7 @@ class AddOrganizationOperation extends BaseBillingOperation
 
     public function calculateAmount(): float
     {
-        return $this->newTariff->license_price +
-            $this->newTariff->tariff_price;
+        return $this->newTariff->tariff_price;
     }
 
     public function getMetadata(): array
