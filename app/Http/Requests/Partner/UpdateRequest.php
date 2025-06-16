@@ -20,8 +20,9 @@ class UpdateRequest extends FormRequest
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($this->partner)],
             'phone' => ['required', 'string', Rule::unique('users', 'phone')->ignore($this->partner)],
             'login' => ['sometimes', 'string', Rule::unique('users', 'login')->ignore($this->partner)],
-            'address' => ['required', 'string'],
-            'partner_status_id' => ['required', Rule::exists('partner_statuses', 'id')],
+            'address' => ['nullable', 'string'],
+            'partner_status_id' => ['nullable', Rule::exists('partner_statuses', 'id')],
+            'partner_id' => ['nullable']
         ];
     }
 }

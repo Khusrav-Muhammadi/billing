@@ -40,6 +40,7 @@ Route::middleware('auth')->group(function () {
         Route::get('show/{client}', [ClientController::class, 'show'])->name('client.show');
         Route::patch('update/{client}', [ClientController::class, 'update'])->name('client.update');
         Route::post('/{client}', [ClientController::class, 'activation'])->name('client.activation');
+        Route::post('/deleteAll/{client}', [ClientController::class, 'deleteAll'])->name('client.deleteAll');
         Route::post('/create-transaction/{client}', [ClientController::class, 'createTransaction'])->name('client.createTransaction');
     });
 
@@ -103,6 +104,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [PartnerController::class, 'index'])->name('partner.index');
         Route::post('/store', [PartnerController::class, 'store'])->name('partner.store');
         Route::get('/create', [PartnerController::class, 'create'])->name('partner.create');
+        Route::post('/partner/addManager', [PartnerController::class, 'addManager'])->name('partner.manager.create');
+        Route::post('/partner/manager/{user}', [PartnerController::class, 'addManager'])->name('partner.manager.edit');
+        Route::delete('/partner/manager/{user}', [PartnerController::class, 'destroy'])->name('partner.manager.delete');
+        Route::patch('/partner/manager/update/{user}', [PartnerController::class, 'updateManager'])->name('partner.manager.update');
         Route::get('edit/{partner}', [PartnerController::class, 'edit'])->name('partner.edit');
         Route::patch('/{partner}', [PartnerController::class, 'update'])->name('partner.update');
         Route::delete('/{partner}', [PartnerController::class, 'destroy'])->name('partner.delete');

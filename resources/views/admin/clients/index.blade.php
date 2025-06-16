@@ -36,7 +36,15 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <select name="manager" class="form-control">
+                    <option value="">Менеджер</option>
+                    @foreach($managers as $manager)
+                        <option value="{{ $manager->id }}">{{ $manager->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
                 <input type="text" name="search" class="form-control" placeholder="Поиск">
             </div>
         </div>

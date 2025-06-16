@@ -36,6 +36,11 @@ class ClientFilter  extends ModelFilter
         return $this->where('country_id', $countryId);
     }
 
+    public function manager($manager_id) :self
+    {
+        return $this->where('manager_id', $manager_id);
+    }
+
     public function search($search) :self
     {
         $searchTerm = '%' . $search . '%';
