@@ -42,7 +42,7 @@ class DemoToLiveOperation extends BaseBillingOperation
     }
 
     public function getMetadata(): array
-    {
+    {dd($this->newTariff->tariff_price);
         return [
             'description' => "Активация тарифа {$this->newTariff->tariff->name}",
             'client_name' => $this->client->name,
