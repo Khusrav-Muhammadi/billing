@@ -77,13 +77,13 @@ class AlifPayProvider implements PaymentProviderInterface
         $items = [];
         if (($dto->metadata['license_price'] ?? 0) > 0) {
             $originalLicensePrice = $dto->metadata['license_price'];
-            $licensePrice = $this->applyDiscount($originalLicensePrice, 'license', $dto->metadata);
+//            $licensePrice = $this->applyDiscount($originalLicensePrice, 'license', $dto->metadata);
             $licenseSaleId = $dto->metadata['discounts']['license']['sale_id'] ?? null;
 
-            if ($licensePrice > 0) {
+            if ($originalLicensePrice > 0) {
                 $items[] = $this->makeItem(
                     name: "Внедрение для тарифа {$dto->metadata['tariff_name']}",
-                    price: $licensePrice,
+                    price: $originalLicensePrice,
                     months: $dto->metadata['operation_data']['months'],
                     invoiceId: $invoiceId,
                     purpose: TransactionPurpose::LICENSE,
@@ -256,8 +256,8 @@ class AlifPayProvider implements PaymentProviderInterface
         $total = 0;
 
         if (($dto->metadata['license_price'] ?? 0) > 0) {
-            $licensePrice = $this->applyDiscount($dto->metadata['license_price'], 'license', $dto->metadata);
-            $total += $licensePrice;
+//            $licensePrice = $this->applyDiscount($dto->metadata['license_price'], 'license', $dto->metadata);
+            $total += $dto->metadata['license_price'];
         }
 
         $tariffPrice = $this->applyDiscount($dto->metadata['tariff_price'], 'tariff', $dto->metadata);
