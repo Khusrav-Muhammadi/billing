@@ -69,15 +69,15 @@ class LoginRequest extends FormRequest
      */
     protected function credentials(): array
     {
-        $loginInput = $this->input('login');
+        $login = $this->input('login');
 
-        // Важно: FILTER_VALIDATE_EMAIL должен вернуть true только для email
-        $field = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'email' : 'login';
+        // Явная проверка на "@" — примитивно, но точно
+        if (str_contains($login, '@')) {
+            return ['email' => $login, 'password' => $this->input('password')];
+        }
 
-        return [
-            $field => $loginInput,
-            'password' => $this->input('password'),
-        ];
+        return ['login' => $login, 'password' => $this->input('password')];
     }
+
 
 }
