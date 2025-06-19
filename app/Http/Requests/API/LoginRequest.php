@@ -71,6 +71,7 @@ class LoginRequest extends FormRequest
     {
         $loginInput = $this->input('login');
 
+        // Важно: FILTER_VALIDATE_EMAIL должен вернуть true только для email
         $field = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'email' : 'login';
 
         return [
@@ -78,4 +79,5 @@ class LoginRequest extends FormRequest
             'password' => $this->input('password'),
         ];
     }
+
 }
