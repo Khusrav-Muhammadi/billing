@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\API;
 
-use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -28,9 +27,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $credentials = $this->credentials();
-
-        if (!Auth::attempt($credentials, $this->boolean('remember'))) {
+        if (!Auth::attempt($this->credentials(), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -41,13 +38,16 @@ class LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
     }
 
+    public function throttleKey(): string
+    {
+        return Str::transliterate(Str::lower($this->input('login')) . '|' . $this->ip());
+    }
+
     public function ensureIsNotRateLimited(): void
     {
         if (!RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
             return;
         }
-
-        event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
@@ -59,25 +59,17 @@ class LoginRequest extends FormRequest
         ]);
     }
 
-    public function throttleKey(): string
-    {
-        return Str::transliterate(Str::lower($this->input('login')) . '|' . $this->ip());
-    }
-
     /**
-     * Определяет, какие credentials использовать (email или login).
+     * Возвращает правильные credentials: ['email' => ..., 'password' => ...] или ['login' => ..., 'password' => ...]
      */
-    protected function credentials(): array
+    public function credentials(): array
     {
         $login = $this->input('login');
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'login';
 
-        // Явная проверка на "@" — примитивно, но точно
-        if (str_contains($login, '@')) {
-            return ['email' => $login, 'password' => $this->input('password')];
-        }
-
-        return ['login' => $login, 'password' => $this->input('password')];
+        return [
+            $field => $login,
+            'password' => $this->input('password'),
+        ];
     }
-
-
 }

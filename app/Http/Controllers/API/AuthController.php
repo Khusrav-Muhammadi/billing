@@ -12,15 +12,17 @@ class AuthController extends Controller
 {
     public function login(LoginRequest $request)
     {
-        $data = $request->validated();
-
-        if (Auth::attempt($data)) {
+        if (Auth::attempt($request->credentials())) {
             $user = Auth::user();
             $token = $user->createToken('PartnerToken');
 
-            return response()->json(['token' => $token->plainTextToken, 'user' => $user], 200);
+            return response()->json([
+                'token' => $token->plainTextToken,
+                'user' => $user,
+            ], 200);
         }
 
-        return response()->json(['error' => 'Unauthorized'], 400);
+        return response()->json(['error' => 'Unauthorized'], 401);
     }
+
 }
