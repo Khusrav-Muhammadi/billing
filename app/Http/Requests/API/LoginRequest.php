@@ -9,21 +9,13 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-class   LoginRequest extends FormRequest
+class LoginRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\Rule|array|string>
-     */
     public function rules(): array
     {
         return [
@@ -32,16 +24,13 @@ class   LoginRequest extends FormRequest
         ];
     }
 
-    /**
-     * Attempt to authenticate the request's credentials.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 
-        if (!Auth::attempt($this->only('login', 'password'), $this->boolean('remember'))) {
+        $credentials = $this->credentials();
+
+        if (!Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -52,11 +41,6 @@ class   LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
     }
 
-    /**
-     * Ensure the login request is not rate limited.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function ensureIsNotRateLimited(): void
     {
         if (!RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
@@ -75,11 +59,23 @@ class   LoginRequest extends FormRequest
         ]);
     }
 
-    /**
-     * Get the rate limiting throttle key for the request.
-     */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('login')) . '|' . $this->ip());
+        return Str::transliterate(Str::lower($this->input('login')) . '|' . $this->ip());
+    }
+
+    /**
+     * Определяет, какие credentials использовать (email или login).
+     */
+    protected function credentials(): array
+    {
+        $loginInput = $this->input('login');
+
+        $field = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'email' : 'login';
+
+        return [
+            $field => $loginInput,
+            'password' => $this->input('password'),
+        ];
     }
 }
