@@ -4,8 +4,8 @@
 return [
     'alif' => [
         'token' => 'vaCx7qkNNahFb9LhN+ZF2EqhT/+9c8uK5LrGXvGoG/yf',
-        'url' => 'https://api-dev.alifpay.uz/v2/invoice',
-        'url_dev' => 'https://api.alifpay.uz/v2/invoice',
+        'url_test' => 'https://api-dev.alifpay.uz/v2/invoice',
+        'url' => 'https://api.alifpay.uz/v2/invoice',
         'payment_page' => 'https://checkout-dev.alifpay.uz?invoice='
     ],
 
