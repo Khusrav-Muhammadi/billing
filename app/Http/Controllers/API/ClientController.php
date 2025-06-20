@@ -49,14 +49,14 @@ class ClientController extends Controller
     {
         $organizations = Organization::where('client_id', $client->id)->get();
         $transactions = Transaction::where('client_id', $client->id)
-            ->with(['tariff', 'client', 'organization', 'sale', 'manager'])
+            ->with(['tariff', 'client', 'organization', 'sale'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
         $businessTypes = BusinessType::all();
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $packs = Pack::all();
-        $client = $client->load(['history.changes', 'history.user', 'tariff', 'country', 'partner']);
+        $client = $client->load(['history.changes', 'history.user', 'tariff', 'country', 'partner', 'manager']);
         $expirationDate = $this->calculateValidateDate($client);
         return response()->json([
             'organizations' => $organizations,
