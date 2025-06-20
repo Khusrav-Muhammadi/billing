@@ -187,7 +187,7 @@ class ClientController extends Controller
     public function getPartners()
     {
         return response()->json([
-            'result' => Partner::query()->paginate(50),
+            'result' => User::query()->where('role', 'partner')->paginate(50),
         ]);
     }
 
