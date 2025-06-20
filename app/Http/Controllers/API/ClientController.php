@@ -243,7 +243,7 @@ class ClientController extends Controller
             'is_demo' => true,
             'tariff_id' => $data['tariff_id'],
             'sub_domain' => $this->generateSubdomain($data['email']),
-            'manager_id' => auth()->user()->role == 'manager' ? auth()->id() : null;
+            'manager_id' => auth()->user()->role == 'manager' ? auth()->id() : null
         ];
 
         $client = Client::query()->where('sub_domain', $clientData['sub_domain'])->orWhere('phone',$clientData['phone'])->first();
