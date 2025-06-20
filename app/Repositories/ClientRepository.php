@@ -219,6 +219,10 @@ class ClientRepository implements ClientRepositoryInterface
             $query->where('partner_id', auth()->id());
         }
 
+        if (auth()->user()->role == 'manager') {
+            $query->where('manager_id', auth()->id());
+        }
+
         $clients = $query->with(['sale', 'tariffPrice.tariff', 'city', 'partner'])->paginate(20);
 
         $processedClients = $clients->getCollection()->map(function ($client) {
