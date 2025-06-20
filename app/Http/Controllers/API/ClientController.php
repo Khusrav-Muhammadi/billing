@@ -187,7 +187,7 @@ class ClientController extends Controller
     public function getPartners()
     {
         return response()->json([
-            'result' => Partner::query()->paginate(50),
+            'result' => User::query()->where('role', 'partner')->paginate(50),
         ]);
     }
 
@@ -242,7 +242,8 @@ class ClientController extends Controller
             'country_id' => $data['country_id'] ?? 1,
             'is_demo' => true,
             'tariff_id' => $data['tariff_id'],
-            'sub_domain' => $this->generateSubdomain($data['email'])
+            'sub_domain' => $this->generateSubdomain($data['email']),
+            'manager_id' => auth()->user()->role == 'manager' ? auth()->id() : null;
         ];
 
         $client = Client::query()->where('sub_domain', $clientData['sub_domain'])->orWhere('phone',$clientData['phone'])->first();
