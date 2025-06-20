@@ -223,7 +223,7 @@ class ClientRepository implements ClientRepositoryInterface
             $query->where('manager_id', auth()->id());
         }
 
-        $clients = $query->with(['sale', 'tariffPrice.tariff', 'city', 'partner'])->paginate(20);
+        $clients = $query->with(['sale', 'tariffPrice.tariff', 'city', 'partner', 'manager'])->paginate(20);
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
