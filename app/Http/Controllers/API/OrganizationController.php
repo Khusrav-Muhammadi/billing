@@ -105,7 +105,7 @@ class OrganizationController extends Controller
             }
         }
 
-        $days = ($organization->balance + $saleTariffPrice) / round($sum,5);
+        $days = ($organization->balance + $saleTariffPrice) / round($sum,7);
         $endDate = Carbon::now()->addDays($days);
 
         return [
