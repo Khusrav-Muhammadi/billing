@@ -241,7 +241,7 @@ class OctoBankProvider implements PaymentProviderInterface
             'octo_secret' => config('payments.octobank.shop_secret'),
             'shop_transaction_id' => $shopTransactionId,
             'auto_capture' => true,
-            'test' => true,
+            'test' => false,
             'init_time' => now()->format('Y-m-d H:i:s'),
             'user_data' => [
                 'user_id' => $dto->metadata['operation_data']['organization_id'],

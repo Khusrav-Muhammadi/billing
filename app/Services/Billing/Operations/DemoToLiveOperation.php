@@ -32,7 +32,6 @@ class DemoToLiveOperation extends BaseBillingOperation
             $tariffId = Invoice::query()->where('id', $this->operationData['invoice_id'])->first()->tariff_id;
             $this->newTariff = TariffCurrency::find($tariffId);
         }
-
     }
 
     public function calculateAmount(): float
