@@ -10,8 +10,8 @@ return [
     ],
 
     'octobank' => [
-        'shop_id' => '36371',
-        'shop_secret' => 'd284a206-8adb-41f3-aae6-b95059b6fff2',
+        'shop_id' => '34852',
+        'shop_secret' => 'dd0ad08d-ab03-4988-8699-ed1b992fa80f',
         'url' => 'https://secure.octo.uz/prepare_payment'
     ]
 ];
