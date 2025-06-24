@@ -249,7 +249,7 @@ class OctoBankProvider implements PaymentProviderInterface
                 'email' => $dto->metadata['email']
             ],
             'total_sum' => $totalSumString,
-            'currency' => 'USD',
+            'currency' => $dto->metadata['currency_id'] == 1 ? 'USD' : 'UZS',
             'description' => $this->getPaymentDescription($dto->operationType, $dto->metadata),
             'basket' => $basket,
             'return_url' => $this->generateReturnUrl($dto),
