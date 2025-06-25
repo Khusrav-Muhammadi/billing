@@ -77,20 +77,20 @@ class OctoBankProvider implements PaymentProviderInterface
 
         if (($dto->metadata['license_price'] ?? 0) > 0) {
             $originalLicensePrice = $dto->metadata['license_price'];
-            $licensePrice = $this->applyDiscount($originalLicensePrice, 'license', $dto->metadata);
+//            $licensePrice = $this->applyDiscount($originalLicensePrice, 'license', $dto->metadata);
             $licenseSaleId = $dto->metadata['discounts']['license']['sale_id'] ?? null;
 
-            if ($licensePrice > 0) {
+//            if ($licensePrice > 0) {
                 $items[] = $this->makeItem(
                     name: "Лицензия для тарифа {$dto->metadata['tariff_name']}",
-                    price: $licensePrice,
+                    price: $dto->metadata['license_price'],
                     months: $dto->metadata['operation_data']['months'],
                     invoiceId: $invoiceId,
                     purpose: TransactionPurpose::LICENSE,
                     count: 1,
                     sale_id: $licenseSaleId
                 );
-            }
+//            }
         }
 
         $originalTariffPrice = $dto->metadata['tariff_price'];
