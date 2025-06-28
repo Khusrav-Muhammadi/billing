@@ -38,6 +38,6 @@ class NewErrorMessageJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Mail::to('tfaiziev04@gmail.com')->send(new NewErrorMail($this->message, $this->data));
+        Mail::to('amr_1990@mail.ru')->send(new NewErrorMail($this->message, $this->data));
     }
 }
