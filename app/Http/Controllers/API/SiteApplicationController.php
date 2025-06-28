@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\NewErrorMessageJob;
 use App\Jobs\NewSiteRequestJob;
 use App\Jobs\SendToShamJob;
 use App\Jobs\SubDomainJob;
@@ -35,6 +36,8 @@ class SiteApplicationController extends Controller
 
         if ($validated['request_type'] === 'demo') {
             if (!empty($validated['email']) && !$this->isValidEmail($validated['email'])) {
+                NewErrorMessageJob::dispatch('Указанный email адрес не является действительным.', ['email' => $validated['email'], 'phone' => $validated['phone']]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Указанный email адрес не является действительным.'
@@ -98,15 +101,16 @@ class SiteApplicationController extends Controller
             ->first();
 
         if ($existingClient) {
+            if (!empty($data['email']) && $existingClient->email === $data['email']) {
+                return 'Пользователь с таким email адресом уже существует.';
+            }
             if ($existingClient->sub_domain === $subdomain) {
-                return 'Клиент с таким поддоменом уже существует.';
+                return 'Пользователь с таким поддоменом уже существует.';
             }
             if ($existingClient->phone === $data['phone']) {
-                return 'Клиент с таким номером телефона уже существует.';
+                return 'Пользователь с таким номером телефона уже существует.';
             }
-            if (!empty($data['email']) && $existingClient->email === $data['email']) {
-                return 'Клиент с таким email адресом уже существует.';
-            }
+
         }
 
         return null;
@@ -134,7 +138,7 @@ class SiteApplicationController extends Controller
             'phone.string' => 'Поле телефон должно быть строкой.',
             'phone.max' => 'Поле телефон не должно превышать 20 символов.',
             'email.required' => 'Поле email обязательно для демо-аккаунта.',
-            'email.email' => 'Поле email должно содержать действительный email адрес.',
+            'email.email' => 'Пожалуйста введите правильный адрес почты',
             'email.max' => 'Поле email не должно превышать 255 символов.',
             'region_id.integer' => 'Поле регион должно быть числом.',
             'request_type.required' => 'Поле тип заявки обязательно для заполнения.',
