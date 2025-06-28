@@ -37,7 +37,7 @@ class NewErrorMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mail.new_request',
+            view: 'mail.new_error',
             with: ['error' => $this->errorMessage, 'data' => $this->data]
         );
     }
