@@ -16,7 +16,7 @@ class NewErrorMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(public string $error, public array $data)
+    public function __construct(public string $errorMessage, public array $data)
     {
         //
     }
