@@ -36,7 +36,7 @@ class SiteApplicationController extends Controller
 
         if ($validated['request_type'] === 'demo') {
             if (!empty($validated['email']) && !$this->isValidEmail($validated['email'])) {
-                NewErrorMessageJob::dispatch('Указанный email адрес не является действительным.', ['email' => $validated['email'], 'phone' => $validated['phone']]);
+             //   NewErrorMessageJob::dispatch('Указанный email адрес не является действительным.', ['email' => $validated['email'], 'phone' => $validated['phone']]);
 
                 return response()->json([
                     'success' => false,
@@ -46,7 +46,7 @@ class SiteApplicationController extends Controller
 
             $existingClient = $this->checkExistingClient($validated);
             if ($existingClient) {
-                NewErrorMessageJob::dispatch($existingClient, ['email' => $validated['email'], 'phone' => $validated['phone']]);
+              //  NewErrorMessageJob::dispatch($existingClient, ['email' => $validated['email'], 'phone' => $validated['phone']]);
 
                 return response()->json([
                     'success' => false,
