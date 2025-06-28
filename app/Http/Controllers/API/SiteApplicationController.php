@@ -46,6 +46,8 @@ class SiteApplicationController extends Controller
 
             $existingClient = $this->checkExistingClient($validated);
             if ($existingClient) {
+                NewErrorMessageJob::dispatch($existingClient, ['email' => $validated['email'], 'phone' => $validated['phone']]);
+
                 return response()->json([
                     'success' => false,
                     'message' => $existingClient
