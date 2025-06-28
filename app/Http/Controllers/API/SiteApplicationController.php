@@ -126,6 +126,20 @@ class SiteApplicationController extends Controller
             'request_type' => 'required|string|in:demo,partner,corporate,individual',
             'partner_id' => 'nullable',
             'manager_id' => 'nullable'
+        ], [
+            'fio.required' => 'Поле ФИО обязательно для заполнения.',
+            'fio.string' => 'Поле ФИО должно быть строкой.',
+            'fio.max' => 'Поле ФИО не должно превышать 255 символов.',
+            'phone.required' => 'Поле телефон обязательно для заполнения.',
+            'phone.string' => 'Поле телефон должно быть строкой.',
+            'phone.max' => 'Поле телефон не должно превышать 20 символов.',
+            'email.required' => 'Поле email обязательно для демо-аккаунта.',
+            'email.email' => 'Поле email должно содержать действительный email адрес.',
+            'email.max' => 'Поле email не должно превышать 255 символов.',
+            'region_id.integer' => 'Поле регион должно быть числом.',
+            'request_type.required' => 'Поле тип заявки обязательно для заполнения.',
+            'request_type.string' => 'Поле тип заявки должно быть строкой.',
+            'request_type.in' => 'Поле тип заявки должно быть одним из: demo, partner, corporate, individual.',
         ]);
     }
 
