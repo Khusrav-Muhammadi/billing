@@ -34,14 +34,29 @@ class SiteApplicationController extends Controller
         $validated = $this->validateRequest($request);
 
         if ($validated['request_type'] === 'demo') {
+            if (!empty($validated['email']) && !$this->isValidEmail($validated['email'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Указанный email адрес не является действительным.'
+                ], 400);
+            }
+
+            $existingClient = $this->checkExistingClient($validated);
+            if ($existingClient) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $existingClient
+                ], 409); // 409 Conflict
+            }
 
             $client = $this->createDemoClient($validated);
             if (!$client) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Не удалось создать демо-аккаунт. Проверьте корректность email адреса.'
-                ], 400);
+                    'message' => 'Не удалось создать демо-аккаунт. Попробуйте позже.'
+                ], 500);
             }
+
             SubDomainJob::dispatch($client);
             $data = [
                 'name' => $client->name,
@@ -65,6 +80,36 @@ class SiteApplicationController extends Controller
         }
 
         return response()->json(['success' => true]);
+    }
+
+    private function checkExistingClient(array $data): ?string
+    {
+        $subdomain = $this->generateSubdomain($data['email']);
+
+        $existingClient = Client::query()
+            ->where(function($query) use ($data, $subdomain) {
+                $query->where('sub_domain', $subdomain)
+                    ->orWhere('phone', $data['phone']);
+
+                if (!empty($data['email'])) {
+                    $query->orWhere('email', $data['email']);
+                }
+            })
+            ->first();
+
+        if ($existingClient) {
+            if ($existingClient->sub_domain === $subdomain) {
+                return 'Клиент с таким поддоменом уже существует.';
+            }
+            if ($existingClient->phone === $data['phone']) {
+                return 'Клиент с таким номером телефона уже существует.';
+            }
+            if (!empty($data['email']) && $existingClient->email === $data['email']) {
+                return 'Клиент с таким email адресом уже существует.';
+            }
+        }
+
+        return null;
     }
 
     private function validateRequest(Request $request): array
@@ -92,7 +137,6 @@ class SiteApplicationController extends Controller
                 'email' => $email
             ]);
 
-
             if ($response->successful()) {
                 $data = $response->json();
 
@@ -104,35 +148,27 @@ class SiteApplicationController extends Controller
                 return $isDeliverable || ($hasValidFormat && $passesSmtpCheck && $isNotDisposable);
             }
             else {
-                $domain = substr(strrchr($email, "@"), 1);
-                $hasRecords = checkdnsrr($domain, 'MX') || checkdnsrr($domain, 'A');
-
-                // Проверяем на известные временные домены
-                $tempDomains = ['10minutemail.com', 'tempmail.org', 'guerrillamail.com', 'mailinator.com'];
-                $isNotTemp = !in_array(strtolower($domain), $tempDomains);
-
-                return $hasRecords && $isNotTemp;
+                return $this->fallbackEmailValidation($email);
             }
         } catch (\Exception $e) {
-            // Если API недоступен, используем простую DNS проверку
-            $domain = substr(strrchr($email, "@"), 1);
-            $hasRecords = checkdnsrr($domain, 'MX') || checkdnsrr($domain, 'A');
-
-            // Проверяем на известные временные домены
-            $tempDomains = ['10minutemail.com', 'tempmail.org', 'guerrillamail.com', 'mailinator.com'];
-            $isNotTemp = !in_array(strtolower($domain), $tempDomains);
-
-            return $hasRecords && $isNotTemp;
+            return $this->fallbackEmailValidation($email);
         }
-
-        return false;
     }
+
+    private function fallbackEmailValidation(string $email): bool
+    {
+        $domain = substr(strrchr($email, "@"), 1);
+        $hasRecords = checkdnsrr($domain, 'MX') || checkdnsrr($domain, 'A');
+
+        // Проверяем на известные временные домены
+        $tempDomains = ['10minutemail.com', 'tempmail.org', 'guerrillamail.com', 'mailinator.com'];
+        $isNotTemp = !in_array(strtolower($domain), $tempDomains);
+
+        return $hasRecords && $isNotTemp;
+    }
+
     private function createDemoClient(array $data): ?Client
     {
-        if (!empty($data['email']) && !$this->isValidEmail($data['email'])) {
-            return null;
-        }
-
         $countryId = $data['region_id'] ?? 1;
 
         $tariffId = match ($countryId) {
@@ -165,16 +201,12 @@ class SiteApplicationController extends Controller
             }
         }
 
-        $client = Client::query()
-            ->where('sub_domain', $clientData['sub_domain'])
-            ->orWhere('phone', $clientData['phone'])
-            ->first();
-
-        if ($client) {
+        try {
+            return Client::create($clientData);
+        } catch (\Exception $e) {
+            \Log::error('Ошибка создания демо-клиента: ' . $e->getMessage(), $clientData);
             return null;
         }
-
-        return Client::create($clientData);
     }
 
     private function generateSubdomain(string $email): string
@@ -190,7 +222,6 @@ class SiteApplicationController extends Controller
             ->replaceMatches('/-+/', '-')
             ->whenEmpty(fn() => 'default');
     }
-
     private function createRegularApplication(array $data): void
     {
         SiteApplications::create([
