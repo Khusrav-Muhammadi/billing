@@ -105,12 +105,15 @@ class OrganizationController extends Controller
             }
         }
 
-        $days = ($organization->balance + $saleTariffPrice) / round($sum,7);
+        $days = $client->is_demo ? 14 : ($organization->balance + $saleTariffPrice) / round($sum,7);
+
+        $startDate = $client->is_demo ? $client->created_at : $transaction->created_at;
+
         $endDate = Carbon::now()->addDays($days);
 
         return [
             'name' => $tariffPrice->tariff?->name,
-            'start_date' => $transaction->created_at ?? '',
+            'start_date' => $startDate,
             'end_date' => $endDate,
             'users_count' => $tariffPrice->tariff->user_count,
             'price' => $tariffPrice->tariff_price,
