@@ -189,8 +189,13 @@ class ClientRepository implements ClientRepositoryInterface
     {
         $client = Client::where('sub_domain', $data['sub_domain'])->first();
 
+        $sum = 0;
+        foreach ($client->organizations as $organization) {
+            $sum += $organization->balance;
+        }
+
         return response()->json([
-            'balance' => $client->balance,
+            'balance' => $sum,
             'tariff' => $client->tariffPrice?->tariff?->name
         ]);
     }
