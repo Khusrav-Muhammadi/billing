@@ -312,7 +312,7 @@ class OctoBankProvider implements PaymentProviderInterface
 
     private function generateReturnUrl(CreateInvoiceDTO $dto): string
     {
-        return "https://fingroupcrm.shamcrm.com/payment";
+        return "https://kedr.shamcrm.com/payment";
     }
 
     private function calculateTotalSum(CreateInvoiceDTO $dto): float
