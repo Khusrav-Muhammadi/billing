@@ -176,25 +176,21 @@ class ClientController extends Controller
      */
     protected function calculateValidateDate(Client $client)
     {
-
         if ($client->is_demo) {
             return Carbon::parse($client->created_at)->addWeeks(2);
         }
 
+        $totalBalance = $client->organizations->sum('balance');
 
         $dailyPayment = round($this->calculateDailyPayment($client), 4);
 
-        if ($client->balance > 0)
-        {
-
-            $days = (int)($client->balance / $dailyPayment);
-        }
-        else {
-            $days = 0;
-        }
+        $days = ($totalBalance > 0 && $dailyPayment > 0)
+            ? (int)($totalBalance / $dailyPayment)
+            : 0;
 
         return Carbon::now()->addDays($days);
     }
+
 
     public function update(Client $client, UpdateRequest $request)
     {
