@@ -36,22 +36,23 @@ class NotifyClient extends Command
         ])->get();
 
         foreach ($clients as $client) {
-            $organizationCount = $client->organizations()
+            $organizations = $client->organizations()
                 ->where('has_access', true)
-                ->count();
+                ->get();
 
-            if ($organizationCount == 0) continue;
+            if ($organizations->count() == 0) continue;
 
             $currentMonth = Carbon::now();
-
             $daysInMonth = $currentMonth->daysInMonth;
+            $dailyRate = $client->tariffPrice->tariff_price / $daysInMonth;
 
-            $validity_period = floor($client->balance / ($organizationCount * ($client->tariffPrice->tariff_price / $daysInMonth)));
+            foreach ($organizations as $organization) {
+                $validity_period = floor($organization->balance / $dailyRate);
 
-            if ($validity_period <= 10) {
-                Mail::to($client->email)->send(new NotifyClientMail($client, $validity_period));
+                if ($validity_period <= 10) {
+                    Mail::to($client->email)->send(new NotifyClientMail($client, $validity_period));
+                }
             }
-
         }
     }
 }
