@@ -178,29 +178,41 @@ class SiteApplicationController extends Controller
 
     private function isValidEmail(string $email): bool
     {
+        $primaryKey = 'ema_live_pLU3hBeUBOIc2NJqRuJOt6wh2TsqDilv9FBduowR';
+        $backupKey  = 'ema_live_jz1XQ5zo1GQ27BBO8siKvpZyxHgb5hgtROsJmXgj';
+
         try {
-            $response = Http::timeout(10)->get('https://api.emailvalidation.io/v1/info', [
-                'apikey' => 'ema_live_pLU3hBeUBOIc2NJqRuJOt6wh2TsqDilv9FBduowR',
-                'email' => $email
-            ]);
+            $response = $this->sendEmailValidationRequest($email, $primaryKey);
+
+            if ($response->status() === 429) {
+                $response = $this->sendEmailValidationRequest($email, $backupKey);
+            }
 
             if ($response->successful()) {
                 $data = $response->json();
 
-                $isDeliverable = ($data['state'] ?? '') === 'deliverable';
-                $hasValidFormat = ($data['format_valid'] ?? false);
+                $isDeliverable   = ($data['state'] ?? '') === 'deliverable';
+                $hasValidFormat  = ($data['format_valid'] ?? false);
                 $passesSmtpCheck = ($data['smtp_check'] ?? false);
                 $isNotDisposable = !($data['disposable'] ?? true);
 
                 return $isDeliverable || ($hasValidFormat && $passesSmtpCheck && $isNotDisposable);
             }
-            else {
-                return $this->fallbackEmailValidation($email);
-            }
+
+            return $this->fallbackEmailValidation($email);
         } catch (\Exception $e) {
             return $this->fallbackEmailValidation($email);
         }
     }
+
+    private function sendEmailValidationRequest(string $email, string $apiKey)
+    {
+        return Http::timeout(10)->get('https://api.emailvalidation.io/v1/info', [
+            'apikey' => $apiKey,
+            'email'  => $email,
+        ]);
+    }
+
 
     private function fallbackEmailValidation(string $email): bool
     {
