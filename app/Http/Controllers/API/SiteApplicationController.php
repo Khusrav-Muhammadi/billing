@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\EmailExistingClientInfoJob;
 use App\Jobs\NewErrorMessageJob;
 use App\Jobs\NewSiteRequestJob;
+use App\Jobs\SendDemoWelcomeEmailJob;
 use App\Jobs\SendToShamJob;
 use App\Jobs\SubDomainJob;
 use App\Models\Client;
@@ -18,6 +20,7 @@ use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\OrganizationRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -36,7 +39,10 @@ class SiteApplicationController extends Controller
 
         if ($validated['request_type'] === 'demo') {
             if (!empty($validated['email']) && !$this->isValidEmail($validated['email'])) {
-                NewErrorMessageJob::dispatch('Указанный email адрес не является действительным.', ['email' => $validated['email'], 'phone' => $validated['phone']]);
+                NewErrorMessageJob::dispatch('Указанный email адрес не является действительным.', [
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone']
+                ]);
 
                 return response()->json([
                     'success' => false,
@@ -44,14 +50,21 @@ class SiteApplicationController extends Controller
                 ], 400);
             }
 
-            $existingClient = $this->checkExistingClient($validated);
-            if ($existingClient) {
-                NewErrorMessageJob::dispatch($existingClient, ['email' => $validated['email'], 'phone' => $validated['phone']]);
+            $conflict = $this->checkExistingClient($validated);
+            if ($conflict) {
+                NewErrorMessageJob::dispatch($conflict['message'], [
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone']
+                ]);
+
+                if ($conflict['reason'] === 'email') {
+                    EmailExistingClientInfoJob::dispatch($conflict['client']);
+                }
 
                 return response()->json([
                     'success' => false,
-                    'message' => $existingClient
-                ], 409); // 409 Conflict
+                    'message' => $conflict['message']
+                ], 409);
             }
 
             $client = $this->createDemoClient($validated);
@@ -62,6 +75,9 @@ class SiteApplicationController extends Controller
                 ], 500);
             }
 
+
+            SendDemoWelcomeEmailJob::dispatch($client);
+
             SubDomainJob::dispatch($client);
             $data = [
                 'name' => $client->name,
@@ -71,13 +87,24 @@ class SiteApplicationController extends Controller
                 'partner_id' => $validated['partner_id'],
                 'country_id' => $validated['region_id']
             ];
-
             (new OrganizationRepository())->store($client, $data);
-
-            SendToShamJob::dispatch($client->phone, $client->tariff?->name, $client->email, $client->name, $client->country?->name, $client->partner?->name);
+            SendToShamJob::dispatch(
+                $client->phone,
+                $client->tariff?->name,
+                $client->email,
+                $client->name,
+                $client->country?->name,
+                $client->partner?->name
+            );
         }
         elseif ($validated['request_type'] === 'individual') {
-            SendToShamJob::dispatch($validated['phone'], 'Тариф: Индивидуальный тариф', $validated['email'], $validated['fio'], Country::find($validated['region_id'])?->name );
+            SendToShamJob::dispatch(
+                $validated['phone'],
+                'Тариф: Индивидуальный тариф',
+                $validated['email'],
+                $validated['fio'],
+                Country::find($validated['region_id'])?->name
+            );
         }
         else {
             $this->createRegularApplication($validated);
@@ -87,36 +114,36 @@ class SiteApplicationController extends Controller
         return response()->json(['success' => true]);
     }
 
-    private function checkExistingClient(array $data): ?string
+    private function checkExistingClient(array $data): ?array
     {
-        $subdomain = $this->generateSubdomain($data['email']);
+        $email = $data['email'] ?? null;
+        $subdomain = $email ? $this->generateSubdomain($email) : null;
 
-        $existingClient = Client::query()
-            ->where(function($query) use ($data, $subdomain) {
-                $query->where('sub_domain', $subdomain)
-                    ->orWhere('phone', $data['phone']);
-
-                if (!empty($data['email'])) {
-                    $query->orWhere('email', $data['email']);
-                }
-            })
-            ->first();
-
-        if ($existingClient) {
-            if (!empty($data['email']) && $existingClient->email === $data['email']) {
-                return 'Пользователь с таким email адресом или телефоном уже существует.';
+        if ($email) {
+            $clientByEmail = Client::query()->where('email', $email)->first();
+            if ($clientByEmail) {
+                return [
+                    'reason'  => 'email',
+                    'client'  => $clientByEmail,
+                    'message' => 'Пользователь с таким email адресом уже существует.'
+                ];
             }
-            if ($existingClient->sub_domain === $subdomain) {
-                return 'Пользователь с таким поддоменом уже существует.';
-            }
-            if ($existingClient->phone === $data['phone']) {
-                return 'Пользователь с таким номером телефона уже существует.';
-            }
+        }
 
+        if ($subdomain) {
+            $clientBySub = Client::query()->where('sub_domain', $subdomain)->first();
+            if ($clientBySub) {
+                return [
+                    'reason'  => 'subdomain',
+                    'client'  => $clientBySub,
+                    'message' => 'Пользователь с таким поддоменом уже существует.'
+                ];
+            }
         }
 
         return null;
     }
+
 
     private function validateRequest(Request $request): array
     {
@@ -224,7 +251,7 @@ class SiteApplicationController extends Controller
         try {
             return Client::create($clientData);
         } catch (\Exception $e) {
-            \Log::error('Ошибка создания демо-клиента: ' . $e->getMessage(), $clientData);
+            Log::error('Ошибка создания демо-клиента: ' . $e->getMessage(), $clientData);
             return null;
         }
     }
