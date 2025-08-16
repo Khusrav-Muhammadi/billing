@@ -125,7 +125,7 @@ class SiteApplicationController extends Controller
                 return [
                     'reason'  => 'email',
                     'client'  => $clientByEmail,
-                    'message' => 'Пользователь с таким email адресом уже существует.'
+                    'message' => 'Этот email уже используется в системе. Мы отправили письмо с доступами в CRM на указанную почту.'
                 ];
             }
         }

@@ -27,30 +27,9 @@
             Мы уже создаём для вас демо-доступ и вскоре отправим письмо с логином и паролем.
         </p>
 
-        <div class="info">
-            @if($client->sub_domain)
-                <p><strong>Ваш будущий адрес CRM:</strong>
-                    <a href="https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}">
-                        https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}
-                    </a>
-                    <br><span class="muted">(ссылка активируется после подготовки демо)</span>
-                </p>
-            @endif
-            <p><strong>Email для связи:</strong> {{ $client->email }}</p>
-            @if($client->phone)
-                <p><strong>Телефон:</strong> {{ $client->phone }}</p>
-            @endif
-            @if($client->tariff?->name)
-                <p><strong>Запрошенный тариф:</strong> {{ $client->tariff->name }}</p>
-            @endif
-            @if($client->partner?->name)
-                <p>По вопросам вы также можете обратиться к нашему партнёру — <strong>{{ $client->partner->name }}</strong>.</p>
-            @endif
-        </div>
-
         @if($client->sub_domain)
             <p style="text-align:center;margin:18px 0;">
-                <a class="btn" href="https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}">Перейти на сайт</a>
+                <a class="btn" href="https://shamcrm.com">Перейти на сайт</a>
             </p>
         @else
             <p style="text-align:center;margin:18px 0;">
