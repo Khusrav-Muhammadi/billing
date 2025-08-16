@@ -24,7 +24,7 @@ class ExistingClientInfoMail extends Mailable
             $resetUrl = url('/forgot-password');
         }
         return $this->subject('Доступ к shamCRM: У Вас уже есть аккаунт')
-            ->view('emails.existing-account')
+            ->view('mail.existing-account')
             ->with(['client' => $this->client, 'resetUrl' => $resetUrl]);
 
     }
