@@ -17,7 +17,7 @@ class DemoWelcomeMail extends Mailable
     public function build()
     {
         return $this->subject('Добро пожаловать в shamCRM — демо уже в работе')
-            ->view('emails.demo-welcome')
+            ->view('mail.demo-welcome')
             ->with(['client' => $this->client]);
 
     }
