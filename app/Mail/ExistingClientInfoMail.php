@@ -18,14 +18,10 @@ class ExistingClientInfoMail extends Mailable
 
     public function build()
     {
-        $resetUrl = route('password.request', absolute: false);
 
-        if (!$resetUrl || str_contains($resetUrl, 'http') === false) {
-            $resetUrl = url('/forgot-password');
-        }
         return $this->subject('Доступ к shamCRM: У Вас уже есть аккаунт')
             ->view('mail.existing-account')
-            ->with(['client' => $this->client, 'resetUrl' => $resetUrl]);
+            ->with(['client' => $this->client]);
 
     }
 }
