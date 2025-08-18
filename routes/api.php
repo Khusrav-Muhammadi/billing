@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
 Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
 Route::get('createInvoice', [\App\Http\Controllers\ClientController::class, 'createInvoice']);
 Route::middleware('auth.basic')->group(function () {
@@ -70,7 +71,6 @@ Route::options('/{any}', function (Request $request) {
     ]);
 })->where('any', '.*');
 Route::post('sendRequest', [SiteApplicationController::class, 'store']);
-Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
 
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
