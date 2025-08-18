@@ -70,7 +70,7 @@ Route::options('/{any}', function (Request $request) {
     ]);
 })->where('any', '.*');
 Route::post('sendRequest', [SiteApplicationController::class, 'store']);
-Route::post('/email/verify', [SiteApplicationController::class, 'verifyEmail']);
+Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
 
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
