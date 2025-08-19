@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\PaymentController;
+use App\Http\Controllers\API\SiteApplicationController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
 Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
 Route::get('createInvoice', [\App\Http\Controllers\ClientController::class, 'createInvoice']);
 Route::middleware('auth.basic')->group(function () {
@@ -52,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('dashboard', [\App\Http\Controllers\API\DashBoardController::class, 'index']);
 
+
     Route::group(['prefix' => 'profile'], function () {
         Route::patch('/change-password', [ProfileController::class, 'changePasswordApi']);
         Route::patch('/{user}', [ProfileController::class, 'updateApi']);
@@ -67,8 +70,7 @@ Route::options('/{any}', function (Request $request) {
         'Access-Control-Allow-Headers' => 'Content-Type, Authorization',
     ]);
 })->where('any', '.*');
-Route::post('sendRequest', [\App\Http\Controllers\API\SiteApplicationController::class, 'store']);
-
+Route::post('sendRequest', [SiteApplicationController::class, 'store']);
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
 
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
