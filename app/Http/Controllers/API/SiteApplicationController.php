@@ -65,7 +65,7 @@ class SiteApplicationController extends Controller
                 ], 500);
             }
 
-            SendDemoWelcomeEmailJob::dispatch($client);
+       //     SendDemoWelcomeEmailJob::dispatch($client);
             SubDomainJob::dispatch($client);
 
             $data = [
@@ -231,7 +231,7 @@ class SiteApplicationController extends Controller
                 'smtp_check'   => null,
                 'disposable'   => null,
             ];
-        } catch (\Throwable $e) {   
+        } catch (\Throwable $e) {
             return [
                 'api_used'     => false,
                 'deliverable'  => null,
