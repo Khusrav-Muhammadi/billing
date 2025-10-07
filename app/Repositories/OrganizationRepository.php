@@ -112,7 +112,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     public function createInSham(Organization $organization, Client $client, string $password)
     {
-//        CreateOrganizationJob::dispatch($client, $organization, $password)->delay(120);
+        CreateOrganizationJob::dispatch($client, $organization, $password)->delay(120);
     }
 
     public function addPackInSham(OrganizationPack $organizationPack, string $sub_domain)
