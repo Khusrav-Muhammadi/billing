@@ -42,8 +42,7 @@ class UpdateTariffJob implements ShouldQueue
             ])->post($url, [
                 'b_organization_id' => $organization->id,
                 'tariff_id' => $this->tariff_id,
-                'user_count' => $tariff->tariff->user_count,
-                'project_count' => $tariff->tariff->project_count,
+                'user_count' => $tariff->tariff?->user_count
             ]);
         }
     }
