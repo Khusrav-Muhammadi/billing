@@ -13,6 +13,6 @@ class TariffCurrency extends Model
 
     public function tariff()
     {
-        return $this->belongsTo(Tariff::class);
+        return $this->belongsTo(Tariff::class, 'tariff_id');
     }
 }
