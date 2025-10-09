@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Jobs\ActivationJob;
 use App\Jobs\ChangeRequestStatusJob;
+use App\Jobs\DisableDemoJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
@@ -159,7 +160,10 @@ class ClientRepository implements ClientRepositoryInterface
 
         $client->update($data);
 
-        if ($data['is_demo'] == false) $this->withdrawal($client);
+        if ($data['is_demo'] == false) {
+            $this->withdrawal($client);
+            DisableDemoJob::dispatch($client, $client->sub_domain);
+        }
 
     }
 
