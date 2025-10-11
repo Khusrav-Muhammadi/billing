@@ -159,9 +159,9 @@
 
                         <div class="form-group">
                             <label for="phone">Цена</label>
-                            <input type="number" class="form-control" name="price" value="{{ $packs->price }}">
+                            <input type="number" class="form-control" name="price" value="10">
                         </div>
-                        <p>Общ. цена: <span id="total-price"><strong>{{ $packs->price }}</strong></span></p>
+                        <p>Общ. цена: <span id="total-price"><strong>10</strong></span></p>
 
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
