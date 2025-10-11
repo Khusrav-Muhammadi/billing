@@ -141,7 +141,9 @@
                         <div class="form-group">
                             <label for="tariff_id">Пакеты</label>
                             <select class="form-control form-control" name="pack_id" required>
-                                <option value="{{ $packs->id }}">{{ $packs->name }}</option>
+                                @foreach ($packs as $pack)
+                                <option value="{{ $pack->id }}">{{ $pack->name }}</option>
+                                @endforeach
                             </select>
                         </div>
 
