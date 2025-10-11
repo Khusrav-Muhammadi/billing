@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Organization\AccessRequest;
 use App\Http\Requests\Organization\AddPackRequest;
 use App\Http\Requests\Organization\RejectRequest;
 use App\Http\Requests\Organization\StoreRequest;
@@ -31,7 +30,7 @@ class OrganizationController extends Controller
 
     public function show(Organization $organization)
     {
-        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->first();
+        $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->get();
 
         $organization = $organization->load(['history.changes', 'history.user']);
         $userCount = $organization->client()->first()->tariff->user_count;
