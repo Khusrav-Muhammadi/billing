@@ -56,9 +56,18 @@ class ClientController extends Controller
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $packs = Pack::all();
-        $client = $client->load(['history.changes', 'history.user', 'tariffPrice', 'country', 'partner', 'manager']);
+        $client = $client->load([
+            'history.changes',
+            'history.user',
+            'tariffPrice.tariff',
+            'country',
+            'partner',
+            'manager'
+        ]);
 
-        $client->tariff = $client->tariffPrice; 
+        $client->tariff = [
+            'name' => optional($client->tariffPrice->tariff)->name
+        ];
 
         $expirationDate = $this->calculateValidateDate($client);
 
