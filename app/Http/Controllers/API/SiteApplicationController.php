@@ -33,10 +33,7 @@ class SiteApplicationController extends Controller
         return view('admin.site-applications.index', compact('applications'));
     }
 
-    /**
-     * store() больше НЕ валидирует email через внешний API и
-     * НЕ отправляет писем при ошибках/дубликатах email.
-     */
+
     public function store(Request $request)
     {
         $validated = $this->validateRequest($request);
@@ -65,7 +62,6 @@ class SiteApplicationController extends Controller
                 ], 500);
             }
 
-       //     SendDemoWelcomeEmailJob::dispatch($client);
             SubDomainJob::dispatch($client);
 
             $data = [

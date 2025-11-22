@@ -56,8 +56,12 @@ class ClientController extends Controller
         $sales = Sale::all();
         $tariffs = Tariff::all();
         $packs = Pack::all();
-        $client = $client->load(['history.changes', 'history.user', 'tariff', 'country', 'partner', 'manager']);
+        $client = $client->load(['history.changes', 'history.user', 'tariffPrice', 'country', 'partner', 'manager']);
+
+        $client->tariff = $client->tariffPrice; 
+
         $expirationDate = $this->calculateValidateDate($client);
+
         return response()->json([
             'organizations' => $organizations,
             'transactions' => $transactions,
@@ -68,6 +72,7 @@ class ClientController extends Controller
             'client' => $client,
             'expirationDate' => $expirationDate,
         ]);
+
     }
 
     protected function calculateValidateDate(Client $client)
