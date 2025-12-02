@@ -7,7 +7,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class SiteApplications extends Model
 {
-    use HasFactory;
-
     protected $fillable = ['request_type', 'fio', 'email', 'phone', 'organization', 'region'];
 }
