@@ -276,7 +276,7 @@ class SiteApplicationController extends Controller
             'phone'        => 'required|string|max:20',
             'email'        => [ Rule::requiredIf($request->input('request_type') === 'demo'), 'email', 'max:255' ],
             'region_id'    => 'nullable|integer',
-            'request_type' => 'required|string|in:demo,partner,corporate,individual,request',
+            'request_type' => 'required|string|in:demo,partner,corporate,individual,site',
             'partner_id'   => 'nullable',
             'manager_id'   => 'nullable',
         ], [
