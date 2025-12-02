@@ -40,7 +40,6 @@ class SiteApplicationController extends Controller
 
         if ($validated['request_type'] === 'demo') {
 
-
             $conflict = $this->checkExistingClient($validated);
             if ($conflict) {
                 NewErrorMessageJob::dispatch($conflict['message'], [
@@ -277,7 +276,7 @@ class SiteApplicationController extends Controller
             'phone'        => 'required|string|max:20',
             'email'        => [ Rule::requiredIf($request->input('request_type') === 'demo'), 'email', 'max:255' ],
             'region_id'    => 'nullable|integer',
-            'request_type' => 'required|string|in:demo,partner,corporate,individual',
+            'request_type' => 'required|string|in:demo,partner,corporate,individual,request',
             'partner_id'   => 'nullable',
             'manager_id'   => 'nullable',
         ], [
@@ -381,7 +380,6 @@ class SiteApplicationController extends Controller
             'fio'          => $data['fio'],
             'phone'        => $data['phone'],
             'email'        => $data['email'],
-            'region_id'    => $data['region_id'],
             'request_type' => $data['request_type'],
         ]);
     }
