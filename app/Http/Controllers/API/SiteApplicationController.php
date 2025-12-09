@@ -191,8 +191,6 @@ class SiteApplicationController extends Controller
         // MX предпочтительнее; если нет — допускаем A как fallback
         return checkdnsrr($asciiDomain, 'MX') || checkdnsrr($asciiDomain, 'A');
     }
-
-    /** Внешняя проверка ТОЛЬКО как последний шаг. Возвращает метаданные и флаг, использовали ли API. */
     private function validateWithApi(string $email): array
     {
         $primaryKey = 'ema_live_pLU3hBeUBOIc2NJqRuJOt6wh2TsqDilv9FBduowR';
@@ -200,8 +198,31 @@ class SiteApplicationController extends Controller
 
         try {
             $resp = $this->sendEmailValidationRequest($email, $primaryKey);
+
             if ($resp->status() === 429 && !empty($backupKey)) {
                 $resp = $this->sendEmailValidationRequest($email, $backupKey);
+
+                if ($resp->status() === 429) {
+                    return [
+                        'api_used'     => false,
+                        'deliverable'  => true, // Пропускаем из-за лимита
+                        'state'        => 'rate_limited',
+                        'format_valid' => null,
+                        'smtp_check'   => null,
+                        'disposable'   => null,
+                    ];
+                }
+            }
+
+            if ($resp->status() === 429) {
+                return [
+                    'api_used'     => false,
+                    'deliverable'  => true, // Пропускаем из-за лимита
+                    'state'        => 'rate_limited',
+                    'format_valid' => null,
+                    'smtp_check'   => null,
+                    'disposable'   => null,
+                ];
             }
 
             if ($resp->successful()) {
@@ -237,7 +258,6 @@ class SiteApplicationController extends Controller
             ];
         }
     }
-
     private function checkExistingClient(array $data): ?array
     {
         $email = $data['email'] ?? null;
@@ -249,7 +269,6 @@ class SiteApplicationController extends Controller
                 return [
                     'reason'  => 'email',
                     'client'  => $clientByEmail,
-                    // Текст больше НЕ обещает отправку письма:
                     'message' => 'Этот email уже используется в системе. Если это вы — восстановите доступ через форму входа.',
                 ];
             }
