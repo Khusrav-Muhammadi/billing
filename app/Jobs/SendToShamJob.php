@@ -11,6 +11,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use function Termwind\renderUsing;
 
 class SendToShamJob implements ShouldQueue
 {
@@ -27,11 +28,36 @@ class SendToShamJob implements ShouldQueue
 
     public function handle(): void
     {
+        if ($this->region == 'Узбекистан')
+        {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post('https://sham-back.shamcrm.com/api/messengerSettings/site/webhook', [
+                'phone' => $this->phone,
+                'tarif' => "VIP",
+                'email' => $this->email,
+                'name_company' => $this->name,
+                'region' => $this->region ?? '',
+                'partner' => $this->partner ?? '',
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Ошибка при отправке в Sham API', [
+                    'phone' => $this->phone,
+                    'response' => $response->body(),
+                ]);
+
+                throw new \Exception('Ошибка при отправке в Sham API');
+            }
+
+            return;
+        }
+
         $response = Http::withHeaders([
             'Accept' => 'application/json',
         ])->post('https://fingroupcrm-back.shamcrm.com/api/messengerSettings/site/webhook', [
             'phone' => $this->phone,
-            'tarif' => $this->tariff ?? '',
+            'tarif' => "VIP",
             'email' => $this->email,
             'name_company' => $this->name,
             'region' => $this->region ?? '',
