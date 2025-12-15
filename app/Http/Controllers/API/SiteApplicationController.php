@@ -217,7 +217,6 @@ class SiteApplicationController extends Controller
             if ($resp->status() === 429) {
                 return [
                     'api_used'     => false,
-                    'deliverable'  => true, // Пропускаем из-за лимита
                     'state'        => 'rate_limited',
                     'format_valid' => null,
                     'smtp_check'   => null,
