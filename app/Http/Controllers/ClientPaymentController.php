@@ -187,7 +187,7 @@ class ClientPaymentController extends Controller
         if ($response->successful()) {
 
             $checkoutUrl = config('payments.alif.payment_page') . $response['id'];
-
+Log::error($response['id']);
             if (!$checkoutUrl && !$response['id']) {
                 throw new \Exception('Alif Pay: не пришла ссылка на оплату (url/checkout_url). Ответ: ' . $response->body());
             }
