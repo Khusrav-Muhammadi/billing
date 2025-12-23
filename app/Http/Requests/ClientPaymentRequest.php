@@ -23,6 +23,7 @@ class ClientPaymentRequest extends FormRequest
             'data' => ['array'],
             'data.*.name' => ['required', 'string'],
             'data.*.price' => ['required'],
+            'payment_type' => ['required', Rule::in(['alif', 'octo'])]
         ];
     }
 }

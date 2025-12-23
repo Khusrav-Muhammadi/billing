@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
 
     Route::group(['prefix' => 'client-payment'], function () {
         Route::get('/', [\App\Http\Controllers\ClientPaymentController::class, 'index'])->name('client-payment.index');
+        Route::post('/', [\App\Http\Controllers\ClientPaymentController::class, 'store'])->name('client-payment.create');
     });
 
     Route::group(['prefix' => 'organization'], function () {
