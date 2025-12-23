@@ -184,11 +184,14 @@ class ClientPaymentController extends Controller
             'Accept' => 'application/json',
         ])->post($url, $orderData);
 
+        if (!$response['id']) {
+            throw new \Exception('Alif Pay: не пришла ссылка на оплату (url/checkout_url). Ответ: ' . $response->body());
+        }
         if ($response->successful()) {
 
             $checkoutUrl = config('payments.alif.payment_page') . $response['id'];
-Log::error($response['id']);
-            if (!$checkoutUrl && !$response['id']) {
+
+            if (!$checkoutUrl) {
                 throw new \Exception('Alif Pay: не пришла ссылка на оплату (url/checkout_url). Ответ: ' . $response->body());
             }
 
