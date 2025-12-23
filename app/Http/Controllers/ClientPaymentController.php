@@ -185,24 +185,10 @@ class ClientPaymentController extends Controller
         ])->post($url, $orderData);
 
         if ($response->successful()) {
-            $result = $response->json();
-
-            try {
-                DB::beginTransaction();
-
-                $payment->update([
-                    'transaction_id' => $result['transaction_id'] ?? $result['id'] ?? null
-                ]);
-
-                DB::commit();
-            } catch (\Exception $e) {
-                DB::rollBack();
-                throw $e;
-            }
 
             $checkoutUrl = config('payments.alif.payment_page') . $response['id'];
 
-            if (!$checkoutUrl) {
+            if (!$checkoutUrl && !$response['id']) {
                 throw new \Exception('Alif Pay: не пришла ссылка на оплату (url/checkout_url). Ответ: ' . $response->body());
             }
 
