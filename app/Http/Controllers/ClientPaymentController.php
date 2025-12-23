@@ -28,7 +28,7 @@ class ClientPaymentController extends Controller
 
         $payment = Payment::create([
             'name' => $data['name'],
-            'phone' => $data['phone'],
+            'phone' => preg_replace('/\D+/', '', $data['phone']),
             'email' => $data['email'],
             'sum' => $data['sum'],
             'payment_type' => $data['payment_type']

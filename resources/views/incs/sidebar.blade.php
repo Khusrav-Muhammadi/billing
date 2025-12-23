@@ -37,7 +37,7 @@
     <li class="nav-item">
         <a class="nav-link" href="{{ route('client-payment.index') }}">
             <i class="mdi mdi-account-card-details menu-icon"></i>
-            <span class="menu-title">Оплаты</span>
+            <span class="menu-title">Оплата услуг</span>
         </a>
     </li>
     <li class="nav-item">
