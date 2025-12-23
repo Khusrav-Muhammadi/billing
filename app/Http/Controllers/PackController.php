@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Pack\StoreRequest;
 use App\Models\Pack;
 use App\Models\Tariff;
+use Illuminate\Support\Facades\Log;
 
 class PackController extends Controller
 {
@@ -16,24 +17,15 @@ class PackController extends Controller
         return view('admin.packs.index', compact('packs', 'tariffs'));
     }
 
-    public function store(StoreRequest $request)
-    {
-        $data = $request->validated();
-
-        Pack::create($data);
-
-        return redirect()->route('pack.index');
-    }
-
     public function update(Pack $pack, StoreRequest $request)
     {
         $data = $request->validated();
-
         $pack->update([
             'name' => $data['name'],
-            'pack_type' => $data['pack_type'],
             'amount' => $data['amount'],
-            'active' => isset($data['active']),
+            'price' => $data['price'],
+            'payment_type' => $data['payment_type'],
+            'is_external' => isset($data['is_external']),
         ]);
 
         return redirect()->route('pack.index');

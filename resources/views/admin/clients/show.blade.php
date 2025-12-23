@@ -381,18 +381,38 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="name">Дата</label>
+                            <label for="date">Дата</label>
                             <input type="date" class="form-control" name="date" id="date">
                         </div>
 
                         <div class="form-group">
-                            <label for="phone">Сумма</label>
-                            <input type="number" class="form-control" name="sum" placeholder="Сумма">
+                            <label for="sum">Сумма</label>
+                            <input type="number" class="form-control" name="sum" id="sum" placeholder="Сумма">
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                            <button type="submit" class="btn btn-primary">Сохранить</button>
+
+                        <div class="form-group">
+                            <label class="form-label fw-semibold mb-3">Период подписки</label>
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <input class="btn-check" type="radio" name="period" id="period6" value="6" checked>
+                                    <label class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" for="period6">
+                                        <span class="fs-4 fw-bold">6</span>
+                                        <span class="small text-muted">месяцев</span>
+                                    </label>
+                                </div>
+                                <div class="col-6">
+                                    <input class="btn-check" type="radio" name="period" id="period12" value="12">
+                                    <label class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center" for="period12">
+                                        <span class="fs-4 fw-bold">12</span>
+                                        <span class="small text-muted">месяцев</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
                     </div>
                 </div>
             </form>

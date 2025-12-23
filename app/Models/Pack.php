@@ -9,7 +9,7 @@ class Pack extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'type', 'amount', 'price', 'tariff_id'];
+    protected $fillable = ['name', 'type', 'amount', 'price', 'tariff_id', 'payment_type', 'is_external'];
 
     public function tariff()
     {
