@@ -3749,7 +3749,6 @@
         {
             "name": "symfony/console",
             "version": "v6.4.20",
->>>>>>> refs/remotes/origin/main
             "source": {
                 "type": "git",
                 "url": "https://github.com/spatie/db-dumper.git",
