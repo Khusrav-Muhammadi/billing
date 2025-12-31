@@ -27,6 +27,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('auth.login');
 });
+
+
 Route::get('{invoice}/download', [InvoiceController::class, 'download'])
     ->name('invoice.download');
 Route::get('/dashboard', [\App\Http\Controllers\DashBoardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
@@ -47,6 +49,11 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'payment'], function () {
         Route::get('/', [\App\Http\Controllers\PaymentController::class, 'index'])->name('payment.index');
         Route::get('/approve-invoice/{invoice}', [\App\Http\Controllers\PaymentController::class, 'approveInvoice'])->name('payment.approve-invoice');
+    });
+
+    Route::group(['prefix' => 'client-payment'], function () {
+        Route::get('/', [\App\Http\Controllers\ClientPaymentController::class, 'index'])->name('client-payment.index');
+        Route::post('/', [\App\Http\Controllers\ClientPaymentController::class, 'store'])->name('client-payment.create');
     });
 
     Route::group(['prefix' => 'organization'], function () {

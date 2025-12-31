@@ -17,10 +17,10 @@ class StoreRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'type' => ['required'],
             'amount' => ['required', 'integer'],
             'price' => ['required'],
-            'tariff_id' => ['required', Rule::exists('tariffs','id')],
+            'payment_type' => ['required'],
+            'is_external' => ['nullable'],
         ];
     }
 }
