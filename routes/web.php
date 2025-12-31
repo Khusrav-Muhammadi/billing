@@ -11,6 +11,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TariffController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,7 +29,17 @@ Route::get('/', function () {
     return view('auth.login');
 });
 
+Route::get('/commercial-offer', function (Request $request) {
+    return view('commercial-offer', [
+        'client' => $request->query('client', 'ИП "Расулов Амир Давронович"'),
+        'manager' => $request->query('manager', 'Расулов Амир'),
+        'date' => $request->query('date', now()->format('d.m.Y')),
+    ]);
+})->name('commercial-offer');
 
+Route::get('blade', function () {
+    return view('mail.pdf');
+});
 Route::get('{invoice}/download', [InvoiceController::class, 'download'])
     ->name('invoice.download');
 Route::get('/dashboard', [\App\Http\Controllers\DashBoardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
