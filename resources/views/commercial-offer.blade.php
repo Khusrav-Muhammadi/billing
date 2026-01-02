@@ -615,7 +615,7 @@
     </div>
 
     <div class="tariff-price-label" style="text-align: center; margin-bottom: 30px;">
-        Стоимость тарифа: <span class="tariff-price-value">{{ number_format($tariff['monthly_price'], 0, ',', ' ') }} сум/мес.</span>
+        Стоимость тарифа: <span class="tariff-price-value">{{ number_format($tariff['monthly_price'], 0, ',', ' ') }} {{ $currency }}/мес.</span>
     </div>
 
     @if(isset($tariff_features) && count($tariff_features) > 0)
@@ -649,7 +649,7 @@
         <tr>
             <td>Доп. пользователь</td>
             <td>{{ $additional_users['quantity'] }} шт.</td>
-            <td>{{ number_format($additional_users['price_per_user'], 0, ',', ' ') }} сум/мес.</td>
+            <td>{{ number_format($additional_users['price_per_user'], 0, ',', ' ') }} {{ $currency }}/мес.</td>
         </tr>
     </table>
     @endif
@@ -663,7 +663,7 @@
                 @if($module['status'] === 'included')
                     ✓
                 @elseif($module['status'] === 'selected')
-                    {{ number_format($module['price'], 0, ',', ' ') }} сум
+                    {{ number_format($module['price'], 0, ',', ' ') }} {{ $currency }}
                 @else
                     ✗
                 @endif
@@ -692,7 +692,7 @@
                 @elseif(isset($service['status']) && $service['status'] === 'included')
                     ✓
                 @elseif(isset($service['status']) && $service['status'] === 'selected' && isset($service['price']))
-                    {{ number_format($service['price'], 0, ',', ' ') }} сум
+                    {{ number_format($service['price'], 0, ',', ' ') }} {{ $currency }}
                 @else
                     ✓
                 @endif
@@ -703,7 +703,7 @@
 
     <div class="services-total">
         <div class="services-total-label">Стоимость<br>подключение и внедрения:</div>
-        <div class="services-total-value">{{ number_format($calculations['one_time_total'], 0, ',', ' ') }} сум</div>
+        <div class="services-total-value">{{ number_format($calculations['one_time_total'], 0, ',', ' ') }} {{ $currency }}</div>
     </div>
 </div>
 @endif
@@ -721,29 +721,29 @@
         <table class="total-table">
             <tr>
                 <td>Тариф "{{ $tariff['name'] }}" за {{ $tariff['period_months'] }} мес.</td>
-                <td>{{ number_format($calculations['tariff_total'], 0, ',', ' ') }} сум</td>
+                <td>{{ number_format($calculations['tariff_total'], 0, ',', ' ') }} {{ $currency }}</td>
             </tr>
             @if($calculations['modules_total'] > 0)
             <tr>
                 <td>Дополнительные модули за {{ $tariff['period_months'] }} мес.</td>
-                <td>{{ number_format($calculations['modules_total'], 0, ',', ' ') }} сум</td>
+                <td>{{ number_format($calculations['modules_total'], 0, ',', ' ') }} {{ $currency }}</td>
             </tr>
             @endif
             @if(isset($additional_users) && $additional_users['quantity'] > 0)
             <tr>
                 <td>Доп. пользователи ({{ $additional_users['quantity'] }} шт.) за {{ $tariff['period_months'] }} мес.</td>
-                <td>{{ number_format($calculations['users_total'], 0, ',', ' ') }} сум</td>
+                <td>{{ number_format($calculations['users_total'], 0, ',', ' ') }} {{ $currency }}</td>
             </tr>
             @endif
             @if($calculations['one_time_total'] > 0)
             <tr>
                 <td>Подключение и внедрение</td>
-                <td>{{ number_format($calculations['one_time_total'], 0, ',', ' ') }} сум</td>
+                <td>{{ number_format($calculations['one_time_total'], 0, ',', ' ') }} {{ $currency }}</td>
             </tr>
             @endif
         </table>
         <div class="total-row">
-            <span>Итог:</span> {{ number_format($calculations['grand_total'], 0, ',', ' ') }} сум
+            <span>Итог:</span> {{ number_format($calculations['grand_total'], 0, ',', ' ') }} {{ $currency }}
         </div>
     </div>
 

@@ -85,8 +85,11 @@ class CommercialOfferController extends Controller
             'contacts.website' => 'nullable|string|max:100',
             'contacts.telegram' => 'nullable|string|max:100',
 
+            'currency' => 'nullable|string|max:20', // сум, $, € и т.д.
             'validity_days' => 'nullable|integer|min:1|max:365',
         ]);
+
+        $currency = $validated['currency'] ?? 'сум';
 
         $periodMonths = $validated['tariff']['period_months'];
 
@@ -140,6 +143,7 @@ class CommercialOfferController extends Controller
                 'website' => 'shamcrm.com',
                 'telegram' => '@shamcrm_uz',
             ], $validated['contacts'] ?? []),
+            'currency' => $currency,
             'validity_date' => $validityDate,
             'calculations' => [
                 'tariff_total' => $tariffTotal,
@@ -328,6 +332,7 @@ class CommercialOfferController extends Controller
                 'website' => 'shamcrm.com',
                 'telegram' => '@shamcrm_uz',
             ],
+            'currency' => 'сум',
             'validity_date' => now()->addDays(30)->format('d.m.Y'),
             'calculations' => [
                 'tariff_total' => $tariffTotal,
