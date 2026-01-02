@@ -155,7 +155,7 @@ class CommercialOfferController extends Controller
         $pdf = Browsershot::html($html)
             ->setNodeBinary('/usr/bin/node')
             ->setNpmBinary('/usr/bin/npm')
-            ->setChromePath('/usr/bin/google-chrome')
+            ->setChromePath('/usr/bin/google-chrome-stable')
             ->noSandbox()
             ->format('A4')
             ->showBackground()
