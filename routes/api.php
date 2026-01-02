@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::post('getCommercialOfferPdf', [CommercialOfferController::class, 'generate']);
+Route::get('getCommercialOfferPdfSimple', [CommercialOfferController::class, 'simple']);
 
 
 Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
