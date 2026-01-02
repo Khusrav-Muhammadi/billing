@@ -13,6 +13,7 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "phpoffice/phpword": "^1.3",
+        "spatie/browsershot": "^5.2",
         "spatie/db-dumper": "^3.8",
         "tucker-eric/eloquentfilter": "^3.4"
     },

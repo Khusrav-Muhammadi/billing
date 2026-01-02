@@ -29,6 +29,9 @@ Route::get('/', function () {
     return view('auth.login');
 });
 
+// Preview page for PDF generation (accessed by Browsershot)
+Route::get('/commercial-offer-preview', [\App\Http\Controllers\API\CommercialOfferController::class, 'previewPage']);
+
 Route::get('/commercial-offer', function (Request $request) {
     return view('commercial-offer', [
         'client' => $request->query('client', 'ИП "Расулов Амир Давронович"'),

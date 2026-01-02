@@ -16,6 +16,7 @@
         "vite": "^5.0.0"
     },
     "dependencies": {
-        "@zoibana/phonemask": "^1.0.11"
+        "@zoibana/phonemask": "^1.0.11",
+        "puppeteer": "^24.34.0"
     }
 }

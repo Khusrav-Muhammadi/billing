@@ -8,6 +8,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Browsershot\Browsershot;
 
 class CommercialOfferController extends Controller
 {
@@ -67,29 +68,38 @@ class CommercialOfferController extends Controller
      */
     public function simple(Request $request): Response
     {
-        $data = [
-            'client' => $request->query('client', 'ИП "Расулов Амир Давронович"'),
-            'manager' => $request->query('manager', 'Расулов Амир'),
-            'date' => $request->query('date', now()->format('d.m.Y')),
-        ];
+        $html = view('commercial-offer', [
+            'isPdf' => true,
+            'client' => 'ООО Рога и копыта',
+            'manager' => 'Иван Иванов',
+            'date' => now()->format('d.m.Y'),
+        ])->render();
 
-        $pdf = Pdf::loadView('commercial-offer', $data)
-            ->setPaper('a4', 'portrait')
-            ->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => false,
-                'defaultFont' => 'dejavu sans',
-                'dpi' => 96,
-                'isPhpEnabled' => false,
-                'isJavascriptEnabled' => false,
-            ]);
+        $pdf = Browsershot::html($html)
+            ->setNodeBinary('/usr/bin/node')
+            ->setNpmBinary('/usr/bin/npm')
+            ->setChromePath('/usr/bin/google-chrome')
+            ->noSandbox()
+            ->format('A4')
+            ->showBackground()
+            ->setOption('args', ['--no-sandbox', '--print-to-pdf-no-header'])
+            ->emulateMedia('screen')
+            ->pdf();
 
-        $filename = sprintf(
-            'КП_%s_%s.pdf',
-            str_replace([' ', '"', '«', '»'], ['_', '', '', ''], $data['client']),
-            str_replace('.', '-', $data['date'])
-        );
-
-        return $pdf->download($filename);
+        return response($pdf)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="offer.pdf"');
+    }
+    /**
+     * Preview page for PDF generation
+     */
+    public function previewPage()
+    {
+        return view('commercial-offer', [
+            'isPdf' => true,
+            'client' => 'ООО Рога и копыта',
+            'manager' => 'Иван Иванов',
+            'date' => now()->format('d.m.Y'),
+        ]);
     }
 }
