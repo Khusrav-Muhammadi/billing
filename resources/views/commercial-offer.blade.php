@@ -39,8 +39,8 @@
             padding: 0;
         }
 
-        /* PDF-ready page container */
-        .page {
+        /* ========== PAGE 1 - WELCOME ========== */
+        .page-welcome {
             position: relative;
             width: 100%;
             min-height: 100vh;
@@ -50,9 +50,10 @@
             padding: 50px 40px 40px;
             background: #f4f6fb;
             overflow: hidden;
+            page-break-after: always;
         }
 
-        .page::before {
+        .page-welcome::before {
             content: "";
             position: absolute;
             inset: 0;
@@ -65,12 +66,11 @@
             pointer-events: none;
         }
 
-        /* Контент поверх фонового псевдо-элемента */
-        .page > * {
+        .page-welcome > * {
             position: relative;
             z-index: 1;
         }
-        /* Header section - теперь отдельно от карточки */
+
         .header {
             text-align: center;
             margin-bottom: 40px;
@@ -84,45 +84,6 @@
             display: block;
         }
 
-        .brand {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            font-size: 36px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .brand .sham {
-            color: var(--text-primary);
-        }
-
-        .brand .crm {
-            color: var(--brand-blue);
-            border: 3px solid var(--brand-blue);
-            border-radius: 10px;
-            padding: 6px 16px 4px;
-            line-height: 1;
-        }
-
-
-        /* Meta cards section */
-        .meta {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 40px;
-            width: 100%;
-            max-width: 700px;
-            padding: 0;
-        }
-
-        .meta-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
         .hero {
             position: relative;
             width: 100%;
@@ -131,7 +92,6 @@
             padding: 20px 40px;
             text-align: center;
             margin-bottom: 40px;
-            /* Прямо на элементе */
             background: linear-gradient(90deg,
             rgba(47, 77, 246, 0.92) 0%,
             rgba(47, 77, 246, 0.8) 45%,
@@ -151,6 +111,22 @@
             line-height: 1.3;
         }
 
+        .meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            width: 100%;
+            max-width: 700px;
+            padding: 0;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
         .icon {
             width: 80px;
             height: 80px;
@@ -159,7 +135,6 @@
             justify-content: center;
             border-radius: 50%;
             margin-bottom: 16px;
-            /* Прямо на элементе */
             background: rgba(47, 77, 246, 0.6);
             box-shadow: 0 4px 16px rgba(47, 77, 246, 0.2);
             -webkit-print-color-adjust: exact;
@@ -175,7 +150,6 @@
             z-index: 1;
         }
 
-        /* SVG icons as fallback */
         .icon svg {
             width: 36px;
             height: 36px;
@@ -185,7 +159,7 @@
         }
 
         .label {
-            font-size:25px;
+            font-size: 25px;
             font-weight: 700;
             color: var(--text-primary);
             margin-bottom: 8px;
@@ -198,80 +172,50 @@
             line-height: 1.4;
         }
 
-        /* Laptop image */
         .laptop-image {
             position: absolute;
             bottom: -30px;
-            right: -50px;
-            width: 590px;
-            height: 360px;
+            right: -180px;
+            width: 800px;
+            height: 400px;
             z-index: 2;
             pointer-events: none;
         }
 
-        /* Footer */
-        .footer-note {
-            text-align: center;
-            margin-top: 40px;
-            color: #8892a6;
-            font-size: 13px;
-        }
-
-        /* Print/PDF styles */
-        @media print {
-            body {
-                background: #ffffff;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
-            .page {
-                padding: 30px;
-                min-height: auto;
-            }
-
-            .hero {
-                background: var(--brand-blue) !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
-            .icon {
-                background: var(--brand-blue) !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-        }
-
-        /* ========== PAGE 2 STYLES ========== */
-        .page-2 {
+        /* ========== COMMON PAGE STYLES ========== */
+        .page-content {
             position: relative;
             width: 100%;
             min-height: 100vh;
             padding: 40px 60px;
             background: #ffffff;
+            page-break-after: always;
         }
 
-        .page-2-header {
+        .page-content:last-child {
+            page-break-after: auto;
+        }
+
+        .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 50px;
+            margin-bottom: 40px;
             padding-bottom: 20px;
             border-bottom: 1px solid #e8ecf3;
         }
 
-        .page-2-logo {
+        .page-logo {
             height: 50px;
             width: auto;
         }
 
-        .page-2-link {
+        .page-link {
             font-size: 14px;
             color: #6b7a99;
         }
 
-        .page-2-link a {
+        .page-link a {
             color: var(--brand-blue);
             text-decoration: underline;
             font-weight: 600;
@@ -285,45 +229,80 @@
             text-align: center;
         }
 
-        .price-table {
-            width: 100%;
+        /* ========== PAGE 2 - TARIFF ========== */
+        .tariff-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
             max-width: 700px;
-            margin: 0 auto 50px;
-            border-collapse: collapse;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        .price-table th,
-        .price-table td {
-            padding: 16px 12px;
+        .tariff-info {
             text-align: left;
-            border-bottom: 1px solid #e8ecf3;
+        }
+
+        .tariff-info-right {
+            text-align: right;
+        }
+
+        .tariff-label {
             font-size: 16px;
-        }
-
-        .price-table th {
-            font-weight: 500;
             color: #6b7a99;
+            font-weight: 500;
         }
 
-        .price-table td {
+        .tariff-value {
+            font-size: 22px;
+            font-weight: 700;
             color: var(--text-primary);
         }
 
-        .price-table td:last-child {
+        .tariff-price-label {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--brand-blue);
+            margin-bottom: 10px;
+        }
+
+        .tariff-price-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--brand-blue);
+        }
+
+        .features-table {
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+
+        .features-table td {
+            padding: 14px 0;
+            border-bottom: 1px solid #e8ecf3;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .features-table td:last-child {
             text-align: right;
             font-weight: 700;
             color: var(--brand-blue);
         }
 
-        .price-table .check {
+        .features-table .check {
             color: #22c55e;
             font-size: 20px;
         }
 
+        /* ========== PAGE 3 - MODULES & USERS ========== */
         .modules-table {
             width: 100%;
             max-width: 700px;
-            margin: 0 auto;
+            margin: 0 auto 40px;
+            border-collapse: collapse;
         }
 
         .modules-table td {
@@ -344,24 +323,84 @@
             font-size: 20px;
         }
 
-        /* ========== PAGE 3 STYLES ========== */
-        .page-3 {
-            position: relative;
+        .modules-table .cross {
+            color: #ef4444;
+            font-size: 20px;
+        }
+
+        .users-table {
             width: 100%;
-            min-height: 100vh;
-            padding: 40px 60px;
-            background: #ffffff;
+            max-width: 700px;
+            margin: 0 auto;
+            border-collapse: collapse;
+        }
+
+        .users-table td {
+            padding: 14px 0;
+            border-bottom: 1px solid #e8ecf3;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .users-table td:last-child {
+            text-align: right;
+            font-weight: 700;
+            color: var(--brand-blue);
+        }
+
+        /* ========== PAGE 4 - ONE-TIME SERVICES ========== */
+        .services-table {
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto 40px;
+            border-collapse: collapse;
+        }
+
+        .services-table td {
+            padding: 14px 0;
+            border-bottom: 1px solid #e8ecf3;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .services-table td:last-child {
+            text-align: right;
+            font-weight: 700;
+            color: var(--brand-blue);
+        }
+
+        .services-table .check {
+            color: #22c55e;
+            font-size: 20px;
+        }
+
+        .services-total {
+            max-width: 700px;
+            margin: 40px auto 0;
+            padding-top: 20px;
+            border-top: 2px solid #e8ecf3;
             display: flex;
-            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .page-3-content {
-            flex: 1;
+        .services-total-label {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--brand-blue);
         }
 
+        .services-total-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--brand-blue);
+            text-decoration: underline;
+        }
+
+        /* ========== PAGE 5 - TOTAL ========== */
         .total-section {
             max-width: 600px;
-            margin: 0 auto 60px;
+            margin: 0 auto 40px;
             padding: 30px;
             border: 1px solid #e8ecf3;
             border-radius: 16px;
@@ -405,7 +444,7 @@
 
         .slogan-box {
             max-width: 500px;
-            margin: 0 auto 60px;
+            margin: 0 auto 40px;
             padding: 40px 30px;
             border: 1px solid #e8ecf3;
             border-radius: 16px;
@@ -427,7 +466,7 @@
             display: flex;
             justify-content: center;
             gap: 60px;
-            margin-bottom: 50px;
+            margin-bottom: 40px;
         }
 
         .contact-item {
@@ -446,6 +485,8 @@
             background: var(--brand-blue);
             border-radius: 50%;
             margin-bottom: 12px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         .contact-icon svg {
@@ -481,93 +522,45 @@
             margin-left: 10px;
         }
 
-        /* Responsive */
-        @media (max-width: 700px) {
-            .page {
-                padding: 30px 20px;
+        /* Print/PDF styles */
+        @media print {
+            body {
+                background: #ffffff;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
-            .logo-mark {
-                width: 100px;
-                height: 100px;
-            }
-
-            .brand {
-                font-size: 28px;
+            .page-welcome {
+                padding: 30px;
+                min-height: auto;
             }
 
             .hero {
-                padding: 28px 24px;
-                border-radius: 18px;
+                background: var(--brand-blue) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
-            .hero-title {
-                font-size: 24px;
-            }
-
-            .meta {
-                grid-template-columns: 1fr;
-                gap: 30px;
-            }
-
-            .page-2 {
-                padding: 30px 20px;
-            }
-
-            .page-2-header {
-                flex-direction: column;
-                gap: 16px;
-                text-align: center;
-            }
-
-            .section-title {
-                font-size: 20px;
-            }
-
-            .price-table th,
-            .price-table td,
-            .modules-table td {
-                font-size: 14px;
-                padding: 12px 8px;
-            }
-
-            .page-3 {
-                padding: 30px 20px;
-            }
-
-            .total-section {
-                padding: 20px;
-            }
-
-            .slogan-box {
-                padding: 30px 20px;
-            }
-
-            .slogan-text {
-                font-size: 18px;
-            }
-
-            .contacts-row {
-                flex-direction: column;
-                gap: 30px;
+            .icon {
+                background: var(--brand-blue) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
 
             .contact-icon {
-                width: 50px;
-                height: 50px;
-            }
-
-            .validity-line {
-                font-size: 16px;
+                background: var(--brand-blue) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
         }
     </style>
 </head>
 <body>
-<div class="page">
+
+<!-- ========== PAGE 1 - WELCOME ========== -->
+<div class="page-welcome">
     <div class="header">
         <img class="logo-mark" src="https://billing-back.shamcrm.com/img/logo.png" alt="SHAM CRM logo">
-
     </div>
 
     <div class="hero">
@@ -577,11 +570,7 @@
     <div class="meta">
         <div class="meta-item">
             <div class="icon">
-                <img src="https://billing-back.shamcrm.com/img/clients.png" alt="Клиент"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                <svg style="display: none;" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                </svg>
+                <img src="https://billing-back.shamcrm.com/img/clients.png" alt="Клиент">
             </div>
             <div class="label">Клиент:</div>
             <p class="value">{{ $client }}</p>
@@ -589,11 +578,7 @@
 
         <div class="meta-item">
             <div class="icon">
-                <img src="https://billing-back.shamcrm.com/img/manager.png" alt="Менеджер"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                <svg style="display: none;" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                </svg>
+                <img src="https://billing-back.shamcrm.com/img/manager.png" alt="Менеджер">
             </div>
             <div class="label">Менеджер:</div>
             <p class="value">{{ $manager }}</p>
@@ -601,11 +586,7 @@
 
         <div class="meta-item">
             <div class="icon">
-                <img src="https://billing-back.shamcrm.com/img/calendar.png" alt="Дата"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                <svg style="display: none;" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/>
-                </svg>
+                <img src="https://billing-back.shamcrm.com/img/calendar.png" alt="Дата">
             </div>
             <div class="label">Дата:</div>
             <p class="value">{{ $date }}</p>
@@ -615,137 +596,193 @@
     <img class="laptop-image" src="https://billing-back.shamcrm.com/img/laptop.png" alt="Laptop">
 </div>
 
-<!-- ========== PAGE 2 ========== -->
-<div class="page-2">
-    <div class="page-2-header">
-        <img class="page-2-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
-        <div class="page-2-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
+<!-- ========== PAGE 2 - TARIFF ========== -->
+<div class="page-content">
+    <div class="page-header">
+        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
+        <div class="page-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
     </div>
 
+    <div class="tariff-header">
+        <div class="tariff-info">
+            <div class="tariff-label">Тариф:</div>
+            <div class="tariff-value">{{ $tariff['name'] }}</div>
+        </div>
+        <div class="tariff-info-right">
+            <div class="tariff-label">Период подписки:</div>
+            <div class="tariff-value">{{ $tariff['period_months'] }} месяцев</div>
+        </div>
+    </div>
+
+    <div class="tariff-price-label" style="text-align: center; margin-bottom: 30px;">
+        Стоимость тарифа: <span class="tariff-price-value">{{ number_format($tariff['monthly_price'], 0, ',', ' ') }} сум/мес.</span>
+    </div>
+
+    @if(isset($tariff_features) && count($tariff_features) > 0)
+    <table class="features-table">
+        @foreach($tariff_features as $feature)
+        <tr>
+            <td>{{ $feature['name'] }}</td>
+            <td class="{{ isset($feature['value']) ? '' : 'check' }}">
+                @if(isset($feature['value']))
+                    {{ $feature['value'] }}
+                @else
+                    ✓
+                @endif
+            </td>
+        </tr>
+        @endforeach
+    </table>
+    @endif
+</div>
+
+<!-- ========== PAGE 3 - MODULES & USERS ========== -->
+<div class="page-content">
+    <div class="page-header">
+        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
+        <div class="page-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
+    </div>
+
+    @if(isset($additional_users) && $additional_users['quantity'] > 0)
     <h2 class="section-title">Дополнительные пользователи</h2>
-    <table class="price-table">
+    <table class="users-table">
         <tr>
             <td>Доп. пользователь</td>
-            <td>1 шт.</td>
-            <td>25 800 сум/мес.</td>
+            <td>{{ $additional_users['quantity'] }} шт.</td>
+            <td>{{ number_format($additional_users['price_per_user'], 0, ',', ' ') }} сум/мес.</td>
         </tr>
     </table>
+    @endif
 
-    <h2 class="section-title">Дополнительные модули</h2>
+    <h2 class="section-title" style="margin-top: 40px;">Дополнительные модули</h2>
     <table class="modules-table">
+        @foreach($modules as $module)
         <tr>
-            <td>Mini-app B2B (партнёры, дилеры)</td>
-            <td class="check">✓</td>
+            <td>{{ $module['name'] }}</td>
+            <td class="{{ $module['status'] === 'included' ? 'check' : ($module['status'] === 'not_available' ? 'cross' : '') }}">
+                @if($module['status'] === 'included')
+                    ✓
+                @elseif($module['status'] === 'selected')
+                    {{ number_format($module['price'], 0, ',', ' ') }} сум
+                @else
+                    ✗
+                @endif
+            </td>
         </tr>
-        <tr>
-            <td>Mini-app B2C (клиенты, заявки)</td>
-            <td class="check">✓</td>
-        </tr>
-        <tr>
-            <td>IP-Телефония (Сипуну)</td>
-            <td class="check">✓</td>
-        </tr>
-        <tr>
-            <td>Подключение IP-телефонии</td>
-            <td class="check">✓</td>
-        </tr>
-        <tr>
-            <td>Интернет-магазин</td>
-            <td>399 000 сум</td>
-        </tr>
-        <tr>
-            <td>Подключения интернет-магазин</td>
-            <td>*** сум</td>
-        </tr>
-        <tr>
-            <td>Дополнительные каналы соцсети</td>
-            <td>129 000 сум</td>
-        </tr>
-        <tr>
-            <td>Дополнительная воронка</td>
-            <td>129 000 сум</td>
-        </tr>
-        <tr>
-            <td>SMS - Рассылка</td>
-            <td class="check">✓</td>
-        </tr>
-        <tr>
-            <td>Складской учет и касса</td>
-            <td>129 000 сум</td>
-        </tr>
-        <tr>
-            <td>Интеграция с 1С</td>
-            <td>*** сум</td>
-        </tr>
+        @endforeach
     </table>
 </div>
 
-<!-- ========== PAGE 3 ========== -->
-<div class="page-3">
-    <div class="page-2-header">
-        <img class="page-2-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
-        <div class="page-2-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
+<!-- ========== PAGE 4 - ONE-TIME SERVICES ========== -->
+@if(isset($one_time_services) && count($one_time_services) > 0)
+<div class="page-content">
+    <div class="page-header">
+        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
+        <div class="page-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
     </div>
 
-    <div class="page-3-content">
-        <h2 class="section-title">Итоговая стоимость</h2>
+    <h2 class="section-title">Услуги внедрения и обучения (разово)</h2>
+    <table class="services-table">
+        @foreach($one_time_services as $service)
+        <tr>
+            <td>{{ $service['name'] }}</td>
+            <td class="{{ (isset($service['status']) && $service['status'] === 'included') ? 'check' : '' }}">
+                @if(isset($service['value']))
+                    {{ $service['value'] }}
+                @elseif(isset($service['status']) && $service['status'] === 'included')
+                    ✓
+                @elseif(isset($service['status']) && $service['status'] === 'selected' && isset($service['price']))
+                    {{ number_format($service['price'], 0, ',', ' ') }} сум
+                @else
+                    ✓
+                @endif
+            </td>
+        </tr>
+        @endforeach
+    </table>
 
-        <div class="total-section">
-            <table class="total-table">
-                <tr>
-                    <td>Тариф "VIP" за 6 мес.</td>
-                    <td>10 200 000 сум</td>
-                </tr>
-                <tr>
-                    <td>Дополнительные модули за 6 мес.</td>
-                    <td>4 716 000 сум</td>
-                </tr>
-                <tr>
-                    <td>Подключение и внедрения</td>
-                    <td>36 000 000 сум</td>
-                </tr>
-            </table>
-            <div class="total-row">
-                <span>Итог:</span> 50 916 000 сум
+    <div class="services-total">
+        <div class="services-total-label">Стоимость<br>подключение и внедрения:</div>
+        <div class="services-total-value">{{ number_format($calculations['one_time_total'], 0, ',', ' ') }} сум</div>
+    </div>
+</div>
+@endif
+
+<!-- ========== PAGE 5 - TOTAL ========== -->
+<div class="page-content">
+    <div class="page-header">
+        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
+        <div class="page-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
+    </div>
+
+    <h2 class="section-title">Итоговая стоимость</h2>
+
+    <div class="total-section">
+        <table class="total-table">
+            <tr>
+                <td>Тариф "{{ $tariff['name'] }}" за {{ $tariff['period_months'] }} мес.</td>
+                <td>{{ number_format($calculations['tariff_total'], 0, ',', ' ') }} сум</td>
+            </tr>
+            @if($calculations['modules_total'] > 0)
+            <tr>
+                <td>Дополнительные модули за {{ $tariff['period_months'] }} мес.</td>
+                <td>{{ number_format($calculations['modules_total'], 0, ',', ' ') }} сум</td>
+            </tr>
+            @endif
+            @if(isset($additional_users) && $additional_users['quantity'] > 0)
+            <tr>
+                <td>Доп. пользователи ({{ $additional_users['quantity'] }} шт.) за {{ $tariff['period_months'] }} мес.</td>
+                <td>{{ number_format($calculations['users_total'], 0, ',', ' ') }} сум</td>
+            </tr>
+            @endif
+            @if($calculations['one_time_total'] > 0)
+            <tr>
+                <td>Подключение и внедрение</td>
+                <td>{{ number_format($calculations['one_time_total'], 0, ',', ' ') }} сум</td>
+            </tr>
+            @endif
+        </table>
+        <div class="total-row">
+            <span>Итог:</span> {{ number_format($calculations['grand_total'], 0, ',', ' ') }} сум
+        </div>
+    </div>
+
+    <div class="slogan-box">
+        <p class="slogan-text">
+            <strong>shamCRM</strong> — CRM, которая<br>
+            реально внедряется и работает!
+        </p>
+    </div>
+
+    <div class="contacts-row">
+        <div class="contact-item">
+            <div class="contact-icon">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                </svg>
             </div>
+            <div class="contact-value">{{ $contacts['phone'] ?? '+998 78 555 7416' }}</div>
         </div>
 
-        <div class="slogan-box">
-            <p class="slogan-text">
-                <strong>shamCRM</strong> — CRM, которая<br>
-                реально внедряется и работает!
-            </p>
+        <div class="contact-item">
+            <div class="contact-icon">
+                <img src="https://billing-back.shamcrm.com/img/world.png" alt="Web">
+            </div>
+            <div class="contact-value">{{ $contacts['website'] ?? 'shamcrm.com' }}</div>
         </div>
 
-        <div class="contacts-row">
-            <div class="contact-item">
-                <div class="contact-icon">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-                    </svg>
-                </div>
-                <div class="contact-value">+998 78 555 7416</div>
+        <div class="contact-item">
+            <div class="contact-icon">
+                <img src="https://billing-back.shamcrm.com/img/telegram.png" alt="Telegram">
             </div>
-
-            <div class="contact-item">
-                <div class="contact-icon">
-                    <img src="https://billing-back.shamcrm.com/img/world.png" alt="Web">
-                </div>
-                <div class="contact-value">shamcrm.com</div>
-            </div>
-
-            <div class="contact-item">
-                <div class="contact-icon">
-                    <img src="https://billing-back.shamcrm.com/img/telegram.png" alt="Telegram">
-                </div>
-                <div class="contact-value">@shamcrm_uz</div>
-            </div>
+            <div class="contact-value">{{ $contacts['telegram'] ?? '@shamcrm_uz' }}</div>
         </div>
     </div>
 
     <div class="validity-line">
-        Предложение действительно до: <span></span>
+        Предложение действительно до: <span>{{ $validity_date ?? '' }}</span>
     </div>
 </div>
+
 </body>
 </html>
