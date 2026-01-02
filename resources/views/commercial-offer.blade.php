@@ -9,7 +9,7 @@
             --brand-blue: #2f4df6;
             --text-primary: #0b1b35;
             --text-secondary: #1f2c45;
-            --hero-bg-opacity: 0.92;
+            --hero-bg-opacity: 0.8;
         }
 
         @font-face {
@@ -58,7 +58,7 @@
             position: absolute;
             inset: 0;
             background: url('{{ asset('img/main_backgoun.png') }}') center/cover no-repeat;
-            opacity: 0.18; /* регулируй прозрачность фона */
+            opacity: 0.18;
             z-index: 0;
             pointer-events: none;
         }
@@ -104,15 +104,14 @@
             line-height: 1;
         }
 
-        /* Hero section - solid blue background */
         .hero {
             position: relative;
             width: 100%;
-            max-width: 580px;
-            border-radius: 24px;
+            max-width: 610px;
+            border-radius: 64px;
             padding: 36px 40px;
             text-align: center;
-            margin-bottom: 50px;
+            margin-bottom: 70px;
             box-shadow: 0 8px 32px rgba(47, 77, 246, 0.25);
         }
 
@@ -130,8 +129,8 @@
             position: relative;
             z-index: 1;
             margin: 0;
-            font-size: 32px;
-            font-weight: 700;
+            font-size: 55px;
+            font-weight: bold;
             color: #ffffff;
             letter-spacing: 2px;
             text-transform: uppercase;
