@@ -77,8 +77,8 @@
         }
 
         .logo-mark {
-            width: 400px;
-            height: 400px;
+            width: 260px;
+            height: 260px;
             object-fit: contain;
             margin: 0 auto 20px;
             display: block;
@@ -128,9 +128,9 @@
             width: 100%;
             max-width: 600px;
             border-radius: 64px;
-            padding: 36px 40px;
+            padding: 20px 40px;
             text-align: center;
-            margin-bottom: 70px;
+            margin-bottom: 40px;
             /* Прямо на элементе */
             background: linear-gradient(90deg,
             rgba(47, 77, 246, 0.92) 0%,
@@ -196,6 +196,17 @@
             font-weight: 500;
             color: var(--text-secondary);
             line-height: 1.4;
+        }
+
+        /* Laptop image */
+        .laptop-image {
+            position: absolute;
+            bottom: -30px;
+            right: -50px;
+            width: 590px;
+            height: 360px;
+            z-index: 2;
+            pointer-events: none;
         }
 
         /* Footer */
@@ -601,6 +612,7 @@
         </div>
     </div>
 
+    <img class="laptop-image" src="https://billing-back.shamcrm.com/img/laptop.png" alt="Laptop">
 </div>
 
 <!-- ========== PAGE 2 ========== -->
