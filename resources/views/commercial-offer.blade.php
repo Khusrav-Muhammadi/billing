@@ -198,14 +198,13 @@
         .page-content {
             position: relative;
             width: 100%;
-            min-height: 100vh;
             padding: 40px 60px;
             background: #ffffff;
-            page-break-after: always;
         }
 
-        .page-content:last-child {
-            page-break-after: auto;
+        /* Avoid breaking inside sections - keeps tariff/modules/services together */
+        .section-block {
+            page-break-inside: avoid;
         }
 
         .page-header {
@@ -608,191 +607,182 @@
     <img class="laptop-image" src="https://billing-back.shamcrm.com/img/laptop.png" alt="Laptop">
 </div>
 
-<!-- ========== PAGE 2 - TARIFF ========== -->
+<!-- ========== CONTENT PAGES ========== -->
 <div class="page-content">
     <div class="page-header">
         <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
         <div class="page-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
     </div>
 
-    <div class="tariff-header">
-        <div class="tariff-info">
-            <div class="tariff-label">Тариф:</div>
-            <div class="tariff-value">{{ $tariff['name'] }}</div>
+    <!-- TARIFF SECTION -->
+    <div class="section-block">
+        <div class="tariff-header">
+            <div class="tariff-info">
+                <div class="tariff-label">Тариф:</div>
+                <div class="tariff-value">{{ $tariff['name'] }}</div>
+            </div>
+            <div class="tariff-info-right">
+                <div class="tariff-label">Период подписки:</div>
+                <div class="tariff-value">{{ $tariff['period_months'] }} месяцев</div>
+            </div>
         </div>
-        <div class="tariff-info-right">
-            <div class="tariff-label">Период подписки:</div>
-            <div class="tariff-value">{{ $tariff['period_months'] }} месяцев</div>
+
+        <div class="tariff-price-label" style="text-align: center; margin-bottom: 30px;">
+            Стоимость тарифа: <span class="tariff-price-value">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</span>
         </div>
-    </div>
 
-    <div class="tariff-price-label" style="text-align: center; margin-bottom: 30px;">
-        Стоимость тарифа: <span class="tariff-price-value">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</span>
-    </div>
-
-    @if(isset($tariff_features) && count($tariff_features) > 0)
-    <table class="features-table">
-        @foreach($tariff_features as $feature)
-        <tr>
-            <td>{{ $feature['name'] }}</td>
-            <td class="{{ isset($feature['value']) ? '' : 'check' }}">
-                @if(isset($feature['value']))
-                    {{ $feature['value'] }}
-                @else
-                    ✓
-                @endif
-            </td>
-        </tr>
-        @endforeach
-    </table>
-    @endif
-</div>
-
-<!-- ========== PAGE 3 - MODULES & USERS ========== -->
-<div class="page-content">
-    <div class="page-header">
-        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
-        <div class="page-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
-    </div>
-
-    @if(isset($additional_users) && $additional_users['quantity'] > 0)
-    <h2 class="section-title">Дополнительные пользователи</h2>
-    <table class="users-table">
-        <tr>
-            <td>Доп. пользователь</td>
-            <td>{{ $additional_users['quantity'] }} шт.</td>
-            <td>{{ formatPrice($additional_users['price_per_user']) }} {{ $currency }}/мес.</td>
-        </tr>
-    </table>
-    @endif
-
-    <h2 class="section-title" style="margin-top: 40px;">Дополнительные модули</h2>
-    <table class="modules-table">
-        @foreach($modules as $module)
-        <tr>
-            <td>{{ $module['name'] }}</td>
-            <td class="{{ $module['status'] === 'included' ? 'check' : ($module['status'] === 'not_available' ? 'cross' : '') }}">
-                @if($module['status'] === 'included')
-                    ✓
-                @elseif($module['status'] === 'selected')
-                    {{ formatPrice($module['price']) }} {{ $currency }}
-                @else
-                    ✗
-                @endif
-            </td>
-        </tr>
-        @endforeach
-    </table>
-</div>
-
-<!-- ========== PAGE 4 - ONE-TIME SERVICES ========== -->
-@if(isset($one_time_services) && count($one_time_services) > 0)
-<div class="page-content">
-    <div class="page-header">
-        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
-        <div class="page-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
-    </div>
-
-    <h2 class="section-title">Услуги внедрения и обучения (разово)</h2>
-    <table class="services-table">
-        @foreach($one_time_services as $service)
-        <tr>
-            <td>{{ $service['name'] }}</td>
-            <td class="{{ (isset($service['status']) && $service['status'] === 'included') ? 'check' : '' }}">
-                @if(isset($service['value']))
-                    {{ $service['value'] }}
-                @elseif(isset($service['status']) && $service['status'] === 'included')
-                    ✓
-                @elseif(isset($service['status']) && $service['status'] === 'selected' && isset($service['price']))
-                    {{ formatPrice($service['price']) }} {{ $currency }}
-                @else
-                    ✓
-                @endif
-            </td>
-        </tr>
-        @endforeach
-    </table>
-
-    <div class="services-total">
-        <div class="services-total-label">Стоимость<br>подключение и внедрения:</div>
-        <div class="services-total-value">{{ formatPrice($calculations['one_time_total']) }} {{ $currency }}</div>
-    </div>
-</div>
-@endif
-
-<!-- ========== PAGE 5 - TOTAL ========== -->
-<div class="page-content">
-    <div class="page-header">
-        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
-        <div class="page-link">*подробнее: <a href="https://shamcrm.com" target="_blank">shamcrm.com</a></div>
-    </div>
-
-    <h2 class="section-title">Итоговая стоимость</h2>
-
-    <div class="total-section">
-        <table class="total-table">
+        @if(isset($tariff_features) && count($tariff_features) > 0)
+        <table class="features-table">
+            @foreach($tariff_features as $feature)
             <tr>
-                <td>Тариф "{{ $tariff['name'] }}" за {{ $tariff['period_months'] }} мес.</td>
-                <td>{{ formatPrice($calculations['tariff_total']) }} {{ $currency }}</td>
+                <td>{{ $feature['name'] }}</td>
+                <td class="{{ isset($feature['value']) ? '' : 'check' }}">
+                    @if(isset($feature['value']))
+                        {{ $feature['value'] }}
+                    @else
+                        ✓
+                    @endif
+                </td>
             </tr>
-            @if($calculations['modules_total'] > 0)
-            <tr>
-                <td>Дополнительные модули за {{ $tariff['period_months'] }} мес.</td>
-                <td>{{ formatPrice($calculations['modules_total']) }} {{ $currency }}</td>
-            </tr>
-            @endif
-            @if(isset($additional_users) && $additional_users['quantity'] > 0)
-            <tr>
-                <td>Доп. пользователи ({{ $additional_users['quantity'] }} шт.) за {{ $tariff['period_months'] }} мес.</td>
-                <td>{{ formatPrice($calculations['users_total']) }} {{ $currency }}</td>
-            </tr>
-            @endif
-            @if($calculations['one_time_total'] > 0)
-            <tr>
-                <td>Подключение и внедрение</td>
-                <td>{{ formatPrice($calculations['one_time_total']) }} {{ $currency }}</td>
-            </tr>
-            @endif
+            @endforeach
         </table>
-        <div class="total-row">
-            <span>Итог:</span> {{ formatPrice($calculations['grand_total']) }} {{ $currency }}
-        </div>
+        @endif
     </div>
 
-    <div class="slogan-box">
-        <p class="slogan-text">
-            <strong>shamCRM</strong> — CRM, которая<br>
-            реально внедряется и работает!
-        </p>
+    <!-- ADDITIONAL USERS SECTION -->
+    @if(isset($additional_users) && $additional_users['quantity'] > 0)
+    <div class="section-block" style="margin-top: 40px;">
+        <h2 class="section-title">Дополнительные пользователи</h2>
+        <table class="users-table">
+            <tr>
+                <td>Доп. пользователь</td>
+                <td>{{ $additional_users['quantity'] }} шт.</td>
+                <td>{{ formatPrice($additional_users['price_per_user']) }} {{ $currency }}/мес.</td>
+            </tr>
+        </table>
+    </div>
+    @endif
+
+    <!-- MODULES SECTION -->
+    <div class="section-block" style="margin-top: 40px;">
+        <h2 class="section-title">Дополнительные модули</h2>
+        <table class="modules-table">
+            @foreach($modules as $module)
+            <tr>
+                <td>{{ $module['name'] }}</td>
+                <td class="{{ $module['status'] === 'included' ? 'check' : ($module['status'] === 'not_available' ? 'cross' : '') }}">
+                    @if($module['status'] === 'included')
+                        ✓
+                    @elseif($module['status'] === 'selected')
+                        {{ formatPrice($module['price']) }} {{ $currency }}
+                    @else
+                        ✗
+                    @endif
+                </td>
+            </tr>
+            @endforeach
+        </table>
     </div>
 
-    <div class="contacts-row">
-        <div class="contact-item">
-            <div class="contact-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-                </svg>
-            </div>
-            <div class="contact-value">{{ $contacts['phone'] ?? '+998 78 555 7416' }}</div>
-        </div>
+    <!-- ONE-TIME SERVICES SECTION -->
+    @if(isset($one_time_services) && count($one_time_services) > 0)
+    <div class="section-block" style="margin-top: 40px;">
+        <h2 class="section-title">Услуги внедрения и обучения (разово)</h2>
+        <table class="services-table">
+            @foreach($one_time_services as $service)
+            <tr>
+                <td>{{ $service['name'] }}</td>
+                <td class="{{ (isset($service['status']) && $service['status'] === 'included') ? 'check' : '' }}">
+                    @if(isset($service['value']))
+                        {{ $service['value'] }}
+                    @elseif(isset($service['status']) && $service['status'] === 'included')
+                        ✓
+                    @elseif(isset($service['status']) && $service['status'] === 'selected' && isset($service['price']))
+                        {{ formatPrice($service['price']) }} {{ $currency }}
+                    @else
+                        ✓
+                    @endif
+                </td>
+            </tr>
+            @endforeach
+        </table>
 
-        <div class="contact-item">
-            <div class="contact-icon">
-                <img src="https://billing-back.shamcrm.com/img/world.png" alt="Web">
-            </div>
-            <div class="contact-value">{{ $contacts['website'] ?? 'shamcrm.com' }}</div>
-        </div>
-
-        <div class="contact-item">
-            <div class="contact-icon">
-                <img src="https://billing-back.shamcrm.com/img/telegram.png" alt="Telegram">
-            </div>
-            <div class="contact-value">{{ $contacts['telegram'] ?? '@shamcrm_uz' }}</div>
+        <div class="services-total">
+            <div class="services-total-label">Стоимость<br>подключение и внедрения:</div>
+            <div class="services-total-value">{{ formatPrice($calculations['one_time_total']) }} {{ $currency }}</div>
         </div>
     </div>
+    @endif
 
-    <div class="validity-line">
-        Предложение действительно до: <span>{{ $validity_date ?? '' }}</span>
+    <!-- TOTAL SECTION -->
+    <div class="section-block" style="margin-top: 40px;">
+        <h2 class="section-title">Итоговая стоимость</h2>
+
+        <div class="total-section">
+            <table class="total-table">
+                <tr>
+                    <td>Тариф "{{ $tariff['name'] }}" за {{ $tariff['period_months'] }} мес.</td>
+                    <td>{{ formatPrice($calculations['tariff_total']) }} {{ $currency }}</td>
+                </tr>
+                @if($calculations['modules_total'] > 0)
+                <tr>
+                    <td>Дополнительные модули за {{ $tariff['period_months'] }} мес.</td>
+                    <td>{{ formatPrice($calculations['modules_total']) }} {{ $currency }}</td>
+                </tr>
+                @endif
+                @if(isset($additional_users) && $additional_users['quantity'] > 0)
+                <tr>
+                    <td>Доп. пользователи ({{ $additional_users['quantity'] }} шт.) за {{ $tariff['period_months'] }} мес.</td>
+                    <td>{{ formatPrice($calculations['users_total']) }} {{ $currency }}</td>
+                </tr>
+                @endif
+                @if($calculations['one_time_total'] > 0)
+                <tr>
+                    <td>Подключение и внедрение</td>
+                    <td>{{ formatPrice($calculations['one_time_total']) }} {{ $currency }}</td>
+                </tr>
+                @endif
+            </table>
+            <div class="total-row">
+                <span>Итог:</span> {{ formatPrice($calculations['grand_total']) }} {{ $currency }}
+            </div>
+        </div>
+
+        <div class="slogan-box">
+            <p class="slogan-text">
+                <strong>shamCRM</strong> — CRM, которая<br>
+                реально внедряется и работает!
+            </p>
+        </div>
+
+        <div class="contacts-row">
+            <div class="contact-item">
+                <div class="contact-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                    </svg>
+                </div>
+                <div class="contact-value">{{ $contacts['phone'] ?? '+998 78 555 7416' }}</div>
+            </div>
+
+            <div class="contact-item">
+                <div class="contact-icon">
+                    <img src="https://billing-back.shamcrm.com/img/world.png" alt="Web">
+                </div>
+                <div class="contact-value">{{ $contacts['website'] ?? 'shamcrm.com' }}</div>
+            </div>
+
+            <div class="contact-item">
+                <div class="contact-icon">
+                    <img src="https://billing-back.shamcrm.com/img/telegram.png" alt="Telegram">
+                </div>
+                <div class="contact-value">{{ $contacts['telegram'] ?? '@shamcrm_uz' }}</div>
+            </div>
+        </div>
+
+        <div class="validity-line">
+            Предложение действительно до: <span>{{ $validity_date ?? '' }}</span>
+        </div>
     </div>
 </div>
 
