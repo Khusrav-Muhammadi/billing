@@ -45,7 +45,10 @@
 
         @page {
             margin-top: 40px;
-            margin-bottom: 30px;
+        }
+
+        @page :first {
+            margin-top: 0;
         }
 
         body {
