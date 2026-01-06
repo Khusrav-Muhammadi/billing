@@ -43,6 +43,11 @@
             padding: 0;
         }
 
+        @page {
+            margin-top: 40px;
+            margin-bottom: 30px;
+        }
+
         body {
             font-family: 'Cygrotesk', 'Inter', Arial, sans-serif;
             background: #ffffff;
