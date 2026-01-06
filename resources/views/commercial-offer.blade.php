@@ -777,7 +777,7 @@
                 <div class="contact-icon">
                     <img src="https://billing-back.shamcrm.com/img/world.png" alt="Web">
                 </div>
-                <div class="contact-value">{{ $contacts['website'] ?? 'shamcrm.com' }}</div>
+                <div class="contact-value"><a href="https://shamcrm.com/price">shamcrm.com/price</a></div>
             </div>
 
             <div class="contact-item">
