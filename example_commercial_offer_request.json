@@ -1,0 +1,168 @@
+{
+  "client_name": "ИП \"Расулов Амир Давронович\"",
+  "manager_name": "Расулов Амир",
+  "date": "31.12.2025",
+  "tariff": {
+    "name": "VIP",
+    "period": "6 месяцев",
+    "period_months": 6,
+    "users_count": 30,
+    "monthly_price": 1700000,
+    "currency": ""
+  },
+  "features": [
+    {
+      "title": "Дашборд",
+      "subtitle": null,
+      "included": true
+    },
+    {
+      "title": "Интеграция Instagram",
+      "subtitle": "10 канал",
+      "included": true
+    },
+    {
+      "title": "Интеграция Telegram",
+      "subtitle": "10 канал",
+      "included": true
+    },
+    {
+      "title": "Интеграция WhatsApp",
+      "subtitle": "10 канал",
+      "included": true
+    },
+    {
+      "title": "Интеграция Messenger",
+      "subtitle": "10 канал",
+      "included": true
+    },
+    {
+      "title": "Мобильное приложение",
+      "subtitle": null,
+      "included": true
+    },
+    {
+      "title": "Контроль доступ",
+      "subtitle": null,
+      "included": true
+    },
+    {
+      "title": "Управление задачами",
+      "subtitle": null,
+      "included": true
+    },
+    {
+      "title": "Календарь",
+      "subtitle": null,
+      "included": true
+    },
+    {
+      "title": "SMS - рассылка",
+      "subtitle": null,
+      "included": true
+    }
+  ],
+  "additional_services": [
+    {
+      "name": "Доп. пользователь",
+      "monthly_price": 25800,
+      "quantity": 1
+    },
+    {
+      "name": "Mini-app B2B (партнёры, дилеры)",
+      "monthly_price": 0,
+      "quantity": 1
+    },
+    {
+      "name": "Mini-app B2C (клиенты, заявки)",
+      "monthly_price": 0,
+      "quantity": 1
+    },
+    {
+      "name": "IP-Телефония (Сипуни)",
+      "monthly_price": 0,
+      "quantity": 1
+    },
+    {
+      "name": "Подключение IP-телефонии",
+      "monthly_price": 0,
+      "quantity": 1
+    },
+    {
+      "name": "Интернет-магазин",
+      "monthly_price": 399000,
+      "quantity": 1
+    },
+    {
+      "name": "Дополнительные каналы соцсети",
+      "monthly_price": 129000,
+      "quantity": 1
+    },
+    {
+      "name": "Дополнительная воронка",
+      "monthly_price": 129000,
+      "quantity": 1
+    },
+    {
+      "name": "SMS - Рассылка",
+      "monthly_price": 0,
+      "quantity": 1
+    },
+    {
+      "name": "Складской учет и касса",
+      "monthly_price": 129000,
+      "quantity": 1
+    }
+  ],
+  "one_time_payments": [
+    {
+      "name": "Анализ бизнес-процессов",
+      "price": 0
+    },
+    {
+      "name": "Настройка воронок продаж",
+      "price": 0
+    },
+    {
+      "name": "Настройка доступа пользователей",
+      "price": 0
+    },
+    {
+      "name": "Обучение сотрудников",
+      "price": 0
+    },
+    {
+      "name": "Консультационная поддержка",
+      "price": 0
+    },
+    {
+      "name": "Интеграция Instagram",
+      "price": 0
+    },
+    {
+      "name": "Интеграция Telegram",
+      "price": 0
+    },
+    {
+      "name": "Интеграция WhatsApp",
+      "price": 0
+    },
+    {
+      "name": "Интеграция Messenger",
+      "price": 0
+    },
+    {
+      "name": "Подключение и внедрения",
+      "price": 36000000
+    }
+  ],
+  "contacts": {
+    "phone": "+998 78 555 7416",
+    "website": "shamcrm.com",
+    "telegram": "@shamcrm_uz"
+  },
+  "validity_days": 30
+}
+
+
+
