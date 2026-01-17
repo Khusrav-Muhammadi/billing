@@ -784,8 +784,18 @@
                 <div class="contact-icon">
                     <img src="https://billing-back.shamcrm.com/img/telegram.png" alt="Telegram">
                 </div>
-                <div class="contact-value">{{ $contacts['telegram'] ?? '@shamcrm_uz' }}</div>
+                <div class="contact-value">
+                    @php
+                        $telegram = $contacts['telegram'] ?? '@shamcrm_uz';
+                        $username = ltrim($telegram, '@');
+                    @endphp
+
+                    <a href="https://t.me/{{ $username }}" target="_blank" rel="noopener">
+                        {{ $telegram }}
+                    </a>
+                </div>
             </div>
+
         </div>
 
         <div class="validity-line">
