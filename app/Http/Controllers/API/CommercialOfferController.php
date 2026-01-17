@@ -138,11 +138,7 @@ class CommercialOfferController extends Controller
             'additional_users' => $validated['additional_users'] ?? ['quantity' => 0, 'price_per_user' => 0],
             'modules' => $validated['modules'],
             'one_time_services' => $validated['one_time_services'] ?? [],
-            'contacts' => array_merge([
-                'phone' => '+998 78 555 7416',
-                'website' => 'shamcrm.com',
-                'telegram' => '@shamcrm_uz',
-            ], $validated['contacts'] ?? []),
+            'contacts' => $validated['contacts'],
             'currency' => $currency,
             'validity_date' => $validityDate,
             'calculations' => [
