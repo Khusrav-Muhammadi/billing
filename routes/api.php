@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\CommercialOfferController;
 use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\API\SiteApplicationController;
 use App\Http\Controllers\ProfileController;
@@ -16,6 +17,11 @@ use Illuminate\Support\Facades\Route;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
+
+Route::post('getCommercialOfferPdf', [CommercialOfferController::class, 'generate']);
+Route::post('generateOffer', [CommercialOfferController::class, 'generateOffer']);
+Route::get('simple', [CommercialOfferController::class, 'simple']);
 
 Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
 Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);

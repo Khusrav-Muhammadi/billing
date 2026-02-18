@@ -11,6 +11,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TariffController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +27,21 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('auth.login');
+});
+
+// Preview page for PDF generation (accessed by Browsershot)
+Route::get('/commercial-offer-preview', [\App\Http\Controllers\API\CommercialOfferController::class, 'previewPage']);
+
+Route::get('/commercial-offer', function (Request $request) {
+    return view('commercial-offer', [
+        'client' => $request->query('client', 'ИП "Расулов Амир Давронович"'),
+        'manager' => $request->query('manager', 'Расулов Амир'),
+        'date' => $request->query('date', now()->format('d.m.Y')),
+    ]);
+})->name('commercial-offer');
+
+Route::get('blade', function () {
+    return view('mail.pdf');
 });
 Route::get('{invoice}/download', [InvoiceController::class, 'download'])
     ->name('invoice.download');
