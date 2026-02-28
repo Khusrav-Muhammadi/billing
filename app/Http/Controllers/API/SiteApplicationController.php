@@ -435,7 +435,14 @@ class SiteApplicationController extends Controller
                 'success' => false,
                 'reason'  => 'email_exists',
                 'message' => 'Клиент успешно найден',
-            ], 409);
+            ], 200);
+        }
+        else {
+            return response()->json([
+                'success' => false,
+                'reason'  => 'email_exists',
+                'message' => 'Клиент не найден',
+            ], 400);
         }
         if (Client::query()->where('sub_domain', $subdomain)->exists()) {
             return response()->json([
