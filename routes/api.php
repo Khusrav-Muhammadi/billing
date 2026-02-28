@@ -24,6 +24,7 @@ Route::post('generateOffer', [CommercialOfferController::class, 'generateOffer']
 Route::get('simple', [CommercialOfferController::class, 'simple']);
 
 Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
+Route::get('partners/email/verify', [SiteApplicationController::class, 'verifyPartnerEmail']);
 Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
 Route::get('createInvoice', [\App\Http\Controllers\ClientController::class, 'createInvoice']);
 Route::middleware('auth.basic')->group(function () {

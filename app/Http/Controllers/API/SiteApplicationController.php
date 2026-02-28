@@ -401,4 +401,83 @@ class SiteApplicationController extends Controller
             'request_type' => $data['request_type'],
         ]);
     }
+
+    public function verifyPartnerEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|string|max:255',
+        ], [
+            'email.required' => 'Поле email обязательно.',
+            'email.max'      => 'Поле email не должно превышать 255 символов.',
+        ]);
+
+        $raw   = trim((string)$request->input('email'));
+        $email = mb_strtolower($raw);
+
+        $atPos = strrpos($email, '@');
+        if ($atPos === false || $atPos === mb_strlen($email) - 1) {
+            return response()->json([
+                'success' => false,
+                'reason'  => 'invalid_format',
+                'message' => 'Пожалуйста введите правильный адрес почты.',
+            ], 422);
+        }
+
+        $domain = substr($email, $atPos + 1);
+
+        $asciiDomain = function_exists('idn_to_ascii')
+            ? (idn_to_ascii($domain, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46) ?: $domain)
+            : $domain;
+
+        $subdomain = $this->generateSubdomain($email);
+        if (Client::query()->where('email', $email)->exists()) {
+            return response()->json([
+                'success' => false,
+                'reason'  => 'email_exists',
+                'message' => 'Клиент успешно найден',
+            ], 409);
+        }
+        if (Client::query()->where('sub_domain', $subdomain)->exists()) {
+            return response()->json([
+                'success' => false,
+                'reason'  => 'subdomain_exists',
+                'message' => 'Пользователь с таким поддоменом уже существует.',
+            ], 409);
+        }
+
+        if (!$this->hasDns($asciiDomain)) {
+            return response()->json([
+                'success' => false,
+                'reason'  => 'dns_not_found',
+                'message' => 'У домена нет MX/A записей. Адрес недоставляем.',
+                'details' => ['domain' => $domain],
+            ], 422);
+        }
+
+        $formatValid = filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        if (!$formatValid) {
+            return response()->json([
+                'success' => false,
+                'reason'  => 'invalid_format',
+                'message' => 'Пожалуйста введите правильный адрес почты.',
+            ], 422);
+        }
+
+
+        $api = $this->validateWithApi($email);
+        if (!$api['deliverable']) {
+            return response()->json([
+                'success' => false,
+                'reason'  => 'not_deliverable',
+                'message' => 'Указанный email адрес не является действительным.',
+                'details' => $api,
+            ], 422);
+        }
+
+        return response()->json([
+            'success'   => true,
+            'email'     => $email
+        ]);
+    }
+
 }
