@@ -480,7 +480,7 @@ class SiteApplicationController extends Controller
                 'success' => false,
                 'reason'  => 'email_exists',
                 'message' => 'Клиент не найден , почта проверена',
-            ], 200);
+            ], 400);
         }
 
         return response()->json([
