@@ -106,7 +106,7 @@ class ClientPaymentController extends Controller
                 "email" => (string) $payment->email,
             ],
             "total_sum" => $totalSum,
-            "currency" => "UZS",
+            "currency" => "USD",
             "description" => "Оплата услуг",
             "basket" => $basket,
             "return_url" => "https://shamcrm.com/success",
