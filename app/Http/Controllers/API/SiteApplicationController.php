@@ -450,7 +450,7 @@ class SiteApplicationController extends Controller
             return response()->json([
                 'success' => false,
                 'reason'  => 'dns_not_found',
-                'message' => 'У домена нет MX/A записей. Адрес недоставляем.',
+                'message' => 'Указанный email адрес не является действительным.',
                 'details' => ['domain' => $domain],
             ], 422);
         }
