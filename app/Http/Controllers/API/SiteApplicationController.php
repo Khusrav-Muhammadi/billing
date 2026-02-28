@@ -437,13 +437,7 @@ class SiteApplicationController extends Controller
                 'message' => 'Клиент успешно найден',
             ], 200);
         }
-        else {
-            return response()->json([
-                'success' => false,
-                'reason'  => 'email_exists',
-                'message' => 'Клиент не найден',
-            ], 400);
-        }
+
         if (Client::query()->where('sub_domain', $subdomain)->exists()) {
             return response()->json([
                 'success' => false,
@@ -479,6 +473,14 @@ class SiteApplicationController extends Controller
                 'message' => 'Указанный email адрес не является действительным.',
                 'details' => $api,
             ], 422);
+        }
+
+        if (!Client::query()->where('email', $email)->exists()) {
+            return response()->json([
+                'success' => false,
+                'reason'  => 'email_exists',
+                'message' => 'Клиент не найден',
+            ], 200);
         }
 
         return response()->json([
