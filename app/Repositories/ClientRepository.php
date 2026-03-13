@@ -39,7 +39,7 @@ class ClientRepository implements ClientRepositoryInterface
                 $query->where('type', 'user');
             }])
             ->orderByDesc('created_at')
-            ->paginate(20);
+            ->paginate(200);
 
         $processedClients = $clients->getCollection()->map(function ($client) {
             $totalUsersFromPacks = $client->organizations->sum(function ($organization) {
