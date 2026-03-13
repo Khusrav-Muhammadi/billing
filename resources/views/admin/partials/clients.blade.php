@@ -5,7 +5,7 @@
         <th>ФИО</th>
         <th>Телефон</th>
         <th>Почта</th>
-        <th>Кол-во организация</th>
+        <th>Дата создания</th>
         <th>Тариф</th>
         <th>Кол-во пользователей</th>
         <th>Баланс</th>
@@ -25,7 +25,7 @@
             <td>{{ $client->name }}</td>
             <td>{{ $client->phone }}</td>
             <td>{{ $client->email }}</td>
-            <td class="text-center">{{ $client->organizations_count }}</td>
+            <td class="text-center">{{ $client->created_at?->format('d.m.Y H:i') }}</td>
             <td>{{ $client->tariffPrice?->tariff->name }}</td>
             <td class="text-center">{{ $client->is_demo ? 1 : $client->total_users }}</td>
             <td class="text-center">{{ $client?->organizations()->first()?->balance }}</td>
