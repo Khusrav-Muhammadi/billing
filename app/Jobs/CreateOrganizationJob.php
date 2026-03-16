@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Tariff;
 use App\Models\TariffCurrency;
+use App\Services\Mailing\ResendMailService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -56,6 +57,34 @@ class CreateOrganizationJob implements ShouldQueue
             'channels_count' => $tariff->channels_count ?? 3,
         ]);
 
-        if (Organization::where('client_id', $this->client->id)->count() == 1) Mail::to($this->client->email)->send(new SendSiteDataMail($this->client, $this->password));
+        //if (Organization::where('client_id', $this->client->id)->count() == 1) Mail::to($this->client->email)->send(new SendSiteDataMail($this->client, $this->password));
+
+        if (Organization::where('client_id', $this->client->id)->count() === 1) {
+            $this->sendWelcomeEmail();
+        }
+    }
+
+    private function sendWelcomeEmail(): void
+    {
+        try {
+            $resend = new ResendMailService();
+
+            $resend->sendWithView(
+                to:      $this->client->email,
+                subject: 'Подключение к системе "shamCRM"',
+                view:    'mail.send_site_data',
+                data:    [
+                    'client'   => $this->client,
+                    'password' => $this->password,
+                ]
+            );
+
+        } catch (\Throwable $e) {
+            Log::error('CreateOrganizationJob: failed to send welcome email', [
+                'client_id' => $this->client->id,
+                'email'     => $this->client->email,
+                'error'     => $e->getMessage(),
+            ]);
+        }
     }
 }
