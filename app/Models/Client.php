@@ -54,6 +54,11 @@ class Client extends Model
         return $this->hasMany(Organization::class);
     }
 
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
     public function partner() :BelongsTo
     {
         return $this->belongsTo(User::class);

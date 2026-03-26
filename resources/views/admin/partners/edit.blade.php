@@ -52,7 +52,7 @@
 
             <div class="form-group">
                 <label for="address">Адрес</label>
-                <textarea name="address" cols="30" rows="10" class="form-control @error('address') is-invalid @enderror">{{ old('address', $partner->address) }}</textarea>
+                <textarea name="address" cols="30" rows="5" class="form-control @error('address') is-invalid @enderror">{{ old('address', $partner->address) }}</textarea>
                 @error('address')
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
@@ -66,6 +66,101 @@
     <div style="margin-top: 40px;"></div>
 
     <!-- Секция менеджеров -->
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Процент партнера</h5>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createPartnerProcents">
+                Добавить
+            </button>
+        </div>
+
+        @if($procents && $procents->count() > 0)
+            <table class="table table-striped table-hover">
+                <thead class="table-light">
+                <tr>
+                    <th width="5%">№</th>
+                    <th width="25%">Дата</th>
+                    <th width="20%">Процент от тарифа</th>
+                    <th width="20%">Процент от пакета</th>
+                    <th width="10%">Действия</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach($procents as $procent)
+                    <tr>
+                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $procent->date }}</td>
+                        <td>{{ $procent->procent_from_tariff }}</td>
+                        <td>{{ $procent->procent_from_pack }}</td>
+                        <td>
+                            <div class="btn-group-vertical btn-group-sm">
+                                <a data-bs-toggle="modal" data-bs-target="#updateProcent{{$procent->id}}" href="#" class="btn btn-outline-primary btn-sm mb-1">
+                                    Изменить
+                                </a>
+
+                                <form method="POST" action="{{ route('partner.procent.delete', $procent->id) }}" style="display: inline;" onsubmit="return confirm('Вы уверены, что хотите удалить?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        Удалить
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <div class="modal fade" id="updateProcent{{ $procent->id }}" tabindex="-1" aria-labelledby="createManagerLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <form method="POST" action="{{ route('partner.procent.edit', $procent->id) }}">
+                                @csrf
+                                @method('PATCH')
+                                <div class="modal-content">
+                                    <div class="modal-body">
+                                        <div class="form-group mb-3">
+                                            <label for="date">Дата <span class="text-danger">*</span></label>
+                                            <input type="date" class="form-control @error('date') is-invalid @enderror" name="date" id="date" value="{{ $procent->date }}" required>
+                                            @error('date')
+                                            <span class="text-danger">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="form-group mb-3">
+                                            <label for="manager_phone">Процент от тарифа <span class="text-danger">*</span></label>
+                                            <input type="number" class="form-control @error('procent_from_tariff') is-invalid @enderror" name="procent_from_tariff" id="procent_from_tariff" value="{{ $procent->procent_from_tariff }}" required>
+                                            @error('procent_from_tariff')
+                                            <span class="text-danger">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="form-group mb-3">
+                                            <label for="manager_email">Процент от пакета <span class="text-danger">*</span></label>
+                                            <input type="number" class="form-control @error('procent_from_pack') is-invalid @enderror" name="procent_from_pack" id="procent_from_pack" value="{{ $procent->procent_from_pack }}" required>
+                                            @error('procent_from_pack')
+                                            <span class="text-danger">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+
+                                        <input type="hidden" name="partner_id" value="{{ $partner->id }}">
+                                    </div>
+
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                @endforeach
+                </tbody>
+            </table>
+        @else
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> У этого партнера пока нет статуса.
+            </div>
+        @endif
+    </div>
+
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Менеджеры партнера</h5>
@@ -215,6 +310,52 @@
                             <label for="manager_email">Email <span class="text-danger">*</span></label>
                             <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" id="manager_email" placeholder="Введите email" value="{{ old('email') }}" required>
                             @error('email')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <input type="hidden" name="partner_id" value="{{ $partner->id }}">
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="createPartnerProcents" tabindex="-1" aria-labelledby="createPartnerProcents" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ route('partner.procent.create', $partner->id) }}">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createPartnerProcents">Добавить процент</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group mb-3">
+                            <label for="date">Дата <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control @error('date') is-invalid @enderror" name="date" id="date" required>
+                            @error('date')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="manager_phone">Процент от тарифа <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control @error('procent_from_tariff') is-invalid @enderror" name="procent_from_tariff" id="procent_from_tariff" required>
+                            @error('procent_from_tariff')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="manager_email">Процент от пакета <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control @error('procent_from_pack') is-invalid @enderror" name="procent_from_pack" id="procent_from_pack" required>
+                            @error('procent_from_pack')
                             <span class="text-danger">{{ $message }}</span>
                             @enderror
                         </div>

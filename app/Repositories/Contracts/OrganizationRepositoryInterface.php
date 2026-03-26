@@ -8,6 +8,10 @@ use App\Models\User;
 
 interface OrganizationRepositoryInterface
 {
+    public function index(array $data);
+
+    public function demo(array $data);
+
     public function store(Client $client, array $data);
 
     public function update(Organization $organization, array $data);

@@ -1,16 +1,21 @@
 <?php
 
 use App\Http\Controllers\API\InvoiceController;
+use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\BusinessTypeController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ConnectedClientServiceController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PackController;
 use App\Http\Controllers\PartnerController;
 use App\Http\Controllers\PartnerRequestController;
+use App\Http\Controllers\PriceListController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TariffController;
+use App\Http\Controllers\V2\OrganizationV2Controller;
+use App\Http\Controllers\V2\SubdomainController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -60,6 +65,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/create-transaction/{client}', [ClientController::class, 'createTransaction'])->name('client.createTransaction');
     });
 
+    Route::group(['prefix' => 'sub_domain'], function () {
+        Route::get('/', [SubdomainController::class, 'index'])->name('sub_domain.index');
+        Route::get('/create', [SubdomainController::class, 'create'])->name('sub_domain.create');
+        Route::post('/store', [SubdomainController::class, 'store'])->name('sub_domain.store');
+        Route::get('edit/{client}', [SubdomainController::class, 'edit'])->name('sub_domain.edit');
+        Route::get('show/{client}', [SubdomainController::class, 'show'])->name('sub_domain.show');
+        Route::patch('update/{client}', [SubdomainController::class, 'update'])->name('sub_domain.update');
+        Route::post('/{client}', [SubdomainController::class, 'activation'])->name('sub_domain.activation');
+        Route::post('/deleteAll/{client}', [SubdomainController::class, 'deleteAll'])->name('sub_domain.deleteAll');
+        Route::post('/create-transaction/{client}', [SubdomainController::class, 'createTransaction'])->name('sub_domain.createTransaction');
+    });
+
     Route::group(['prefix' => 'payment'], function () {
         Route::get('/', [\App\Http\Controllers\PaymentController::class, 'index'])->name('payment.index');
         Route::get('/approve-invoice/{invoice}', [\App\Http\Controllers\PaymentController::class, 'approveInvoice'])->name('payment.approve-invoice');
@@ -82,6 +99,38 @@ Route::middleware('auth')->group(function () {
         Route::delete('delete-pack/{organizationPack}', [OrganizationController::class, 'deletePack'])->name('organization.pack.destroy');
     });
 
+    Route::group(['prefix' => 'organization_v2'], function () {
+        Route::get('/', [OrganizationV2Controller::class, 'index'])->name('organization_v2.index');
+        Route::get('/demo', [OrganizationV2Controller::class, 'demo'])->name('organization_v2.demo');
+        Route::post('/store/', [OrganizationV2Controller::class, 'store'])->name('organization_v2.store');
+        Route::get('show/{organization}', [OrganizationV2Controller::class, 'show'])->name('organization_v2.show');
+        Route::get('edit/{organization}', [OrganizationV2Controller::class, 'edit'])->name('organization_v2.edit');
+        Route::patch('update/{organization}', [OrganizationV2Controller::class, 'update'])->name('organization_v2.update');
+        Route::delete('/{organization}', [OrganizationV2Controller::class, 'destroy'])->name('organization_v2.destroy');
+        Route::post('access/{organization}', [OrganizationV2Controller::class, 'access'])->name('organization_v2.access');
+        Route::post('addPack/{organization}', [OrganizationV2Controller::class, 'addPack'])->name('organization_v2.addPack');
+        Route::delete('delete-pack/{organizationPack}', [OrganizationV2Controller::class, 'deletePack'])->name('organization_v2.pack.destroy');
+    });
+
+    Route::group(['prefix' => 'application'], function () {
+        Route::get('/', [ApplicationController::class, 'index'])->name('application.index');
+        Route::post('/store', [ApplicationController::class, 'store'])->name('application.store');
+        Route::post('/kp/store', [ApplicationController::class, 'storeCommercialOffer'])->name('application.kp.store');
+        Route::post('/kp/client/store', [ApplicationController::class, 'storeCommercialOfferClient'])->name('application.kp.client.store');
+        Route::get('/show/{offer}', [ApplicationController::class, 'showCommercialOffer'])->name('application.show');
+        Route::get('/create', [ApplicationController::class, 'create'])->name('application.create');
+        Route::get('edit/{id}', [ApplicationController::class, 'edit'])->name('application.edit');
+        Route::patch('/{id}', [ApplicationController::class, 'update'])->name('application.update');
+        Route::delete('/{id}', [ApplicationController::class, 'destroy'])->name('application.delete');
+    });
+
+    Route::group(['prefix' => 'connected-client-service'], function () {
+        Route::get('/', [ConnectedClientServiceController::class, 'index'])->name('connected_client_service.index');
+        Route::get('/', [ConnectedClientServiceController::class, 'index'])->name('connected_client_service.index');
+
+    });
+
+
     Route::group(['prefix' => 'business-type'], function () {
         Route::get('/', [BusinessTypeController::class, 'index'])->name('business_type.index');
         Route::post('/store', [BusinessTypeController::class, 'store'])->name('business_type.store');
@@ -100,6 +149,14 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{tariff}', [TariffController::class, 'update'])->name('tariff.update');
         Route::delete('/{tariff}', [TariffController::class, 'destroy'])->name('tariff.delete');
     });
+
+    Route::group(['prefix' => 'price_list'], function () {
+        Route::get('/', [PriceListController::class, 'index'])->name('price_list.index');
+        Route::post('/store', [PriceListController::class, 'store'])->name('price_list.store');
+        Route::patch('/{price}', [PriceListController::class, 'update'])->name('price_list.update');
+        Route::delete('/{price}', [PriceListController::class, 'destroy'])->name('price_list.delete');
+    });
+
     Route::group(['prefix' => 'partner-status'], function () {
         Route::get('/', [\App\Http\Controllers\PartnerStatusController::class, 'index'])->name('partner-status.index');
         Route::post('/store', [\App\Http\Controllers\PartnerStatusController::class, 'store'])->name('partner-status.store');
@@ -126,8 +183,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/store', [PartnerController::class, 'store'])->name('partner.store');
         Route::get('/create', [PartnerController::class, 'create'])->name('partner.create');
         Route::post('/partner/addManager', [PartnerController::class, 'addManager'])->name('partner.manager.create');
+        Route::post('/partner/addProcent/{user}', [PartnerController::class, 'addProcent'])->name('partner.procent.create');
+        Route::post('/partner/manager/{user}', [PartnerController::class, 'addManager'])->name('partner.manager.edit');
+        Route::patch('/partner/procent/{procent}', [PartnerController::class, 'editProcent'])->name('partner.procent.edit');
         Route::post('/partner/manager/{user}', [PartnerController::class, 'addManager'])->name('partner.manager.edit');
         Route::delete('/partner/manager/{user}', [PartnerController::class, 'destroy'])->name('partner.manager.delete');
+        Route::delete('/partner/procent/{procent}', [PartnerController::class, 'destroyProcent'])->name('partner.procent.delete');
         Route::patch('/partner/manager/update/{user}', [PartnerController::class, 'updateManager'])->name('partner.manager.update');
         Route::get('edit/{partner}', [PartnerController::class, 'edit'])->name('partner.edit');
         Route::patch('/{partner}', [PartnerController::class, 'update'])->name('partner.update');
@@ -154,4 +215,4 @@ Route::middleware('auth')->group(function () {
 
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

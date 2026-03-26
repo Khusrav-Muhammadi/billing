@@ -1,0 +1,50 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\PriceList\StoreRequest;
+use App\Http\Requests\PriceList\UpdateRequest;
+use App\Models\Client;
+use App\Models\Currency;
+use App\Models\Price;
+use App\Models\Tariff;
+
+class PriceListController extends Controller
+{
+    public function index()
+    {
+        $priceLists = Price::all();
+
+        $clients = Client::all();
+        $tariffs = Tariff::all();
+        $currencies = Currency::all();
+
+        return view('admin.tariffs.price_list', compact('tariffs', 'priceLists', 'clients', 'currencies'));
+    }
+
+    public function store(StoreRequest $request)
+    {
+        $data = $request->validated();
+
+        Price::create($data);
+
+        return redirect()->back();
+    }
+
+    public function update(Price $price, UpdateRequest $request)
+    {
+        $data = $request->validated();
+
+        $price->update($data);
+
+        return redirect()->route('price_list.index');
+    }
+
+    public function destroy(Price $price)
+    {
+        $price->delete();
+
+        return redirect()->back();
+    }
+
+}

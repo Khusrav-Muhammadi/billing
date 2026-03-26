@@ -8,14 +8,15 @@
 @section('content')
 
     <div class="card-body">
-        <h4 class="card-title">Тарифы</h4>
+        <h4 class="card-title">Услуги</h4>
         <div class="table-responsive">
+            <a href="#" data-bs-toggle="modal" data-bs-target="#create" type="button" class="btn btn-primary">Добавить</a>
             <table class="table table-hover">
                 <thead>
                 <tr>
                     <th>№</th>
                     <th>Имя</th>
-                    <th>Цена</th>
+{{--                    <th>Цена</th>--}}
                     <th>Кол-во пользователей</th>
                     <th>Кол-во проектов</th>
                     <th>Действие</th>
@@ -26,7 +27,7 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $tariff->name }}</td>
-                        <td>{{ $tariff->price }} $</td>
+{{--                        <td>{{ $tariff->price }} $</td>--}}
                         <td>{{ $tariff->user_count }}</td>
                         <td>{{ $tariff->project_count }}</td>
                         <td>
@@ -42,15 +43,19 @@
                                 @method('PATCH')
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Изменение тарифа</h5>
+                                        <h5 class="modal-title" id="exampleModalLabel">Изменение услуги</h5>
                                     </div>
                                     <div class="modal-body">
                                         <div class="form-group">
-                                            <label for="name">ФИО</label>
+                                            <label for="name">Наименование</label>
                                             <input type="text" class="form-control" name="name" value="{{ $tariff->name }}">
                                         </div>
+{{--                                        <div class="form-group">--}}
+{{--                                            <label for="name">Цена</label>--}}
+{{--                                            <input type="number" class="form-control" name="price" value="{{ $tariff->price }}">--}}
+{{--                                        </div>--}}
                                         <div class="form-group">
-                                            <label for="name">Цена</label>
+                                            <label for="name">Скидка</label>
                                             <input type="number" class="form-control" name="price" value="{{ $tariff->price }}">
                                         </div>
                                         <div class="form-group">
@@ -60,6 +65,15 @@
                                         <div class="form-group">
                                             <label for="name">Кол-во проектов</label>
                                             <input type="number" class="form-control" name="project_count" value="{{ $tariff->project_count }}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="name">Дата завршения</label>
+                                            <input type="date" class="form-control" name="date">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="name">Тариф</label>
+                                            <input type="checkbox" class="form-check-inline custom-checkbox" name="tariff" {{ $tariff->tariff ? 'checked' : '' }} style="width: 20px; height: 20px">
                                         </div>
                                     </div>
                                     <div class="modal-footer">
@@ -78,7 +92,7 @@
                                 @method('DELETE')
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Удаление тарифа</h5>
+                                        <h5 class="modal-title" id="exampleModalLabel">Удаление услуги</h5>
                                     </div>
                                     <div class="modal-body">
                                         Вы уверены что хотите удалить эти данные?
@@ -103,16 +117,20 @@
                 @csrf
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Создание тарифа</h5>
+                        <h5 class="modal-title" id="exampleModalLabel">Создание услуги</h5>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
                             <label for="name">Название</label>
                             <input type="text" class="form-control" name="name" placeholder="Название">
                         </div>
+{{--                        <div class="form-group">--}}
+{{--                            <label for="name">Цена</label>--}}
+{{--                            <input type="number" class="form-control" name="price" placeholder="Цена">--}}
+{{--                        </div>--}}
                         <div class="form-group">
-                            <label for="name">Цена</label>
-                            <input type="number" class="form-control" name="price" placeholder="Цена">
+                            <label for="name">Скидка</label>
+                            <input type="number" class="form-control" name="price" value="{{ $tariff->price }}">
                         </div>
                         <div class="form-group">
                             <label for="name">Кол-во пользователей</label>
@@ -122,6 +140,12 @@
                             <label for="name">Кол-во проектов</label>
                             <input type="number" class="form-control" name="project_count" placeholder="Кол-во проектов">
                         </div>
+
+                        <div class="form-group">
+                            <label for="name">Тариф</label>
+                            <input type="checkbox" class="form-check-inline custom-checkbox" name="tariff" {{ $tariff->tariff ? 'checked' : '' }} style="width: 20px; height: 20px">
+                        </div>
+
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>

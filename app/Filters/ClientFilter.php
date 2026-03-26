@@ -4,8 +4,16 @@ namespace App\Filters;
 
 use EloquentFilter\ModelFilter;
 
-class ClientFilter  extends ModelFilter
+class ClientFilter extends ModelFilter
 {
+    public function clientType($type)
+    {
+        if ($type == 'Клиенты')
+            return $this->where('nfr', false);
+        else
+            return $this->where('nfr', true);
+    }
+
     public function type($type)
     {
         return $this->where('type', $type);
@@ -16,32 +24,32 @@ class ClientFilter  extends ModelFilter
         return $this->where('tariff_id', $tarif);
     }
 
-    public function status($status) :self
+    public function status($status): self
     {
         return $this->where('is_active', (bool)$status);
     }
 
-    public function partner($partner) :self
+    public function partner($partner): self
     {
         return $this->where('partner_id', $partner);
     }
 
-    public function currency($currencyId) :self
+    public function currency($currencyId): self
     {
         return $this->where('currency_id', $currencyId);
     }
 
-    public function country($countryId) :self
+    public function country($countryId): self
     {
         return $this->where('country_id', $countryId);
     }
 
-    public function manager($manager_id) :self
+    public function manager($manager_id): self
     {
         return $this->where('manager_id', $manager_id);
     }
 
-    public function search($search) :self
+    public function search($search): self
     {
         $searchTerm = '%' . $search . '%';
 
@@ -52,7 +60,7 @@ class ClientFilter  extends ModelFilter
         });
     }
 
-    public function demo($is_demo) :self
+    public function demo($is_demo): self
     {
         return $this->where('is_demo', (bool)$is_demo);
     }

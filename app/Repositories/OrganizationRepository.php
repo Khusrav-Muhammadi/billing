@@ -17,6 +17,24 @@ use Illuminate\Support\Str;
 
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
+    public function index(array $data)
+    {
+        $query = Client::query()->whereHas('transactions')->orWhere('nfr', true);
+
+        $clientIds = $query->filter($data)->pluck('id')->toArray();
+
+        return Organization::whereIn('client_id', $clientIds)->get();
+    }
+
+    public function demo(array $data)
+    {
+        $query = Client::query()->doesntHave('transactions')->where('nfr', false);
+
+        $clientIds = $query->filter($data)->pluck('id')->toArray();
+
+        return Organization::whereIn('client_id', $clientIds)->get();
+    }
+
     public function store(Client $client, array $data)
     {
         $data['client_id'] = $client->id;

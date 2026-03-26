@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Partner\StoreProcentRequest;
 use App\Http\Requests\Partner\StoreRequest;
 use App\Http\Requests\Partner\UpdateManagerRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Models\Partner;
+use App\Models\PartnerProcent;
 use App\Models\PartnerStatus;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
@@ -42,8 +44,9 @@ class PartnerController extends Controller
         $partnerStatuses = PartnerStatus::all();
 
         $managers = $this->repository->getManagers($partner->id);
+        $procents = $this->repository->getProcent($partner->id);
 
-        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'managers'));
+        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'managers', 'procents'));
     }
 
     public function update(User $partner, UpdateRequest $request)
@@ -76,10 +79,31 @@ class PartnerController extends Controller
         return redirect()->back();
     }
 
+    public function destroyProcent(PartnerProcent $procent)
+    {
+        $procent->delete();
+
+        return redirect()->back();
+    }
+
     public function addManager(StoreRequest  $request)
     {
         $this->repository->storeManager($request->validated());
 
         return redirect()->route('partner.index');
+    }
+
+    public function addProcent(User $user, StoreProcentRequest $request)
+    {
+        $this->repository->storeProcent($user, $request->validated());
+
+        return redirect()->back();
+    }
+
+    public function editProcent(PartnerProcent $procent, StoreProcentRequest $request)
+    {
+        $this->repository->editProcent($procent, $request->validated());
+
+        return redirect()->back();
     }
 }

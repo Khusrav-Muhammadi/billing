@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use function Pest\Laravel\put;
 
 
 class SiteApplicationController extends Controller
@@ -64,9 +65,9 @@ class SiteApplicationController extends Controller
             SubDomainJob::dispatch($client);
 
             $data = [
-                'name'       => $client->name,
-                'phone'      => $client->phone,
-                'client_id'  => $client->id,
+                'name' => $client->name,
+                'phone' => $client->phone,
+                'client_id' => $client->id,
                 'has_access' => true,
                 'partner_id' => $validated['partner_id'],
                 'country_id' => $validated['region_id']
@@ -113,17 +114,17 @@ class SiteApplicationController extends Controller
             'email' => 'required|string|max:255',
         ], [
             'email.required' => 'Поле email обязательно.',
-            'email.max'      => 'Поле email не должно превышать 255 символов.',
+            'email.max' => 'Поле email не должно превышать 255 символов.',
         ]);
 
-        $raw   = trim((string)$request->input('email'));
+        $raw = trim((string)$request->input('email'));
         $email = mb_strtolower($raw);
 
         $atPos = strrpos($email, '@');
         if ($atPos === false || $atPos === mb_strlen($email) - 1) {
             return response()->json([
                 'success' => false,
-                'reason'  => 'invalid_format',
+                'reason' => 'invalid_format',
                 'message' => 'Пожалуйста введите правильный адрес почты.',
             ], 422);
         }
@@ -134,18 +135,26 @@ class SiteApplicationController extends Controller
             ? (idn_to_ascii($domain, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46) ?: $domain)
             : $domain;
 
+        if ($this->checkEmail($email)) {
+            return response()->json([
+                'success' => false,
+                'reason' => 'email_exists',
+                'message' => 'Этот email уже используется в системе.',
+            ], 409);
+        }
+
         $subdomain = $this->generateSubdomain($email);
         if (Client::query()->where('email', $email)->exists()) {
             return response()->json([
                 'success' => false,
-                'reason'  => 'email_exists',
+                'reason' => 'email_exists',
                 'message' => 'Этот email уже используется в системе.',
             ], 409);
         }
         if (Client::query()->where('sub_domain', $subdomain)->exists()) {
             return response()->json([
                 'success' => false,
-                'reason'  => 'subdomain_exists',
+                'reason' => 'subdomain_exists',
                 'message' => 'Пользователь с таким поддоменом уже существует.',
             ], 409);
         }
@@ -153,7 +162,7 @@ class SiteApplicationController extends Controller
         if (!$this->hasDns($asciiDomain)) {
             return response()->json([
                 'success' => false,
-                'reason'  => 'dns_not_found',
+                'reason' => 'dns_not_found',
                 'message' => 'У домена нет MX/A записей. Адрес недоставляем.',
                 'details' => ['domain' => $domain],
             ], 422);
@@ -163,7 +172,7 @@ class SiteApplicationController extends Controller
         if (!$formatValid) {
             return response()->json([
                 'success' => false,
-                'reason'  => 'invalid_format',
+                'reason' => 'invalid_format',
                 'message' => 'Пожалуйста введите правильный адрес почты.',
             ], 422);
         }
@@ -173,16 +182,29 @@ class SiteApplicationController extends Controller
         if (!$api['deliverable']) {
             return response()->json([
                 'success' => false,
-                'reason'  => 'not_deliverable',
+                'reason' => 'not_deliverable',
                 'message' => 'Указанный email адрес не является действительным.',
                 'details' => $api,
             ], 422);
         }
 
         return response()->json([
-            'success'   => true,
-            'email'     => $email
+            'success' => true,
+            'email' => $email
         ]);
+    }
+
+    public function checkEmail(string $email)
+    {
+        $response = Http::post('https://shamcrm.com/api/check-email', [
+            'email' => $email
+        ]);
+
+        if ($response->successful()) {
+            return $response->json('exists', false);
+        }
+
+        return false;
     }
 
     /** MX/A check с поддержкой IDN (домейн сюда уже в ASCII). */
@@ -225,35 +247,35 @@ class SiteApplicationController extends Controller
             }
 
             if ($resp->successful()) {
-                $data        = $resp->json();
+                $data = $resp->json();
                 $deliverable = (($data['state'] ?? '') === 'deliverable');
 
                 return [
-                    'api_used'     => true,
-                    'deliverable'  => $deliverable,
-                    'state'        => $data['state'] ?? null,
+                    'api_used' => true,
+                    'deliverable' => $deliverable,
+                    'state' => $data['state'] ?? null,
                     'format_valid' => (bool)($data['format_valid'] ?? false),
-                    'smtp_check'   => (bool)($data['smtp_check'] ?? false),
-                    'disposable'   => (bool)($data['disposable'] ?? false),
+                    'smtp_check' => (bool)($data['smtp_check'] ?? false),
+                    'disposable' => (bool)($data['disposable'] ?? false),
                 ];
             }
 
             return [
-                'api_used'     => false,
-                'deliverable'  => null,
-                'state'        => null,
+                'api_used' => false,
+                'deliverable' => null,
+                'state' => null,
                 'format_valid' => null,
-                'smtp_check'   => null,
-                'disposable'   => null,
+                'smtp_check' => null,
+                'disposable' => null,
             ];
         } catch (\Throwable $e) {
             return [
-                'api_used'     => false,
-                'deliverable'  => null,
-                'state'        => null,
+                'api_used' => false,
+                'deliverable' => null,
+                'state' => null,
                 'format_valid' => null,
-                'smtp_check'   => null,
-                'disposable'   => null,
+                'smtp_check' => null,
+                'disposable' => null,
             ];
         }
     }
@@ -266,8 +288,14 @@ class SiteApplicationController extends Controller
             $clientByEmail = Client::query()->where('email', $email)->first();
             if ($clientByEmail) {
                 return [
+<<<<<<< Updated upstream
                     'reason'  => 'email',
                     'client'  => $clientByEmail,
+=======
+                    'reason' => 'email',
+                    'client' => $clientByEmail,
+                    // Текст больше НЕ обещает отправку письма:
+>>>>>>> Stashed changes
                     'message' => 'Этот email уже используется в системе. Если это вы — восстановите доступ через форму входа.',
                 ];
             }
@@ -277,8 +305,8 @@ class SiteApplicationController extends Controller
             $clientBySub = Client::query()->where('sub_domain', $subdomain)->first();
             if ($clientBySub) {
                 return [
-                    'reason'  => 'subdomain',
-                    'client'  => $clientBySub,
+                    'reason' => 'subdomain',
+                    'client' => $clientBySub,
                     'message' => 'Пользователь с таким поддоменом уже существует.',
                 ];
             }
@@ -290,6 +318,7 @@ class SiteApplicationController extends Controller
     private function validateRequest(Request $request): array
     {
         return $request->validate([
+<<<<<<< Updated upstream
             'fio'          => 'required|string|max:255',
             'phone'        => 'required|string|max:20',
             'email'        => [ Rule::requiredIf($request->input('request_type') === 'demo'), 'email', 'max:255' ],
@@ -297,20 +326,29 @@ class SiteApplicationController extends Controller
             'request_type' => 'required|string|in:demo,partner,corporate,individual,site',
             'partner_id'   => 'nullable',
             'manager_id'   => 'nullable',
+=======
+            'fio' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'email' => [Rule::requiredIf($request->input('request_type') === 'demo'), 'email', 'max:255'],
+            'region_id' => 'nullable|integer',
+            'request_type' => 'required|string|in:demo,partner,corporate,individual',
+            'partner_id' => 'nullable',
+            'manager_id' => 'nullable',
+>>>>>>> Stashed changes
         ], [
-            'fio.required'          => 'Поле ФИО обязательно для заполнения.',
-            'fio.string'            => 'Поле ФИО должно быть строкой.',
-            'fio.max'               => 'Поле ФИО не должно превышать 255 символов.',
-            'phone.required'        => 'Поле телефон обязательно для заполнения.',
-            'phone.string'          => 'Поле телефон должно быть строкой.',
-            'phone.max'             => 'Поле телефон не должно превышать 20 символов.',
-            'email.required'        => 'Поле email обязательно для демо-аккаунта.',
-            'email.email'           => 'Пожалуйста введите правильный адрес почты',
-            'email.max'             => 'Поле email не должно превышать 255 символов.',
-            'region_id.integer'     => 'Поле регион должно быть числом.',
+            'fio.required' => 'Поле ФИО обязательно для заполнения.',
+            'fio.string' => 'Поле ФИО должно быть строкой.',
+            'fio.max' => 'Поле ФИО не должно превышать 255 символов.',
+            'phone.required' => 'Поле телефон обязательно для заполнения.',
+            'phone.string' => 'Поле телефон должно быть строкой.',
+            'phone.max' => 'Поле телефон не должно превышать 20 символов.',
+            'email.required' => 'Поле email обязательно для демо-аккаунта.',
+            'email.email' => 'Пожалуйста введите правильный адрес почты',
+            'email.max' => 'Поле email не должно превышать 255 символов.',
+            'region_id.integer' => 'Поле регион должно быть числом.',
             'request_type.required' => 'Поле тип заявки обязательно для заполнения.',
-            'request_type.string'   => 'Поле тип заявки должно быть строкой.',
-            'request_type.in'       => 'Поле тип заявки должно быть одним из: demo, partner, corporate, individual.',
+            'request_type.string' => 'Поле тип заявки должно быть строкой.',
+            'request_type.in' => 'Поле тип заявки должно быть одним из: demo, partner, corporate, individual.',
         ]);
     }
 
@@ -318,7 +356,7 @@ class SiteApplicationController extends Controller
     {
         return Http::timeout(10)->get('https://api.emailvalidation.io/v1/info', [
             'apikey' => $apiKey,
-            'email'  => $email,
+            'email' => $email,
         ]);
     }
 
@@ -331,9 +369,9 @@ class SiteApplicationController extends Controller
     // (Опционально оставляем — вдруг используется ещё где-то)
     private function fallbackEmailValidation(string $email): bool
     {
-        $domain     = substr(strrchr($email, "@"), 1);
+        $domain = substr(strrchr($email, "@"), 1);
         $hasRecords = checkdnsrr($domain, 'MX') || checkdnsrr($domain, 'A');
-        $isNotTemp  = $this->isNotTempDomain($domain);
+        $isNotTemp = $this->isNotTempDomain($domain);
         return $hasRecords && $isNotTemp;
     }
 
@@ -342,26 +380,26 @@ class SiteApplicationController extends Controller
         $countryId = $data['region_id'] ?? 1;
 
         $tariffId = match ($countryId) {
-            2       => 8,
+            2 => 8,
             default => 4,
         };
 
         $currency_id = match ($countryId) {
-            2       => 2,
+            2 => 2,
             default => 1,
         };
 
         $clientData = [
-            'name'        => $data['fio'],
-            'phone'       => $data['phone'],
-            'email'       => $data['email'],
-            'country_id'  => $countryId,
-            'is_demo'     => true,
-            'tariff_id'   => $tariffId,
-            'sub_domain'  => $this->generateSubdomain($data['email']),
+            'name' => $data['fio'],
+            'phone' => $data['phone'],
+            'email' => $data['email'],
+            'country_id' => $countryId,
+            'is_demo' => true,
+            'tariff_id' => $tariffId,
+            'sub_domain' => $this->generateSubdomain($data['email']),
             'currency_id' => $currency_id,
-            'manager_id'  => $data['manager_id'] ?? null,
-            'partner_id'  => $data['partner_id'] ?? null,
+            'manager_id' => $data['manager_id'] ?? null,
+            'partner_id' => $data['partner_id'] ?? null,
         ];
 
         if (!empty($clientData['manager_id'])) {
@@ -389,15 +427,22 @@ class SiteApplicationController extends Controller
             ->replaceMatches('/[^a-z0-9-]/', '')
             ->trim('-')
             ->replaceMatches('/-+/', '-')
-            ->whenEmpty(fn () => 'default');
+            ->whenEmpty(fn() => 'default');
     }
 
     private function createRegularApplication(array $data): void
     {
         SiteApplications::create([
+<<<<<<< Updated upstream
             'fio'          => $data['fio'],
             'phone'        => $data['phone'],
             'email'        => $data['email'],
+=======
+            'fio' => $data['fio'],
+            'phone' => $data['phone'],
+            'email' => $data['email'],
+            'region_id' => $data['region_id'],
+>>>>>>> Stashed changes
             'request_type' => $data['request_type'],
         ]);
     }

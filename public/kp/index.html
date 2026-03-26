@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Коммерческое предложение</title>
+    <link rel="stylesheet" href="styles.css?v=2">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-text">Произведение оплаты</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <section class="client-email-section">
+                <label class="setting-label" for="clientEmailInput">Список клиентов</label>
+                <div class="client-email-row">
+                    <select
+                        type="email"
+                        id="clientEmailInput"
+                        class="client-email-input"
+                        placeholder="client@example.com"
+                        autocomplete="off"
+                    >
+                    <button id="createClientBtn" class="action-btn secondary client-email-create-btn" style="display:none;">
+                        Создать
+                    </button>
+                </div>
+                <div id="clientEmailStatus" class="client-email-status"></div>
+            </section>
+
+            <section class="settings-panel">
+                <div class="setting-group">
+                    <label class="setting-label">Валюта</label>
+                    <div class="currency-selector" id="currencySelector">
+                        <button class="currency-btn " data-currency="TJS">TJS</button>
+                        <button class="currency-btn" data-currency="UZS">UZS</button>
+                        <button class="currency-btn active" data-currency="USD">USD</button>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">Период оплаты</label>
+                    <div class="period-selector" id="periodSelector">
+                        <button class="period-btn active" data-months="6">6 мес</button>
+
+                        <button class="period-btn " data-months="12">
+                            12 мес
+                            <span class="discount-badge">-15%</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <!-- Tariffs -->
+            <section class="tariffs-section">
+                <h2 class="section-title">Выберите тариф</h2>
+                <div class="tariffs-grid" id="tariffsGrid">
+                    <!-- Tariffs will be rendered here -->
+                </div>
+            </section>
+
+            <!-- Extra Users -->
+            <section class="extra-users-section" id="extraUsersSection" style="display: none;">
+                <div class="section-header">
+                    <h2 class="section-title">Дополнительные пользователи</h2>
+                </div>
+                <div class="extra-users-control">
+                    <div class="users-info">
+                        <span class="included-users">В тариф включено: <strong id="includedUsers">0</strong> пользователей</span>
+                        <span class="extra-user-price">Доп. пользователь: <strong id="extraUserPrice">0</strong>/мес</span>
+                    </div>
+                    <div class="quantity-control">
+                        <button class="qty-btn minus" id="usersMinusBtn">−</button>
+                        <input type="number" class="qty-input" id="extraUsersInput" value="0" min="0">
+                        <button class="qty-btn plus" id="usersPlusBtn">+</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Services -->
+            <section class="services-section">
+                <h2 class="section-title">Дополнительные услуги</h2>
+                <div class="services-grid" id="servicesGrid">
+                    <!-- Services will be rendered here -->
+                </div>
+            </section>
+
+            <!-- Summary -->
+            <section class="summary-section">
+                <div class="summary-card">
+                    <h2 class="summary-title">Итого</h2>
+                    <div class="summary-content">
+                        <div class="summary-items" id="summaryItems">
+                            <!-- Summary items will be rendered here -->
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-totals">
+                            <div class="total-row period">
+                                <div class="period-details" id="periodDetails">
+                                    <!-- Will be rendered here -->
+                                </div>
+                                <span class="total-value monthly" id="periodMonthlyTotal">0 TJS</span>
+                                <span class="total-value" id="periodTotal">0 TJS</span>
+                            </div>
+                            <div class="total-row grand">
+                                <span>ОБЩАЯ СУММА:</span>
+                                <span class="total-value" id="grandTotal">0 TJS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Actions -->
+            <section class="actions-section">
+                <button class="action-btn primary" id="saveBtn">
+                    Сохранить и оплатить
+                </button>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>© 2025 SHAMCRM</p>
+        </footer>
+    </div>
+
+    <!-- Success Modal -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal-content success-modal">
+            <div class="success-icon">✓</div>
+            <h3>КП успешно сохранено!</h3>
+            <p>Коммерческое предложение сохранено в системе</p>
+            <button class="action-btn primary" id="closeSuccessBtn">ОК</button>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p>Обработка...</p>
+    </div>
+
+    <!-- Create Client Modal -->
+    <div class="modal-overlay" id="createClientModal">
+        <div class="modal-content create-client-modal-content">
+            <div class="modal-header">
+                <h3>Создать клиента</h3>
+                <button class="modal-close" id="closeCreateClientModalBtn">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="create-client-form">
+                    <label class="create-client-field">
+                        <span class="create-client-label">ФИО</span>
+                        <input type="text" id="newClientName" class="one-time-input create-client-input" placeholder="Введите ФИО">
+                    </label>
+                    <label class="create-client-field">
+                        <span class="create-client-label">Телефон</span>
+                        <input type="text" id="newClientPhone" class="one-time-input create-client-input" placeholder="+992...">
+                    </label>
+                    <label class="create-client-field">
+                        <span class="create-client-label">Почта</span>
+                        <input type="email" id="newClientEmail" class="one-time-input create-client-input" placeholder="client@example.com">
+                    </label>
+                    <div id="newClientStatus" class="client-email-status"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn secondary" id="cancelCreateClientBtn">Отмена</button>
+                <button class="action-btn primary" id="saveCreateClientBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="app.js?v=3"></script>
+</body>
+</html>

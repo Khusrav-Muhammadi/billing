@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Jobs\SendPartnerDataJob;
 use App\Models\Partner;
+use App\Models\PartnerProcent;
 use App\Models\PartnerStatus;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
@@ -35,6 +36,11 @@ class PartnerRepository implements PartnerRepositoryInterface
         return User::query()->where('role', 'manager')->where('partner_id', $partner_id)->get();
     }
 
+    public function getProcent(int $partner_id)
+    {
+        return PartnerProcent::where('partner_id', $partner_id)->get();
+    }
+
     public function storeManager(array $data)
     {
         $password = $data['password'];
@@ -43,6 +49,25 @@ class PartnerRepository implements PartnerRepositoryInterface
         $data['login'] = $data['email'];
 
         $user = User::create($data);
+    }
+
+    public function storeProcent(User $user, array $data)
+    {
+        PartnerProcent::create([
+            'partner_id' => $user->id,
+            'date' => $data['date'],
+            'procent_from_tariff' => $data['procent_from_tariff'],
+            'procent_from_pack' => $data['procent_from_pack'],
+        ]);
+    }
+
+    public function editProcent(PartnerProcent $procent, array $data)
+    {
+        $procent->update([
+            'date' => $data['date'],
+            'procent_from_tariff' => $data['procent_from_tariff'],
+            'procent_from_pack' => $data['procent_from_pack'],
+        ]);
     }
 
     public function update(User $partner, array $data)
