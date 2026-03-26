@@ -38,4 +38,9 @@ return [
         'folder_id' => env('GOOGLE_FOLDER_ID'),
     ],
 
+    'resend' => [
+        'mail_from' => 'noreply@shamcrm.com',
+        'api-key' => 're_8rvJ21cM_E54QeGRcoaRRxWrMu1LWBNqM'
+    ]
+
 ];

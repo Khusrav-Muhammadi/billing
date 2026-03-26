@@ -799,7 +799,7 @@
         </div>
 
         <div class="validity-line">
-            Предложение действительно до: <span>{{ $validity_date ?? '' }}</span>
+            Предложение действительно до: <span> 31.03.2026</span>
         </div>
     </div>
 </div>
