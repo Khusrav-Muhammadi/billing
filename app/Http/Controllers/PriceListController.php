@@ -13,11 +13,14 @@ class PriceListController extends Controller
 {
     public function index()
     {
-        $priceLists = Price::all();
+        $priceLists = Price::query()
+            ->with(['tariff', 'client', 'currency'])
+            ->orderByDesc('id')
+            ->get();
 
-        $clients = Client::all();
-        $tariffs = Tariff::all();
-        $currencies = Currency::all();
+        $clients = Client::query()->orderBy('name')->get();
+        $tariffs = Tariff::query()->orderBy('name')->get();
+        $currencies = Currency::query()->orderBy('name')->get();
 
         return view('admin.tariffs.price_list', compact('tariffs', 'priceLists', 'clients', 'currencies'));
     }

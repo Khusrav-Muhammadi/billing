@@ -23,6 +23,13 @@ class ClientPaymentController extends Controller
         return view('payments', compact('clients'));
     }
 
+    public function invoice(Payment $payment)
+    {
+        $payment->load('paymentItems');
+
+        return view('payments-invoice', compact('payment'));
+    }
+
     public function store(ClientPaymentRequest $request)
     {
         $data = $request->validated();
@@ -47,6 +54,10 @@ class ClientPaymentController extends Controller
             }
 
             DB::commit();
+
+            if ($data['payment_type'] === 'invoice') {
+                return redirect()->route('client-payment.invoice', $payment);
+            }
 
             if ($data['payment_type'] == 'alif') {
                 $checkoutUrl = $this->generateAlifPayLink($payment);

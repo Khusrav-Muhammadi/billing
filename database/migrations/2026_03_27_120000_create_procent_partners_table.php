@@ -6,26 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('partner_procents', function (Blueprint $table) {
+        Schema::create('procent_partners', function (Blueprint $table) {
             $table->id();
-            $table->unsignedInteger('partner_id');
-            $table->string('date');
+            $table->unsignedBigInteger('partner_id');
             $table->unsignedInteger('procent_from_tariff')->nullable();
             $table->unsignedInteger('procent_from_pack')->nullable();
             $table->timestamps();
+
+            $table->unique('partner_id');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('partner_procents');
+        Schema::dropIfExists('procent_partners');
     }
 };
+

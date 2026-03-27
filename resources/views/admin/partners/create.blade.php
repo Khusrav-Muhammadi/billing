@@ -33,8 +33,8 @@
             </div>
 
             <div class="form-group">
-                <label for="email">E-mail</label>
-                <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" placeholder="email" value="{{ old('email') }}">
+                <label for="email">E-mail <span class="text-danger">*</span></label>
+                <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" placeholder="email" value="{{ old('email') }}" required>
                 @error('email')
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
@@ -44,6 +44,36 @@
                 <label for="address">Адрес</label>
                 <textarea name="address" cols="30" rows="10" class="form-control @error('address') is-invalid @enderror">{{ old('address') }}</textarea>
                 @error('address')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="procent_from_tariff">Процент подписки <span class="text-danger">*</span></label>
+                <input type="number"
+                       class="form-control @error('procent_from_tariff') is-invalid @enderror"
+                       id="procent_from_tariff"
+                       name="procent_from_tariff"
+                       min="0" max="100" step="1"
+                       placeholder="Например: 30"
+                       value="{{ old('procent_from_tariff', 0) }}"
+                       required>
+                @error('procent_from_tariff')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="procent_from_pack">Процент от пакетов <span class="text-danger">*</span></label>
+                <input type="number"
+                       class="form-control @error('procent_from_pack') is-invalid @enderror"
+                       id="procent_from_pack"
+                       name="procent_from_pack"
+                       min="0" max="100" step="1"
+                       placeholder="Например: 10"
+                       value="{{ old('procent_from_pack', 0) }}"
+                       required>
+                @error('procent_from_pack')
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
             </div>

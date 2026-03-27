@@ -15,7 +15,8 @@
                 <thead>
                 <tr>
                     <th>№</th>
-                    <th>Дата</th>
+                    <th>Дата начала</th>
+                    <th>Дата завершения</th>
                     <th>Валюта</th>
                     <th>Услуга</th>
                     <th>Клиент</th>
@@ -27,8 +28,9 @@
                 @foreach($priceLists as $price)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
+                        <td>{{ $price->start_date ?? '—' }}</td>
                         <td>{{ $price->date }}</td>
-                        <td>{{ $price->currency?->name }} $</td>
+                        <td>{{ $price->currency?->name }}</td>
                         <td>{{ $price->tariff?->name }}</td>
                         <td>{{ $price->client?->name }}</td>
                         <td>{{ $price->sum }}</td>
@@ -49,33 +51,51 @@
                                     </div>
                                     <div class="modal-body">
                                         <div class="form-group">
-                                            <label for="name">Наименование</label>
-                                            <input type="text" class="form-control" name="name" value="{{ $price->name }}">
-                                        </div>
-{{--                                        <div class="form-group">--}}
-{{--                                            <label for="name">Цена</label>--}}
-{{--                                            <input type="number" class="form-control" name="price" value="{{ $tariff->price }}">--}}
-{{--                                        </div>--}}
-                                        <div class="form-group">
-                                            <label for="name">Скидка</label>
-                                            <input type="number" class="form-control" name="price" value="{{ $price->price }}">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="name">Кол-во пользователей</label>
-                                            <input type="number" class="form-control" name="user_count" value="{{ $price->user_count }}">
+                                            <label for="tariff_id">Услуга <span class="text-danger">*</span></label>
+                                            <select class="form-control" name="tariff_id" required>
+                                                <option value="">Выберите услугу</option>
+                                                @foreach($tariffs as $tariff)
+                                                    <option value="{{ $tariff->id }}" {{ $price->tariff_id == $tariff->id ? 'selected' : '' }}>
+                                                        {{ $tariff->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                         <div class="form-group">
-                                            <label for="name">Кол-во проектов</label>
-                                            <input type="number" class="form-control" name="project_count" value="{{ $price->project_count }}">
+                                            <label>Клиент</label>
+                                            <input type="text" class="form-control mb-2 js-client-search" placeholder="Поиск клиента...">
+                                            <select class="form-control js-client-select" name="client_id">
+                                                <option value="">Без клиента (общая цена)</option>
+                                                @foreach($clients as $client)
+                                                    <option value="{{ $client->id }}" {{ $price->client_id == $client->id ? 'selected' : '' }}>
+                                                        {{ $client->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                         <div class="form-group">
-                                            <label for="name">Дата завршения</label>
-                                            <input type="date" class="form-control" name="date">
+                                            <label for="name">Дата начала</label>
+                                            <input type="date" class="form-control" name="start_date" value="{{ $price->start_date }}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="name">Дата завершения</label>
+                                            <input type="date" class="form-control" name="date" value="{{ $price->date }}">
                                         </div>
 
                                         <div class="form-group">
-                                            <label for="name">Тариф</label>
-                                            <input type="checkbox" class="form-check-inline custom-checkbox" name="tariff" {{ $price->tariff ? 'checked' : '' }} style="width: 20px; height: 20px">
+                                            <label for="name">Сумма</label>
+                                            <input type="number" class="form-control" name="sum" value="{{ $price->sum }}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="tariff_id">Валюта <span class="text-danger">*</span></label>
+                                            <select class="form-control" name="currency_id" required>
+                                                <option value="">Выберите валюту</option>
+                                                @foreach($currencies as $currency)
+                                                    <option value="{{ $currency->id }}" {{ $price->currency_id == $currency->id ? 'selected' : '' }}>
+                                                        {{ $currency->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
@@ -89,7 +109,7 @@
 
                     <div class="modal fade" id="delete{{ $price->id }}" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
-                            <form action="{{ route('tariff.delete', $price->id) }}" method="POST">
+                            <form action="{{ route('price_list.delete', $price->id) }}" method="POST">
                                 @csrf
                                 @method('DELETE')
                                 <div class="modal-content">
@@ -123,13 +143,13 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="tariff_id">Тариф <span class="text-danger">*</span></label>
+                            <label for="tariff_id">Услуга <span class="text-danger">*</span></label>
                             <select class="form-control form-control @error('tariff_id') is-invalid @enderror"
                                     name="tariff_id" required>
-                                <option value="">Выберите тариф</option>
+                                <option value="">Выберите услугу</option>
                                 @foreach($tariffs as $tariff)
                                     <option
-                                        value="{{ $tariff->id }}" {{ (isset($partnerRequest) && $partnerRequest->tariff_id == $tariff->id) || old('tariff_id') == $tariff->id ? 'selected' : '' }}>
+                                        value="{{ $tariff->id }}" {{ old('tariff_id') == $tariff->id ? 'selected' : '' }}>
                                         {{ $tariff->name }}
                                     </option>
                                 @endforeach
@@ -140,12 +160,13 @@
                         </div>
                         <div class="form-group">
                             <label for="tariff_id">Клиент</label>
-                            <select class="form-control form-control @error('client_id') is-invalid @enderror"
+                            <input type="text" class="form-control mb-2 js-client-search" placeholder="Поиск клиента...">
+                            <select class="form-control js-client-select @error('client_id') is-invalid @enderror"
                                     name="client_id">
-                                <option value="">Выберите клиента</option>
+                                <option value="">Без клиента (общая цена)</option>
                                 @foreach($clients as $client)
                                     <option
-                                        value="{{ $client->id }}" {{ (isset($partnerRequest) && $partnerRequest->$client == $client->id) || old('client_id') == $client->id ? 'selected' : '' }}>
+                                        value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
                                         {{ $client->name }}
                                     </option>
                                 @endforeach
@@ -155,8 +176,12 @@
                             @enderror
                         </div>
                         <div class="form-group">
-                            <label for="name">Дата</label>
-                            <input type="date" class="form-control" name="date">
+                            <label for="name">Дата начала</label>
+                            <input type="date" class="form-control" name="start_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Дата завершения</label>
+                            <input type="date" class="form-control" name="date" required>
                         </div>
                         <div class="form-group">
                             <label for="name">Сумма</label>
@@ -166,10 +191,10 @@
                             <label for="tariff_id">Валюта <span class="text-danger">*</span></label>
                             <select class="form-control form-control @error('currency_id') is-invalid @enderror"
                                     name="currency_id" required>
-                                <option value="">Выберите клиента</option>
+                                <option value="">Выберите валюту</option>
                                 @foreach($currencies as $currency)
                                     <option
-                                        value="{{ $currency->id }}" {{ (isset($partnerRequest) && $partnerRequest->currency_id == $currency->id) || old('currency_id') == $currency->id ? 'selected' : '' }}>
+                                        value="{{ $currency->id }}" {{ old('currency_id') == $currency->id ? 'selected' : '' }}>
                                         {{ $currency->name }}
                                     </option>
                                 @endforeach
@@ -188,5 +213,24 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.js-client-search').forEach((input) => {
+                input.addEventListener('input', () => {
+                    const modalBody = input.closest('.modal-body') || document;
+                    const select = modalBody.querySelector('.js-client-select');
+                    if (!select) return;
+
+                    const term = (input.value || '').trim().toLowerCase();
+                    Array.from(select.options).forEach((opt) => {
+                        if (!opt.value) return; // keep placeholder
+                        const text = (opt.textContent || '').toLowerCase();
+                        opt.hidden = term ? !text.includes(term) : false;
+                    });
+                });
+            });
+        });
+    </script>
 
 @endsection

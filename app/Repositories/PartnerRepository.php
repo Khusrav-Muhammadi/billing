@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Jobs\SendPartnerDataJob;
 use App\Models\Partner;
+use App\Models\ProcentPartner;
 use App\Models\PartnerProcent;
 use App\Models\PartnerStatus;
 use App\Models\User;
@@ -21,12 +22,33 @@ class PartnerRepository implements PartnerRepositoryInterface
 
     public function store(array $data)
     {
+        $tariffPercent = isset($data['procent_from_tariff']) ? (int) $data['procent_from_tariff'] : null;
+        $packPercent = isset($data['procent_from_pack']) ? (int) $data['procent_from_pack'] : null;
+        unset($data['procent_from_tariff'], $data['procent_from_pack']);
+
         $data['partner_status_id'] = PartnerStatus::first()->id;
         $data['login'] = $data['email'];
         $data['role'] = 'partner';
         $data['password'] = Hash::make($data['email']);
 
-        User::create($data);
+        $user = User::create($data);
+
+        // Save current percent settings for quick access (requested table).
+        ProcentPartner::updateOrCreate(
+            ['partner_id' => $user->id],
+            [
+                'procent_from_tariff' => $tariffPercent,
+                'procent_from_pack' => $packPercent,
+            ]
+        );
+
+        // Also create the first history record (existing UI uses partner_procents).
+        PartnerProcent::create([
+            'partner_id' => $user->id,
+            'date' => date('Y-m-d'),
+            'procent_from_tariff' => $tariffPercent,
+            'procent_from_pack' => $packPercent,
+        ]);
 
 //        SendPartnerDataJob::dispatch($user, $password);
     }

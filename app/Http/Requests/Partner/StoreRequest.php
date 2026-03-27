@@ -23,7 +23,9 @@ class StoreRequest extends FormRequest
             'password'  => [ 'nullable'],
             'role'  => ['nullable'],
             'phone' => ['required', 'unique:users,phone'],
-            'partner_id' => ['nullable']
+            'partner_id' => ['nullable'],
+            'procent_from_tariff' => ['required', 'integer', 'min:0', 'max:100'],
+            'procent_from_pack' => ['required', 'integer', 'min:0', 'max:100'],
         ];
     }
 }

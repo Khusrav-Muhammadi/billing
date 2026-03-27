@@ -288,14 +288,8 @@ class SiteApplicationController extends Controller
             $clientByEmail = Client::query()->where('email', $email)->first();
             if ($clientByEmail) {
                 return [
-<<<<<<< Updated upstream
-                    'reason'  => 'email',
-                    'client'  => $clientByEmail,
-=======
                     'reason' => 'email',
                     'client' => $clientByEmail,
-                    // Текст больше НЕ обещает отправку письма:
->>>>>>> Stashed changes
                     'message' => 'Этот email уже используется в системе. Если это вы — восстановите доступ через форму входа.',
                 ];
             }
@@ -318,23 +312,13 @@ class SiteApplicationController extends Controller
     private function validateRequest(Request $request): array
     {
         return $request->validate([
-<<<<<<< Updated upstream
-            'fio'          => 'required|string|max:255',
-            'phone'        => 'required|string|max:20',
-            'email'        => [ Rule::requiredIf($request->input('request_type') === 'demo'), 'email', 'max:255' ],
-            'region_id'    => 'nullable|integer',
-            'request_type' => 'required|string|in:demo,partner,corporate,individual,site',
-            'partner_id'   => 'nullable',
-            'manager_id'   => 'nullable',
-=======
             'fio' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'email' => [Rule::requiredIf($request->input('request_type') === 'demo'), 'email', 'max:255'],
             'region_id' => 'nullable|integer',
-            'request_type' => 'required|string|in:demo,partner,corporate,individual',
+            'request_type' => 'required|string|in:demo,partner,corporate,individual,site',
             'partner_id' => 'nullable',
             'manager_id' => 'nullable',
->>>>>>> Stashed changes
         ], [
             'fio.required' => 'Поле ФИО обязательно для заполнения.',
             'fio.string' => 'Поле ФИО должно быть строкой.',
@@ -433,16 +417,10 @@ class SiteApplicationController extends Controller
     private function createRegularApplication(array $data): void
     {
         SiteApplications::create([
-<<<<<<< Updated upstream
-            'fio'          => $data['fio'],
-            'phone'        => $data['phone'],
-            'email'        => $data['email'],
-=======
             'fio' => $data['fio'],
             'phone' => $data['phone'],
             'email' => $data['email'],
-            'region_id' => $data['region_id'],
->>>>>>> Stashed changes
+            'region_id' => $data['region_id'] ?? null,
             'request_type' => $data['request_type'],
         ]);
     }

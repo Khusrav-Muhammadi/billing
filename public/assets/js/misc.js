@@ -21,31 +21,49 @@ var lightColor = getComputedStyle(document.body).getPropertyValue('--light');
     //Active class can be hard coded directly in html file also as required
 
     function addActiveClass(element) {
-      if (current === "") {
-        //for root url
-        if (element.attr('href').indexOf("index.html") !== -1) {
-          element.parents('.nav-item').last().addClass('active');
-          if (element.parents('.sub-menu').length) {
-            element.closest('.collapse').addClass('show');
-            element.addClass('active');
-          }
+      var href = element.attr('href') || '';
+      if (!href || href === '#') return;
+
+      var elementPath = normalizePath(href);
+      if (!elementPath) return;
+
+      // Match exactly or by section prefix:
+      // - current: /partner/create should activate /partner
+      // - current: /application/create should activate /application/create
+      var matches = (currentPath === elementPath) || (currentPath.indexOf(elementPath + '/') === 0);
+
+      // Special-case old root behaviour
+      if (!matches && currentPath === '/' && href.indexOf("index.html") !== -1) {
+        matches = true;
+      }
+
+      if (matches) {
+        element.parents('.nav-item').last().addClass('active');
+        if (element.parents('.sub-menu').length) {
+          element.closest('.collapse').addClass('show');
+          element.addClass('active');
         }
-      } else {
-        //for other url
-        if (element.attr('href').indexOf(current) !== -1) {
-          element.parents('.nav-item').last().addClass('active');
-          if (element.parents('.sub-menu').length) {
-            element.closest('.collapse').addClass('show');
-            element.addClass('active');
-          }
-          if (element.parents('.submenu-item').length) {
-            element.addClass('active');
-          }
+        if (element.parents('.submenu-item').length) {
+          element.addClass('active');
         }
       }
     }
 
-    var current = location.pathname.split("/").slice(-1)[0].replace(/^\/|\/$/g, '');
+    function normalizePath(url) {
+      try {
+        var path = new URL(url, window.location.origin).pathname;
+        return path.replace(/\/+$/g, '') || '/';
+      } catch (e) {
+        var s = String(url || '').split('?')[0];
+        if (!s) return '';
+        // Keep only the pathname part for absolute URLs.
+        s = s.replace(window.location.origin, '');
+        if (s[0] !== '/') s = '/' + s;
+        return s.replace(/\/+$/g, '') || '/';
+      }
+    }
+
+    var currentPath = normalizePath(window.location.pathname);
     $('.nav li a', sidebar).each(function() {
       var $this = $(this);
       addActiveClass($this);

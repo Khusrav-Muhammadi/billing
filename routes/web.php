@@ -53,6 +53,12 @@ Route::get('{invoice}/download', [InvoiceController::class, 'download'])
 Route::get('/dashboard', [\App\Http\Controllers\DashBoardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::get('kp/config', [ConnectedClientServiceController::class, 'config'])->name('kp.config');
+    // Backward-compatible alias: some builds still call /api/kp/config from the iframe.
+    Route::get('api/kp/config', [ConnectedClientServiceController::class, 'config'])->name('api.kp.config');
+    Route::get('kp/clients', [ConnectedClientServiceController::class, 'clients'])->name('kp.clients');
+    Route::get('kp/partners', [ConnectedClientServiceController::class, 'partners'])->name('kp.partners');
+
     Route::group(['prefix' => 'client'], function () {
         Route::get('/', [ClientController::class, 'index'])->name('client.index');
         Route::get('/create', [ClientController::class, 'create'])->name('client.create');
@@ -85,6 +91,7 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'client-payment'], function () {
         Route::get('/', [\App\Http\Controllers\ClientPaymentController::class, 'index'])->name('client-payment.index');
         Route::post('/', [\App\Http\Controllers\ClientPaymentController::class, 'store'])->name('client-payment.create');
+        Route::get('/invoice/{payment}', [\App\Http\Controllers\ClientPaymentController::class, 'invoice'])->name('client-payment.invoice');
     });
 
     Route::group(['prefix' => 'organization'], function () {
