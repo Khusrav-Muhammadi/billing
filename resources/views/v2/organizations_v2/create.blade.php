@@ -21,6 +21,11 @@
                 <input type="text" class="form-control" name="phone" placeholder="Телефон">
             </div>
 
+            <div class="form-group">
+                <label for="email">Почта</label>
+                <input type="email" class="form-control" name="email" placeholder="Почта">
+            </div>
+
 
             <div class="form-group">
                 <label for="client_id">Клиент</label>
@@ -52,4 +57,3 @@
     </div>
 
 @endsection
-

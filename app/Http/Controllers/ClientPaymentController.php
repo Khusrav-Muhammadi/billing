@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ClientPaymentRequest;
+use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use Illuminate\Http\Request;
@@ -37,9 +38,32 @@ class ClientPaymentController extends Controller
         try {
             DB::beginTransaction();
 
+            $organizationId = $data['organization_id'] ?? null;
+            if (!$organizationId && isset($data['name']) && is_numeric($data['name'])) {
+                $organizationId = (int) $data['name'];
+            }
+
+            if ($organizationId) {
+                $organization = Organization::query()
+                    ->with('client:id,name,phone,email,contact_person')
+                    ->find($organizationId);
+
+                if (!$organization) {
+                    throw new \Exception('Организация не найдена');
+                }
+
+                $data['name'] = (string) ($organization->name ?? $data['name']);
+                $data['phone'] = (string) ($organization->phone ?: ($organization->client?->phone ?: ($data['phone'] ?? '')));
+                $data['email'] = (string) ($organization->email ?: ($organization->client?->email ?: ($data['email'] ?? '')));
+            }
+
+            if (!isset($data['email']) || trim((string) $data['email']) === '') {
+                throw new \Exception('Не указана почта (email) для оплаты. Укажи email у организации или клиента.');
+            }
+
             $payment = Payment::create([
                 'name' => $data['name'],
-                'phone' => preg_replace('/\D+/', '', $data['phone']),
+                'phone' => preg_replace('/\D+/', '', (string) ($data['phone'] ?? '')),
                 'email' => $data['email'],
                 'sum' => $data['sum'],
                 'payment_type' => $data['payment_type']

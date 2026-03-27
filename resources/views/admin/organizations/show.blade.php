@@ -23,6 +23,10 @@
                 <input type="text" class="form-control" name="phone" value="{{ $organization->phone }}" disabled>
             </div>
             <div class="col-3 mt-3">
+                <label for="email">Почта</label>
+                <input type="text" class="form-control" name="email" value="{{ $organization->email }}" disabled>
+            </div>
+            <div class="col-3 mt-3">
                 <label for="INN">ИНН</label>
                 <input type="number" class="form-control" name="INN" value="{{ $organization->INN }}" disabled>
             </div>

@@ -16,6 +16,7 @@ class ClientPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'name' => ['required'],
             'phone' => [''],
             'email' => [''],

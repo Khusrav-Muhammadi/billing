@@ -444,6 +444,7 @@ class CPGenerator {
         const sum = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
 
         const payload = {
+            organization_id: client.id,
             name: client.name || this.state.clientName || 'Организация',
             phone: client.phone || '',
             email: client.email || '',

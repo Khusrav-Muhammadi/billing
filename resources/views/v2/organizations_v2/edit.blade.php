@@ -24,6 +24,11 @@
             </div>
 
             <div class="form-group">
+                <label for="email">Почта</label>
+                <input type="email" class="form-control" name="email" value="{{ $organization->email }}">
+            </div>
+
+            <div class="form-group">
                 <label for="INN">Инн</label>
                 <input type="number" class="form-control" name="INN" value="{{ $organization->INN }}">
             </div>
@@ -62,4 +67,3 @@
     </div>
 
 @endsection
-
