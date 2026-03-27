@@ -443,34 +443,44 @@ class CPGenerator {
 
         const sum = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
 
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/client-payment';
-        form.target = '_top';
-
-        const add = (name, value) => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = name;
-            input.value = String(value ?? '');
-            form.appendChild(input);
+        const payload = {
+            name: client.name || this.state.clientName || 'Организация',
+            phone: client.phone || '',
+            email: client.email || '',
+            sum,
+            payment_type: paymentType,
+            data: items.map((i) => ({ name: i.name, price: i.price })),
         };
 
-        add('_token', this.state.csrfToken);
-        add('name', client.name || this.state.clientName || 'Организация');
-        add('phone', client.phone || '');
-        add('email', client.email || '');
-        add('sum', sum);
-        add('payment_type', paymentType);
+        fetch('/client-payment', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': this.state.csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload),
+        })
+            .then(async (resp) => {
+                const json = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    throw new Error(json.error || `Ошибка оплаты (HTTP ${resp.status})`);
+                }
+                const url = json.redirect_url;
+                if (!url) throw new Error('Не пришла ссылка на оплату');
 
-        items.forEach((item, idx) => {
-            add(`data[${idx}][name]`, item.name);
-            add(`data[${idx}][price]`, item.price);
-        });
-
-        document.body.appendChild(form);
-        form.submit();
-        form.remove();
+                // Try open in new tab; if blocked - navigate top.
+                const w = window.open(url, '_blank', 'noopener');
+                if (!w) {
+                    window.top.location.href = url;
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+                alert(err?.message || 'Ошибка оплаты');
+            });
     }
 
     renderCurrencies() {
@@ -1366,15 +1376,16 @@ class CPGenerator {
     }
     
     formatTotalPrice(amount) {
-        // Округляем только итоговую сумму
+        // Итоговую сумму показываем с точностью 2 знака после запятой
         const currency = this.getCurrentCurrency();
-        const rounded = Math.round(amount);
-        
+        const val = Number(amount) || 0;
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
         if (this.state.currency === 'USD') {
-            return `$${rounded.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            return `$${formatted}`;
         }
-        
-        return `${rounded.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${currency.symbol}`;
+
+        return `${formatted} ${currency.symbol}`;
     }
     
     getCurrencyDisplayName() {

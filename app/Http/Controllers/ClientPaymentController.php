@@ -56,25 +56,43 @@ class ClientPaymentController extends Controller
             DB::commit();
 
             if ($data['payment_type'] === 'invoice') {
-                return redirect()->route('client-payment.invoice', $payment);
+                $url = route('client-payment.invoice', $payment);
+                return $request->expectsJson()
+                    ? response()->json(['redirect_url' => $url])
+                    : redirect()->to($url);
             }
 
             if ($data['payment_type'] == 'alif') {
                 $checkoutUrl = $this->generateAlifPayLink($payment);
-                return redirect($checkoutUrl);
+                return $request->expectsJson()
+                    ? response()->json(['redirect_url' => $checkoutUrl])
+                    : redirect($checkoutUrl);
             }
 
             if ($data['payment_type'] == 'octo') {
                 $checkoutUrl = $this->generateOctobankPayLink($payment);
-                return redirect($checkoutUrl);
+                return $request->expectsJson()
+                    ? response()->json(['redirect_url' => $checkoutUrl])
+                    : redirect($checkoutUrl);
             }
 
-            return redirect()->back();
+            return $request->expectsJson()
+                ? response()->json(['redirect_url' => url()->previous()])
+                : redirect()->back();
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return redirect()->back()->withErrors(['error' => 'Ошибка при создании платежа: ' . $e->getMessage()]);
+            Log::error('ClientPaymentController@store failed', [
+                'message' => $e->getMessage(),
+                'payment_type' => $data['payment_type'] ?? null,
+                'sum' => $data['sum'] ?? null,
+            ]);
+
+            $msg = 'Ошибка при создании платежа: ' . $e->getMessage();
+            return $request->expectsJson()
+                ? response()->json(['error' => $msg], 422)
+                : redirect()->back()->withErrors(['error' => $msg]);
         }
     }
 
