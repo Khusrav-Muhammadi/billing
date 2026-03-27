@@ -9,7 +9,7 @@ class Price extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['tariff_id', 'client_id', 'start_date', 'date', 'sum', 'currency_id'];
+    protected $fillable = ['tariff_id', 'client_id', 'start_date', 'date', 'sum', 'currency_id', 'kind'];
 
     public function tariff()
     {

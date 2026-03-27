@@ -249,8 +249,23 @@ class CPGenerator {
         return this.getTariffMonthlyBase(tariffKey);
     }
 
+    getExtraUserPricesMap(tariffKey) {
+        const base = this.config?.tariffs?.[tariffKey]?.extraUserPrices || {};
+        const clientId = this.state.selectedClientId;
+        const override = clientId ? (this.clientPrices?.[clientId]?.extra_users?.[tariffKey] || null) : null;
+        return override ? { ...base, ...override } : base;
+    }
+
+    getExtraUserMonthlyBase(tariffKey) {
+        const map = this.getExtraUserPricesMap(tariffKey);
+        const fromDb = this.getPriceByCurrency(map);
+        if (fromDb > 0) return fromDb;
+        // Fallback to old behavior if not configured in DB yet.
+        return this.getTariffMonthlyBase(tariffKey) * 0.10;
+    }
+
     getExtraUserPriceByKey(tariffKey) {
-        return this.getTariffMonthlyBase(tariffKey) * 0.10 * this.getPeriodDiscountMultiplier();
+        return this.getExtraUserMonthlyBase(tariffKey) * this.getPeriodDiscountMultiplier();
     }
 
     getSelectedClient() {
@@ -315,7 +330,7 @@ class CPGenerator {
         });
 
         if (this.state.extraUsers > 0) {
-            const extraMonthly = (tariffMonthlyBase * 0.10) * this.state.extraUsers * periodMultiplier;
+            const extraMonthly = this.getExtraUserMonthlyBase(tariffKey) * this.state.extraUsers * periodMultiplier;
             items.push({
                 name: `Доп. пользователи (×${this.state.extraUsers})`,
                 price: this.applyPartnerDiscount(extraMonthly * this.state.periodMonths)
@@ -1086,7 +1101,7 @@ class CPGenerator {
                 rows.push({
                     name: `Доп. пользователи`,
                     qty: this.state.extraUsers,
-                    unitMonthly: baseTariffMonthly * 0.10,
+                    unitMonthly: this.getExtraUserMonthlyBase(this.state.selectedTariff),
                 });
             }
         }
@@ -1934,7 +1949,7 @@ class CPGenerator {
             monthlyRaw += this.getTariffMonthlyBase(this.state.selectedTariff);
             
             if (this.state.extraUsers > 0) {
-                monthlyRaw += (this.getTariffMonthlyBase(this.state.selectedTariff) * 0.10) * this.state.extraUsers;
+                monthlyRaw += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
             }
         }
         

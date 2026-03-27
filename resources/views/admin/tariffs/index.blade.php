@@ -19,6 +19,7 @@
 {{--                    <th>Цена</th>--}}
                     <th>Кол-во пользователей</th>
                     <th>Кол-во проектов</th>
+                    <th>Тип</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -30,6 +31,13 @@
 {{--                        <td>{{ $tariff->price }} $</td>--}}
                         <td>{{ $tariff->user_count }}</td>
                         <td>{{ $tariff->project_count }}</td>
+                        <td>
+                            @if($tariff->is_extra_user)
+                                Доп. пользователь (для тарифа #{{ $tariff->parent_tariff_id ?? '—' }})
+                            @else
+                                {{ $tariff->is_tariff ? 'Тариф' : 'Услуга' }}
+                            @endif
+                        </td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#delete{{ $tariff->id }}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
@@ -54,18 +62,15 @@
 {{--                                            <label for="name">Цена</label>--}}
 {{--                                            <input type="number" class="form-control" name="price" value="{{ $tariff->price }}">--}}
 {{--                                        </div>--}}
-                                        <div class="form-group">
-                                            <label for="name">Скидка</label>
-                                            <input type="number" class="form-control" name="price" value="{{ $tariff->price }}">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="name">Кол-во пользователей</label>
-                                            <input type="number" class="form-control" name="user_count" value="{{ $tariff->user_count }}">
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="name">Кол-во проектов</label>
-                                            <input type="number" class="form-control" name="project_count" value="{{ $tariff->project_count }}">
-                                        </div>
+                                        <input type="hidden" name="price" value="{{ $tariff->price }}">
+                        <div class="form-group">
+                            <label for="name">Кол-во пользователей</label>
+                            <input type="number" class="form-control" name="user_count" value="{{ $tariff->user_count }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Кол-во проектов</label>
+                            <input type="number" class="form-control" name="project_count" value="{{ $tariff->project_count }}">
+                        </div>
                                         <div class="form-group">
                                             <label for="name">Дата завршения</label>
                                             <input type="date" class="form-control" name="date">
@@ -73,7 +78,28 @@
 
                                         <div class="form-group">
                                             <label for="name">Тариф</label>
-                                            <input type="checkbox" class="form-check-inline custom-checkbox" name="tariff" {{ $tariff->tariff ? 'checked' : '' }} style="width: 20px; height: 20px">
+                                            <input type="checkbox" class="form-check-inline custom-checkbox js-is-tariff"
+                                                   name="is_tariff" value="1" {{ $tariff->is_tariff ? 'checked' : '' }}
+                                                   style="width: 20px; height: 20px">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="name">Это доп. пользователь</label>
+                                            <input type="checkbox" class="form-check-inline custom-checkbox js-is-extra-user"
+                                                   name="is_extra_user" value="1" {{ $tariff->is_extra_user ? 'checked' : '' }}
+                                                   style="width: 20px; height: 20px">
+                                        </div>
+
+                                        <div class="form-group js-parent-tariff-wrap" style="{{ $tariff->is_extra_user ? '' : 'display:none;' }}">
+                                            <label for="parent_tariff_id">Тариф для доп. пользователя</label>
+                                            <select class="form-control" name="parent_tariff_id">
+                                                <option value="">Выберите тариф</option>
+                                                @foreach($baseTariffs as $baseTariff)
+                                                    <option value="{{ $baseTariff->id }}" {{ (string)$tariff->parent_tariff_id === (string)$baseTariff->id ? 'selected' : '' }}>
+                                                        {{ $baseTariff->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
@@ -128,22 +154,38 @@
 {{--                            <label for="name">Цена</label>--}}
 {{--                            <input type="number" class="form-control" name="price" placeholder="Цена">--}}
 {{--                        </div>--}}
-                        <div class="form-group">
-                            <label for="name">Скидка</label>
-                            <input type="number" class="form-control" name="price" value="{{ $tariff->price }}">
-                        </div>
+                        <input type="hidden" name="price" value="0">
                         <div class="form-group">
                             <label for="name">Кол-во пользователей</label>
-                            <input type="number" class="form-control" name="user_count" placeholder="Кол-во пользователей">
+                            <input type="number" class="form-control" name="user_count" placeholder="Кол-во пользователей (необязательно)">
                         </div>
                         <div class="form-group">
                             <label for="name">Кол-во проектов</label>
-                            <input type="number" class="form-control" name="project_count" placeholder="Кол-во проектов">
+                            <input type="number" class="form-control" name="project_count" placeholder="Кол-во проектов (необязательно)">
                         </div>
 
                         <div class="form-group">
                             <label for="name">Тариф</label>
-                            <input type="checkbox" class="form-check-inline custom-checkbox" name="tariff" {{ $tariff->tariff ? 'checked' : '' }} style="width: 20px; height: 20px">
+                            <input type="checkbox" class="form-check-inline custom-checkbox js-is-tariff"
+                                   name="is_tariff" value="1"
+                                   style="width: 20px; height: 20px">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="name">Это доп. пользователь</label>
+                            <input type="checkbox" class="form-check-inline custom-checkbox js-is-extra-user"
+                                   name="is_extra_user" value="1"
+                                   style="width: 20px; height: 20px">
+                        </div>
+
+                        <div class="form-group js-parent-tariff-wrap" style="display:none;">
+                            <label for="parent_tariff_id">Тариф для доп. пользователя</label>
+                            <select class="form-control" name="parent_tariff_id">
+                                <option value="">Выберите тариф</option>
+                                @foreach($baseTariffs as $baseTariff)
+                                    <option value="{{ $baseTariff->id }}">{{ $baseTariff->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                     </div>
@@ -156,4 +198,38 @@
         </div>
     </div>
 
+@endsection
+
+@section('script')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sync = (root) => {
+                const cb = root.querySelector('.js-is-extra-user');
+                const wrap = root.querySelector('.js-parent-tariff-wrap');
+                if (!cb || !wrap) return;
+                wrap.style.display = cb.checked ? '' : 'none';
+            };
+
+            // Create modal
+            const createModal = document.getElementById('create');
+            if (createModal) {
+                createModal.addEventListener('change', (e) => {
+                    if (e.target && e.target.classList.contains('js-is-extra-user')) {
+                        sync(createModal);
+                    }
+                });
+                sync(createModal);
+            }
+
+            // Edit modals
+            document.querySelectorAll('.modal[id^="edit"]').forEach((modal) => {
+                modal.addEventListener('change', (e) => {
+                    if (e.target && e.target.classList.contains('js-is-extra-user')) {
+                        sync(modal);
+                    }
+                });
+                sync(modal);
+            });
+        });
+    </script>
 @endsection

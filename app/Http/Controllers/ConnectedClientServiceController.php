@@ -42,9 +42,18 @@ class ConnectedClientServiceController extends Controller
             ;
 
         $services = Tariff::where('is_tariff', false)
+            ->where(function ($q) {
+                $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
+            })
             ->with(['prices.currency'])
             ->get()
             ;
+
+        $extraUserServicesByTariffId = Tariff::query()
+            ->where('is_extra_user', true)
+            ->with(['prices.currency'])
+            ->get()
+            ->groupBy('parent_tariff_id');
 
         $clients = Client::select('id', 'name', 'email', 'phone', 'currency_id')
             ->with('currency')
@@ -54,10 +63,10 @@ class ConnectedClientServiceController extends Controller
         $partners = User::role();
 
         // Базовый конфиг — цены без client_id (для всех)
-        $config = $this->buildConfig($currencies, $tariffs, $services, null);
+        $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, null);
 
         // Персональные цены по клиентам — { client_id: { tariff_key: { currency: price } } }
-        $clientPrices = $this->buildClientPrices($tariffs, $services);
+        $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId);
 
         return view('kp.index', [
             'config'       => $config,
@@ -86,9 +95,18 @@ class ConnectedClientServiceController extends Controller
             ;
 
         $services = Tariff::where('is_tariff', false)
+            ->where(function ($q) {
+                $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
+            })
             ->with(['prices.currency'])
             ->get()
             ;
+
+        $extraUserServicesByTariffId = Tariff::query()
+            ->where('is_extra_user', true)
+            ->with(['prices.currency'])
+            ->get()
+            ->groupBy('parent_tariff_id');
 
         $clients = Client::select('id', 'name', 'email', 'phone', 'currency_id')
             ->with('currency')
@@ -104,8 +122,8 @@ class ConnectedClientServiceController extends Controller
 
         $partnerPercentsById = $this->getPartnerTariffPercents($partners->pluck('id')->all());
 
-        $config = $this->buildConfig($currencies, $tariffs, $services, null);
-        $clientPrices = $this->buildClientPrices($tariffs, $services);
+        $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, null);
+        $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId);
 
         return response()->json([
             'config'        => $config,
@@ -228,7 +246,7 @@ class ConnectedClientServiceController extends Controller
         return $out;
     }
 
-    private function buildConfig($currencies, $tariffs, $services, $clientId = null): array
+    private function buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId = null, $clientId = null): array
     {
         $today = strtotime(date('Y-m-d'));
 
@@ -247,7 +265,7 @@ class ConnectedClientServiceController extends Controller
             // Берём только общие цены (client_id = null)
             $prices = [];
             $bestByCurrency = [];
-            foreach ($tariff->prices->whereNull('client_id') as $price) {
+            foreach ($tariff->prices->whereNull('client_id')->where('kind', 'base') as $price) {
                 $symbol = $price->currency?->symbol_code;
                 if (!$symbol) continue;
 
@@ -286,6 +304,85 @@ class ConnectedClientServiceController extends Controller
 
             if (empty($prices)) continue;
 
+            // Extra user prices (per additional user, per month)
+            // Preferred source: "extra user" service linked to this tariff (tariffs.is_extra_user=1, parent_tariff_id=tariff.id)
+            $extraUserPrices = [];
+            $bestExtraByCurrency = [];
+
+            $extraServices = $extraUserServicesByTariffId && isset($extraUserServicesByTariffId[$tariff->id])
+                ? $extraUserServicesByTariffId[$tariff->id]
+                : null;
+
+            if ($extraServices) {
+                foreach ($extraServices as $extraService) {
+                    foreach ($extraService->prices->whereNull('client_id')->where('kind', 'base') as $price) {
+                        $symbol = $price->currency?->symbol_code;
+                        if (!$symbol) continue;
+
+                        $start = $this->parseDateToTs($price->start_date);
+                        $end = $this->parseDateToTs($price->date);
+
+                        if ($start !== null && $start > $today) continue;
+                        if ($end !== null && $end < $today) continue;
+
+                        $startScore = $start ?? 0;
+                        $endScore = $end ?? PHP_INT_MAX;
+                        $prev = $bestExtraByCurrency[$symbol] ?? null;
+                        if (
+                            !$prev
+                            || $startScore > $prev['start']
+                            || ($startScore === $prev['start'] && $endScore >= $prev['end'])
+                        ) {
+                            $bestExtraByCurrency[$symbol] = [
+                                'start' => $startScore,
+                                'end' => $endScore,
+                                'sum' => (float) $price->sum,
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // Backward-compatible source: prices.kind=extra_user on the tariff itself
+            if (empty($bestExtraByCurrency)) {
+                foreach ($tariff->prices->whereNull('client_id')->where('kind', 'extra_user') as $price) {
+                    $symbol = $price->currency?->symbol_code;
+                    if (!$symbol) continue;
+
+                    $start = $this->parseDateToTs($price->start_date);
+                    $end = $this->parseDateToTs($price->date);
+
+                    if ($start !== null && $start > $today) continue;
+                    if ($end !== null && $end < $today) continue;
+
+                    $startScore = $start ?? 0;
+                    $endScore = $end ?? PHP_INT_MAX;
+                    $prev = $bestExtraByCurrency[$symbol] ?? null;
+                    if (
+                        !$prev
+                        || $startScore > $prev['start']
+                        || ($startScore === $prev['start'] && $endScore >= $prev['end'])
+                    ) {
+                        $bestExtraByCurrency[$symbol] = [
+                            'start' => $startScore,
+                            'end' => $endScore,
+                            'sum' => (float) $price->sum,
+                        ];
+                    }
+                }
+            }
+
+            foreach ($bestExtraByCurrency as $symbol => $row) {
+                $extraUserPrices[$symbol] = (float) $row['sum'];
+            }
+
+            // Temporary fallback (keeps old behavior until prices are filled in DB)
+            if (empty($extraUserPrices)) {
+                foreach ($prices as $symbol => $sum) {
+                    $extraUserPrices[$symbol] = round(((float) $sum) * 0.10, 2);
+                }
+            }
+
             $key = 'tariff-' . $tariff->id;
 
             $tariffsForJs[$key] = [
@@ -293,6 +390,7 @@ class ConnectedClientServiceController extends Controller
                 'name'            => $tariff->name,
                 'users'           => $tariff->user_count ?? 0,
                 'prices'          => $prices,
+                'extraUserPrices' => $extraUserPrices,
                 'prices12Months'  => array_map(fn($p) => round($p * 0.85, 2), $prices),
                 'extraUserPrice'  => array_map(fn($p) => round($p * 0.10, 2), $prices),
                 'includedServices' => [],
@@ -305,7 +403,7 @@ class ConnectedClientServiceController extends Controller
         foreach ($services as $service) {
             $prices = [];
             $bestByCurrency = [];
-            foreach ($service->prices->whereNull('client_id') as $price) {
+            foreach ($service->prices->whereNull('client_id')->where('kind', 'base') as $price) {
                 $symbol = $price->currency?->symbol_code;
                 if (!$symbol) continue;
 
@@ -373,7 +471,7 @@ class ConnectedClientServiceController extends Controller
     }
 
 // Собираем персональные цены для каждого клиента
-    private function buildClientPrices($tariffs, $services): array
+    private function buildClientPrices($tariffs, $services, $extraUserServicesByTariffId = null): array
     {
         $result = [];
         $today = strtotime(date('Y-m-d'));
@@ -381,7 +479,43 @@ class ConnectedClientServiceController extends Controller
         foreach ($tariffs as $tariff) {
             $key = 'tariff-' . $tariff->id;
 
-            foreach ($tariff->prices->whereNotNull('client_id') as $price) {
+            // Extra users: preferred source is linked "extra user" service
+            $extraServices = $extraUserServicesByTariffId && isset($extraUserServicesByTariffId[$tariff->id])
+                ? $extraUserServicesByTariffId[$tariff->id]
+                : null;
+
+            if ($extraServices) {
+                foreach ($extraServices as $extraService) {
+                    foreach ($extraService->prices->whereNotNull('client_id')->where('kind', 'base') as $price) {
+                        $clientId = $price->client_id;
+                        $symbol   = $price->currency?->symbol_code;
+                        if (!$symbol) continue;
+
+                        $start = $this->parseDateToTs($price->start_date);
+                        $end = $this->parseDateToTs($price->date);
+
+                        if ($start !== null && $start > $today) continue;
+                        if ($end !== null && $end < $today) continue;
+
+                        $startScore = $start ?? 0;
+                        $endScore = $end ?? PHP_INT_MAX;
+
+                        $prev = $result[$clientId]['extra_users'][$key]['__meta'][$symbol]['score'] ?? null;
+                        $prevEnd = $result[$clientId]['extra_users'][$key]['__meta'][$symbol]['end'] ?? null;
+                        if (
+                            $prev === null
+                            || $startScore > $prev
+                            || ($startScore === $prev && $endScore >= ($prevEnd ?? 0))
+                        ) {
+                            $result[$clientId]['extra_users'][$key][$symbol] = (float) $price->sum;
+                            $result[$clientId]['extra_users'][$key]['__meta'][$symbol]['score'] = $startScore;
+                            $result[$clientId]['extra_users'][$key]['__meta'][$symbol]['end'] = $endScore;
+                        }
+                    }
+                }
+            }
+
+            foreach ($tariff->prices->whereNotNull('client_id')->where('kind', 'base') as $price) {
                 $clientId = $price->client_id;
                 $symbol   = $price->currency?->symbol_code;
                 if (!$symbol) continue;
@@ -406,12 +540,43 @@ class ConnectedClientServiceController extends Controller
                     $result[$clientId]['tariffs'][$key]['__meta'][$symbol]['end'] = $endScore;
                 }
             }
+
+            // Backward-compatible: prices.kind=extra_user on the tariff itself (only if not set by extra service)
+            foreach ($tariff->prices->whereNotNull('client_id')->where('kind', 'extra_user') as $price) {
+                $clientId = $price->client_id;
+                $symbol   = $price->currency?->symbol_code;
+                if (!$symbol) continue;
+
+                $start = $this->parseDateToTs($price->start_date);
+                $end = $this->parseDateToTs($price->date);
+
+                if ($start !== null && $start > $today) continue;
+                if ($end !== null && $end < $today) continue;
+
+                // If extra user price already exists for this client/currency from linked service, keep it.
+                if (isset($result[$clientId]['extra_users'][$key][$symbol])) continue;
+
+                $startScore = $start ?? 0;
+                $endScore = $end ?? PHP_INT_MAX;
+
+                $prev = $result[$clientId]['extra_users'][$key]['__meta'][$symbol]['score'] ?? null;
+                $prevEnd = $result[$clientId]['extra_users'][$key]['__meta'][$symbol]['end'] ?? null;
+                if (
+                    $prev === null
+                    || $startScore > $prev
+                    || ($startScore === $prev && $endScore >= ($prevEnd ?? 0))
+                ) {
+                    $result[$clientId]['extra_users'][$key][$symbol] = (float) $price->sum;
+                    $result[$clientId]['extra_users'][$key]['__meta'][$symbol]['score'] = $startScore;
+                    $result[$clientId]['extra_users'][$key]['__meta'][$symbol]['end'] = $endScore;
+                }
+            }
         }
 
         foreach ($services as $service) {
             $key = 'service-' . $service->id;
 
-            foreach ($service->prices->whereNotNull('client_id') as $price) {
+            foreach ($service->prices->whereNotNull('client_id')->where('kind', 'base') as $price) {
                 $clientId = $price->client_id;
                 $symbol   = $price->currency?->symbol_code;
                 if (!$symbol) continue;
@@ -440,7 +605,7 @@ class ConnectedClientServiceController extends Controller
 
         // Strip meta
         foreach ($result as $clientId => $groups) {
-            foreach (['tariffs', 'services'] as $groupKey) {
+            foreach (['tariffs', 'services', 'extra_users'] as $groupKey) {
                 if (empty($result[$clientId][$groupKey])) continue;
                 foreach ($result[$clientId][$groupKey] as $itemKey => $prices) {
                     unset($result[$clientId][$groupKey][$itemKey]['__meta']);

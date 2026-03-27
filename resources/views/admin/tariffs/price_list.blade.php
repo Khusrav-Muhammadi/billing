@@ -18,6 +18,7 @@
                     <th>Дата начала</th>
                     <th>Дата завершения</th>
                     <th>Валюта</th>
+                    <th>Тип</th>
                     <th>Услуга</th>
                     <th>Клиент</th>
                     <th>Сумма</th>
@@ -31,6 +32,7 @@
                         <td>{{ $price->start_date ?? '—' }}</td>
                         <td>{{ $price->date }}</td>
                         <td>{{ $price->currency?->name }}</td>
+                        <td>{{ $price->kind === 'extra_user' ? 'Доп. пользователь' : 'База' }}</td>
                         <td>{{ $price->tariff?->name }}</td>
                         <td>{{ $price->client?->name }}</td>
                         <td>{{ $price->sum }}</td>
@@ -50,6 +52,13 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Изменение прайслиста</h5>
                                     </div>
                                     <div class="modal-body">
+                                        <div class="form-group">
+                                            <label for="kind">Тип цены <span class="text-danger">*</span></label>
+                                            <select class="form-control" name="kind" required>
+                                                <option value="base" {{ ($price->kind ?? 'base') === 'base' ? 'selected' : '' }}>База (тариф/услуга)</option>
+                                                <option value="extra_user" {{ ($price->kind ?? '') === 'extra_user' ? 'selected' : '' }}>Доп. пользователь (для тарифа)</option>
+                                            </select>
+                                        </div>
                                         <div class="form-group">
                                             <label for="tariff_id">Услуга <span class="text-danger">*</span></label>
                                             <select class="form-control" name="tariff_id" required>
@@ -142,6 +151,16 @@
                         <h5 class="modal-title" id="exampleModalLabel">Создание прайслиста</h5>
                     </div>
                     <div class="modal-body">
+                        <div class="form-group">
+                            <label for="kind">Тип цены <span class="text-danger">*</span></label>
+                            <select class="form-control @error('kind') is-invalid @enderror" name="kind" required>
+                                <option value="base" {{ old('kind', 'base') === 'base' ? 'selected' : '' }}>База (тариф/услуга)</option>
+                                <option value="extra_user" {{ old('kind') === 'extra_user' ? 'selected' : '' }}>Доп. пользователь (для тарифа)</option>
+                            </select>
+                            @error('kind')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
                         <div class="form-group">
                             <label for="tariff_id">Услуга <span class="text-danger">*</span></label>
                             <select class="form-control form-control @error('tariff_id') is-invalid @enderror"

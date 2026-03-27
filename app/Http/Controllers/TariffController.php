@@ -15,14 +15,33 @@ class TariffController extends Controller
 {
     public function index()
     {
-        $tariffs = Tariff::all();
+        $tariffs = Tariff::query()->orderBy('name')->get();
+        $baseTariffs = Tariff::query()
+            ->where('is_tariff', true)
+            ->where(function ($q) {
+                $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
+            })
+            ->orderBy('name')
+            ->get();
 
-        return view('admin.tariffs.index', compact('tariffs'));
+        return view('admin.tariffs.index', compact('tariffs', 'baseTariffs'));
     }
 
     public function store(StoreRequest $request)
     {
         $data = $request->validated();
+
+        // Checkbox fields: absent means "false"
+        $data['is_tariff'] = (bool) ($data['is_tariff'] ?? false);
+        $data['is_extra_user'] = (bool) ($data['is_extra_user'] ?? false);
+
+        if ($data['is_extra_user']) {
+            $data['is_tariff'] = false; // extra user is not a tariff itself
+        }
+
+        if (!$data['is_extra_user']) {
+            $data['parent_tariff_id'] = null;
+        }
 
         Tariff::create($data);
 
@@ -32,6 +51,15 @@ class TariffController extends Controller
     public function update(Tariff $tariff, UpdateRequest $request)
     {
         $data = $request->validated();
+
+        $data['is_tariff'] = (bool) ($data['is_tariff'] ?? false);
+        $data['is_extra_user'] = (bool) ($data['is_extra_user'] ?? false);
+        if ($data['is_extra_user']) {
+            $data['is_tariff'] = false;
+        }
+        if (!$data['is_extra_user']) {
+            $data['parent_tariff_id'] = null;
+        }
 
         $tariff->update($data);
 

@@ -19,6 +19,7 @@ class UpdateRequest extends FormRequest
             'tariff_id' => ['required', Rule::exists('tariffs','id')],
             'client_id' => ['nullable', Rule::exists('clients','id')],
             'start_date' => ['nullable', 'date'],
+            'kind' => ['required', Rule::in(['base', 'extra_user'])],
             'date' => ['required', 'date'],
             'sum' => ['required'],
             'currency_id' => ['required', Rule::exists('currencies','id')],
