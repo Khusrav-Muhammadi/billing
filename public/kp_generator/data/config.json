@@ -1,0 +1,471 @@
+{
+  "currencies": {
+    "TJS": { "symbol": "TJS", "name": "Сомони" },
+    "UZS": { "symbol": "UZS", "name": "Сум" },
+    "USD": { "symbol": "$", "name": "Доллар" }
+  },
+  "paymentPeriods": [
+    { "months": 6, "discount": 0, "label": "6 месяцев" },
+    { "months": 12, "discount": 15, "label": "12 месяцев (скидка 15%)" }
+  ],
+  "tariffs": {
+    "basic": {
+      "id": "basic",
+      "name": "Базовый",
+      "description": "Идеально для малого бизнеса и личных нужд",
+      "users": 3,
+      "extraUserPrice": {
+        "TJS": 35,
+        "UZS": 38500,
+        "USD": 2.99
+      },
+      "prices": {
+        "TJS": 180,
+        "UZS": 199000,
+        "USD": 15
+      },
+      "prices12Months": {
+        "TJS": 153,
+        "UZS": 169150,
+        "USD": 12.75
+      },
+      "suggestedImplementationPrice": {
+        "TJS": 5000,
+        "UZS": 6000000,
+        "USD": 500
+      },
+      "includedServices": [],
+      "features": [
+        "Воронка продаж",
+        "Интеграция: WhatsApp / Instagram / Telegram",
+        "Мобильное приложение shamCRM"
+      ],
+      "tariffFeatures": {
+        "users": 3,
+        "dashboard": true,
+        "socialIntegrations": {
+          "telegram": { "channels": 1, "discount": 100 },
+          "whatsapp": { "channels": 1, "discount": 100 },
+          "instagram": { "channels": 1, "discount": 100 },
+          "messenger": { "channels": 1, "discount": 100 },
+          "email": { "included": true, "discount": 100 }
+        },
+        "mobileApp": true,
+        "accessControl": true,
+        "salesFunnels": 1,
+        "taskManagement": false,
+        "calendar": false,
+        "smsBroadcast": false,
+        "miniAppB2C": { "channels": 0, "discount": 0 },
+        "miniAppB2B": { "channels": 0, "discount": 0 }
+      }
+    },
+    "standard": {
+      "id": "standard",
+      "name": "Стандарт",
+      "description": "Оптимально для среднего бизнеса: расширенные функции для управления задачами, продажами и клиентами",
+      "users": 10,
+      "extraUserPrice": {
+        "TJS": 30,
+        "UZS": 33400,
+        "USD": 2.59
+      },
+      "prices": {
+        "TJS": 470,
+        "UZS": 501946,
+        "USD": 39
+      },
+      "prices12Months": {
+        "TJS": 400,
+        "UZS": 426665,
+        "USD": 33.15
+      },
+      "suggestedImplementationPrice": {
+        "TJS": 15000,
+        "UZS": 18000000,
+        "USD": 1500
+      },
+      "includedServices": [],
+      "features": [
+        "Воронка продаж",
+        "Интеграция: WhatsApp / Instagram / Telegram",
+        "Управление задачами",
+        "Календарь (встречи, записи)",
+        "Мобильное приложение shamCRM"
+      ],
+      "tariffFeatures": {
+        "users": 10,
+        "dashboard": true,
+        "socialIntegrations": {
+          "telegram": { "channels": 3, "discount": 100 },
+          "whatsapp": { "channels": 3, "discount": 100 },
+          "instagram": { "channels": 3, "discount": 100 },
+          "messenger": { "channels": 3, "discount": 100 },
+          "email": { "included": true, "discount": 100 }
+        },
+        "mobileApp": true,
+        "accessControl": true,
+        "salesFunnels": 1,
+        "taskManagement": true,
+        "calendar": true,
+        "smsBroadcast": true,
+        "miniAppB2C": { "channels": 0, "discount": 0 },
+        "miniAppB2B": { "channels": 0, "discount": 0 }
+      }
+    },
+    "premium": {
+      "id": "premium",
+      "name": "Премиум",
+      "description": "Оптимально для среднего бизнеса: расширенные функции для управления задачами, продажами и клиентами",
+      "users": 20,
+      "extraUserPrice": {
+        "TJS": 25,
+        "UZS": 28200,
+        "USD": 2.19
+      },
+      "prices": {
+        "TJS": 950,
+        "UZS": 1029000,
+        "USD": 79
+      },
+      "prices12Months": {
+        "TJS": 808,
+        "UZS": 874650,
+        "USD": 67.15
+      },
+      "suggestedImplementationPrice": {
+        "TJS": 25000,
+        "UZS": 30000000,
+        "USD": 2500
+      },
+      "includedServices": ["telegram_b2c", "telegram_b2b", "sms_broadcast"],
+      "features": [
+        "Воронка продаж",
+        "Интеграция: WhatsApp / Instagram / Telegram",
+        "Управление задачами",
+        "Календарь (встречи, записи)",
+        "Мобильное приложение shamCRM",
+        "Mini-app B2B (партнёры, дилеры)",
+        "Mini-app B2C (клиенты, заявки)",
+        "SMS Рассылка"
+      ],
+      "tariffFeatures": {
+        "users": 20,
+        "dashboard": true,
+        "socialIntegrations": {
+          "telegram": { "channels": 5, "discount": 100 },
+          "whatsapp": { "channels": 5, "discount": 100 },
+          "instagram": { "channels": 5, "discount": 100 },
+          "messenger": { "channels": 5, "discount": 100 },
+          "email": { "included": true, "discount": 100 }
+        },
+        "mobileApp": true,
+        "accessControl": true,
+        "salesFunnels": 1,
+        "taskManagement": true,
+        "calendar": true,
+        "smsBroadcast": true,
+        "miniAppB2C": { "channels": 1, "discount": 100 },
+        "miniAppB2B": { "channels": 1, "discount": 100 }
+      }
+    },
+    "vip": {
+      "id": "vip",
+      "name": "VIP",
+      "description": "Для крупных компаний: полный набор инструментов для автоматизации и контроля продаж",
+      "users": 30,
+      "extraUserPrice": {
+        "TJS": 20,
+        "UZS": 25800,
+        "USD": 2
+      },
+      "prices": {
+        "TJS": 1550,
+        "UZS": 1700000,
+        "USD": 129
+      },
+      "prices12Months": {
+        "TJS": 1318,
+        "UZS": 1445000,
+        "USD": 109.65
+      },
+      "suggestedImplementationPrice": {
+        "TJS": 30000,
+        "UZS": 36000000,
+        "USD": 3000
+      },
+      "includedServices": ["telegram_b2c", "telegram_b2b", "sms_broadcast", "extra_funnel"],
+      "features": [
+        "Воронка продаж",
+        "Интеграция: WhatsApp / Instagram / Telegram",
+        "Управление задачами",
+        "Календарь (встречи, записи)",
+        "Мобильное приложение shamCRM",
+        "Mini-app B2B (партнёры, дилеры)",
+        "Mini-app B2C (клиенты, заявки)",
+        "SMS Рассылка"
+      ],
+      "tariffFeatures": {
+        "users": 30,
+        "dashboard": true,
+        "socialIntegrations": {
+          "telegram": { "channels": 10, "discount": 100 },
+          "whatsapp": { "channels": 10, "discount": 100 },
+          "instagram": { "channels": 10, "discount": 100 },
+          "messenger": { "channels": 10, "discount": 100 },
+          "email": { "included": true, "discount": 100 }
+        },
+        "mobileApp": true,
+        "accessControl": true,
+        "salesFunnels": 2,
+        "extraFunnels": { "channels": 2, "discount": 100 },
+        "taskManagement": true,
+        "calendar": true,
+        "smsBroadcast": true,
+        "miniAppB2C": { "channels": 2, "discount": 100 },
+        "miniAppB2B": { "channels": 2, "discount": 100 }
+      }
+    }
+  },
+  
+  "services": {
+    "telegram_b2c": {
+      "id": "telegram_b2c",
+      "name": "Telegram Mini App B2C",
+      "description": "Мини-приложение для клиентов",
+      "type": "monthly",
+      "prices": {
+        "TJS": 120,
+        "UZS": 129000,
+        "USD": 10
+      },
+      "hasChannels": true,
+      "minChannels": 1
+    },
+    "telegram_b2b": {
+      "id": "telegram_b2b",
+      "name": "Telegram Mini App B2B",
+      "description": "Мини-приложение для бизнеса",
+      "type": "monthly",
+      "prices": {
+        "TJS": 480,
+        "UZS": 516000,
+        "USD": 40
+      },
+      "hasChannels": true,
+      "minChannels": 1
+    },
+    "online_store": {
+      "id": "online_store",
+      "name": "Интернет магазин",
+      "description": "Интеграция с интернет-магазином",
+      "type": "monthly",
+      "prices": {
+        "TJS": 360,
+        "UZS": 399000,
+        "USD": 30
+      },
+      "hasChannels": false
+    },
+    "extra_social": {
+      "id": "extra_social",
+      "name": "Дополнительные каналы соцсети",
+      "description": "Подключение дополнительных соцсетей",
+      "type": "monthly",
+      "prices": {
+        "TJS": 120,
+        "UZS": 129000,
+        "USD": 10
+      },
+      "hasChannels": true,
+      "minChannels": 1
+    },
+    "extra_funnel": {
+      "id": "extra_funnel",
+      "name": "Дополнительная воронка",
+      "description": "Создание дополнительной воронки продаж",
+      "type": "monthly",
+      "prices": {
+        "TJS": 120,
+        "UZS": 129000,
+        "USD": 10
+      },
+      "hasChannels": true,
+      "minChannels": 1
+    },
+    "sms_broadcast": {
+      "id": "sms_broadcast",
+      "name": "SMS Рассылка",
+      "description": "Модуль SMS рассылки",
+      "type": "monthly",
+      "prices": {
+        "TJS": 250,
+        "UZS": 250000,
+        "USD": 18
+      },
+      "hasChannels": false
+    },
+    "warehouse": {
+      "id": "warehouse",
+      "name": "Складской учёт и касса",
+      "description": "Модуль складского учёта",
+      "type": "monthly",
+      "prices": {
+        "TJS": 120,
+        "UZS": 129000,
+        "USD": 10
+      },
+      "hasChannels": false
+    },
+    "extra_user": {
+      "id": "extra_user",
+      "name": "Дополнительный пользователь",
+      "description": "Добавление пользователя сверх тарифа",
+      "type": "monthly",
+      "priceFromTariff": true,
+      "hasChannels": false
+    }
+  },
+
+  "modules": {
+    "mini_app_b2b": {
+      "id": "mini_app_b2b",
+      "name": "Mini-app B2B",
+      "description": "Мини-приложение для партнёров и дилеров",
+      "prices": {
+        "TJS": 480,
+        "UZS": 516000,
+        "USD": 40
+      }
+    },
+    "mini_app_b2c": {
+      "id": "mini_app_b2c",
+      "name": "Mini-app B2C",
+      "description": "Мини-приложение для клиентов",
+      "prices": {
+        "TJS": 120,
+        "UZS": 129000,
+        "USD": 10
+      }
+    },
+    "online_store": {
+      "id": "online_store",
+      "name": "Интернет-магазин",
+      "description": "Полноценный интернет-магазин",
+      "prices": {
+        "TJS": 360,
+        "UZS": 399000,
+        "USD": 30
+      }
+    },
+    "integration_1c": {
+      "id": "integration_1c",
+      "name": "Интеграция с 1С",
+      "description": "Синхронизация данных с 1С",
+      "prices": {
+        "TJS": 500,
+        "UZS": 550000,
+        "USD": 45
+      }
+    },
+    "warehouse": {
+      "id": "warehouse",
+      "name": "Складской учёт",
+      "description": "Модуль складского учёта и кассы",
+      "prices": {
+        "TJS": 120,
+        "UZS": 129000,
+        "USD": 10
+      }
+    }
+  },
+
+  "oneTimeServices": {
+    "business_analysis": {
+      "id": "business_analysis",
+      "name": "Анализ бизнес-процессов",
+      "description": "Анализ и оптимизация бизнес-процессов",
+      "prices": {
+        "TJS": 2000,
+        "UZS": 2200000,
+        "USD": 180
+      }
+    },
+    "staff_training": {
+      "id": "staff_training",
+      "name": "Обучение сотрудников",
+      "description": "Обучение персонала работе с CRM",
+      "prices": {
+        "TJS": 1500,
+        "UZS": 1650000,
+        "USD": 135
+      }
+    },
+    "data_import": {
+      "id": "data_import",
+      "name": "Импорт данных",
+      "description": "Перенос данных из других систем",
+      "prices": {
+        "TJS": 1000,
+        "UZS": 1100000,
+        "USD": 90
+      }
+    },
+    "implementation": {
+      "id": "implementation",
+      "name": "Внедрение",
+      "description": "Полное внедрение системы",
+      "pricesFromTariff": true
+    }
+  },
+  
+  "implementation": {
+    "basic": {
+      "id": "basic",
+      "name": "Базовое внедрение",
+      "description": "Полная настройка",
+      "prices": {
+        "TJS": 5000,
+        "UZS": 6000000,
+        "USD": 500
+      }
+    },
+    "standard": {
+      "id": "standard",
+      "name": "Стандартное внедрение",
+      "description": "Полная настройка",
+      "prices": {
+        "TJS": 10000,
+        "UZS": 18000000,
+        "USD": 1000
+      }
+    },
+    "premium": {
+      "id": "premium",
+      "name": "Премиум внедрение",
+      "description": "Полная настройка",
+      "prices": {
+        "TJS": 20000,
+        "UZS": 30000000,
+        "USD": 2500
+      }
+    },
+    "vip": {
+      "id": "vip",
+      "name": "Премиум внедрение",
+      "description": "Полная настройка",
+      "prices": {
+        "TJS": 30000,
+        "UZS": 36000000,
+        "USD": 3000
+      }
+    }
+  },
+  
+  "company": {
+    "name": "SHAMCRM",
+    "phone": "+998785557416",
+    "email": "info@shamcrm.com",
+    "website": "shamcrm.com/price"
+  }
+}
