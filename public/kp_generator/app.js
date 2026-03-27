@@ -1269,8 +1269,11 @@ class CPGenerator {
             }
         }
         
-        document.getElementById('periodTotal').textContent = this.formatTotalPrice(totalToPay);
-        document.getElementById('grandTotal').textContent = this.formatTotalPrice(totalToPay);
+        const periodTotalEl = document.getElementById('periodTotal');
+        if (periodTotalEl) periodTotalEl.textContent = this.formatTotalPrice(totalToPay);
+
+        const grandTotalEl = document.getElementById('grandTotal');
+        if (grandTotalEl) grandTotalEl.textContent = this.formatTotalPrice(totalToPay);
         
         if (summaryItems.innerHTML === '') {
             summaryItems.innerHTML = `
@@ -1439,7 +1442,10 @@ class CPGenerator {
             this.updateSummary();
         });
         
-        document.getElementById('saveBtn').addEventListener('click', () => this.saveAndDownloadPDF());
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveAndDownloadPDF());
+        }
         document.getElementById('closeSuccessBtn').addEventListener('click', () => this.closeModal('successModal'));
 
         const payBtn = document.getElementById('payBtn');
