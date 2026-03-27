@@ -11,6 +11,8 @@ use App\Models\Tariff;
 
 class PriceListController extends Controller
 {
+    private const OPEN_ENDED_END_DATE = '9999-12-31';
+
     public function index()
     {
         $priceLists = Price::query()
@@ -28,6 +30,8 @@ class PriceListController extends Controller
     public function store(StoreRequest $request)
     {
         $data = $request->validated();
+        $data['kind'] = 'base';
+        $data['date'] = $data['date'] ?? self::OPEN_ENDED_END_DATE;
 
         Price::create($data);
 
@@ -37,6 +41,8 @@ class PriceListController extends Controller
     public function update(Price $price, UpdateRequest $request)
     {
         $data = $request->validated();
+        $data['kind'] = 'base';
+        $data['date'] = $data['date'] ?? self::OPEN_ENDED_END_DATE;
 
         $price->update($data);
 

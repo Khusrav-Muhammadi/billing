@@ -40,6 +40,9 @@
                         </td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
+                            @if($tariff->is_tariff && !$tariff->is_extra_user)
+                                <a href="{{ route('tariff.included_services.index', $tariff->id) }}"><i class="mdi mdi-eye" style="font-size: 30px"></i></a>
+                            @endif
                             <a href="#" data-bs-toggle="modal" data-bs-target="#delete{{ $tariff->id }}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
                         </td>
                     </tr>
@@ -82,34 +85,6 @@
                                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                                    name="can_increase" value="1" {{ $tariff->can_increase ? 'checked' : '' }}
                                                    style="width: 20px; height: 20px">
-                                        </div>
-
-                                        <div class="form-group js-included-services-wrap" style="{{ $tariff->is_tariff && !$tariff->is_extra_user ? '' : 'display:none;' }}">
-                                            <label>Включенные услуги (в тариф)</label>
-                                            @php($includedMap = $tariff->includedServices?->keyBy('id') ?? collect())
-                                            <div style="max-height: 240px; overflow:auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px;">
-                                                @foreach($services as $service)
-                                                    @php($included = $includedMap->has($service->id))
-                                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                                                        <label class="mb-0" style="display:flex; align-items:center; gap:8px;">
-                                                            <input type="checkbox"
-                                                                   class="form-check-input js-include-service"
-                                                                   name="included_services[]"
-                                                                   value="{{ $service->id }}"
-                                                                   {{ $included ? 'checked' : '' }}>
-                                                            <span>{{ $service->name }}</span>
-                                                        </label>
-                                                        <input type="number"
-                                                               class="form-control form-control-sm"
-                                                               name="included_services_qty[{{ $service->id }}]"
-                                                               value="{{ $included ? (int) ($includedMap[$service->id]?->pivot?->quantity ?? 1) : 1 }}"
-                                                               min="1"
-                                                               style="width: 110px;"
-                                                               {{ $service->can_increase ? '' : 'disabled' }}>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                            <small class="text-muted">Количество учитывается только для услуг с “Можно увеличивать количество”.</small>
                                         </div>
 
                                         <div class="form-group">
@@ -211,31 +186,6 @@
                                    style="width: 20px; height: 20px">
                         </div>
 
-                        <div class="form-group js-included-services-wrap" style="display:none;">
-                            <label>Включенные услуги (в тариф)</label>
-                            <div style="max-height: 240px; overflow:auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px;">
-                                @foreach($services as $service)
-                                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                                        <label class="mb-0" style="display:flex; align-items:center; gap:8px;">
-                                            <input type="checkbox"
-                                                   class="form-check-input js-include-service"
-                                                   name="included_services[]"
-                                                   value="{{ $service->id }}">
-                                            <span>{{ $service->name }}</span>
-                                        </label>
-                                        <input type="number"
-                                               class="form-control form-control-sm"
-                                               name="included_services_qty[{{ $service->id }}]"
-                                               value="1"
-                                               min="1"
-                                               style="width: 110px;"
-                                               {{ $service->can_increase ? '' : 'disabled' }}>
-                                    </div>
-                                @endforeach
-                            </div>
-                            <small class="text-muted">Количество учитывается только для услуг с “Можно увеличивать количество”.</small>
-                        </div>
-
                         <div class="form-group">
                             <label for="name">Тариф</label>
                             <input type="checkbox" class="form-check-inline custom-checkbox js-is-tariff"
@@ -281,12 +231,6 @@
                 if (!cb || !wrap) return;
                 wrap.style.display = cb.checked ? '' : 'none';
 
-                const isTariff = root.querySelector('.js-is-tariff');
-                const includedWrap = root.querySelector('.js-included-services-wrap');
-                if (isTariff && includedWrap) {
-                    const hideByExtra = cb && cb.checked;
-                    includedWrap.style.display = (isTariff.checked && !hideByExtra) ? '' : 'none';
-                }
             };
 
             // Create modal

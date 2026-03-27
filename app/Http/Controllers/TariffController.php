@@ -41,6 +41,7 @@ class TariffController extends Controller
     public function store(StoreRequest $request)
     {
         $data = $request->validated();
+        $data['price'] = (int) ($data['price'] ?? 0);
 
         // Checkbox fields: absent means "false"
         $data['is_tariff'] = (bool) ($data['is_tariff'] ?? false);
@@ -65,6 +66,7 @@ class TariffController extends Controller
     public function update(Tariff $tariff, UpdateRequest $request)
     {
         $data = $request->validated();
+        $data['price'] = (int) ($data['price'] ?? $tariff->price ?? 0);
 
         $data['is_tariff'] = (bool) ($data['is_tariff'] ?? false);
         $data['is_extra_user'] = (bool) ($data['is_extra_user'] ?? false);
@@ -121,6 +123,79 @@ class TariffController extends Controller
         $tariff->delete();
 
         return redirect()->back();
+    }
+
+    public function includedServicesIndex(Tariff $tariff)
+    {
+        abort_if(!$tariff->is_tariff || $tariff->is_extra_user, 404);
+
+        $tariff->load('includedServices');
+
+        $services = Tariff::query()
+            ->where('is_tariff', false)
+            ->where(function ($q) {
+                $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
+            })
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.tariffs.included_services', compact('tariff', 'services'));
+    }
+
+    public function includedServicesStore(Tariff $tariff, Request $request)
+    {
+        abort_if(!$tariff->is_tariff || $tariff->is_extra_user, 404);
+
+        $data = $request->validate([
+            'service_id' => ['required', 'integer', 'exists:tariffs,id'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $service = Tariff::query()->findOrFail((int) $data['service_id']);
+        abort_if((bool) $service->is_tariff || (bool) $service->is_extra_user, 422);
+
+        $qty = (int) ($data['quantity'] ?? 1);
+        if ($qty < 1) $qty = 1;
+        if (!(bool) ($service->can_increase ?? false)) {
+            $qty = 1;
+        }
+
+        $tariff->includedServices()->syncWithoutDetaching([
+            $service->id => ['quantity' => $qty],
+        ]);
+
+        return redirect()->route('tariff.included_services.index', $tariff);
+    }
+
+    public function includedServicesUpdate(Tariff $tariff, Tariff $service, Request $request)
+    {
+        abort_if(!$tariff->is_tariff || $tariff->is_extra_user, 404);
+        abort_if((bool) $service->is_tariff || (bool) $service->is_extra_user, 404);
+
+        $data = $request->validate([
+            'quantity' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $qty = (int) $data['quantity'];
+        if (!(bool) ($service->can_increase ?? false)) {
+            $qty = 1;
+        }
+
+        $tariff->includedServices()->syncWithoutDetaching([
+            $service->id => ['quantity' => $qty],
+        ]);
+
+        return redirect()->route('tariff.included_services.index', $tariff);
+    }
+
+    public function includedServicesDestroy(Tariff $tariff, Tariff $service)
+    {
+        abort_if(!$tariff->is_tariff || $tariff->is_extra_user, 404);
+        abort_if((bool) $service->is_tariff || (bool) $service->is_extra_user, 404);
+
+        $tariff->includedServices()->detach($service->id);
+
+        return redirect()->route('tariff.included_services.index', $tariff);
     }
 
     public function getTariffByCurrency(Request $request)

@@ -8,6 +8,7 @@ use App\Jobs\SendOrganizationLicense;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
+use App\Models\Price;
 use App\Models\Transaction;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Carbon\Carbon;
@@ -17,6 +18,39 @@ use Illuminate\Support\Str;
 
 class OrganizationRepository implements OrganizationRepositoryInterface
 {
+    private function getTariffMonthlyPriceFromPriceList(Client $client, Carbon $asOf): float
+    {
+        $currencyId = (int) ($client->currency_id ?? 0);
+        if ($currencyId <= 0) return 0.0;
+
+        // Client::tariff_id points to TariffCurrency in some flows, so prefer the base tariff id from tariffPrice.
+        $baseTariffId = (int) ($client->tariffPrice?->tariff_id ?? 0);
+        if ($baseTariffId <= 0) {
+            $baseTariffId = (int) ($client->tariff_id ?? 0);
+        }
+        if ($baseTariffId <= 0) return 0.0;
+
+        $date = $asOf->toDateString();
+
+        $price = Price::query()
+            ->where('tariff_id', $baseTariffId)
+            ->where('currency_id', $currencyId)
+            ->where('kind', 'base')
+            ->whereNull('organization_id') // общая цена
+            ->where(function ($q) use ($date) {
+                $q->whereNull('start_date')->orWhere('start_date', '<=', $date);
+            })
+            ->where(function ($q) use ($date) {
+                $q->whereNull('date')->orWhere('date', '>=', $date);
+            })
+            ->orderByRaw("COALESCE(start_date, '0000-00-00') DESC")
+            ->orderByRaw("COALESCE(date, '9999-12-31') DESC")
+            ->orderByDesc('id')
+            ->first();
+
+        return (float) ($price?->sum ?? 0);
+    }
+
     public function index(array $data)
     {
         $query = Client::query()->whereHas('transactions')->orWhere('nfr', true);
@@ -50,7 +84,12 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             else {
                 $daysInMonth = Carbon::now()->daysInMonth;
 
-                $sum = $client->tariffPrice->tariff_price / $daysInMonth;
+                $monthlyTariffPrice = $this->getTariffMonthlyPriceFromPriceList($client, Carbon::now());
+                if ($monthlyTariffPrice <= 0 && $client->tariffPrice) {
+                    $monthlyTariffPrice = (float) $client->tariffPrice->tariff_price;
+                }
+
+                $sum = $monthlyTariffPrice / $daysInMonth;
 
                 if (!$client->is_demo) {
                     $currency = $client->currency;
@@ -67,13 +106,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                         'accounted_amount' => $accountedAmount
 
                     ]);
-                    if ($client->tariff->id == 1) {
-                        $sum = 499;
-                    } elseif ($client->tariff->id == 2) {
-                        $sum = 1299;
-                    } else {
-                        $sum = 2599;
-                    }
+                    $sum = $monthlyTariffPrice;
 
                     $currency = $client->currency;
 

@@ -157,6 +157,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/store', [TariffController::class, 'store'])->name('tariff.store');
         Route::patch('/{tariff}', [TariffController::class, 'update'])->name('tariff.update');
         Route::delete('/{tariff}', [TariffController::class, 'destroy'])->name('tariff.delete');
+        Route::get('/{tariff}/included-services', [TariffController::class, 'includedServicesIndex'])->name('tariff.included_services.index');
+        Route::post('/{tariff}/included-services', [TariffController::class, 'includedServicesStore'])->name('tariff.included_services.store');
+        Route::patch('/{tariff}/included-services/{service}', [TariffController::class, 'includedServicesUpdate'])->name('tariff.included_services.update');
+        Route::delete('/{tariff}/included-services/{service}', [TariffController::class, 'includedServicesDestroy'])->name('tariff.included_services.destroy');
     });
 
     Route::group(['prefix' => 'price_list'], function () {

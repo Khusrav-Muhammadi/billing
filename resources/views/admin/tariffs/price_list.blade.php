@@ -18,7 +18,6 @@
                     <th>Дата начала</th>
                     <th>Дата завершения</th>
                     <th>Валюта</th>
-                    <th>Тип</th>
                     <th>Услуга</th>
                     <th>Организация</th>
                     <th>Сумма</th>
@@ -30,9 +29,8 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $price->start_date ?? '—' }}</td>
-                        <td>{{ $price->date }}</td>
+                        <td>{{ ($price->date ?? '') === '9999-12-31' ? '—' : ($price->date ?? '—') }}</td>
                         <td>{{ $price->currency?->name }}</td>
-                        <td>{{ $price->kind === 'extra_user' ? 'Доп. пользователь' : 'База' }}</td>
                         <td>{{ $price->tariff?->name }}</td>
                         <td>{{ $price->organization?->name }}</td>
                         <td>{{ $price->sum }}</td>
@@ -52,13 +50,6 @@
                                         <h5 class="modal-title" id="exampleModalLabel">Изменение прайслиста</h5>
                                     </div>
                                     <div class="modal-body">
-                                        <div class="form-group">
-                                            <label for="kind">Тип цены <span class="text-danger">*</span></label>
-                                            <select class="form-control" name="kind" required>
-                                                <option value="base" {{ ($price->kind ?? 'base') === 'base' ? 'selected' : '' }}>База (тариф/услуга)</option>
-                                                <option value="extra_user" {{ ($price->kind ?? '') === 'extra_user' ? 'selected' : '' }}>Доп. пользователь (для тарифа)</option>
-                                            </select>
-                                        </div>
                                         <div class="form-group">
                                             <label for="tariff_id">Услуга <span class="text-danger">*</span></label>
                                             <select class="form-control" name="tariff_id" required>
@@ -88,7 +79,8 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="name">Дата завершения</label>
-                                            <input type="date" class="form-control" name="date" value="{{ $price->date }}">
+                                            <input type="date" class="form-control" name="date"
+                                                   value="{{ ($price->date ?? '') === '9999-12-31' ? '' : $price->date }}">
                                         </div>
 
                                         <div class="form-group">
@@ -152,16 +144,6 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
-                            <label for="kind">Тип цены <span class="text-danger">*</span></label>
-                            <select class="form-control @error('kind') is-invalid @enderror" name="kind" required>
-                                <option value="base" {{ old('kind', 'base') === 'base' ? 'selected' : '' }}>База (тариф/услуга)</option>
-                                <option value="extra_user" {{ old('kind') === 'extra_user' ? 'selected' : '' }}>Доп. пользователь (для тарифа)</option>
-                            </select>
-                            @error('kind')
-                            <span class="text-danger">{{ $message }}</span>
-                            @enderror
-                        </div>
-                        <div class="form-group">
                             <label for="tariff_id">Услуга <span class="text-danger">*</span></label>
                             <select class="form-control form-control @error('tariff_id') is-invalid @enderror"
                                     name="tariff_id" required>
@@ -196,11 +178,12 @@
                         </div>
                         <div class="form-group">
                             <label for="name">Дата начала</label>
-                            <input type="date" class="form-control" name="start_date" required>
+                            <input type="date" class="form-control" name="start_date"
+                                   value="{{ old('start_date', now()->format('Y-m-d')) }}" required>
                         </div>
                         <div class="form-group">
                             <label for="name">Дата завершения</label>
-                            <input type="date" class="form-control" name="date" required>
+                            <input type="date" class="form-control" name="date" value="{{ old('date') }}">
                         </div>
                         <div class="form-group">
                             <label for="name">Сумма</label>

@@ -45,7 +45,7 @@ class ConnectedClientServiceController extends Controller
         $currencies = Currency::all()->keyBy('symbol_code');
 
         $tariffs = Tariff::where('is_tariff', true)
-            ->with(['prices.currency'])
+            ->with(['prices.currency', 'includedServices'])
             ->get()
             ;
 
@@ -101,7 +101,7 @@ class ConnectedClientServiceController extends Controller
         $currencies = Currency::all()->keyBy('symbol_code');
 
         $tariffs = Tariff::where('is_tariff', true)
-            ->with(['prices.currency'])
+            ->with(['prices.currency', 'includedServices'])
             ->get()
             ;
 
@@ -395,14 +395,17 @@ class ConnectedClientServiceController extends Controller
                 $extraUserPrices[$symbol] = (float) $row['sum'];
             }
 
-            // Temporary fallback (keeps old behavior until prices are filled in DB)
-            if (empty($extraUserPrices)) {
-                foreach ($prices as $symbol => $sum) {
-                    $extraUserPrices[$symbol] = round(((float) $sum) * 0.10, 2);
-                }
-            }
+            // If there is no extra user price in DB for a currency, it must be treated as 0.
 
             $key = 'tariff-' . $tariff->id;
+
+            $includedServicesKeys = [];
+            $includedQty = [];
+            foreach (($tariff->includedServices ?? []) as $includedService) {
+                $serviceKey = 'service-' . $includedService->id;
+                $includedServicesKeys[] = $serviceKey;
+                $includedQty[$serviceKey] = (int) ($includedService->pivot?->quantity ?? 1);
+            }
 
             $tariffsForJs[$key] = [
                 'id'              => $tariff->id,
@@ -411,8 +414,9 @@ class ConnectedClientServiceController extends Controller
                 'prices'          => $prices,
                 'extraUserPrices' => $extraUserPrices,
                 'prices12Months'  => array_map(fn($p) => round($p * 0.85, 2), $prices),
-                'extraUserPrice'  => array_map(fn($p) => round($p * 0.10, 2), $prices),
-                'includedServices' => [],
+                'extraUserPrice'  => $extraUserPrices,
+                'includedServices' => $includedServicesKeys,
+                'includedServiceQuantities' => $includedQty,
                 'features'        => [],
             ];
         }

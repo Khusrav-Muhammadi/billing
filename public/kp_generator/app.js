@@ -280,9 +280,7 @@ class CPGenerator {
     getExtraUserMonthlyBase(tariffKey) {
         const map = this.getExtraUserPricesMap(tariffKey);
         const fromDb = this.getPriceByCurrency(map);
-        if (fromDb > 0) return fromDb;
-        // Fallback to old behavior if not configured in DB yet.
-        return this.getTariffMonthlyBase(tariffKey) * 0.10;
+        return fromDb;
     }
 
     getExtraUserPriceByKey(tariffKey) {
@@ -668,6 +666,11 @@ class CPGenerator {
         if (!tariffKey || !serviceKey) return 0;
         
         const tariff = this.config.tariffs[tariffKey];
+        const includedQty = tariff?.includedServiceQuantities || {};
+        const fromDb = includedQty?.[serviceKey];
+        if (typeof fromDb === 'number' && Number.isFinite(fromDb)) {
+            return Math.max(0, Math.floor(fromDb));
+        }
         const tf = tariff?.tariffFeatures || {};
         
         // Telegram bots: based on tariffFeatures
@@ -743,15 +746,6 @@ class CPGenerator {
             });
         }
         
-        // Enable SMS broadcast for premium and vip by default
-        if (tariffKey === 'premium' || tariffKey === 'vip') {
-            if (!this.state.selectedServices['sms_broadcast']) {
-                this.state.selectedServices['sms_broadcast'] = { enabled: true, channels: 1 };
-            } else {
-                this.state.selectedServices['sms_broadcast'].enabled = true;
-            }
-        }
-        
         this.renderServices();
         this.renderTariffs();
         this.updateSummary();
@@ -775,7 +769,10 @@ class CPGenerator {
             
             const isIncluded = selectedTariff?.includedServices?.includes(key);
             const isSelected = this.state.selectedServices[key]?.enabled;
-            const channels = this.state.selectedServices[key]?.channels || (isIncluded ? 1 : 1);
+            const includedChannels = (isIncluded && service.hasChannels)
+                ? Math.max(1, this.getIncludedChannels(this.state.selectedTariff, key))
+                : 0;
+            const channels = this.state.selectedServices[key]?.channels || (includedChannels || 1);
             const unitPrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             
             const card = document.createElement('div');

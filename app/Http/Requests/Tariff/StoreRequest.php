@@ -17,7 +17,7 @@ class StoreRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'price' => ['required'],
+            'price' => ['nullable'],
             'user_count' => ['nullable', 'integer', 'min:0'],
             'project_count' => ['nullable', 'integer', 'min:0'],
             'end_date' => ['nullable', 'date'],
