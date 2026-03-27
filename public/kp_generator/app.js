@@ -216,11 +216,36 @@ class CPGenerator {
     }
     
     renderAll() {
+        this.applyTariffDefaults();
         this.renderClientPartnerSelectors();
         this.renderTariffs();
         this.renderServices();
         this.updateExtraUsersSection();
         this.updateSummary();
+    }
+
+    applyTariffDefaults() {
+        if (!this.state.selectedTariff) return;
+        const tariff = this.config?.tariffs?.[this.state.selectedTariff];
+        if (!tariff) return;
+
+        const included = Array.isArray(tariff.includedServices) ? tariff.includedServices : [];
+        included.forEach((serviceKey) => {
+            const service = this.config?.services?.[serviceKey];
+            if (!service) return;
+
+            const includedMin = service.hasChannels
+                ? Math.max(1, this.getIncludedChannels(this.state.selectedTariff, serviceKey) || 1)
+                : 1;
+
+            const prev = this.state.selectedServices?.[serviceKey] || { enabled: false, channels: includedMin };
+            const prevChannels = Number(prev.channels) || includedMin;
+
+            this.state.selectedServices[serviceKey] = {
+                enabled: true,
+                channels: service.hasChannels ? Math.max(prevChannels, includedMin) : 1
+            };
+        });
     }
 
     getCurrentCurrency() {
@@ -799,7 +824,7 @@ class CPGenerator {
                     </div>
                     <label class="service-toggle">
                         <input type="checkbox" 
-                            ${isSelected ? 'checked' : ''} 
+                            ${(isSelected || isIncluded) ? 'checked' : ''} 
                             ${isIncluded ? 'disabled' : ''}
                             data-service="${key}">
                         <span class="toggle-slider"></span>
