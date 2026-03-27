@@ -13,6 +13,14 @@ class PriceListController extends Controller
 {
     private const OPEN_ENDED_END_DATE = '9999-12-31';
 
+    private function normalizeDecimal(string $value): string
+    {
+        $v = trim($value);
+        $v = str_replace([' ', "\u{00A0}"], '', $v);
+        $v = str_replace(',', '.', $v);
+        return $v;
+    }
+
     public function index()
     {
         $priceLists = Price::query()
@@ -32,6 +40,7 @@ class PriceListController extends Controller
         $data = $request->validated();
         $data['kind'] = 'base';
         $data['date'] = $data['date'] ?? self::OPEN_ENDED_END_DATE;
+        $data['sum'] = $this->normalizeDecimal((string) $data['sum']);
 
         Price::create($data);
 
@@ -43,6 +52,7 @@ class PriceListController extends Controller
         $data = $request->validated();
         $data['kind'] = 'base';
         $data['date'] = $data['date'] ?? self::OPEN_ENDED_END_DATE;
+        $data['sum'] = $this->normalizeDecimal((string) $data['sum']);
 
         $price->update($data);
 

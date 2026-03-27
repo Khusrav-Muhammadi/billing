@@ -85,7 +85,7 @@
 
                                         <div class="form-group">
                                             <label for="name">Сумма</label>
-                                            <input type="number" class="form-control" name="sum" value="{{ $price->sum }}" required>
+                                            <input type="text" inputmode="decimal" class="form-control" name="sum" value="{{ $price->sum }}" required>
                                         </div>
                                         <div class="form-group">
                                             <label for="tariff_id">Валюта <span class="text-danger">*</span></label>
@@ -187,7 +187,7 @@
                         </div>
                         <div class="form-group">
                             <label for="name">Сумма</label>
-                            <input type="number" class="form-control" name="sum">
+                            <input type="text" inputmode="decimal" class="form-control" name="sum" value="{{ old('sum') }}">
                         </div>
                         <div class="form-group">
                             <label for="tariff_id">Валюта <span class="text-danger">*</span></label>

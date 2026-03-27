@@ -20,7 +20,7 @@ class StoreRequest extends FormRequest
             'organization_id' => ['nullable', Rule::exists('organizations','id')],
             'start_date' => ['required', 'date'],
             'date' => ['nullable', 'date'],
-            'sum' => ['required'],
+            'sum' => ['required', 'regex:/^\\d+(?:[\\.,]\\d{1,2})?$/'],
             'currency_id' => ['required', Rule::exists('currencies','id')],
         ];
     }
