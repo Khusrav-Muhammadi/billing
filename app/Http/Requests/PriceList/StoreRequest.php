@@ -17,7 +17,7 @@ class StoreRequest extends FormRequest
     {
         return [
             'tariff_id' => ['required', Rule::exists('tariffs','id')],
-            'client_id' => ['nullable', Rule::exists('clients','id')],
+            'organization_id' => ['nullable', Rule::exists('organizations','id')],
             'start_date' => ['required', 'date'],
             'kind' => ['required', Rule::in(['base', 'extra_user'])],
             'date' => ['required', 'date'],

@@ -18,7 +18,14 @@ class Tariff extends Model
         'is_extra_user',
         'parent_tariff_id',
         'currency_id',
-        'sale'
+        'sale',
+        'end_date',
+        'can_increase',
+    ];
+
+    protected $casts = [
+        'end_date' => 'date',
+        'can_increase' => 'bool',
     ];
 
     public function currencies()
@@ -29,5 +36,12 @@ class Tariff extends Model
     public function prices()
     {
         return $this->hasMany(Price::class);
+    }
+
+    public function includedServices()
+    {
+        return $this->belongsToMany(Tariff::class, 'tariff_included_services', 'tariff_id', 'service_id')
+            ->withPivot(['quantity'])
+            ->withTimestamps();
     }
 }

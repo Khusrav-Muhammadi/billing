@@ -14,6 +14,7 @@ class CPGenerator {
         };
         this.state = {
             currency: 'USD',
+            pricingDate: '',
             periodMonths: 6,
             selectedTariff: null,
             extraUsers: 0,
@@ -39,13 +40,23 @@ class CPGenerator {
             previousSuggestedPrice: 0,
             implementationPriceWasAutoSet: false
         };
+
+        this.state.pricingDate = this.getTodayYmd();
         
         this.init();
     }
+
+    getTodayYmd() {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
     
     async init() {
-        await this.loadConfig();
         this.parseQueryParams();
+        await this.loadConfig();
         this.renderClientPartnerSelectors();
         this.renderAll();
         this.bindEvents();
@@ -53,7 +64,8 @@ class CPGenerator {
     
     async loadConfig() {
         try {
-            const response = await fetch('/kp/config', {
+            const date = this.state.pricingDate || this.getTodayYmd();
+            const response = await fetch(`/kp/config?date=${encodeURIComponent(date)}`, {
                 credentials: 'same-origin',
                 headers: {
                     'Accept': 'application/json',
@@ -75,20 +87,20 @@ class CPGenerator {
             this.combo.client.items = this.clients;
             this.combo.partner.items = this.partners;
         } catch (error) {
-            console.error('Failed to load config from API, fallback to static file:', error);
+            console.error('Failed to load config from API:', error);
+            // No local-file fallback: always rely on API to avoid mismatched data.
             this.config = this.getDefaultConfig();
-            try {
-                const response = await fetch('data/config.json', {
-                    headers: { 'Accept': 'application/json' }
-                });
-                this.config = await response.json();
-            } catch (fileError) {
-                console.error('Failed to load local config.json:', fileError);
-            }
+            this.clientPrices = {};
+            this.clients = [];
+            this.partners = [];
+            this.combo.client.items = [];
+            this.combo.partner.items = [];
         }
 
         const tariffKeys = Object.keys(this.config.tariffs || {});
-        if (!this.state.selectedTariff && tariffKeys.length) {
+        if (!tariffKeys.length) {
+            this.state.selectedTariff = null;
+        } else if (!this.state.selectedTariff || !tariffKeys.includes(this.state.selectedTariff)) {
             this.state.selectedTariff = tariffKeys[0];
         }
     }
@@ -116,9 +128,16 @@ class CPGenerator {
         const currencies = this.config?.currencies || {};
         const byId = this.config?.currenciesById || {};
 
+        const codeFromCountry = (() => {
+            const id = Number(client.country_id);
+            if (id === 1) return 'TJS';
+            if (id === 2) return 'UZS';
+            return 'USD';
+        })();
+
         const codeFromClient = client.currency && currencies[client.currency] ? client.currency : null;
         const codeFromId = client.currency_id && byId[String(client.currency_id)] ? byId[String(client.currency_id)] : null;
-        const code = codeFromClient || codeFromId;
+        const code = codeFromCountry || codeFromClient || codeFromId;
 
         if (code && currencies[code]) {
             this.state.currency = code;
@@ -141,6 +160,11 @@ class CPGenerator {
         this.state.dealStatusId = params.get('deal_status_id') || '';
         this.state.apiUrl = params.get('url') || '';
         this.state.dealId = params.get('deal_id') || '';
+
+        const pricingDate = params.get('date');
+        if (pricingDate) {
+            this.state.pricingDate = pricingDate;
+        }
     }
 
     getApiHost() {
@@ -216,10 +240,7 @@ class CPGenerator {
     getPriceByCurrency(prices) {
         if (!prices) return 0;
         const direct = prices?.[this.state.currency];
-        if (typeof direct === 'number') return direct;
-        const firstKey = Object.keys(prices)[0];
-        const fallback = firstKey ? prices[firstKey] : 0;
-        return typeof fallback === 'number' ? fallback : 0;
+        return typeof direct === 'number' ? direct : 0;
     }
 
     getTariffPricesMap(tariffKey) {
@@ -387,7 +408,7 @@ class CPGenerator {
 
         const client = this.getSelectedClient();
         if (!client) {
-            alert('Выберите клиента.');
+            alert('Выберите организацию.');
             return;
         }
 
@@ -413,7 +434,7 @@ class CPGenerator {
         };
 
         add('_token', this.state.csrfToken);
-        add('name', client.name || this.state.clientName || 'Клиент');
+        add('name', client.name || this.state.clientName || 'Организация');
         add('phone', client.phone || '');
         add('email', client.email || '');
         add('sum', sum);
@@ -444,6 +465,10 @@ class CPGenerator {
     }
 
     renderClientPartnerSelectors() {
+        const dateInput = document.getElementById('pricingDate');
+        if (dateInput) {
+            dateInput.value = this.state.pricingDate || this.getTodayYmd();
+        }
         this.renderCombo('client');
         this.renderCombo('partner');
     }
@@ -541,7 +566,10 @@ class CPGenerator {
         }
         this.combo[kind].controller = new AbortController();
 
-        const url = `${endpoint}?search=${encodeURIComponent(term)}`;
+        const date = this.state.pricingDate || this.getTodayYmd();
+        const url = kind === 'partner'
+            ? `${endpoint}?search=${encodeURIComponent(term)}&date=${encodeURIComponent(date)}`
+            : `${endpoint}?search=${encodeURIComponent(term)}`;
         const response = await fetch(url, {
             credentials: 'same-origin',
             signal: this.combo[kind].controller.signal,
@@ -561,7 +589,7 @@ class CPGenerator {
     selectComboItem(kind, item) {
         if (kind === 'client') {
             this.state.selectedClientId = item.id;
-            this.state.clientName = item.name || 'Клиент';
+            this.state.clientName = item.name || 'Организация';
             this.setCurrencyFromClient(item);
             this.renderTariffs();
             this.renderServices();
@@ -585,7 +613,7 @@ class CPGenerator {
         const managerNameEl = document.getElementById('managerName');
         const partnerNameEl = document.getElementById('partnerName');
 
-        if (clientNameEl) clientNameEl.textContent = this.state.clientName || 'Клиент';
+        if (clientNameEl) clientNameEl.textContent = this.state.clientName || 'Организация';
         if (managerNameEl) managerNameEl.textContent = this.state.managerName || 'Менеджер';
 
         const partnerText = this.state.partnerName || 'Партнер не выбран';
@@ -1363,6 +1391,30 @@ class CPGenerator {
     }
 
     bindEvents() {
+        const pricingDateInput = document.getElementById('pricingDate');
+        if (pricingDateInput) {
+            pricingDateInput.addEventListener('change', async (e) => {
+                const value = (e.target && e.target.value) ? String(e.target.value) : '';
+                this.state.pricingDate = value || this.getTodayYmd();
+                this.showLoading();
+                try {
+                    await this.loadConfig();
+                    if (this.state.selectedClientId) {
+                        const selectedClient = (this.clients || []).find((c) => String(c.id) === String(this.state.selectedClientId));
+                        if (selectedClient) {
+                            this.setCurrencyFromClient(selectedClient);
+                        }
+                    }
+                    this.renderClientPartnerSelectors();
+                    this.renderAll();
+                } catch (err) {
+                    console.error('Failed to reload config for date:', err);
+                } finally {
+                    this.hideLoading();
+                }
+            });
+        }
+
         const clientInput = document.getElementById('clientSelect');
         if (clientInput) {
             clientInput.addEventListener('focus', () => {

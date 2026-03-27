@@ -44,13 +44,13 @@
             </div>
         </div>
     </form>
-    <div class="card-body">
-        <h4 class="card-title">Клиенты</h4>
-        <a href="{{ route('organization_v2.store') }}" type="button" class="btn btn-primary">Создать</a>
-        <div class="table-responsive">
-            @include('admin.partials.organizations_v2', ['organizations' => $organizations])
-        </div>
-    </div>
+	    <div class="card-body">
+	        <h4 class="card-title">Клиенты</h4>
+	        <a href="{{ route('client.create') }}" type="button" class="btn btn-primary">Создать</a>
+	        <div class="table-responsive">
+	            @include('admin.partials.organizations_v2', ['organizations' => $organizations])
+	        </div>
+	    </div>
 
 @endsection
 

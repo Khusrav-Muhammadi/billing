@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Partner\StoreRequest;
 use App\Models\Client;
 use App\Models\Currency;
+use App\Models\Organization;
 use App\Models\Partner;
 use App\Models\PartnerProcent;
 use App\Models\Tariff;
@@ -14,6 +15,12 @@ use Illuminate\Http\Request;
 
 class ConnectedClientServiceController extends Controller
 {
+    private function getAsOfTs(Request $request): int
+    {
+        $ts = $this->parseDateToTs((string) $request->query('date', ''));
+        return $ts ?? strtotime(date('Y-m-d'));
+    }
+
     private function parseDateToTs(?string $value): ?int
     {
         $v = trim((string) $value);
@@ -32,8 +39,9 @@ class ConnectedClientServiceController extends Controller
         return null;
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $asOfTs = $this->getAsOfTs($request);
         $currencies = Currency::all()->keyBy('symbol_code');
 
         $tariffs = Tariff::where('is_tariff', true)
@@ -55,18 +63,19 @@ class ConnectedClientServiceController extends Controller
             ->get()
             ->groupBy('parent_tariff_id');
 
-        $clients = Client::select('id', 'name', 'email', 'phone', 'currency_id')
-            ->with('currency')
+        $organizations = Organization::query()
+            ->select('id', 'name', 'phone', 'client_id')
+            ->with(['client.currency'])
             ->orderBy('name')
             ->get();
 
         $partners = User::role();
 
-        // Базовый конфиг — цены без client_id (для всех)
-        $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, null);
+        // Базовый конфиг — цены без organization_id (для всех)
+        $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, $asOfTs, null);
 
-        // Персональные цены по клиентам — { client_id: { tariff_key: { currency: price } } }
-        $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId);
+        // Персональные цены по организациям — { organization_id: { tariff_key: { currency: price } } }
+        $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, $asOfTs);
 
         return view('kp.index', [
             'config'       => $config,
@@ -76,6 +85,7 @@ class ConnectedClientServiceController extends Controller
                 'name'     => $c->name,
                 'email'    => $c->email ?? '',
                 'phone'    => $c->phone ?? '',
+                'country_id' => $c->country_id,
                 'currency' => $c->currency?->symbol_code,
             ]),
         ]);
@@ -85,8 +95,9 @@ class ConnectedClientServiceController extends Controller
      * API endpoint for KP generator (iframe).
      * Returns unified config + clients + partners pulled from DB.
      */
-    public function config(): JsonResponse
+    public function config(Request $request): JsonResponse
     {
+        $asOfTs = $this->getAsOfTs($request);
         $currencies = Currency::all()->keyBy('symbol_code');
 
         $tariffs = Tariff::where('is_tariff', true)
@@ -108,8 +119,9 @@ class ConnectedClientServiceController extends Controller
             ->get()
             ->groupBy('parent_tariff_id');
 
-        $clients = Client::select('id', 'name', 'email', 'phone', 'currency_id')
-            ->with('currency')
+        $organizations = Organization::query()
+            ->select('id', 'name', 'phone', 'client_id')
+            ->with(['client.currency'])
             ->orderBy('name')
             ->get();
 
@@ -120,21 +132,23 @@ class ConnectedClientServiceController extends Controller
             ->orderBy('name')
             ->get();
 
-        $partnerPercentsById = $this->getPartnerTariffPercents($partners->pluck('id')->all());
+        $partnerPercentsById = $this->getPartnerTariffPercents($partners->pluck('id')->all(), $asOfTs);
 
-        $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, null);
-        $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId);
+        $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, $asOfTs, null);
+        $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, $asOfTs);
 
         return response()->json([
             'config'        => $config,
             'client_prices' => $clientPrices,
-            'clients'       => $clients->map(fn($c) => [
-                'id'       => $c->id,
-                'name'     => $c->name,
-                'email'    => $c->email ?? '',
-                'phone'    => $c->phone ?? '',
-                'currency_id' => $c->currency_id,
-                'currency' => $c->currency?->symbol_code,
+            // Keep key name "clients" for backward-compatibility, but items are organizations.
+            'clients'       => $organizations->map(fn($o) => [
+                'id'          => $o->id,
+                'name'        => $o->name,
+                'email'       => '',
+                'phone'       => $o->phone ?? '',
+                'country_id'  => $o->client?->country_id,
+                'currency_id' => $o->client?->currency_id,
+                'currency'    => $o->client?->currency?->symbol_code,
             ]),
             'partners'      => $partners->map(fn($p) => [
                 'id'    => $p->id,
@@ -150,13 +164,13 @@ class ConnectedClientServiceController extends Controller
     {
         $search = trim((string) $request->query('search', ''));
 
-        $clients = Client::select('id', 'name', 'email', 'phone', 'currency_id')
-            ->with('currency')
+        $organizations = Organization::query()
+            ->select('id', 'name', 'phone', 'client_id')
+            ->with(['client.currency'])
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%' . $search . '%';
                 $query->where(function ($q) use ($like) {
                     $q->where('name', 'like', $like)
-                        ->orWhere('email', 'like', $like)
                         ->orWhere('phone', 'like', $like);
                 });
             })
@@ -165,19 +179,22 @@ class ConnectedClientServiceController extends Controller
             ->get();
 
         return response()->json([
-            'clients' => $clients->map(fn($c) => [
-                'id'          => $c->id,
-                'name'        => $c->name,
-                'email'       => $c->email ?? '',
-                'phone'       => $c->phone ?? '',
-                'currency_id' => $c->currency_id,
-                'currency'    => $c->currency?->symbol_code,
+            // Keep key name "clients" for backward-compatibility, but items are organizations.
+            'clients' => $organizations->map(fn($o) => [
+                'id'          => $o->id,
+                'name'        => $o->name,
+                'email'       => '',
+                'phone'       => $o->phone ?? '',
+                'country_id'  => $o->client?->country_id,
+                'currency_id' => $o->client?->currency_id,
+                'currency'    => $o->client?->currency?->symbol_code,
             ]),
         ]);
     }
 
     public function partners(Request $request): JsonResponse
     {
+        $asOfTs = $this->getAsOfTs($request);
         $search = trim((string) $request->query('search', ''));
 
         $partners = User::query()
@@ -195,7 +212,7 @@ class ConnectedClientServiceController extends Controller
             ->limit(50)
             ->get();
 
-        $partnerPercentsById = $this->getPartnerTariffPercents($partners->pluck('id')->all());
+        $partnerPercentsById = $this->getPartnerTariffPercents($partners->pluck('id')->all(), $asOfTs);
 
         return response()->json([
             'partners' => $partners->map(fn($p) => [
@@ -208,12 +225,11 @@ class ConnectedClientServiceController extends Controller
         ]);
     }
 
-    private function getPartnerTariffPercents(array $partnerIds): array
+    private function getPartnerTariffPercents(array $partnerIds, int $asOfTs): array
     {
         $partnerIds = array_values(array_filter(array_map('intval', $partnerIds)));
         if (!$partnerIds) return [];
 
-        $today = strtotime(date('Y-m-d'));
         $best = []; // partnerId => ['ts' => int, 'id' => int, 'value' => int]
 
         $rows = PartnerProcent::query()
@@ -223,7 +239,7 @@ class ConnectedClientServiceController extends Controller
         foreach ($rows as $row) {
             $pid = (string) $row->partner_id;
             $ts = $this->parseDateToTs($row->date) ?? 0;
-            if ($ts > $today) continue;
+            if ($ts > $asOfTs) continue;
 
             $val = (int) ($row->procent_from_tariff ?? 0);
             if ($val < 0) $val = 0;
@@ -246,9 +262,9 @@ class ConnectedClientServiceController extends Controller
         return $out;
     }
 
-    private function buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId = null, $clientId = null): array
+    private function buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, int $asOfTs, $clientId = null): array
     {
-        $today = strtotime(date('Y-m-d'));
+        $today = $asOfTs;
 
         $currenciesForJs = [];
         $currenciesByIdForJs = [];
@@ -262,10 +278,13 @@ class ConnectedClientServiceController extends Controller
 
         $tariffsForJs = [];
         foreach ($tariffs as $tariff) {
-            // Берём только общие цены (client_id = null)
+            $tariffEnd = $this->parseDateToTs($tariff->end_date ? (string) $tariff->end_date : null);
+            if ($tariffEnd !== null && $tariffEnd < $today) continue;
+
+            // Берём только общие цены (organization_id = null)
             $prices = [];
             $bestByCurrency = [];
-            foreach ($tariff->prices->whereNull('client_id')->where('kind', 'base') as $price) {
+            foreach ($tariff->prices->whereNull('organization_id')->where('kind', 'base') as $price) {
                 $symbol = $price->currency?->symbol_code;
                 if (!$symbol) continue;
 
@@ -315,7 +334,7 @@ class ConnectedClientServiceController extends Controller
 
             if ($extraServices) {
                 foreach ($extraServices as $extraService) {
-                    foreach ($extraService->prices->whereNull('client_id')->where('kind', 'base') as $price) {
+                    foreach ($extraService->prices->whereNull('organization_id')->where('kind', 'base') as $price) {
                         $symbol = $price->currency?->symbol_code;
                         if (!$symbol) continue;
 
@@ -345,7 +364,7 @@ class ConnectedClientServiceController extends Controller
 
             // Backward-compatible source: prices.kind=extra_user on the tariff itself
             if (empty($bestExtraByCurrency)) {
-                foreach ($tariff->prices->whereNull('client_id')->where('kind', 'extra_user') as $price) {
+                foreach ($tariff->prices->whereNull('organization_id')->where('kind', 'extra_user') as $price) {
                     $symbol = $price->currency?->symbol_code;
                     if (!$symbol) continue;
 
@@ -401,9 +420,12 @@ class ConnectedClientServiceController extends Controller
         // Услуги аналогично
         $servicesForJs = [];
         foreach ($services as $service) {
+            $serviceEnd = $this->parseDateToTs($service->end_date ? (string) $service->end_date : null);
+            if ($serviceEnd !== null && $serviceEnd < $today) continue;
+
             $prices = [];
             $bestByCurrency = [];
-            foreach ($service->prices->whereNull('client_id')->where('kind', 'base') as $price) {
+            foreach ($service->prices->whereNull('organization_id')->where('kind', 'base') as $price) {
                 $symbol = $price->currency?->symbol_code;
                 if (!$symbol) continue;
 
@@ -448,7 +470,7 @@ class ConnectedClientServiceController extends Controller
                 'description' => '',
                 'type'        => 'monthly',
                 'prices'      => $prices,
-                'hasChannels' => false,
+                'hasChannels' => (bool) ($service->can_increase ?? false),
             ];
         }
 
@@ -470,11 +492,11 @@ class ConnectedClientServiceController extends Controller
         ];
     }
 
-// Собираем персональные цены для каждого клиента
-    private function buildClientPrices($tariffs, $services, $extraUserServicesByTariffId = null): array
+// Собираем персональные цены для каждой организации
+    private function buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, int $asOfTs): array
     {
         $result = [];
-        $today = strtotime(date('Y-m-d'));
+        $today = $asOfTs;
 
         foreach ($tariffs as $tariff) {
             $key = 'tariff-' . $tariff->id;
@@ -486,8 +508,8 @@ class ConnectedClientServiceController extends Controller
 
             if ($extraServices) {
                 foreach ($extraServices as $extraService) {
-                    foreach ($extraService->prices->whereNotNull('client_id')->where('kind', 'base') as $price) {
-                        $clientId = $price->client_id;
+                    foreach ($extraService->prices->whereNotNull('organization_id')->where('kind', 'base') as $price) {
+                        $clientId = $price->organization_id;
                         $symbol   = $price->currency?->symbol_code;
                         if (!$symbol) continue;
 
@@ -515,8 +537,8 @@ class ConnectedClientServiceController extends Controller
                 }
             }
 
-            foreach ($tariff->prices->whereNotNull('client_id')->where('kind', 'base') as $price) {
-                $clientId = $price->client_id;
+            foreach ($tariff->prices->whereNotNull('organization_id')->where('kind', 'base') as $price) {
+                $clientId = $price->organization_id;
                 $symbol   = $price->currency?->symbol_code;
                 if (!$symbol) continue;
                 $start = $this->parseDateToTs($price->start_date);
@@ -542,8 +564,8 @@ class ConnectedClientServiceController extends Controller
             }
 
             // Backward-compatible: prices.kind=extra_user on the tariff itself (only if not set by extra service)
-            foreach ($tariff->prices->whereNotNull('client_id')->where('kind', 'extra_user') as $price) {
-                $clientId = $price->client_id;
+            foreach ($tariff->prices->whereNotNull('organization_id')->where('kind', 'extra_user') as $price) {
+                $clientId = $price->organization_id;
                 $symbol   = $price->currency?->symbol_code;
                 if (!$symbol) continue;
 
@@ -576,8 +598,8 @@ class ConnectedClientServiceController extends Controller
         foreach ($services as $service) {
             $key = 'service-' . $service->id;
 
-            foreach ($service->prices->whereNotNull('client_id')->where('kind', 'base') as $price) {
-                $clientId = $price->client_id;
+            foreach ($service->prices->whereNotNull('organization_id')->where('kind', 'base') as $price) {
+                $clientId = $price->organization_id;
                 $symbol   = $price->currency?->symbol_code;
                 if (!$symbol) continue;
                 $start = $this->parseDateToTs($price->start_date);

@@ -9,16 +9,16 @@ class Price extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['tariff_id', 'client_id', 'start_date', 'date', 'sum', 'currency_id', 'kind'];
+    protected $fillable = ['tariff_id', 'organization_id', 'start_date', 'date', 'sum', 'currency_id', 'kind'];
 
     public function tariff()
     {
         return $this->belongsTo(Tariff::class);
     }
 
-    public function client()
+    public function organization()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Organization::class);
     }
 
     public function currency()

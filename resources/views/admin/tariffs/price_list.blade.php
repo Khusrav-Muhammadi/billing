@@ -20,7 +20,7 @@
                     <th>Валюта</th>
                     <th>Тип</th>
                     <th>Услуга</th>
-                    <th>Клиент</th>
+                    <th>Организация</th>
                     <th>Сумма</th>
                     <th>Действие</th>
                 </tr>
@@ -34,7 +34,7 @@
                         <td>{{ $price->currency?->name }}</td>
                         <td>{{ $price->kind === 'extra_user' ? 'Доп. пользователь' : 'База' }}</td>
                         <td>{{ $price->tariff?->name }}</td>
-                        <td>{{ $price->client?->name }}</td>
+                        <td>{{ $price->organization?->name }}</td>
                         <td>{{ $price->sum }}</td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $price->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
@@ -71,13 +71,13 @@
                                             </select>
                                         </div>
                                         <div class="form-group">
-                                            <label>Клиент</label>
-                                            <input type="text" class="form-control mb-2 js-client-search" placeholder="Поиск клиента...">
-                                            <select class="form-control js-client-select" name="client_id">
-                                                <option value="">Без клиента (общая цена)</option>
-                                                @foreach($clients as $client)
-                                                    <option value="{{ $client->id }}" {{ $price->client_id == $client->id ? 'selected' : '' }}>
-                                                        {{ $client->name }}
+                                            <label>Организация</label>
+                                            <input type="text" class="form-control mb-2 js-organization-search" placeholder="Поиск организации...">
+                                            <select class="form-control js-organization-select" name="organization_id">
+                                                <option value="">Без организации (общая цена)</option>
+                                                @foreach($organizations as $organization)
+                                                    <option value="{{ $organization->id }}" {{ $price->organization_id == $organization->id ? 'selected' : '' }}>
+                                                        {{ $organization->name }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -178,19 +178,19 @@
                             @enderror
                         </div>
                         <div class="form-group">
-                            <label for="tariff_id">Клиент</label>
-                            <input type="text" class="form-control mb-2 js-client-search" placeholder="Поиск клиента...">
-                            <select class="form-control js-client-select @error('client_id') is-invalid @enderror"
-                                    name="client_id">
-                                <option value="">Без клиента (общая цена)</option>
-                                @foreach($clients as $client)
+                            <label for="organization_id">Организация</label>
+                            <input type="text" class="form-control mb-2 js-organization-search" placeholder="Поиск организации...">
+                            <select class="form-control js-organization-select @error('organization_id') is-invalid @enderror"
+                                    name="organization_id">
+                                <option value="">Без организации (общая цена)</option>
+                                @foreach($organizations as $organization)
                                     <option
-                                        value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
-                                        {{ $client->name }}
+                                        value="{{ $organization->id }}" {{ old('organization_id') == $organization->id ? 'selected' : '' }}>
+                                        {{ $organization->name }}
                                     </option>
                                 @endforeach
                             </select>
-                            @error('client_id')
+                            @error('organization_id')
                             <span class="text-danger">{{ $message }}</span>
                             @enderror
                         </div>
@@ -235,10 +235,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.js-client-search').forEach((input) => {
+            document.querySelectorAll('.js-organization-search').forEach((input) => {
                 input.addEventListener('input', () => {
                     const modalBody = input.closest('.modal-body') || document;
-                    const select = modalBody.querySelector('.js-client-select');
+                    const select = modalBody.querySelector('.js-organization-select');
                     if (!select) return;
 
                     const term = (input.value || '').trim().toLowerCase();

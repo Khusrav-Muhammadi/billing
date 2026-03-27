@@ -109,6 +109,8 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'organization_v2'], function () {
         Route::get('/', [OrganizationV2Controller::class, 'index'])->name('organization_v2.index');
         Route::get('/demo', [OrganizationV2Controller::class, 'demo'])->name('organization_v2.demo');
+        // Some old UI links used GET /organization_v2/store; keep it working by redirecting to client create page.
+        Route::get('/store', fn () => redirect()->route('client.create'));
         Route::post('/store/', [OrganizationV2Controller::class, 'store'])->name('organization_v2.store');
         Route::get('show/{organization}', [OrganizationV2Controller::class, 'show'])->name('organization_v2.show');
         Route::get('edit/{organization}', [OrganizationV2Controller::class, 'edit'])->name('organization_v2.edit');

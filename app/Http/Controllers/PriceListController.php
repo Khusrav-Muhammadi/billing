@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PriceList\StoreRequest;
 use App\Http\Requests\PriceList\UpdateRequest;
-use App\Models\Client;
 use App\Models\Currency;
+use App\Models\Organization;
 use App\Models\Price;
 use App\Models\Tariff;
 
@@ -14,15 +14,15 @@ class PriceListController extends Controller
     public function index()
     {
         $priceLists = Price::query()
-            ->with(['tariff', 'client', 'currency'])
+            ->with(['tariff', 'organization', 'currency'])
             ->orderByDesc('id')
             ->get();
 
-        $clients = Client::query()->orderBy('name')->get();
+        $organizations = Organization::query()->orderBy('name')->get();
         $tariffs = Tariff::query()->orderBy('name')->get();
         $currencies = Currency::query()->orderBy('name')->get();
 
-        return view('admin.tariffs.price_list', compact('tariffs', 'priceLists', 'clients', 'currencies'));
+        return view('admin.tariffs.price_list', compact('tariffs', 'priceLists', 'organizations', 'currencies'));
     }
 
     public function store(StoreRequest $request)
