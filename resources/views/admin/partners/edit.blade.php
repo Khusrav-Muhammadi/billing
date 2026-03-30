@@ -9,6 +9,9 @@
     <div class="card-body">
         <h4 class="card-title">Изменение партнера</h4>
         <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 10px">Назад</a>
+        <a href="#" data-bs-toggle="modal" data-bs-target="#history" class="btn btn-outline-dark mb-2 ml-2">
+            <i class="mdi mdi-history" style="font-size: 30px"></i>
+        </a>
 
         <form method="POST" action="{{ route('partner.update', $partner->id) }}">
             @csrf
@@ -34,6 +37,20 @@
                 <label for="email">E-mail</label>
                 <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email', $partner->email) }}">
                 @error('email')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="status">Статус <span class="text-danger">*</span></label>
+                <select name="status" class="form-control @error('status') is-invalid @enderror" required>
+                    @foreach(\App\Enums\PartnerStatusEnum::cases() as $statusCase)
+                        <option value="{{ $statusCase->value }}" {{ old('status', $partner->status ?? \App\Enums\PartnerStatusEnum::PARTNER->value) === $statusCase->value ? 'selected' : '' }}>
+                            {{ $statusCase->label() }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('status')
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
             </div>
@@ -85,6 +102,50 @@
 
             <button type="submit" class="btn btn-primary mr-2">Изменить</button>
         </form>
+    </div>
+
+    <div class="modal fade" id="history" tabindex="-1" aria-labelledby="partnerHistoryLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="partnerHistoryLabel">История партнера</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @forelse($partnerHistory as $history)
+                        <div style="display: flex; justify-content: space-between;">
+                            <h5>{{ $history->status }}</h5>
+                            <span>
+                                <strong>{{ $history->user?->name ?? 'Система' }}</strong>
+                                <i style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
+                            </span>
+                        </div>
+                        <div class="ml-3" style="font-size: 14px">
+                            @foreach ($history->changes as $change)
+                                @php($bodyData = json_decode($change->body, true) ?: [])
+                                @foreach ($bodyData as $key => $value)
+                                    @if($key === 'name') Название:
+                                    @elseif($key === 'email') E-mail:
+                                    @elseif($key === 'phone') Телефон:
+                                    @elseif($key === 'address') Адрес:
+                                    @elseif($key === 'status') Статус:
+                                    @elseif($key === 'payment_methods') Способы оплаты:
+                                    @elseif($key === 'procent_from_tariff') Процент от подписки:
+                                    @elseif($key === 'procent_from_pack') Процент от пакетов:
+                                    @elseif($key === 'procent_date') Дата процента:
+                                    @else {{ $key }}:
+                                    @endif
+                                    <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }} ==> {{ $value['new_value'] ?? 'N/A' }}</p>
+                                @endforeach
+                            @endforeach
+                        </div>
+                        <hr>
+                    @empty
+                        <p class="mb-0 text-muted">История пока пустая.</p>
+                    @endforelse
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Отступ между формой и таблицей -->

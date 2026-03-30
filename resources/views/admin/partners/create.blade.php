@@ -41,6 +41,20 @@
             </div>
 
             <div class="form-group">
+                <label for="status">Статус <span class="text-danger">*</span></label>
+                <select name="status" class="form-control @error('status') is-invalid @enderror" required>
+                    @foreach(\App\Enums\PartnerStatusEnum::cases() as $statusCase)
+                        <option value="{{ $statusCase->value }}" {{ old('status', \App\Enums\PartnerStatusEnum::PARTNER->value) === $statusCase->value ? 'selected' : '' }}>
+                            {{ $statusCase->label() }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('status')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
                 <label for="address">Адрес</label>
                 <textarea name="address" cols="30" rows="10" class="form-control @error('address') is-invalid @enderror">{{ old('address') }}</textarea>
                 @error('address')

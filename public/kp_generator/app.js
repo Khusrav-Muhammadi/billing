@@ -33,6 +33,8 @@ class CPGenerator {
             apiUrl: '',
             dealId: '',
             csrfToken: '',
+            editOfferId: null,
+            hasUnsavedChanges: true,
             selectedClientId: null,
             selectedPartnerId: null,
             previousCurrency: 'USD',
@@ -42,7 +44,7 @@ class CPGenerator {
         };
 
         this.state.pricingDate = this.getTodayYmd();
-        
+
         this.init();
     }
 
@@ -53,15 +55,16 @@ class CPGenerator {
         const dd = String(now.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
     }
-    
+
     async init() {
         this.parseQueryParams();
         await this.loadConfig();
+        await this.loadOfferDraftIfNeeded();
         this.renderClientPartnerSelectors();
         this.renderAll();
         this.bindEvents();
     }
-    
+
     async loadConfig() {
         try {
             const date = this.state.pricingDate || this.getTodayYmd();
@@ -104,7 +107,7 @@ class CPGenerator {
             this.state.selectedTariff = tariffKeys[0];
         }
     }
-    
+
     getDefaultConfig() {
         return {
             currencies: {
@@ -146,10 +149,10 @@ class CPGenerator {
             this.state.currency = code;
         }
     }
-    
+
     parseQueryParams() {
         const params = new URLSearchParams(window.location.search);
-        
+
         this.state.clientPhone = params.get('phone') || this.state.clientPhone || '';
         const clientNameParam = params.get('client');
         if (clientNameParam) {
@@ -163,6 +166,9 @@ class CPGenerator {
         this.state.dealStatusId = params.get('deal_status_id') || '';
         this.state.apiUrl = params.get('url') || '';
         this.state.dealId = params.get('deal_id') || '';
+        const offerId = params.get('offer_id');
+        this.state.editOfferId = offerId && String(offerId).trim() !== '' ? String(offerId).trim() : null;
+        this.state.hasUnsavedChanges = !this.state.editOfferId;
 
         const pricingDate = params.get('date');
         if (pricingDate) {
@@ -217,7 +223,112 @@ class CPGenerator {
 
         return defaultContacts;
     }
-    
+
+    async loadOfferDraftIfNeeded() {
+        if (!this.state.editOfferId) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/application/kp/${encodeURIComponent(this.state.editOfferId)}`, {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Не удалось загрузить сохраненное КП (HTTP ${response.status})`);
+            }
+
+            const json = await response.json();
+            const payload = json?.offer?.payload;
+            if (!payload || typeof payload !== 'object') {
+                return;
+            }
+
+            if (payload.organization_id) {
+                this.state.selectedClientId = String(payload.organization_id);
+            }
+            if (payload.partner_id) {
+                this.state.selectedPartnerId = String(payload.partner_id);
+            }
+
+            if (payload.client_name) {
+                this.state.clientName = String(payload.client_name);
+            }
+            if (payload.partner_name) {
+                this.state.partnerName = String(payload.partner_name);
+            }
+
+            if (payload.currency) {
+                this.state.currency = this.normalizeCurrencyCode(payload.currency);
+            }
+
+            if (payload.pricing_date) {
+                this.state.pricingDate = String(payload.pricing_date);
+            }
+
+            const periodMonths = Number(payload.period_months);
+            if (Number.isFinite(periodMonths) && periodMonths > 0) {
+                this.state.periodMonths = Math.floor(periodMonths);
+            }
+
+            if (payload.selected_tariff_key && this.config?.tariffs?.[payload.selected_tariff_key]) {
+                this.state.selectedTariff = payload.selected_tariff_key;
+            }
+
+            const extraUsers = Number(payload.extra_users);
+            if (Number.isFinite(extraUsers) && extraUsers >= 0) {
+                this.state.extraUsers = Math.floor(extraUsers);
+            }
+
+            if (payload.selected_services && typeof payload.selected_services === 'object') {
+                const normalized = {};
+                Object.entries(payload.selected_services).forEach(([key, value]) => {
+                    const enabled = Boolean(value?.enabled);
+                    const channels = Math.max(1, Number(value?.channels) || 1);
+                    normalized[key] = { enabled, channels };
+                });
+                this.state.selectedServices = normalized;
+            }
+
+            const selectedClient = this.getSelectedClient();
+            if (selectedClient) {
+                this.state.clientName = selectedClient.name || this.state.clientName || '';
+            }
+
+            const selectedPartner = this.getSelectedPartner();
+            if (selectedPartner) {
+                this.state.partnerName = selectedPartner.name || this.state.partnerName || '';
+            }
+
+            this.state.hasUnsavedChanges = false;
+        } catch (error) {
+            console.error('Failed to load offer draft:', error);
+            alert(error?.message || 'Не удалось загрузить сохраненное КП');
+        }
+    }
+
+    canOpenPayment() {
+        return Boolean(this.state.editOfferId) && !this.state.hasUnsavedChanges;
+    }
+
+    updatePayButtonState() {
+        const payBtn = document.getElementById('payBtn');
+        if (!payBtn) return;
+
+        const canPay = this.canOpenPayment();
+        payBtn.disabled = !canPay;
+        payBtn.title = canPay ? '' : 'Сначала сохраните КП';
+    }
+
+    markOfferDirty() {
+        this.state.hasUnsavedChanges = true;
+        this.updatePayButtonState();
+    }
+
     renderAll() {
         this.applyTariffDefaults();
         this.renderClientPartnerSelectors();
@@ -226,6 +337,8 @@ class CPGenerator {
         this.updateExtraUsersSection();
         this.updateSummary();
         this.applyPaymentMethodsUI();
+        this.updateSelectedClientOrderNumberUI();
+        this.updatePayButtonState();
     }
 
     applyTariffDefaults() {
@@ -321,9 +434,102 @@ class CPGenerator {
         return this.clients.find((c) => String(c.id) === String(this.state.selectedClientId)) || null;
     }
 
+    getSelectedClientOrderNumber() {
+        const client = this.getSelectedClient();
+        const value = client?.order_number;
+        if (value === null || value === undefined) return '';
+        return String(value).trim();
+    }
+
+    updateSelectedClientOrderNumberUI() {
+        const wrap = document.getElementById('selectedClientOrderWrap');
+        const valueEl = document.getElementById('selectedClientOrderValue');
+        const copyBtn = document.getElementById('copyClientOrderBtn');
+        if (!wrap || !valueEl || !copyBtn) return;
+
+        const orderNumber = this.getSelectedClientOrderNumber();
+        if (!orderNumber) {
+            wrap.hidden = true;
+            valueEl.textContent = '';
+            copyBtn.disabled = true;
+            return;
+        }
+
+        wrap.hidden = false;
+        valueEl.textContent = orderNumber;
+        copyBtn.disabled = false;
+    }
+
+    async copySelectedClientOrderNumber() {
+        const orderNumber = this.getSelectedClientOrderNumber();
+        if (!orderNumber) return;
+
+        const copyBtn = document.getElementById('copyClientOrderBtn');
+        const setCopiedState = () => {
+            if (!copyBtn) return;
+            const originalText = copyBtn.textContent || 'Копировать';
+            copyBtn.textContent = 'Скопировано';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+            }, 1200);
+        };
+
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(orderNumber);
+                setCopiedState();
+                return;
+            }
+        } catch (_) {}
+
+        const temp = document.createElement('textarea');
+        temp.value = orderNumber;
+        temp.setAttribute('readonly', '');
+        temp.style.position = 'fixed';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        try {
+            document.execCommand('copy');
+            setCopiedState();
+        } finally {
+            document.body.removeChild(temp);
+        }
+    }
+
     getSelectedPartner() {
         if (!this.state.selectedPartnerId) return null;
         return this.partners.find((p) => String(p.id) === String(this.state.selectedPartnerId)) || null;
+    }
+
+    getPaymentPayer(client = this.getSelectedClient()) {
+        const partner = this.getSelectedPartner();
+        if (partner) {
+            return {
+                type: 'partner',
+                id: partner.id,
+                label: 'Партнёр',
+                name: (partner.name || '').trim(),
+                phone: (partner.phone || '').trim(),
+                email: (partner.email || '').trim(),
+            };
+        }
+
+        return {
+            type: 'client',
+            id: client?.id || null,
+            label: 'Клиент',
+            name: (client?.name || this.state.clientName || '').trim(),
+            phone: (client?.phone || '').trim(),
+            email: (client?.email || '').trim(),
+        };
+    }
+
+    formatPaymentPayerContacts(payer) {
+        const parts = [];
+        if (payer?.phone) parts.push(payer.phone);
+        if (payer?.email) parts.push(payer.email);
+        return parts.length ? parts.join(' | ') : 'Контакты не указаны';
     }
 
     getDefaultPaymentMethods() {
@@ -582,7 +788,108 @@ class CPGenerator {
         return items.filter((i) => (Number(i.price) || 0) > 0);
     }
 
+    extractTariffIdFromKey(key) {
+        const value = String(key || '').trim();
+        const match = value.match(/^tariff-(\d+)$/);
+        return match ? Number(match[1]) : null;
+    }
+
+    buildOfferSavePayload() {
+        const client = this.getSelectedClient();
+        if (!client) {
+            throw new Error('Выберите организацию.');
+        }
+
+        if (!this.state.selectedTariff) {
+            throw new Error('Выберите тариф.');
+        }
+
+        const totals = this.calculateTotals();
+        const originalTotal = this.roundMoney(totals.grand || 0);
+
+        const rawItems = this.buildPaymentItems();
+        if (!rawItems.length) {
+            throw new Error('Нет позиций для сохранения КП.');
+        }
+
+        const conversionMeta = this.getPaymentConversionMeta(originalTotal);
+        if (conversionMeta.requiresConversion && (!conversionMeta.rate || conversionMeta.rate <= 0)) {
+            throw new Error(`Не найден курс для ${conversionMeta.sourceCurrency}. Добавьте курс в разделе "Курс валюты".`);
+        }
+
+        const payableItems = this.toPayableItems(rawItems, conversionMeta);
+        const payableTotal = this.roundMoney(payableItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0));
+
+        const payer = this.getPaymentPayer(client);
+        const partner = this.getSelectedPartner();
+        const extraUsersInput = document.getElementById('extraUsersInput');
+        if (extraUsersInput) {
+            this.state.extraUsers = Math.max(0, parseInt(extraUsersInput.value, 10) || 0);
+        }
+        const periodMonths = Math.max(1, Number(this.state.periodMonths) || 6);
+        const selectedTariffId = this.extractTariffIdFromKey(this.state.selectedTariff);
+        const allowedPaymentMethods = this.getAllowedPaymentMethods();
+        const discountPercent = this.getPeriodDiscountPercent();
+        const partnerPercent = this.getPartnerDiscountPercent();
+
+        const items = payableItems.map((item, idx) => {
+            const price = this.roundMoney(item.price);
+            const sourcePrice = this.roundMoney(rawItems[idx]?.price || price);
+            return {
+                name: item.name,
+                price,
+                quantity: 1,
+                unit_price: price,
+                months: periodMonths,
+                billing_type: 'period',
+                discount_percent: discountPercent,
+                partner_percent: partnerPercent,
+                meta: {
+                    source_price: sourcePrice,
+                    source_currency: this.normalizeCurrencyCode(this.state.currency),
+                    payable_currency: conversionMeta.requiresConversion ? 'USD' : this.normalizeCurrencyCode(this.state.currency),
+                },
+            };
+        });
+
+        return {
+            offer_id: this.state.editOfferId || null,
+            organization_id: client.id,
+            partner_id: partner?.id || null,
+            selected_tariff_key: this.state.selectedTariff,
+            selected_tariff_id: selectedTariffId,
+            period_months: periodMonths,
+            extra_users: Math.max(0, Number(this.state.extraUsers) || 0),
+            pricing_date: this.state.pricingDate || this.getTodayYmd(),
+            currency: this.normalizeCurrencyCode(this.state.currency),
+            payable_currency: conversionMeta.requiresConversion ? 'USD' : this.normalizeCurrencyCode(this.state.currency),
+            card_payment_type: this.getPaymentTypeForCard(),
+            conversion_rate: conversionMeta.requiresConversion ? Number(conversionMeta.rate) : null,
+            manager_name: this.state.managerName || '',
+            client_name: client?.name || this.state.clientName || '',
+            client_phone: client?.phone || '',
+            client_email: client?.email || '',
+            partner_name: partner?.name || '',
+            partner_phone: partner?.phone || '',
+            partner_email: partner?.email || '',
+            payer,
+            selected_services: this.state.selectedServices || {},
+            allowed_payment_methods: allowedPaymentMethods,
+            monthly_total: this.roundMoney(totals.monthly || 0),
+            period_total: this.roundMoney(totals.period || 0),
+            grand_total: originalTotal,
+            original_total: originalTotal,
+            payable_total: payableTotal,
+            items,
+        };
+    }
+
     submitPayment(paymentType) {
+        if (!this.canOpenPayment()) {
+            alert('Сначала сохраните КП, затем можно оплачивать.');
+            return;
+        }
+
         if (!this.state.csrfToken) {
             alert('CSRF токен не найден. Обновите страницу.');
             return;
@@ -600,6 +907,18 @@ class CPGenerator {
             return;
         }
 
+        const payer = this.getPaymentPayer(client);
+        if (payer.type === 'partner') {
+            if (!payer.email) {
+                alert('У выбранного партнёра не заполнен email.');
+                return;
+            }
+            if (!payer.phone) {
+                alert('У выбранного партнёра не заполнен номер телефона.');
+                return;
+            }
+        }
+
         const rawSum = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
         const conversionMeta = this.getPaymentConversionMeta(rawSum);
 
@@ -613,9 +932,11 @@ class CPGenerator {
 
         const payload = {
             organization_id: client.id,
-            name: client.name || this.state.clientName || 'Организация',
-            phone: client.phone || '',
-            email: client.email || '',
+            partner_id: payer.type === 'partner' ? payer.id : null,
+            commercial_offer_id: this.state.editOfferId || null,
+            name: payer.name || client.name || this.state.clientName || 'Организация',
+            phone: payer.phone || '',
+            email: payer.email || '',
             sum,
             payment_type: paymentType,
             data: payableItems.map((i) => ({ name: i.name, price: i.price })),
@@ -640,16 +961,42 @@ class CPGenerator {
                 const url = json.redirect_url;
                 if (!url) throw new Error('Не пришла ссылка на оплату');
 
-                // Try open in new tab; if blocked - navigate top.
-                const w = window.open(url, '_blank', 'noopener');
+                const w = window.open(url, '_blank', 'noopener,noreferrer');
                 if (!w) {
-                    window.top.location.href = url;
+                    throw new Error('Браузер заблокировал новое окно. Разрешите pop-up для этого сайта.');
                 }
+
             })
             .catch((err) => {
                 console.error(err);
                 alert(err?.message || 'Ошибка оплаты');
             });
+    }
+
+    syncSaveOfferForm(payload) {
+        const csrfInput = document.getElementById('saveOfferCsrf');
+        const offerIdInput = document.getElementById('saveOfferId');
+        const organizationIdInput = document.getElementById('saveOfferOrganizationId');
+        const payloadInput = document.getElementById('saveOfferPayload');
+
+        if (!csrfInput || !offerIdInput || !organizationIdInput || !payloadInput) {
+            throw new Error('Форма сохранения КП не найдена на странице.');
+        }
+
+        csrfInput.value = this.state.csrfToken || '';
+        offerIdInput.value = payload.offer_id || '';
+        organizationIdInput.value = payload.organization_id || '';
+        payloadInput.value = JSON.stringify(payload);
+    }
+
+    handleSaveOfferSubmit(event) {
+        try {
+            const payload = this.buildOfferSavePayload();
+            this.syncSaveOfferForm(payload);
+        } catch (error) {
+            event.preventDefault();
+            alert(error?.message || 'Не удалось сохранить КП');
+        }
     }
 
     renderCurrencies() {
@@ -797,6 +1144,7 @@ class CPGenerator {
             this.renderServices();
             this.updateExtraUsersSection();
             this.updateSummary();
+            this.updateSelectedClientOrderNumberUI();
         } else {
             this.state.selectedPartnerId = item.id;
             this.state.partnerName = item.name || 'Партнер';
@@ -807,6 +1155,8 @@ class CPGenerator {
             this.updateSummary();
             this.applyPaymentMethodsUI();
         }
+
+        this.markOfferDirty();
 
         this.closeCombo(kind);
     }
@@ -822,35 +1172,35 @@ class CPGenerator {
         const partnerText = this.state.partnerName || 'Партнер не выбран';
         if (partnerNameEl) partnerNameEl.textContent = partnerText;
     }
-    
+
     // ========================================
     // Render Tariffs
     // ========================================
     renderTariffs() {
         const grid = document.getElementById('tariffsGrid');
         grid.innerHTML = '';
-        
+
         const tariffKeys = Object.keys(this.config.tariffs);
         const popularIndex = Math.floor(tariffKeys.length / 2);
-        
+
         tariffKeys.forEach((key, index) => {
             const tariff = this.config.tariffs[key];
             const price = this.getTariffPriceByKey(key);
             const originalPrice = this.getOriginalTariffPriceByKey(key);
             const isPopular = index === popularIndex;
             const isSelected = this.state.selectedTariff === key;
-            
+
             const card = document.createElement('div');
             card.className = `tariff-card${isPopular ? ' popular' : ''}${isSelected ? ' selected' : ''}`;
             card.dataset.tariff = key;
-                
-            const suggestedImplPrice = tariff.suggestedImplementationPrice 
-                ? tariff.suggestedImplementationPrice[this.state.currency] 
+
+            const suggestedImplPrice = tariff.suggestedImplementationPrice
+                ? tariff.suggestedImplementationPrice[this.state.currency]
                 : 0;
-            
+
             card.innerHTML = `
                 <div class="tariff-select-indicator" style="margin-bottom: 250px !important;"></div>
-              
+
                 <div class="tariff-header">
                     <h3 class="tariff-name">${tariff.name}</h3>
                      </div>
@@ -860,16 +1210,16 @@ class CPGenerator {
                     ${(this.state.periodMonths === 12 || this.state.periodMonths === 8) ? `<span class="original-price">${this.formatPrice(originalPrice)}</span>` : ''}
                 </div>
             `;
-            
+
             card.addEventListener('click', () => this.selectTariff(key));
             grid.appendChild(card);
         });
     }
-    
+
     // Get included channels count for a service in a tariff
     getIncludedChannels(tariffKey, serviceKey) {
         if (!tariffKey || !serviceKey) return 0;
-        
+
         const tariff = this.config.tariffs[tariffKey];
         const includedQty = tariff?.includedServiceQuantities || {};
         const fromDb = includedQty?.[serviceKey];
@@ -877,7 +1227,7 @@ class CPGenerator {
             return Math.max(0, Math.floor(fromDb));
         }
         const tf = tariff?.tariffFeatures || {};
-        
+
         // Telegram bots: based on tariffFeatures
         if (serviceKey === 'telegram_b2c') {
             return tf.miniAppB2C?.channels || 0;
@@ -885,44 +1235,52 @@ class CPGenerator {
         if (serviceKey === 'telegram_b2b') {
             return tf.miniAppB2B?.channels || 0;
         }
-        
+
         // Extra funnels: based on tariffFeatures
         if (serviceKey === 'extra_funnel') {
             return tf.extraFunnels?.channels || 0;
         }
-        
+
         return 0;
     }
-    
+
     updateExtraUsersSection() {
         if (!this.state.selectedTariff) return;
-        
+
         const tariff = this.config.tariffs[this.state.selectedTariff];
         const extraUsersSection = document.getElementById('extraUsersSection');
         if (extraUsersSection) {
             extraUsersSection.style.display = 'block';
             document.getElementById('includedUsers').textContent = tariff.users;
-            document.getElementById('extraUserPrice').textContent = 
+            document.getElementById('extraUserPrice').textContent =
                 this.formatPrice(this.getExtraUserPriceByKey(this.state.selectedTariff));
+            const extraUsersInput = document.getElementById('extraUsersInput');
+            if (extraUsersInput) {
+                extraUsersInput.value = String(Math.max(0, parseInt(this.state.extraUsers, 10) || 0));
+            }
         }
     }
-    
+
     selectTariff(tariffKey) {
+        if (this.state.selectedTariff !== tariffKey) {
+            this.markOfferDirty();
+        }
+
         // Сохраняем предыдущий тариф перед сменой
         this.state.previousTariff = this.state.selectedTariff;
-        
+
         this.state.selectedTariff = tariffKey;
         this.state.extraUsers = 0;
-        
+
         const tariff = this.config.tariffs[tariffKey];
         const extraUsersSection = document.getElementById('extraUsersSection');
         extraUsersSection.style.display = 'block';
-        
+
         document.getElementById('includedUsers').textContent = tariff.users;
-        document.getElementById('extraUserPrice').textContent = 
+        document.getElementById('extraUserPrice').textContent =
             this.formatPrice(this.getExtraUserPriceByKey(tariffKey));
         document.getElementById('extraUsersInput').value = 0;
-        
+
         // Clear all selected services first (reset to disabled and reset channels)
         Object.keys(this.state.selectedServices).forEach(serviceKey => {
             const service = this.config.services[serviceKey];
@@ -934,13 +1292,13 @@ class CPGenerator {
                 this.state.selectedServices[serviceKey].enabled = false;
             }
         });
-        
+
         // Initialize included services with base channels
         if (tariff.includedServices) {
             tariff.includedServices.forEach(serviceKey => {
                 const service = this.config.services[serviceKey];
                 const includedChannels = this.getIncludedChannels(tariffKey, serviceKey);
-                
+
                 if (service && service.hasChannels) {
                     // Initialize with included channels
                     this.state.selectedServices[serviceKey] = { enabled: true, channels: includedChannels || 1 };
@@ -950,28 +1308,28 @@ class CPGenerator {
                 }
             });
         }
-        
+
         this.renderServices();
         this.renderTariffs();
         this.updateSummary();
     }
-    
+
     // tariff pricing is handled via *ByKey helpers (client override aware)
-    
+
     // ========================================
     // Render Services
     // ========================================
     renderServices() {
         const grid = document.getElementById('servicesGrid');
         grid.innerHTML = '';
-        
-        const selectedTariff = this.state.selectedTariff 
-            ? this.config.tariffs[this.state.selectedTariff] 
+
+        const selectedTariff = this.state.selectedTariff
+            ? this.config.tariffs[this.state.selectedTariff]
             : null;
-        
+
         Object.entries(this.config.services).forEach(([key, service]) => {
             if (service.priceFromTariff) return;
-            
+
             const isIncluded = selectedTariff?.includedServices?.includes(key);
             const isSelected = this.state.selectedServices[key]?.enabled;
             const includedChannels = (isIncluded && service.hasChannels)
@@ -979,7 +1337,7 @@ class CPGenerator {
                 : 0;
             const channels = this.state.selectedServices[key]?.channels || (includedChannels || 1);
             const unitPrice = this.getPriceByCurrency(this.getServicePricesMap(key));
-            
+
             const card = document.createElement('div');
             card.className = `service-card${isSelected ? ' selected' : ''}${isIncluded ? ' included' : ''}`;
             card.dataset.service = key;
@@ -991,7 +1349,7 @@ class CPGenerator {
                     includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${includedChannels} ${includedChannels === 1 ? 'канал включен' : 'канала включено'} в тариф</p>`;
                 }
             }
-            
+
             card.innerHTML = `
                 <div class="service-header">
                     <div class="service-info">
@@ -1003,8 +1361,8 @@ class CPGenerator {
                         ${includedChannelsInfo}
                     </div>
                     <label class="service-toggle">
-                        <input type="checkbox" 
-                            ${(isSelected || isIncluded) ? 'checked' : ''} 
+                        <input type="checkbox"
+                            ${(isSelected || isIncluded) ? 'checked' : ''}
                             ${isIncluded ? 'disabled' : ''}
                             data-service="${key}">
                         <span class="toggle-slider"></span>
@@ -1029,13 +1387,13 @@ class CPGenerator {
                     </div>
                 ` : ''}
             `;
-            
+
             grid.appendChild(card);
         });
-        
+
         this.bindServiceEvents();
     }
-    
+
     bindServiceEvents() {
         document.querySelectorAll('.service-toggle input').forEach(input => {
             input.addEventListener('change', (e) => {
@@ -1044,60 +1402,63 @@ class CPGenerator {
                     this.state.selectedServices[serviceKey] = { enabled: false, channels: 1 };
                 }
                 this.state.selectedServices[serviceKey].enabled = e.target.checked;
-                
+                this.markOfferDirty();
+
                 this.renderServices();
                 this.updateSummary();
             });
         });
-        
+
         document.querySelectorAll('.channels-control .qty-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const serviceKey = e.target.dataset.service;
                 const action = e.target.dataset.action;
-                
+
                 if (!this.state.selectedServices[serviceKey]) {
                     this.state.selectedServices[serviceKey] = { enabled: false, channels: 1 };
                 }
-                
-                const selectedTariff = this.state.selectedTariff 
-                    ? this.config.tariffs[this.state.selectedTariff] 
+
+                const selectedTariff = this.state.selectedTariff
+                    ? this.config.tariffs[this.state.selectedTariff]
                     : null;
                 const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
                 const minChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 1;
-                
+
                 if (action === 'increase') {
                     this.state.selectedServices[serviceKey].channels++;
                 } else if (action === 'decrease' && this.state.selectedServices[serviceKey].channels > minChannels) {
                     this.state.selectedServices[serviceKey].channels--;
                 }
-                
+                this.markOfferDirty();
+
                 this.renderServices();
                 this.updateSummary();
             });
         });
-        
+
         document.querySelectorAll('.channels-control .qty-input').forEach(input => {
             input.addEventListener('change', (e) => {
                 const serviceKey = e.target.dataset.service;
-                const selectedTariff = this.state.selectedTariff 
-                    ? this.config.tariffs[this.state.selectedTariff] 
+                const selectedTariff = this.state.selectedTariff
+                    ? this.config.tariffs[this.state.selectedTariff]
                     : null;
                 const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
                 const minChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 1;
                 const value = Math.max(minChannels, parseInt(e.target.value) || minChannels);
-                
+
                 if (!this.state.selectedServices[serviceKey]) {
                     this.state.selectedServices[serviceKey] = { enabled: false, channels: value };
                 } else {
                     this.state.selectedServices[serviceKey].channels = value;
                 }
-                
+                this.markOfferDirty();
+
                 this.renderServices();
                 this.updateSummary();
             });
         });
     }
-    
+
     // ========================================
     // Update One-time Payments
     // ========================================
@@ -1117,19 +1478,19 @@ class CPGenerator {
         }
         return suggestedPrice;
     }
-    
+
     updateOneTimePayments() {
         const currency = this.getCurrentCurrency();
-        
+
         // Update currency symbols
         const implCurrency = document.getElementById('implementationCurrency');
         const onlineStoreCurrency = document.getElementById('onlineStoreCurrency');
         if (implCurrency) implCurrency.textContent = currency.symbol;
         if (onlineStoreCurrency) onlineStoreCurrency.textContent = currency.symbol;
-        
+
         // Get suggested implementation price
         const suggestedPrice = this.getSuggestedImplementationPrice();
-        
+
         // Update implementation input and state
         const implInput = document.getElementById('implementationPrice');
         if (implInput) {
@@ -1145,7 +1506,7 @@ class CPGenerator {
                 // Сбрасываем флаг предыдущей валюты
                 this.state.previousCurrency = null;
             }
-            
+
             // Проверяем, была ли смена тарифа и нужно ли обновить значение
             if (this.state.previousTariff && this.state.previousTariff !== this.state.selectedTariff) {
                 const oldTariff = this.config.tariffs[this.state.previousTariff];
@@ -1160,7 +1521,7 @@ class CPGenerator {
                 // Сбрасываем флаг предыдущего тарифа
                 this.state.previousTariff = null;
             }
-            
+
             // Если значение было установлено автоматически, обновляем его при изменении suggestedPrice
             if (this.state.implementationPriceWasAutoSet && suggestedPrice > 0) {
                 // Обновляем значение на новый suggestedPrice
@@ -1181,7 +1542,7 @@ class CPGenerator {
                 implInput.value = this.formatNumberInput(this.state.implementationPrice || 0);
             }
         }
-        
+
         // Update implementation hint - всегда показываем цену
         const implHint = document.getElementById('implementationHint');
         if (implHint) {
@@ -1191,19 +1552,19 @@ class CPGenerator {
                 implHint.textContent = '';
             }
         }
-        
+
         // Update other input values
         const onlineStoreInput = document.getElementById('onlineStorePrice');
         if (onlineStoreInput) {
             onlineStoreInput.value = this.formatNumberInput(this.state.onlineStorePrice || 0);
         }
-        
+
         // Check if Online Store is selected
         const onlineStoreSelected = this.state.selectedServices['online_store']?.enabled;
         const onlineStoreItem = document.getElementById('onlineStoreItem');
         if (onlineStoreItem) {
             onlineStoreItem.style.display = onlineStoreSelected ? 'block' : 'none';
-            
+
             // Если услуга отключена, очищаем значение
             if (!onlineStoreSelected) {
                 this.state.onlineStorePrice = 0;
@@ -1213,35 +1574,35 @@ class CPGenerator {
                 }
             }
         }
-        
+
         // Render custom one-time payments
         this.renderCustomOneTimePayments();
     }
-    
+
     renderCustomOneTimePayments() {
         const container = document.getElementById('customOneTimePayments');
         if (!container) return;
-        
+
         container.innerHTML = '';
-        
+
         this.state.customOneTimePayments.forEach((payment, index) => {
             const item = document.createElement('div');
             item.className = 'one-time-item custom-one-time-item';
             item.innerHTML = `
                 <div class="one-time-input-wrapper">
                     <label class="one-time-label">
-                        <input type="text" 
-                               class="custom-service-name-input" 
+                        <input type="text"
+                               class="custom-service-name-input"
                                data-index="${index}"
                                placeholder="Название услуги"
                                value="${payment.name || ''}">
                     </label>
                     <div class="one-time-input-group">
-                        <input type="number" 
-                               class="one-time-input custom-service-price-input" 
+                        <input type="number"
+                               class="one-time-input custom-service-price-input"
                                data-index="${index}"
-                               min="0" 
-                               step="0.01" 
+                               min="0"
+                               step="0.01"
                                placeholder="0"
                                value="${payment.price || 0}">
                         <span class="one-time-currency">${this.getCurrentCurrency().symbol}</span>
@@ -1251,11 +1612,11 @@ class CPGenerator {
             `;
             container.appendChild(item);
         });
-        
+
         // Bind events for custom services
         this.bindCustomServiceEvents();
     }
-    
+
     bindCustomServiceEvents() {
         // Name inputs
         document.querySelectorAll('.custom-service-name-input').forEach(input => {
@@ -1263,22 +1624,24 @@ class CPGenerator {
                 const index = parseInt(e.target.dataset.index);
                 if (this.state.customOneTimePayments[index]) {
                     this.state.customOneTimePayments[index].name = e.target.value;
+                    this.markOfferDirty();
                     this.updateSummary();
                 }
             });
         });
-        
+
         // Price inputs
         document.querySelectorAll('.custom-service-price-input').forEach(input => {
             input.addEventListener('input', (e) => {
                 const index = parseInt(e.target.dataset.index);
                 if (this.state.customOneTimePayments[index]) {
                     this.state.customOneTimePayments[index].price = parseFloat(e.target.value) || 0;
+                    this.markOfferDirty();
                     this.updateSummary();
                 }
             });
         });
-        
+
         // Remove buttons
         document.querySelectorAll('.remove-custom-service-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1287,21 +1650,23 @@ class CPGenerator {
             });
         });
     }
-    
+
     addCustomOneTimePayment() {
         this.state.customOneTimePayments.push({
             name: '',
             price: 0
         });
+        this.markOfferDirty();
         this.renderCustomOneTimePayments();
     }
-    
+
     removeCustomOneTimePayment(index) {
         this.state.customOneTimePayments.splice(index, 1);
+        this.markOfferDirty();
         this.renderCustomOneTimePayments();
         this.updateSummary();
     }
-    
+
     // ========================================
     // Update Summary
     // ========================================
@@ -1315,8 +1680,8 @@ class CPGenerator {
         const periodMultiplier = this.getPeriodDiscountMultiplier();
         const partnerPercent = this.getPartnerDiscountPercent();
 
-        const selectedTariff = this.state.selectedTariff 
-            ? this.config.tariffs[this.state.selectedTariff] 
+        const selectedTariff = this.state.selectedTariff
+            ? this.config.tariffs[this.state.selectedTariff]
             : null;
 
         if (this.state.selectedTariff && selectedTariff) {
@@ -1335,20 +1700,20 @@ class CPGenerator {
                 });
             }
         }
-            
+
         Object.entries(this.state.selectedServices).forEach(([key, serviceState]) => {
             if (!serviceState.enabled) return;
-            
+
             const service = this.config.services[key];
             if (!service || service.priceFromTariff) return;
-            
+
             const isIncluded = selectedTariff?.includedServices?.includes(key);
-            
+
             const unitMonthly = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? serviceState.channels : 1;
             let displayChannels = channels;
             let qty = channels;
-            
+
             // For included services with channels, only charge for additional channels
             if (isIncluded && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
@@ -1448,28 +1813,28 @@ class CPGenerator {
         const monthlyRaw = rows.reduce((s, r) => s + (Number(r.unitMonthly) || 0) * (Number(r.qty) || 0), 0);
         const monthlyAfterDiscount = monthlyRaw * periodMultiplier;
         const monthlyToPay = this.applyPartnerDiscount(monthlyAfterDiscount);
-        
+
         // Build period details string
         const periodDetailsEl = document.getElementById('periodDetails');
         if (periodDetailsEl && this.state.selectedTariff) {
             const tariff = this.config.tariffs[this.state.selectedTariff];
-            
+
             // Проверяем, есть ли дополнительные услуги или доп. пользователи
             let hasAdditionalServices = false;
-            
+
             // Проверяем дополнительных пользователей
             if (this.state.extraUsers > 0) {
                 hasAdditionalServices = true;
             }
-            
+
             // Проверяем дополнительные услуги
             Object.entries(this.state.selectedServices).forEach(([key, serviceState]) => {
                 if (!serviceState.enabled) return;
                 const service = this.config.services[key];
                 if (!service || service.priceFromTariff) return;
-                
+
                 const isIncluded = selectedTariff?.includedServices?.includes(key);
-                
+
                 if (!isIncluded) {
                     // Услуга не входит в тариф
                     hasAdditionalServices = true;
@@ -1481,13 +1846,13 @@ class CPGenerator {
                     }
                 }
             });
-            
+
             // Формируем описание
             let detailsText = `Тариф "${tariff.name}"`;
             if (hasAdditionalServices) {
                 detailsText += ` + Доп пакеты`;
             }
-            
+
             if (this.state.periodMonths === 12) {
                 detailsText += ` × ${this.state.periodMonths} мес (скидка 15%)`;
             } else if (this.state.periodMonths === 8) {
@@ -1499,12 +1864,12 @@ class CPGenerator {
             if (partnerPercent > 0) {
                 detailsText += `, партнер ${partnerPercent}%`;
             }
-            
+
             periodDetailsEl.innerHTML = detailsText;
         } else if (periodDetailsEl) {
             periodDetailsEl.innerHTML = '';
         }
-        
+
         const periodMonthlyTotalEl = document.getElementById('periodMonthlyTotal');
         if (periodMonthlyTotalEl) {
             if (monthlyRaw > 0) {
@@ -1513,13 +1878,13 @@ class CPGenerator {
                 periodMonthlyTotalEl.textContent = '';
             }
         }
-        
+
         const periodTotalEl = document.getElementById('periodTotal');
         if (periodTotalEl) periodTotalEl.textContent = this.formatTotalPrice(totalToPay);
 
         const grandTotalEl = document.getElementById('grandTotal');
         if (grandTotalEl) grandTotalEl.textContent = this.formatGrandTotalWithUsd(totalToPay);
-        
+
         if (summaryItems.innerHTML === '') {
             summaryItems.innerHTML = `
                 <div class="summary-item" style="justify-content: center; color: var(--text-muted);">
@@ -1531,20 +1896,20 @@ class CPGenerator {
 
     formatPrice(amount) {
         const currency = this.getCurrentCurrency();
-        
+
         if (this.state.currency === 'USD') {
             // Для USD показываем 2 знака после запятой без округления
             return `$${amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
-        
+
         // Для других валют показываем без округления (с точностью до 2 знаков если есть дробная часть)
-        const formatted = amount.toLocaleString('ru-RU', { 
-            minimumFractionDigits: amount % 1 === 0 ? 0 : 2, 
-            maximumFractionDigits: 2 
+        const formatted = amount.toLocaleString('ru-RU', {
+            minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+            maximumFractionDigits: 2
         });
         return `${formatted} ${currency.symbol}`;
     }
-    
+
     formatTotalPrice(amount) {
         // Итоговую сумму показываем с точностью 2 знака после запятой
         const currency = this.getCurrentCurrency();
@@ -1557,7 +1922,7 @@ class CPGenerator {
 
         return `${formatted} ${currency.symbol}`;
     }
-    
+
     getCurrencyDisplayName() {
         // Возвращает валюту для отображения в PDF
         const currencyMap = {
@@ -1569,19 +1934,19 @@ class CPGenerator {
         };
         return currencyMap[this.state.currency] || this.state.currency;
     }
-    
+
     formatNumberInput(value) {
         // Форматирует число для отображения в input с разделителями тысяч
         if (!value && value !== 0) return '';
         const num = parseFloat(value.toString().replace(/\s/g, '').replace(/,/g, '.')) || 0;
         // Используем пробел как разделитель тысяч (как в ru-RU)
-        return num.toLocaleString('ru-RU', { 
-            minimumFractionDigits: 0, 
+        return num.toLocaleString('ru-RU', {
+            minimumFractionDigits: 0,
             maximumFractionDigits: 2,
             useGrouping: true
         });
     }
-    
+
     parseNumberInput(value) {
         // Парсит отформатированное число из input (убирает разделители)
         if (!value) return 0;
@@ -1599,6 +1964,7 @@ class CPGenerator {
             pricingDateInput.addEventListener('change', async (e) => {
                 const value = (e.target && e.target.value) ? String(e.target.value) : '';
                 this.state.pricingDate = value || this.getTodayYmd();
+                this.markOfferDirty();
                 this.showLoading();
                 try {
                     await this.loadConfig();
@@ -1645,6 +2011,11 @@ class CPGenerator {
             });
         }
 
+        const copyClientOrderBtn = document.getElementById('copyClientOrderBtn');
+        if (copyClientOrderBtn) {
+            copyClientOrderBtn.addEventListener('click', () => this.copySelectedClientOrderNumber());
+        }
+
         const partnerInput = document.getElementById('partnerSelect');
         if (partnerInput) {
             partnerInput.addEventListener('focus', () => {
@@ -1681,40 +2052,50 @@ class CPGenerator {
                 this.closeCombo('partner');
             }
         });
-        
+
         document.querySelectorAll('.period-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const button = e.target.closest('.period-btn');
                 document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
                 button.classList.add('active');
                 this.state.periodMonths = parseInt(button.dataset.months);
+                this.markOfferDirty();
                 this.renderAll();
             });
         });
-        
+
         document.getElementById('usersMinusBtn').addEventListener('click', () => {
             if (this.state.extraUsers > 0) {
                 this.state.extraUsers--;
                 document.getElementById('extraUsersInput').value = this.state.extraUsers;
+                this.markOfferDirty();
                 this.updateSummary();
             }
         });
-        
+
         document.getElementById('usersPlusBtn').addEventListener('click', () => {
             this.state.extraUsers++;
             document.getElementById('extraUsersInput').value = this.state.extraUsers;
+            this.markOfferDirty();
             this.updateSummary();
         });
-        
+
         document.getElementById('extraUsersInput').addEventListener('change', (e) => {
             this.state.extraUsers = Math.max(0, parseInt(e.target.value) || 0);
             e.target.value = this.state.extraUsers;
+            this.markOfferDirty();
             this.updateSummary();
         });
-        
-        const saveBtn = document.getElementById('saveBtn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', () => this.saveAndDownloadPDF());
+
+        document.getElementById('extraUsersInput').addEventListener('input', (e) => {
+            this.state.extraUsers = Math.max(0, parseInt(e.target.value) || 0);
+            this.markOfferDirty();
+            this.updateSummary();
+        });
+
+        const saveOfferForm = document.getElementById('saveOfferForm');
+        if (saveOfferForm) {
+            saveOfferForm.addEventListener('submit', (event) => this.handleSaveOfferSubmit(event));
         }
         document.getElementById('closeSuccessBtn').addEventListener('click', () => this.closeModal('successModal'));
 
@@ -1722,13 +2103,18 @@ class CPGenerator {
         if (payBtn) {
             payBtn.addEventListener('click', () => {
                 const client = this.getSelectedClient();
+                const payer = this.getPaymentPayer(client);
                 const totals = this.calculateTotals();
                 const payModal = document.getElementById('payModal');
                 const payClientName = document.getElementById('payClientName');
+                const payPayerLabel = document.getElementById('payPayerLabel');
+                const payPayerContacts = document.getElementById('payPayerContacts');
                 const payAmount = document.getElementById('payAmount');
                 const payCardProvider = document.getElementById('payCardProvider');
 
-                if (payClientName) payClientName.textContent = client?.name || this.state.clientName || '—';
+                if (payPayerLabel) payPayerLabel.textContent = payer.label;
+                if (payClientName) payClientName.textContent = payer.name || '—';
+                if (payPayerContacts) payPayerContacts.textContent = this.formatPaymentPayerContacts(payer);
                 if (payAmount) payAmount.textContent = this.formatPaymentAmountForModal(totals.grand || 0);
                 if (payCardProvider) payCardProvider.textContent = this.getCardProviderLabel();
                 this.applyPaymentMethodsUI();
@@ -1765,7 +2151,7 @@ class CPGenerator {
         }
 
         this.applyPaymentMethodsUI();
-        
+
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
@@ -1774,7 +2160,7 @@ class CPGenerator {
             });
         });
     }
-    
+
     // ========================================
     // PDF Generation
     // ========================================
@@ -1787,27 +2173,27 @@ class CPGenerator {
         } else if (this.state.periodMonths === 8) {
             periodText = '8 месяцев (скидка 50%)';
         }
-        
+
         if (!this.state.selectedTariff) {
             return '<div>Выберите тариф для генерации КП</div>';
         }
-        
+
         const tariff = this.config.tariffs[this.state.selectedTariff];
         const tariffPrice = this.getTariffPriceByKey(this.state.selectedTariff);
-        const selectedTariff = this.state.selectedTariff 
-            ? this.config.tariffs[this.state.selectedTariff] 
+        const selectedTariff = this.state.selectedTariff
+            ? this.config.tariffs[this.state.selectedTariff]
             : null;
-        
+
         // Получаем дополнительные пакеты (ежемесячные услуги)
         const additionalPackages = this.getAdditionalPackages();
-        
+
         // Получаем единоразовые оплаты
         const oneTimePayments = [];
-        
+
         // Получаем итоговые суммы
         const totals = this.calculateTotals();
         const contacts = this.getContactsForApiUrl();
-        
+
         let html = `
             <style>
                 ${this.getProposalPDFStyles()}
@@ -1872,7 +2258,7 @@ class CPGenerator {
                 <!-- PAGE 2 - TARIFF -->
                 <div class="page tariff-page">
                     <div class="header-decoration"></div>
-                    
+
                     <div class="page-header">
                         <div class="logo-text">
                             <span>SHAM</span>
@@ -1972,7 +2358,7 @@ class CPGenerator {
                 <!-- PAGE 3 - TOTAL COST -->
                 <div class="page cost-page">
                     <div class="header-decoration"></div>
-                    
+
                     <div class="page-header">
                         <div class="logo-text">
                             <span>SHAM</span>
@@ -1987,33 +2373,33 @@ class CPGenerator {
                             <div class="table-header-cell">Статья</div>
                             <div class="table-header-cell">Сумма</div>
                         </div>
-                        
+
                         <div class="table-row">
                             <div class="table-cell">Тариф "${tariff.name}" (${periodText})</div>
                             <div class="table-cell">${this.formatTotalPrice(tariffPrice * this.state.periodMonths)}</div>
                         </div>
-                        
+
                         ${this.state.extraUsers > 0 ? `
                             <div class="table-row">
                                 <div class="table-cell">Доп. пользователи (×${this.state.extraUsers})</div>
                                 <div class="table-cell">${this.formatTotalPrice(this.getExtraUserPriceByKey(this.state.selectedTariff) * this.state.extraUsers * this.state.periodMonths)}</div>
                             </div>
                         ` : ''}
-                        
+
                         ${additionalPackages.length > 0 ? additionalPackages.map(pkg => `
                             <div class="table-row">
                                 <div class="table-cell">${pkg.name} (${this.state.periodMonths} мес.)</div>
                                 <div class="table-cell">${this.formatTotalPrice(pkg.price * this.state.periodMonths)}</div>
                             </div>
                         `).join('') : ''}
-                        
+
                         ${oneTimePayments.length > 0 ? oneTimePayments.map(payment => `
                             <div class="table-row">
                                 <div class="table-cell">${payment.name}</div>
                                 <div class="table-cell">${this.formatPrice(payment.price)}</div>
                             </div>
                         `).join('') : ''}
-                        
+
                         <div class="table-row total-row">
                             <div class="table-cell">ИТОГО</div>
                             <div class="table-cell">${this.formatTotalPrice(totals.grand)}</div>
@@ -2063,24 +2449,24 @@ class CPGenerator {
                     </div>
                 </div>
         `;
-        
+
         return html;
     }
-    
+
     getAdditionalPackages() {
         const packages = [];
-        const selectedTariff = this.state.selectedTariff 
-            ? this.config.tariffs[this.state.selectedTariff] 
+        const selectedTariff = this.state.selectedTariff
+            ? this.config.tariffs[this.state.selectedTariff]
             : null;
-        
+
         Object.entries(this.state.selectedServices).forEach(([key, serviceState]) => {
             if (!serviceState.enabled) return;
-            
+
             const service = this.config.services[key];
             if (!service || service.priceFromTariff) return;
-            
+
             const isIncluded = selectedTariff?.includedServices?.includes(key);
-            
+
             // Пропускаем включенные услуги без доп. каналов
             if (isIncluded) {
                 if (service.hasChannels) {
@@ -2097,7 +2483,7 @@ class CPGenerator {
                 }
                 return;
             }
-            
+
             // Обычные услуги
             if (service.type !== 'one_time') {
                 const channels = service.hasChannels ? serviceState.channels : 1;
@@ -2109,10 +2495,10 @@ class CPGenerator {
                 });
             }
         });
-        
+
         return packages;
     }
-    
+
     getOneTimePayments() {
         const payments = [];
         // Внедрение
@@ -2123,7 +2509,7 @@ class CPGenerator {
                 price: this.state.implementationPrice
             });
         }
-        
+
         // Запуск интернет магазина
         if (this.state.selectedServices['online_store']?.enabled && this.state.onlineStorePrice > 0) {
             payments.push({
@@ -2132,7 +2518,7 @@ class CPGenerator {
                 price: this.state.onlineStorePrice
             });
         }
-        
+
         // Пользовательские разовые платежи
         this.state.customOneTimePayments.forEach(payment => {
             if (payment.name && payment.price > 0) {
@@ -2143,16 +2529,16 @@ class CPGenerator {
                 });
             }
         });
-        
+
         return payments;
     }
-    
+
     getSelectedServicesForPDF() {
         const services = [];
-        const selectedTariff = this.state.selectedTariff 
-            ? this.config.tariffs[this.state.selectedTariff] 
+        const selectedTariff = this.state.selectedTariff
+            ? this.config.tariffs[this.state.selectedTariff]
             : null;
-        
+
         if (this.state.selectedTariff && this.state.extraUsers > 0) {
             const tariff = this.config.tariffs[this.state.selectedTariff];
             services.push({
@@ -2161,15 +2547,15 @@ class CPGenerator {
                 price: this.getExtraUserPriceByKey(this.state.selectedTariff) * this.state.extraUsers
             });
         }
-        
+
         Object.entries(this.state.selectedServices).forEach(([key, serviceState]) => {
             if (!serviceState.enabled) return;
-            
+
             const service = this.config.services[key];
             if (!service || service.priceFromTariff) return;
-            
+
             const isIncluded = selectedTariff?.includedServices?.includes(key);
-            
+
             // Other services
             if (isIncluded) {
                 // For included services with channels, only charge for additional
@@ -2188,52 +2574,52 @@ class CPGenerator {
                 }
                 return;
             }
-            
+
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? serviceState.channels : 1;
             let totalPrice = basePrice * channels;
             let name = service.name;
             if (channels > 1) name = `${service.name} (×${channels})`;
-            
+
             services.push({
                 name,
                 type: service.type === 'one_time' ? 'one_time' : 'monthly',
                 price: totalPrice
             });
         });
-        
+
         return services;
     }
-    
+
     calculateTotals() {
         let monthlyRaw = 0;
         const months = this.state.periodMonths;
         const periodMultiplier = this.getPeriodDiscountMultiplier();
-        
+
         if (this.state.selectedTariff) {
             monthlyRaw += this.getTariffMonthlyBase(this.state.selectedTariff);
-            
+
             if (this.state.extraUsers > 0) {
                 monthlyRaw += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
             }
         }
-        
-        const selectedTariff = this.state.selectedTariff 
-            ? this.config.tariffs[this.state.selectedTariff] 
+
+        const selectedTariff = this.state.selectedTariff
+            ? this.config.tariffs[this.state.selectedTariff]
             : null;
-            
+
         Object.entries(this.state.selectedServices).forEach(([key, serviceState]) => {
             if (!serviceState.enabled) return;
-            
+
             const service = this.config.services[key];
             if (!service || service.priceFromTariff) return;
-            
+
             const isIncluded = selectedTariff?.includedServices?.includes(key);
-            
+
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? serviceState.channels : 1;
             let totalPrice = 0;
-            
+
             // For included services with channels, only charge for additional channels
             if (isIncluded && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
@@ -2248,21 +2634,21 @@ class CPGenerator {
             } else {
                 totalPrice = basePrice * channels;
             }
-            
+
             monthlyRaw += totalPrice;
         });
-        
+
         const monthlyAfterDiscount = monthlyRaw * periodMultiplier;
         const monthlyToPay = this.applyPartnerDiscount(monthlyAfterDiscount);
         const periodToPay = monthlyToPay * months;
-        
+
         return {
             monthly: monthlyToPay,
             period: periodToPay,
             grand: periodToPay
         };
     }
-    
+
     // ========================================
     // Save & Download PDF
     // ========================================
@@ -2271,32 +2657,32 @@ class CPGenerator {
         if (!this.state.selectedTariff) {
             return null;
         }
-        
+
         const tariff = this.config.tariffs[this.state.selectedTariff];
         const tariffPrice = this.getTariffPriceByKey(this.state.selectedTariff);
         const totals = this.calculateTotals();
-        
+
         // Формат даты d.m.Y
         const now = new Date();
         const date = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
-        
+
         const tf = tariff.tariffFeatures || {};
         const selectedTariff = this.config.tariffs[this.state.selectedTariff];
-        
+
         // Формируем tariff_features на основе данных тарифа
         const tariffFeatures = [];
-        
+
         // Количество пользователей
         tariffFeatures.push({
             name: "Количество пользователей",
             value: `${tf.users || tariff.users} шт.`
         });
-        
+
         // Дашборд
         if (tf.dashboard) {
             tariffFeatures.push({ name: "Дашборд" });
         }
-        
+
         // Интеграции с соц.сетями
         if (tf.socialIntegrations) {
             const social = tf.socialIntegrations;
@@ -2328,17 +2714,17 @@ class CPGenerator {
                 tariffFeatures.push({ name: "Интеграция Почта" });
             }
         }
-        
+
         // Мобильное приложение
         if (tf.mobileApp) {
             tariffFeatures.push({ name: "Мобильное приложение" });
         }
-        
+
         // Контроль доступа
         if (tf.accessControl) {
             tariffFeatures.push({ name: "Контроль доступ" });
         }
-        
+
         // Воронка продаж
         if (tf.salesFunnels) {
             tariffFeatures.push({
@@ -2346,25 +2732,25 @@ class CPGenerator {
                 value: `${tf.salesFunnels} воронк${tf.salesFunnels > 1 ? 'и' : 'а'}`
             });
         }
-        
+
         // Управление задачами
         if (tf.taskManagement) {
             tariffFeatures.push({ name: "Управление задачами" });
         }
-        
+
         // Календарь
         if (tf.calendar) {
             tariffFeatures.push({ name: "Календарь" });
         }
-        
+
         // СМС рассылка
         if (tf.smsBroadcast) {
             tariffFeatures.push({ name: "Смс рассылка" });
         }
-        
+
         // Формируем modules (все доступные модули/услуги)
         const modules = [];
-        
+
         // Mini-app B2B
         const miniAppB2B = tf.miniAppB2B || {};
         const b2bIncluded = miniAppB2B.channels > 0 && miniAppB2B.discount === 100;
@@ -2374,7 +2760,7 @@ class CPGenerator {
             status: b2bIncluded ? "included" : (b2bSelected ? "selected" : "not_available"),
             price: b2bSelected ? this.getPriceByCurrency(this.config.services['telegram_b2b']?.prices) : 0
         });
-        
+
         // Mini-app B2C
         const miniAppB2C = tf.miniAppB2C || {};
         const b2cIncluded = miniAppB2C.channels > 0 && miniAppB2C.discount === 100;
@@ -2384,7 +2770,7 @@ class CPGenerator {
             status: b2cIncluded ? "included" : (b2cSelected ? "selected" : "not_available"),
             price: b2cSelected ? this.getPriceByCurrency(this.config.services['telegram_b2c']?.prices) : 0
         });
-        
+
         // Интернет-магазин
         const onlineStoreSelected = this.state.selectedServices['online_store']?.enabled;
         modules.push({
@@ -2392,7 +2778,7 @@ class CPGenerator {
             status: onlineStoreSelected ? "selected" : "not_available",
             price: onlineStoreSelected ? this.getPriceByCurrency(this.config.services['online_store']?.prices) : 0
         });
-        
+
         // Складской учёт и касса
         const warehouseSelected = this.state.selectedServices['warehouse']?.enabled;
         modules.push({
@@ -2400,7 +2786,7 @@ class CPGenerator {
             status: warehouseSelected ? "selected" : "not_available",
             price: warehouseSelected ? this.getPriceByCurrency(this.config.services['warehouse']?.prices) : 0
         });
-        
+
         // SMS Рассылка
         const smsIncluded = selectedTariff?.includedServices?.includes('sms_broadcast');
         const smsSelected = this.state.selectedServices['sms_broadcast']?.enabled && !smsIncluded;
@@ -2409,7 +2795,7 @@ class CPGenerator {
             status: smsIncluded ? "included" : (smsSelected ? "selected" : "not_available"),
             price: smsSelected ? this.getPriceByCurrency(this.config.services['sms_broadcast']?.prices) : 0
         });
-        
+
         // Дополнительные каналы соцсети
         const extraSocialSelected = this.state.selectedServices['extra_social']?.enabled;
         const extraSocialChannels = this.state.selectedServices['extra_social']?.channels || 0;
@@ -2418,19 +2804,19 @@ class CPGenerator {
             status: extraSocialSelected ? "selected" : "not_available",
             price: extraSocialSelected ? this.getPriceByCurrency(this.config.services['extra_social']?.prices) * extraSocialChannels : 0
         });
-        
+
         // Дополнительная воронка
         const extraFunnelSelected = this.state.selectedServices['extra_funnel']?.enabled;
         const extraFunnelChannels = this.state.selectedServices['extra_funnel']?.channels || 0;
         const extraFunnelIncluded = selectedTariff?.includedServices?.includes('extra_funnel');
         const includedExtraFunnelChannels = extraFunnelIncluded
-            ? (this.getIncludedChannels(this.state.selectedTariff, 'extra_funnel') 
-                || selectedTariff?.tariffFeatures?.extraFunnels?.channels 
+            ? (this.getIncludedChannels(this.state.selectedTariff, 'extra_funnel')
+                || selectedTariff?.tariffFeatures?.extraFunnels?.channels
                 || 0)
             : 0;
         let extraFunnelStatus = "not_available";
         let extraFunnelPrice = 0;
-        
+
         if (extraFunnelSelected) {
             if (extraFunnelIncluded) {
                 const additionalChannels = Math.max(0, extraFunnelChannels - includedExtraFunnelChannels);
@@ -2448,16 +2834,16 @@ class CPGenerator {
         } else if (extraFunnelIncluded) {
             extraFunnelStatus = "included";
         }
-        
+
         modules.push({
             name: "Дополнительная воронка",
             status: extraFunnelStatus,
             price: extraFunnelPrice
         });
-        
+
         // Разовые оплаты убраны из UI
         const oneTimeServices = [];
-        
+
         // Формируем additional_users
         const additionalUsers = this.state.extraUsers > 0 ? {
             quantity: this.state.extraUsers,
@@ -2465,63 +2851,63 @@ class CPGenerator {
         } : null;
 
         const contacts = this.getContactsForApiUrl();
-        
+
         return {
             client_name: this.state.clientName,
             manager_name: this.state.managerName,
             date: date,
-            
+
             tariff: {
                 name: tariff.name,
                 period_months: this.state.periodMonths,
                 monthly_price: tariffPrice
             },
-            
+
             tariff_features: tariffFeatures,
-            
+
             additional_users: additionalUsers,
-            
+
             modules: modules,
-            
+
             one_time_services: oneTimeServices,
-            
+
             contacts: {
                 phone: contacts.phone,
                 website: contacts.website,
                 telegram: contacts.telegram
             },
-            
+
             currency: this.getCurrencyDisplayName(),
             validity_days: 14
         };
     }
-    
+
     async saveAndDownloadPDF() {
         if (!this.state.selectedTariff) {
             alert('Пожалуйста, выберите тариф');
             return;
         }
-        
+
         if (!this.state.apiUrl || !this.state.token) {
             alert('Ошибка: отсутствует URL API или токен');
             return;
         }
-        
+
         this.showLoading();
-        
+
         try {
             // Формируем данные для API
             const pdfData = this.preparePDFData();
             if (!pdfData) {
                 throw new Error('Не удалось подготовить данные для PDF');
             }
-            
+
             // Фиксированный URL для генерации PDF
             const pdfApiUrl = 'https://billing-back.shamcrm.com/api/generateOffer';
-            
+
             console.log('Sending PDF generation request to:', pdfApiUrl);
             console.log('PDF Data:', pdfData);
-            
+
             // Отправляем запрос на генерацию PDF
             const response = await fetch(pdfApiUrl, {
                 method: 'POST',
@@ -2532,15 +2918,15 @@ class CPGenerator {
                 },
                 body: JSON.stringify(pdfData)
             });
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Server error: ${response.status} - ${errorText}`);
             }
-            
+
             // Получаем PDF blob из ответа
             const pdfBlob = await response.blob();
-            
+
             // Скачиваем PDF
             const url = URL.createObjectURL(pdfBlob);
             const link = document.createElement('a');
@@ -2550,10 +2936,10 @@ class CPGenerator {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            
+
             // Отправляем на сервер (для сохранения в CRM)
             await this.sendToServerWithBlob(pdfBlob);
-            
+
             this.hideLoading();
         } catch (error) {
             console.error('Error:', error);
@@ -2561,7 +2947,7 @@ class CPGenerator {
             alert('Ошибка при сохранении. Попробуйте еще раз.');
         }
     }
-    
+
     getProposalPDFStyles() {
         return `
             * {
@@ -3017,18 +3403,18 @@ class CPGenerator {
             }
         `;
     }
-    
+
     async downloadPDF() {
         const element = document.createElement('div');
         element.innerHTML = this.generatePDFContent();
         element.style.cssText = 'background: white; padding: 40px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #333;';
-        
+
         const style = document.createElement('style');
         style.textContent = this.getPDFStyles();
         element.prepend(style);
-        
+
         document.body.appendChild(element);
-        
+
         const opt = {
             margin: 10,
             filename: `KP_${this.state.clientName}_${new Date().toISOString().slice(0, 10)}.pdf`,
@@ -3036,7 +3422,7 @@ class CPGenerator {
             html2canvas: { scale: 2 },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
-        
+
         try {
             await html2pdf().set(opt).from(element).save();
         } catch (error) {
@@ -3046,33 +3432,33 @@ class CPGenerator {
             document.body.removeChild(element);
         }
     }
-    
+
     async generatePDFBlob() {
         const htmlContent = this.generatePDFContent();
         const element = document.createElement('div');
         element.innerHTML = htmlContent;
         element.style.cssText = 'background: #f7f6f5; font-family: Arial, sans-serif; color: #1a1a2e;';
-        
+
         document.body.appendChild(element);
-        
+
         const opt = {
             margin: [0, 0, 0, 0],
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
+            html2canvas: {
                 scale: 2,
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#f7f6f5'
             },
-            jsPDF: { 
-                unit: 'px', 
-                format: [794, 1123], 
+            jsPDF: {
+                unit: 'px',
+                format: [794, 1123],
                 orientation: 'portrait',
                 compress: true
             },
             pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
-        
+
         try {
             const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
             document.body.removeChild(element);
@@ -3082,31 +3468,31 @@ class CPGenerator {
             throw error;
         }
     }
-    
+
     // ========================================
     // Send to Server
     // ========================================
     generateDescription() {
         const totals = this.calculateTotals();
         const parts = [];
-        
+
         // Тариф
         if (this.state.selectedTariff) {
             const tariff = this.config.tariffs[this.state.selectedTariff];
-            
+
             // Проверяем, есть ли дополнительные услуги или доп. пользователи
             let hasAdditionalServices = false;
             const selectedTariff = this.config.tariffs[this.state.selectedTariff];
-            
+
             // Проверяем дополнительные услуги
             Object.entries(this.state.selectedServices).forEach(([key, serviceState]) => {
                 if (!serviceState.enabled) return;
                 const service = this.config.services[key];
                 if (!service || service.priceFromTariff) return;
-                
+
                 // Пропускаем интернет магазин - он в разовых оплатах
                 if (key === 'online_store') return;
-                
+
                 const isIncluded = selectedTariff?.includedServices?.includes(key);
                 if (!isIncluded) {
                     // Услуга не входит в тариф
@@ -3119,12 +3505,12 @@ class CPGenerator {
                     }
                 }
             });
-            
+
             // Проверяем дополнительных пользователей
             if (this.state.extraUsers > 0) {
                 hasAdditionalServices = true;
             }
-            
+
             // Формируем текст периода
             let periodText = '6 мес';
             if (this.state.periodMonths === 12) {
@@ -3132,36 +3518,36 @@ class CPGenerator {
             } else if (this.state.periodMonths === 8) {
                 periodText = '8 мес';
             }
-            
+
             // Формируем описание - всегда добавляем "+ Доп пакеты" если есть доп. услуги
             let description = `Тариф "${tariff.name}"`;
             if (hasAdditionalServices) {
                 description += ` + Доп пакеты`;
             }
             description += ` × ${periodText}`;
-            
+
             parts.push(description);
         }
 
         // Итого
         parts.push(`ИТОГО: ${this.formatTotalPrice(totals.grand)}`);
-        
+
         return parts.join('. ');
     }
-    
+
     async sendToServerWithBlob(pdfBlob) {
         if (!this.state.apiUrl || !this.state.token) {
             console.error('API URL or token is missing');
             alert('Ошибка: отсутствует URL API или токен');
             return;
         }
-        
+
         const totals = this.calculateTotals();
         const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        
+
         // Создаем FormData для multipart/form-data
         const formData = new FormData();
-        
+
         // Добавляем JSON данные как отдельные поля
         formData.append('name', this.state.clientName);
         formData.append('manager_id', parseInt(this.state.managerId) || 0);
@@ -3170,25 +3556,25 @@ class CPGenerator {
         formData.append('sum', totals.grand);
         formData.append('start_date', currentDate);
         formData.append('description', this.generateDescription());
-        
+
         // Если есть deal_id, добавляем его в payload
         if (this.state.dealId) {
             formData.append('deal_id', this.state.dealId);
         }
-        
+
         // Добавляем PDF файл
         // Пока отправляем реальный PDF blob (можно заменить на пустой для тестирования)
         const pdfFile = pdfBlob || new Blob([''], { type: 'application/pdf' });
         formData.append('files[]', pdfFile, `KP_${this.state.clientName}_${currentDate}.pdf`);
-        
+
         // Формируем URL
         let apiUrl = this.state.apiUrl;
-        
+
         // Добавляем протокол, если его нет
         if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
             apiUrl = `https://${apiUrl}`;
         }
-        
+
         console.log('Sending POST request to API:', apiUrl);
         console.log('FormData fields:', {
             name: this.state.clientName,
@@ -3200,7 +3586,7 @@ class CPGenerator {
             description: this.generateDescription(),
             deal_id: this.state.dealId || 'none (creating new)'
         });
-        
+
         try {
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -3209,37 +3595,37 @@ class CPGenerator {
                 },
                 body: formData
             });
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(`Server error: ${response.status} - ${errorText}`);
             }
-            
+
             const responseData = await response.json().catch(() => ({ success: true }));
             console.log('Server response:', responseData);
-            
+
             this.showSuccessModal();
         } catch (error) {
             console.error('Error sending to server:', error);
             throw error;
         }
     }
-    
+
     // ========================================
     // UI Helpers
     // ========================================
     showLoading() {
         document.getElementById('loadingOverlay').classList.add('active');
     }
-    
+
     hideLoading() {
         document.getElementById('loadingOverlay').classList.remove('active');
     }
-    
+
     showSuccessModal() {
         document.getElementById('successModal').classList.add('active');
     }
-    
+
     closeModal(modalId) {
         document.getElementById(modalId).classList.remove('active');
     }

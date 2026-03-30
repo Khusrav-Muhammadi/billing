@@ -49,13 +49,49 @@ body {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
-    align-items: flex-end;
+    align-items: flex-start;
 }
 
 .entity-field {
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.entity-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.74rem;
+    color: #6b7280;
+    line-height: 1.2;
+}
+
+.entity-meta-label {
+    white-space: nowrap;
+}
+
+.entity-meta-value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.74rem;
+    color: #111827;
+    background: #f3f4f6;
+    border-radius: 4px;
+    padding: 1px 6px;
+}
+
+.entity-meta-copy {
+    border: none;
+    background: transparent;
+    color: #2B4BFF;
+    font-size: 0.72rem;
+    padding: 0;
+    cursor: pointer;
+}
+
+.entity-meta-copy:disabled {
+    color: #9ca3af;
+    cursor: not-allowed;
 }
 
 .entity-label {

@@ -51,7 +51,7 @@
                         <td>{{ $partner->name }}</td>
                         <td>{{ $partner->phone }}</td>
                         <td>{{ $partner->email }}</td>
-                        <td>{{ $partner->partnerStatus?->name }}</td>
+                        <td>{{ ($partner->status ?? 'partner') === 'agent' ? 'Agent' : 'Partner' }}</td>
                         <td>
                             @foreach($methods as $method)
                                 <span class="badge badge-info">{{ $labels[$method] ?? $method }}</span>
@@ -143,4 +143,3 @@
 
     </script>
 @endsection
-

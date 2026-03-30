@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ClientPaymentRequest;
+use App\Models\CommercialOffer;
 use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\PaymentItem;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -34,13 +37,39 @@ class ClientPaymentController extends Controller
     public function store(ClientPaymentRequest $request)
     {
         $data = $request->validated();
+        $commercialOffer = null;
+        $commercialOfferId = isset($data['commercial_offer_id']) ? (int) $data['commercial_offer_id'] : null;
 
         try {
+            if ($commercialOfferId) {
+                $commercialOffer = CommercialOffer::query()->find($commercialOfferId);
+                if (!$commercialOffer) {
+                    throw new \Exception('КП не найдено.');
+                }
+                if ($commercialOffer->locked_at) {
+                    throw new \Exception('Это КП уже заблокировано после генерации ссылки оплаты.');
+                }
+            }
+
             DB::beginTransaction();
 
             $organizationId = $data['organization_id'] ?? null;
+            $partnerId = isset($data['partner_id']) ? (int) $data['partner_id'] : null;
             if (!$organizationId && isset($data['name']) && is_numeric($data['name'])) {
                 $organizationId = (int) $data['name'];
+            }
+
+            $partner = null;
+            if ($partnerId) {
+                $partner = User::query()
+                    ->where('id', $partnerId)
+                    ->whereRaw('LOWER(role) = ?', ['partner'])
+                    ->select('id', 'name', 'email', 'phone')
+                    ->first();
+
+                if (!$partner) {
+                    throw new \Exception('Партнёр не найден.');
+                }
             }
 
             if ($organizationId) {
@@ -52,13 +81,30 @@ class ClientPaymentController extends Controller
                     throw new \Exception('Организация не найдена');
                 }
 
-                $data['name'] = (string) ($organization->name ?? $data['name']);
-                $data['phone'] = (string) ($organization->phone ?: ($organization->client?->phone ?: ($data['phone'] ?? '')));
-                $data['email'] = (string) ($organization->email ?: ($organization->client?->email ?: ($data['email'] ?? '')));
+                if ($commercialOffer && (int) $commercialOffer->organization_id !== (int) $organization->id) {
+                    throw new \Exception('Организация платежа не совпадает с сохраненным КП.');
+                }
+
+                if ($partner) {
+                    $data['name'] = (string) ($partner->name ?? ($data['name'] ?? ''));
+                    $data['phone'] = (string) ($partner->phone ?? ($data['phone'] ?? ''));
+                    $data['email'] = (string) ($partner->email ?? ($data['email'] ?? ''));
+                } else {
+                    $data['name'] = (string) ($organization->name ?? $data['name']);
+                    $data['phone'] = (string) ($organization->phone ?: ($organization->client?->phone ?: ($data['phone'] ?? '')));
+                    $data['email'] = (string) ($organization->email ?: ($organization->client?->email ?: ($data['email'] ?? '')));
+                }
             }
 
             if (!isset($data['email']) || trim((string) $data['email']) === '') {
+                if ($partner) {
+                    throw new \Exception('У выбранного партнёра не указан email для оплаты.');
+                }
                 throw new \Exception('Не указана почта (email) для оплаты. Укажи email у организации или клиента.');
+            }
+
+            if ($partner && (!isset($data['phone']) || trim((string) $data['phone']) === '')) {
+                throw new \Exception('У выбранного партнёра не указан номер телефона для оплаты.');
             }
 
             $payment = Payment::create([
@@ -81,6 +127,7 @@ class ClientPaymentController extends Controller
 
             if ($data['payment_type'] === 'invoice') {
                 $url = route('client-payment.invoice', $payment);
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $url);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $url])
                     : redirect()->to($url);
@@ -88,6 +135,7 @@ class ClientPaymentController extends Controller
 
             if ($data['payment_type'] === 'cash') {
                 $url = route('client-payment.invoice', $payment);
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $url);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $url])
                     : redirect()->to($url);
@@ -95,6 +143,7 @@ class ClientPaymentController extends Controller
 
             if ($data['payment_type'] == 'alif') {
                 $checkoutUrl = $this->generateAlifPayLink($payment);
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $checkoutUrl])
                     : redirect($checkoutUrl);
@@ -102,6 +151,7 @@ class ClientPaymentController extends Controller
 
             if ($data['payment_type'] == 'octo') {
                 $checkoutUrl = $this->generateOctobankPayLink($payment);
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $checkoutUrl])
                     : redirect($checkoutUrl);
@@ -118,6 +168,7 @@ class ClientPaymentController extends Controller
                 'message' => $e->getMessage(),
                 'payment_type' => $data['payment_type'] ?? null,
                 'sum' => $data['sum'] ?? null,
+                'commercial_offer_id' => $commercialOfferId,
             ]);
 
             $msg = 'Ошибка при создании платежа: ' . $e->getMessage();
@@ -135,23 +186,36 @@ class ClientPaymentController extends Controller
             throw new \Exception('OCTO: пустая корзина (basket). Добавь хотя бы 1 позицию.');
         }
 
-        $basket = $items->map(function ($i, $idx) {
-            $raw = str_replace(',', '.', (string) $i->price);
-            $price = (float) $raw;
-
-            if ($price <= 0) {
+        $basketRows = $items->map(function ($i, $idx) {
+            $priceCents = $this->moneyToCents($i->price);
+            if ($priceCents <= 0) {
                 throw new \Exception("OCTO: некорректная цена у позиции #{$idx}: {$i->price}");
             }
 
             return [
                 "position_desc" => (string) $i->service_name,
                 "count" => 1,
-                "price" => $price,
+                "price" => $this->formatCents($priceCents),
                 "spic" => "00305001001000000",
+                "__price_cents" => $priceCents,
             ];
-        })->values()->all();
+        })->values();
 
-        $totalSum = array_reduce($basket, fn ($s, $b) => $s + ($b['price'] * $b['count']), 0);
+        $totalSumCents = $basketRows->reduce(function ($sum, $row) {
+            $count = (int) ($row['count'] ?? 1);
+            return $sum + ((int) ($row['__price_cents'] ?? 0) * $count);
+        }, 0);
+
+        $basket = $basketRows->map(function ($row) {
+            unset($row['__price_cents']);
+            return $row;
+        })->all();
+
+        if ($totalSumCents <= 0) {
+            throw new \Exception('OCTO: итоговая сумма должна быть больше 0.');
+        }
+
+        $totalSum = $this->formatCents($totalSumCents);
 
         $payload = [
             "octo_shop_id" => (int) config('payments.octobank.shop_id'),
@@ -259,6 +323,69 @@ class ClientPaymentController extends Controller
         }
 
         throw new \Exception('Ошибка при создании платежа Alif Pay: ' . $response->body());
+    }
+
+    private function lockCommercialOfferAfterPayment(?CommercialOffer $offer, Payment $payment, ?string $paymentLink = null): void
+    {
+        if (!$offer) {
+            return;
+        }
+
+        $updated = CommercialOffer::query()
+            ->where('id', $offer->id)
+            ->whereNull('locked_at')
+            ->update([
+                'status' => 'payment_link_generated',
+                'locked_at' => now(),
+                'payment_id' => $payment->id,
+                'payment_link' => $paymentLink,
+                'updated_by' => Auth::id(),
+                'updated_at' => now(),
+            ]);
+
+        if ($updated === 0) {
+            throw new \Exception('Не удалось заблокировать КП после генерации ссылки оплаты.');
+        }
+    }
+
+    private function moneyToCents($value): int
+    {
+        $normalized = preg_replace('/\s+/', '', str_replace(',', '.', (string) $value));
+        if ($normalized === '' || !preg_match('/^-?\d+(?:\.\d+)?$/', $normalized)) {
+            throw new \Exception("OCTO: некорректный формат суммы: {$value}");
+        }
+
+        $isNegative = str_starts_with($normalized, '-');
+        if ($isNegative) {
+            $normalized = substr($normalized, 1);
+        }
+
+        [$wholePart, $fractionPart] = array_pad(explode('.', $normalized, 2), 2, '');
+        $wholePart = ltrim($wholePart, '0');
+        $whole = $wholePart === '' ? 0 : (int) $wholePart;
+
+        $fraction = preg_replace('/\D+/', '', $fractionPart);
+        $fraction = str_pad($fraction, 3, '0');
+        $cents = (int) substr($fraction, 0, 2);
+        $thirdDigit = (int) ($fraction[2] ?? '0');
+
+        if ($thirdDigit >= 5) {
+            $cents += 1;
+            if ($cents >= 100) {
+                $whole += 1;
+                $cents = 0;
+            }
+        }
+
+        $amount = ($whole * 100) + $cents;
+        return $isNegative ? -$amount : $amount;
+    }
+
+    private function formatCents(int $amountCents): string
+    {
+        $abs = abs($amountCents);
+        $formatted = number_format($abs / 100, 2, '.', '');
+        return $amountCents < 0 ? "-{$formatted}" : $formatted;
     }
 
 }

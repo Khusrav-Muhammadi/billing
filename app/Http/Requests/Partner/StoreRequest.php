@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Partner;
 
+use App\Enums\PartnerStatusEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,6 +23,7 @@ class StoreRequest extends FormRequest
             'login'  => ['nullable', 'unique:users,login'],
             'password'  => [ 'nullable'],
             'role'  => ['nullable'],
+            'status' => ['required', 'string', Rule::in(PartnerStatusEnum::values())],
             'phone' => ['required', 'unique:users,phone'],
             'partner_id' => ['nullable'],
             'procent_from_tariff' => ['required', 'integer', 'min:0', 'max:100'],

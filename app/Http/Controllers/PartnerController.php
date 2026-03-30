@@ -45,8 +45,12 @@ class PartnerController extends Controller
 
         $managers = $this->repository->getManagers($partner->id);
         $procents = $this->repository->getProcent($partner->id);
+        $partnerHistory = $partner->history()
+            ->with(['changes', 'user'])
+            ->orderByDesc('id')
+            ->get();
 
-        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'managers', 'procents'));
+        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'managers', 'procents', 'partnerHistory'));
     }
 
     public function update(User $partner, UpdateRequest $request)
@@ -86,7 +90,7 @@ class PartnerController extends Controller
         return redirect()->back();
     }
 
-    public function addManager(StoreRequest  $request)
+    public function addManager(UpdateManagerRequest $request)
     {
         $this->repository->storeManager($request->validated());
 

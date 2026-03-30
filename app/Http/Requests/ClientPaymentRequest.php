@@ -17,6 +17,8 @@ class ClientPaymentRequest extends FormRequest
     {
         return [
             'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+            'partner_id' => ['nullable', 'integer', 'exists:users,id'],
+            'commercial_offer_id' => ['nullable', 'integer', 'exists:commercial_offers,id'],
             'name' => ['required'],
             'phone' => [''],
             'email' => [''],

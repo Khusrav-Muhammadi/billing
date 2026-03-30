@@ -65,7 +65,7 @@ class ConnectedClientServiceController extends Controller
             ->groupBy('parent_tariff_id');
 
         $organizations = Organization::query()
-            ->select('id', 'name', 'phone', 'client_id')
+            ->select('id', 'name', 'phone', 'client_id', 'order_number')
             ->with(['client.currency'])
             ->orderBy('name')
             ->get();
@@ -121,7 +121,7 @@ class ConnectedClientServiceController extends Controller
             ->groupBy('parent_tariff_id');
 
         $organizations = Organization::query()
-            ->select('id', 'name', 'phone', 'client_id')
+            ->select('id', 'name', 'phone', 'client_id', 'order_number')
             ->with(['client.currency'])
             ->orderBy('name')
             ->get();
@@ -147,6 +147,7 @@ class ConnectedClientServiceController extends Controller
                 'name'        => $o->name,
                 'email'       => '',
                 'phone'       => $o->phone ?? '',
+                'order_number'=> $o->order_number,
                 'country_id'  => $o->client?->country_id,
                 'currency_id' => $o->client?->currency_id,
                 'currency'    => $o->client?->currency?->symbol_code,
@@ -167,7 +168,7 @@ class ConnectedClientServiceController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $organizations = Organization::query()
-            ->select('id', 'name', 'phone', 'client_id')
+            ->select('id', 'name', 'phone', 'client_id', 'order_number')
             ->with(['client.currency'])
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%' . $search . '%';
@@ -187,6 +188,7 @@ class ConnectedClientServiceController extends Controller
                 'name'        => $o->name,
                 'email'       => '',
                 'phone'       => $o->phone ?? '',
+                'order_number'=> $o->order_number,
                 'country_id'  => $o->client?->country_id,
                 'currency_id' => $o->client?->currency_id,
                 'currency'    => $o->client?->currency?->symbol_code,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Partner;
 
+use App\Enums\PartnerStatusEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,6 +20,7 @@ class UpdateRequest extends FormRequest
             'name' => ['required', 'string'],
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($this->partner)],
             'phone' => ['required', 'string', Rule::unique('users', 'phone')->ignore($this->partner)],
+            'status' => ['required', 'string', Rule::in(PartnerStatusEnum::values())],
             'login' => ['sometimes', 'string', Rule::unique('users', 'login')->ignore($this->partner)],
             'address' => ['nullable', 'string'],
             'partner_status_id' => ['nullable', Rule::exists('partner_statuses', 'id')],

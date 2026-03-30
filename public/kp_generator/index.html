@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Коммерческое предложение</title>
-    <link rel="stylesheet" href="styles.css?v=20260327_3">
+    <link rel="stylesheet" href="styles.css?v=20260330_19">
 </head>
 <body>
     <div class="app-container">
@@ -20,6 +20,10 @@
                         <div class="entity-combo" id="clientCombo">
                             <input id="clientSelect" class="entity-combo-input" type="text" placeholder="Выберите организацию" autocomplete="off">
                             <div class="entity-combo-dropdown" id="clientDropdown" hidden></div>
+                        </div>
+                        <div class="entity-meta" id="selectedClientOrderWrap" hidden>
+                            <code class="entity-meta-value" id="selectedClientOrderValue"></code>
+                            <button class="entity-meta-copy" id="copyClientOrderBtn" type="button">Копировать</button>
                         </div>
                     </label>
                     <label class="entity-field">
@@ -103,7 +107,18 @@
                             <div class="total-row grand">
                                 <span>К ОПЛАТЕ SHAMCRM:</span>
                                 <span class="total-value" id="grandTotal">0 TJS</span>
-                                <button class="action-btn secondary" id="payBtn" type="button">Оплатить</button>
+                                <form id="saveOfferForm"
+                                      action="/application/kp/store"
+                                      method="POST"
+                                      target="_top"
+                                      style="display:inline-flex; gap:8px; align-items:center; margin:0;">
+                                    <input type="hidden" id="saveOfferCsrf" name="_token">
+                                    <input type="hidden" id="saveOfferId" name="offer_id">
+                                    <input type="hidden" id="saveOfferOrganizationId" name="organization_id">
+                                    <input type="hidden" id="saveOfferPayload" name="payload">
+                                    <button class="action-btn secondary" id="saveBtn" type="submit">Сохранить</button>
+                                </form>
+                                <button class="action-btn secondary" id="payBtn" type="button" disabled>Оплатить</button>
                             </div>
                         </div>
                     </div>
@@ -123,8 +138,9 @@
                 <div style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#fafafa; margin-bottom:12px;">
                     <div style="display:flex; justify-content:space-between; gap:10px;">
                         <div>
-                            <div style="font-size:12px; color:#6b7280;">Клиент</div>
+                            <div style="font-size:12px; color:#6b7280;" id="payPayerLabel">Клиент</div>
                             <div id="payClientName" style="font-weight:600;">—</div>
+                            <div id="payPayerContacts" style="font-size:12px; color:#6b7280; margin-top:4px;">—</div>
                         </div>
                         <div style="text-align:right;">
                             <div style="font-size:12px; color:#6b7280;">К оплате</div>
@@ -173,6 +189,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="app.js?v=20260330_17"></script>
+    <script src="app.js?v=20260330_22"></script>
 </body>
 </html>

@@ -2,13 +2,18 @@
 
 namespace App\Repositories;
 
+use App\Enums\ModelHistoryStatuses;
+use App\Enums\PartnerStatusEnum;
 use App\Jobs\SendPartnerDataJob;
+use App\Models\ChangeHistory;
+use App\Models\ModelHistory;
 use App\Models\Partner;
 use App\Models\ProcentPartner;
 use App\Models\PartnerProcent;
 use App\Models\PartnerStatus;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class PartnerRepository implements PartnerRepositoryInterface
@@ -29,6 +34,7 @@ class PartnerRepository implements PartnerRepositoryInterface
         $packPercent = isset($data['procent_from_pack']) ? (int) $data['procent_from_pack'] : null;
         unset($data['procent_from_tariff'], $data['procent_from_pack']);
         $data['payment_methods'] = $this->normalizePaymentMethods($data['payment_methods'] ?? null);
+        $data['status'] = $this->normalizePartnerStatus($data['status'] ?? null);
 
         $data['partner_status_id'] = PartnerStatus::first()->id;
         $data['login'] = $data['email'];
@@ -53,6 +59,21 @@ class PartnerRepository implements PartnerRepositoryInterface
             'procent_from_tariff' => $tariffPercent,
             'procent_from_pack' => $packPercent,
         ]);
+
+        $this->recordHistory(
+            model: $user,
+            status: ModelHistoryStatuses::CREATED,
+            changes: [
+                'name' => ['previous_value' => null, 'new_value' => $user->name],
+                'email' => ['previous_value' => null, 'new_value' => $user->email],
+                'phone' => ['previous_value' => null, 'new_value' => $user->phone],
+                'status' => ['previous_value' => null, 'new_value' => $this->statusLabel($user->status)],
+                'payment_methods' => ['previous_value' => null, 'new_value' => $this->paymentMethodsLabel($user->payment_methods)],
+                'procent_from_tariff' => ['previous_value' => null, 'new_value' => $tariffPercent],
+                'procent_from_pack' => ['previous_value' => null, 'new_value' => $packPercent],
+            ],
+            userId: Auth::id()
+        );
 
 //        SendPartnerDataJob::dispatch($user, $password);
     }
@@ -79,21 +100,103 @@ class PartnerRepository implements PartnerRepositoryInterface
 
     public function storeProcent(User $user, array $data)
     {
+        $previous = PartnerProcent::query()
+            ->where('partner_id', $user->id)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first();
+
         PartnerProcent::create([
             'partner_id' => $user->id,
             'date' => $data['date'],
             'procent_from_tariff' => $data['procent_from_tariff'],
             'procent_from_pack' => $data['procent_from_pack'],
         ]);
+
+        $changes = [];
+        $prevTariff = $previous?->procent_from_tariff;
+        $prevPack = $previous?->procent_from_pack;
+        $prevDate = $previous?->date;
+
+        if ((string) $prevTariff !== (string) $data['procent_from_tariff']) {
+            $changes['procent_from_tariff'] = [
+                'previous_value' => $prevTariff,
+                'new_value' => (int) $data['procent_from_tariff'],
+            ];
+        }
+
+        if ((string) $prevPack !== (string) $data['procent_from_pack']) {
+            $changes['procent_from_pack'] = [
+                'previous_value' => $prevPack,
+                'new_value' => (int) $data['procent_from_pack'],
+            ];
+        }
+
+        if ((string) $prevDate !== (string) $data['date']) {
+            $changes['procent_date'] = [
+                'previous_value' => $prevDate,
+                'new_value' => (string) $data['date'],
+            ];
+        }
+
+        if (!empty($changes)) {
+            $this->recordHistory(
+                model: $user,
+                status: ModelHistoryStatuses::UPDATED,
+                changes: $changes,
+                userId: Auth::id()
+            );
+        }
     }
 
     public function editProcent(PartnerProcent $procent, array $data)
     {
+        $before = [
+            'date' => $procent->date,
+            'procent_from_tariff' => $procent->procent_from_tariff,
+            'procent_from_pack' => $procent->procent_from_pack,
+        ];
+
         $procent->update([
             'date' => $data['date'],
             'procent_from_tariff' => $data['procent_from_tariff'],
             'procent_from_pack' => $data['procent_from_pack'],
         ]);
+
+        $changes = [];
+
+        if ((string) $before['procent_from_tariff'] !== (string) $data['procent_from_tariff']) {
+            $changes['procent_from_tariff'] = [
+                'previous_value' => $before['procent_from_tariff'],
+                'new_value' => (int) $data['procent_from_tariff'],
+            ];
+        }
+
+        if ((string) $before['procent_from_pack'] !== (string) $data['procent_from_pack']) {
+            $changes['procent_from_pack'] = [
+                'previous_value' => $before['procent_from_pack'],
+                'new_value' => (int) $data['procent_from_pack'],
+            ];
+        }
+
+        if ((string) $before['date'] !== (string) $data['date']) {
+            $changes['procent_date'] = [
+                'previous_value' => $before['date'],
+                'new_value' => (string) $data['date'],
+            ];
+        }
+
+        if (!empty($changes)) {
+            $user = User::query()->find($procent->partner_id);
+            if ($user) {
+                $this->recordHistory(
+                    model: $user,
+                    status: ModelHistoryStatuses::UPDATED,
+                    changes: $changes,
+                    userId: Auth::id()
+                );
+            }
+        }
     }
 
     public function update(User $partner, array $data)
@@ -101,8 +204,59 @@ class PartnerRepository implements PartnerRepositoryInterface
         if (array_key_exists('payment_methods', $data)) {
             $data['payment_methods'] = $this->normalizePaymentMethods($data['payment_methods']);
         }
+        if (array_key_exists('status', $data)) {
+            $data['status'] = $this->normalizePartnerStatus($data['status']);
+        }
+
+        $before = [
+            'name' => $partner->name,
+            'email' => $partner->email,
+            'phone' => $partner->phone,
+            'address' => $partner->address,
+            'status' => $partner->status,
+            'payment_methods' => $partner->payment_methods,
+        ];
 
         $partner->update($data);
+
+        $changes = [];
+
+        if ($before['name'] !== $partner->name) {
+            $changes['name'] = ['previous_value' => $before['name'], 'new_value' => $partner->name];
+        }
+        if ($before['email'] !== $partner->email) {
+            $changes['email'] = ['previous_value' => $before['email'], 'new_value' => $partner->email];
+        }
+        if ($before['phone'] !== $partner->phone) {
+            $changes['phone'] = ['previous_value' => $before['phone'], 'new_value' => $partner->phone];
+        }
+        if ((string) $before['address'] !== (string) $partner->address) {
+            $changes['address'] = ['previous_value' => $before['address'], 'new_value' => $partner->address];
+        }
+        if ((string) $before['status'] !== (string) $partner->status) {
+            $changes['status'] = [
+                'previous_value' => $this->statusLabel($before['status']),
+                'new_value' => $this->statusLabel($partner->status),
+            ];
+        }
+
+        $beforeMethods = $this->normalizePaymentMethods($before['payment_methods'] ?? []);
+        $afterMethods = $this->normalizePaymentMethods($partner->payment_methods ?? []);
+        if ($beforeMethods !== $afterMethods) {
+            $changes['payment_methods'] = [
+                'previous_value' => $this->paymentMethodsLabel($beforeMethods),
+                'new_value' => $this->paymentMethodsLabel($afterMethods),
+            ];
+        }
+
+        if (!empty($changes)) {
+            $this->recordHistory(
+                model: $partner,
+                status: ModelHistoryStatuses::UPDATED,
+                changes: $changes,
+                userId: Auth::id()
+            );
+        }
     }
 
     public function updateManager(User $user, array $data)
@@ -136,5 +290,54 @@ class PartnerRepository implements PartnerRepositoryInterface
         }
 
         return $ordered;
+    }
+
+    private function normalizePartnerStatus(?string $status): string
+    {
+        $value = strtolower(trim((string) $status));
+        if (in_array($value, PartnerStatusEnum::values(), true)) {
+            return $value;
+        }
+
+        return PartnerStatusEnum::PARTNER->value;
+    }
+
+    private function paymentMethodsLabel(array $methods): string
+    {
+        $map = [
+            'card' => 'Карта',
+            'invoice' => 'Счет',
+            'cash' => 'Наличка',
+        ];
+
+        $labels = [];
+        foreach ($methods as $method) {
+            $labels[] = $map[$method] ?? $method;
+        }
+
+        return implode(', ', $labels);
+    }
+
+    private function statusLabel(?string $status): string
+    {
+        return match ($status) {
+            PartnerStatusEnum::AGENT->value => 'Agent',
+            default => 'Partner',
+        };
+    }
+
+    private function recordHistory(User $model, ModelHistoryStatuses $status, array $changes = [], ?int $userId = null): void
+    {
+        $history = ModelHistory::create([
+            'status' => $status->value,
+            'user_id' => $userId,
+            'model_id' => $model->id,
+            'model_type' => User::class,
+        ]);
+
+        ChangeHistory::create([
+            'model_history_id' => $history->id,
+            'body' => json_encode($changes, JSON_UNESCAPED_UNICODE),
+        ]);
     }
 }

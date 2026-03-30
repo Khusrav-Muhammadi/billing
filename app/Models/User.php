@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'phone',
         'address',
         'role',
+        'status',
         'partner_status_id',
         'partner_id',
         'country_id',
@@ -55,5 +57,10 @@ class User extends Authenticatable
     public function partnerStatus()
     {
         return $this->belongsTo(PartnerStatus::class, 'partner_status_id');
+    }
+
+    public function history(): MorphMany
+    {
+        return $this->morphMany(ModelHistory::class, 'model');
     }
 }

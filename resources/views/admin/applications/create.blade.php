@@ -6,10 +6,14 @@
 
 @section('content')
     @php
-        $iframeUrl = asset('kp_generator/index.html') . '?' . http_build_query([
+        $query = [
             'csrf_token' => csrf_token(),
             'v' => @filemtime(public_path('kp_generator/index.html')) ?: time(),
-        ]);
+        ];
+        if (isset($offer) && $offer) {
+            $query['offer_id'] = $offer->id;
+        }
+        $iframeUrl = asset('kp_generator/index.html') . '?' . http_build_query($query);
     @endphp
     <iframe
         src="{{ $iframeUrl }}"
