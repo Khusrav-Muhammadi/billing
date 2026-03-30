@@ -7,7 +7,6 @@
 @section('content')
 
     <div class="card-body">
-        <h4 class="card-title">Курсы: 1 USD = ? {{ $currency->symbol_code }}</h4>
 
         @if($errors->any())
             <div class="alert alert-danger">
