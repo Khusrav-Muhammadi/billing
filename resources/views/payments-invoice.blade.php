@@ -3,6 +3,14 @@
 @section('title') Счет на оплату @endsection
 
 @section('content')
+    @php
+        $paymentTypeLabel = [
+            'invoice' => 'счет',
+            'cash' => 'наличка',
+            'alif' => 'карта (Alif)',
+            'octo' => 'карта (Visa)',
+        ][$payment->payment_type] ?? ($payment->payment_type ?? '-');
+    @endphp
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -27,7 +35,7 @@
                     <div class="col-md-6 text-md-end">
                         <div class="text-muted small">К оплате</div>
                         <div class="fw-bold fs-3">{{ $payment->sum }}</div>
-                        <div class="text-muted small">Тип: счет</div>
+                        <div class="text-muted small">Тип: {{ $paymentTypeLabel }}</div>
                     </div>
                 </div>
             </div>
@@ -78,4 +86,3 @@
         }
     </style>
 @endsection
-

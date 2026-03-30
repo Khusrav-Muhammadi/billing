@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Partner\StoreRequest;
 use App\Models\Client;
 use App\Models\Currency;
+use App\Models\CurrencyRate;
 use App\Models\Organization;
 use App\Models\Partner;
 use App\Models\PartnerProcent;
@@ -128,7 +129,7 @@ class ConnectedClientServiceController extends Controller
         // Partners live in users table (role column) in this project.
         $partners = User::query()
             ->whereRaw('LOWER(role) = ?', ['partner'])
-            ->select('id', 'name', 'email', 'phone')
+            ->select('id', 'name', 'email', 'phone', 'payment_methods')
             ->orderBy('name')
             ->get();
 
@@ -156,6 +157,7 @@ class ConnectedClientServiceController extends Controller
                 'email' => $p->email ?? '',
                 'phone' => $p->phone ?? '',
                 'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id] ?? 0),
+                'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
             ]),
         ]);
     }
@@ -171,7 +173,8 @@ class ConnectedClientServiceController extends Controller
                 $like = '%' . $search . '%';
                 $query->where(function ($q) use ($like) {
                     $q->where('name', 'like', $like)
-                        ->orWhere('phone', 'like', $like);
+                        ->orWhere('phone', 'like', $like)
+                        ->orWhere('order_number', 'like', $like);
                 });
             })
             ->orderBy('name')
@@ -179,7 +182,6 @@ class ConnectedClientServiceController extends Controller
             ->get();
 
         return response()->json([
-            // Keep key name "clients" for backward-compatibility, but items are organizations.
             'clients' => $organizations->map(fn($o) => [
                 'id'          => $o->id,
                 'name'        => $o->name,
@@ -207,7 +209,7 @@ class ConnectedClientServiceController extends Controller
                         ->orWhere('phone', 'like', $like);
                 });
             })
-            ->select('id', 'name', 'email', 'phone')
+            ->select('id', 'name', 'email', 'phone', 'payment_methods')
             ->orderBy('name')
             ->limit(50)
             ->get();
@@ -221,8 +223,47 @@ class ConnectedClientServiceController extends Controller
                 'email' => $p->email ?? '',
                 'phone' => $p->phone ?? '',
                 'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id] ?? 0),
+                'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
             ]),
         ]);
+    }
+
+    private function normalizePartnerPaymentMethods($methods): array
+    {
+        $allowed = ['card', 'invoice', 'cash'];
+        $defaults = ['card', 'invoice'];
+
+        if (is_string($methods)) {
+            $decoded = json_decode($methods, true);
+            if (is_array($decoded)) {
+                $methods = $decoded;
+            }
+        }
+
+        if (!is_array($methods)) {
+            return $defaults;
+        }
+
+        $set = [];
+        foreach ($methods as $method) {
+            $code = strtolower(trim((string) $method));
+            if (in_array($code, $allowed, true)) {
+                $set[$code] = true;
+            }
+        }
+
+        if (empty($set)) {
+            return $defaults;
+        }
+
+        $ordered = [];
+        foreach ($allowed as $method) {
+            if (isset($set[$method])) {
+                $ordered[] = $method;
+            }
+        }
+
+        return $ordered;
     }
 
     private function getPartnerTariffPercents(array $partnerIds, int $asOfTs): array
@@ -230,7 +271,7 @@ class ConnectedClientServiceController extends Controller
         $partnerIds = array_values(array_filter(array_map('intval', $partnerIds)));
         if (!$partnerIds) return [];
 
-        $best = []; // partnerId => ['ts' => int, 'id' => int, 'value' => int]
+        $best = [];
 
         $rows = PartnerProcent::query()
             ->whereIn('partner_id', $partnerIds)
@@ -481,6 +522,7 @@ class ConnectedClientServiceController extends Controller
         return [
             'currencies'     => $currenciesForJs,
             'currenciesById' => $currenciesByIdForJs,
+            'usdRates'       => $this->buildUsdRates($currencies, $asOfTs),
             'paymentPeriods' => [
                 ['months' => 6,  'discount' => 0,  'label' => '6 месяцев'],
                 ['months' => 12, 'discount' => 15, 'label' => '12 месяцев (скидка 15%)'],
@@ -494,6 +536,95 @@ class ConnectedClientServiceController extends Controller
                 'website' => 'shamcrm.com',
             ],
         ];
+    }
+
+    private function buildUsdRates($currencies, int $asOfTs): array
+    {
+        $usdCurrency = $currencies->get('USD');
+        if (!$usdCurrency) {
+            return [];
+        }
+
+        $rates = ['USD' => 1.0];
+        $quotes = $currencies->filter(fn ($currency, $code) => $code !== 'USD');
+        if ($quotes->isEmpty()) {
+            return $rates;
+        }
+
+        $quoteIdToSymbol = [];
+        foreach ($quotes as $symbolCode => $currency) {
+            $quoteIdToSymbol[(int) $currency->id] = $symbolCode;
+        }
+
+        $quoteIds = array_keys($quoteIdToSymbol);
+        $asOfDate = date('Y-m-d', $asOfTs);
+
+        // Preferred: latest rate not newer than selected date.
+        $datedRows = CurrencyRate::query()
+            ->where('base_currency_id', $usdCurrency->id)
+            ->whereIn('quote_currency_id', $quoteIds)
+            ->where(function ($q) use ($asOfDate) {
+                $q->whereNull('rate_date')
+                    ->orWhere('rate_date', '<=', $asOfDate);
+            })
+            ->orderByDesc('rate_date')
+            ->orderByDesc('id')
+            ->get(['quote_currency_id', 'rate']);
+
+        $usedQuoteIds = [];
+        foreach ($datedRows as $row) {
+            $quoteId = (int) $row->quote_currency_id;
+            if (isset($usedQuoteIds[$quoteId])) {
+                continue;
+            }
+
+            $rate = (float) $row->rate;
+            if ($rate <= 0) {
+                continue;
+            }
+
+            $symbolCode = $quoteIdToSymbol[$quoteId] ?? null;
+            if (!$symbolCode) {
+                continue;
+            }
+
+            $rates[$symbolCode] = $rate;
+            $usedQuoteIds[$quoteId] = true;
+        }
+
+        // Fallback: if no historical rate found, use the latest available.
+        $missingQuoteIds = array_values(array_filter($quoteIds, fn ($id) => !isset($usedQuoteIds[$id])));
+        if (!empty($missingQuoteIds)) {
+            $latestRows = CurrencyRate::query()
+                ->where('base_currency_id', $usdCurrency->id)
+                ->whereIn('quote_currency_id', $missingQuoteIds)
+                ->orderByDesc('rate_date')
+                ->orderByDesc('id')
+                ->get(['quote_currency_id', 'rate']);
+
+            $latestUsed = [];
+            foreach ($latestRows as $row) {
+                $quoteId = (int) $row->quote_currency_id;
+                if (isset($latestUsed[$quoteId])) {
+                    continue;
+                }
+
+                $rate = (float) $row->rate;
+                if ($rate <= 0) {
+                    continue;
+                }
+
+                $symbolCode = $quoteIdToSymbol[$quoteId] ?? null;
+                if (!$symbolCode) {
+                    continue;
+                }
+
+                $rates[$symbolCode] = $rate;
+                $latestUsed[$quoteId] = true;
+            }
+        }
+
+        return $rates;
     }
 
 // Собираем персональные цены для каждой организации

@@ -86,6 +86,13 @@ class ClientPaymentController extends Controller
                     : redirect()->to($url);
             }
 
+            if ($data['payment_type'] === 'cash') {
+                $url = route('client-payment.invoice', $payment);
+                return $request->expectsJson()
+                    ? response()->json(['redirect_url' => $url])
+                    : redirect()->to($url);
+            }
+
             if ($data['payment_type'] == 'alif') {
                 $checkoutUrl = $this->generateAlifPayLink($payment);
                 return $request->expectsJson()

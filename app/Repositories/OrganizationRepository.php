@@ -12,6 +12,7 @@ use App\Models\Price;
 use App\Models\Transaction;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -51,22 +52,76 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         return (float) ($price?->sum ?? 0);
     }
 
+    private function extractClientFilters(array $data): array
+    {
+        $clientFilters = $data;
+        unset($clientFilters['search']);
+
+        return $clientFilters;
+    }
+
+    private function applyOrganizationSearch(Builder $query, ?string $search): void
+    {
+        $search = trim((string) $search);
+        if ($search === '') {
+            return;
+        }
+
+        $searchTerm = '%' . $search . '%';
+        $digits = preg_replace('/\D+/', '', $search);
+
+        $query->where(function (Builder $builder) use ($searchTerm, $digits) {
+            $builder
+                ->where('name', 'like', $searchTerm)
+                ->orWhere('phone', 'like', $searchTerm)
+                ->orWhere('email', 'like', $searchTerm)
+                ->orWhereHas('client', function (Builder $clientQuery) use ($searchTerm) {
+                    $clientQuery
+                        ->where('name', 'like', $searchTerm)
+                        ->orWhere('email', 'like', $searchTerm)
+                        ->orWhere('phone', 'like', $searchTerm)
+                        ->orWhere('sub_domain', 'like', $searchTerm);
+                });
+
+            if ($digits !== '') {
+                $builder->orWhere('order_number', 'like', '%' . $digits . '%');
+
+                if (strlen($digits) < 9) {
+                    $builder->orWhere('order_number', 'like', '%' . Organization::formatOrderNumber((int) $digits) . '%');
+                }
+            }
+        });
+    }
+
+    private function organizationsQuery(array $clientIds, array $data): Builder
+    {
+        $query = Organization::query()
+            ->with(['client.tariffPrice.tariff', 'client.partner'])
+            ->whereIn('client_id', $clientIds);
+
+        $this->applyOrganizationSearch($query, $data['search'] ?? null);
+
+        return $query->orderBy('id');
+    }
+
     public function index(array $data)
     {
-        $query = Client::query()->whereHas('transactions')->orWhere('nfr', true);
+        $query = Client::query()->where(function (Builder $builder) {
+            $builder->whereHas('transactions')->orWhere('nfr', true);
+        });
 
-        $clientIds = $query->filter($data)->pluck('id')->toArray();
+        $clientIds = $query->filter($this->extractClientFilters($data))->pluck('id')->toArray();
 
-        return Organization::whereIn('client_id', $clientIds)->get();
+        return $this->organizationsQuery($clientIds, $data)->get();
     }
 
     public function demo(array $data)
     {
         $query = Client::query()->doesntHave('transactions')->where('nfr', false);
 
-        $clientIds = $query->filter($data)->pluck('id')->toArray();
+        $clientIds = $query->filter($this->extractClientFilters($data))->pluck('id')->toArray();
 
-        return Organization::whereIn('client_id', $clientIds)->get();
+        return $this->organizationsQuery($clientIds, $data)->get();
     }
 
     public function store(Client $client, array $data)

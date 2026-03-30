@@ -22,7 +22,9 @@ class UpdateRequest extends FormRequest
             'login' => ['sometimes', 'string', Rule::unique('users', 'login')->ignore($this->partner)],
             'address' => ['nullable', 'string'],
             'partner_status_id' => ['nullable', Rule::exists('partner_statuses', 'id')],
-            'partner_id' => ['nullable']
+            'partner_id' => ['nullable'],
+            'payment_methods' => ['nullable', 'array'],
+            'payment_methods.*' => ['string', Rule::in(['card', 'invoice', 'cash'])],
         ];
     }
 }

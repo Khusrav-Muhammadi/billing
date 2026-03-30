@@ -58,6 +58,31 @@
                 @enderror
             </div>
 
+            @php($paymentMethods = old('payment_methods', $partner->payment_methods ?? ['card', 'invoice']))
+            <div class="form-group">
+                <label>Способы оплаты <span class="text-danger">*</span></label>
+                <div class="d-flex flex-wrap gap-3">
+                    <label class="mb-0">
+                        <input type="checkbox" name="payment_methods[]" value="card" {{ in_array('card', (array) $paymentMethods, true) ? 'checked' : '' }}>
+                        Карта
+                    </label>
+                    <label class="mb-0">
+                        <input type="checkbox" name="payment_methods[]" value="invoice" {{ in_array('invoice', (array) $paymentMethods, true) ? 'checked' : '' }}>
+                        Счет
+                    </label>
+                    <label class="mb-0">
+                        <input type="checkbox" name="payment_methods[]" value="cash" {{ in_array('cash', (array) $paymentMethods, true) ? 'checked' : '' }}>
+                        Наличка
+                    </label>
+                </div>
+                @error('payment_methods')
+                <span class="text-danger d-block">{{ $message }}</span>
+                @enderror
+                @error('payment_methods.*')
+                <span class="text-danger d-block">{{ $message }}</span>
+                @enderror
+            </div>
+
             <button type="submit" class="btn btn-primary mr-2">Изменить</button>
         </form>
     </div>

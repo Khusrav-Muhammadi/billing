@@ -1,7 +1,7 @@
 <table class="table table-hover">
     <thead>
     <tr>
-        <th>№</th>
+        <th>Номер</th>
         <th>Имя</th>
         <th>Телефон</th>
         <th>Дата создания</th>
@@ -20,7 +20,7 @@
     <tbody>
     @foreach($organizations as $organization)
         <tr>
-            <td>{{ $loop->iteration }}</td>
+            <td>{{ $organization->order_number ?? '-' }}</td>
             <td>{{ $organization->name }}</td>
             <td>{{ $organization->phone }}</td>
             <td>{{ $organization->created_at }}</td>

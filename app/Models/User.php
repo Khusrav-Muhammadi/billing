@@ -27,7 +27,8 @@ class User extends Authenticatable
         'role',
         'partner_status_id',
         'partner_id',
-        'country_id'
+        'country_id',
+        'payment_methods',
     ];
 
     /**
@@ -48,6 +49,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'payment_methods' => 'array',
     ];
 
     public function partnerStatus()

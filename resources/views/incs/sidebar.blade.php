@@ -46,6 +46,18 @@
             <span class="menu-title">Прайслист</span>
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('account.index') }}">
+            <i class="mdi mdi-file-document-box menu-icon"></i>
+            <span class="menu-title">Счета</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('currency-rate.index') }}">
+            <i class="mdi mdi-swap-horizontal menu-icon"></i>
+            <span class="menu-title">Курс валюты</span>
+        </a>
+    </li>
 {{--    <li class="nav-item">--}}
 {{--        <a class="nav-link" href="{{ route('pack.index') }}">--}}
 {{--            <i class="mdi mdi-sale menu-icon"></i>--}}

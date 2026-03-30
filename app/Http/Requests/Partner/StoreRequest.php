@@ -26,6 +26,8 @@ class StoreRequest extends FormRequest
             'partner_id' => ['nullable'],
             'procent_from_tariff' => ['required', 'integer', 'min:0', 'max:100'],
             'procent_from_pack' => ['required', 'integer', 'min:0', 'max:100'],
+            'payment_methods' => ['nullable', 'array'],
+            'payment_methods.*' => ['string', Rule::in(['card', 'invoice', 'cash'])],
         ];
     }
 }

@@ -112,6 +112,9 @@ class CPGenerator {
                 UZS: { symbol: "UZS", name: "Сум" },
                 USD: { symbol: "$", name: "Доллар" }
             },
+            usdRates: {
+                USD: 1
+            },
             paymentPeriods: [
                 { months: 6, discount: 0, label: "6 месяцев" },
                 { months: 12, discount: 15, label: "12 месяцев (скидка 15%)" }
@@ -222,6 +225,7 @@ class CPGenerator {
         this.renderServices();
         this.updateExtraUsersSection();
         this.updateSummary();
+        this.applyPaymentMethodsUI();
     }
 
     applyTariffDefaults() {
@@ -322,6 +326,60 @@ class CPGenerator {
         return this.partners.find((p) => String(p.id) === String(this.state.selectedPartnerId)) || null;
     }
 
+    getDefaultPaymentMethods() {
+        return ['card', 'invoice'];
+    }
+
+    normalizePaymentMethods(methods, fallback = null) {
+        const allowed = ['card', 'invoice', 'cash'];
+        const source = Array.isArray(methods) ? methods : [];
+        const flags = {};
+
+        source.forEach((method) => {
+            const code = String(method || '').trim().toLowerCase();
+            if (allowed.includes(code)) {
+                flags[code] = true;
+            }
+        });
+
+        const ordered = allowed.filter((code) => flags[code]);
+        if (ordered.length) {
+            return ordered;
+        }
+
+        if (Array.isArray(fallback) && fallback.length) {
+            return this.normalizePaymentMethods(fallback, null);
+        }
+
+        return this.getDefaultPaymentMethods();
+    }
+
+    getAllowedPaymentMethods() {
+        const partner = this.getSelectedPartner();
+        if (!partner) {
+            return this.getDefaultPaymentMethods();
+        }
+
+        return this.normalizePaymentMethods(
+            partner.payment_methods,
+            this.getDefaultPaymentMethods()
+        );
+    }
+
+    applyPaymentMethodsUI() {
+        const allowedMethods = this.getAllowedPaymentMethods();
+        const buttons = {
+            card: document.getElementById('payByCardBtn'),
+            invoice: document.getElementById('payByInvoiceBtn'),
+            cash: document.getElementById('payByCashBtn'),
+        };
+
+        Object.entries(buttons).forEach(([method, button]) => {
+            if (!button) return;
+            button.style.display = allowedMethods.includes(method) ? '' : 'none';
+        });
+    }
+
     getPartnerDiscountPercent() {
         const partner = this.getSelectedPartner();
         const raw = partner?.procent_from_tariff ?? 0;
@@ -346,10 +404,111 @@ class CPGenerator {
         return a * (1 - pct / 100);
     }
 
+    normalizeCurrencyCode(code) {
+        return String(code || '').trim().toUpperCase();
+    }
+
+    shouldConvertToUsd(currencyCode = this.state.currency) {
+        const code = this.normalizeCurrencyCode(currencyCode);
+        return code !== '' && code !== 'USD' && code !== 'UZS';
+    }
+
+    getUsdRateForCurrency(currencyCode = this.state.currency) {
+        const code = this.normalizeCurrencyCode(currencyCode);
+        const rates = this.config?.usdRates || {};
+        const raw = rates?.[code];
+        const rate = Number(raw);
+        if (!Number.isFinite(rate) || rate <= 0) return null;
+        return rate;
+    }
+
+    roundMoney(amount) {
+        const val = Number(amount) || 0;
+        return Math.round((val + Number.EPSILON) * 100) / 100;
+    }
+
+    formatUsdAmount(amount) {
+        const val = Number(amount) || 0;
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return `$${formatted}`;
+    }
+
+    getPaymentConversionMeta(totalAmount) {
+        const sourceCurrency = this.normalizeCurrencyCode(this.state.currency) || 'USD';
+        const originalAmount = this.roundMoney(totalAmount);
+
+        if (!this.shouldConvertToUsd(sourceCurrency)) {
+            return {
+                sourceCurrency,
+                requiresConversion: false,
+                rate: null,
+                originalAmount,
+                payableCurrency: sourceCurrency,
+                payableAmount: originalAmount,
+            };
+        }
+
+        const rate = this.getUsdRateForCurrency(sourceCurrency);
+        const payableAmount = rate ? this.roundMoney(originalAmount / rate) : null;
+
+        return {
+            sourceCurrency,
+            requiresConversion: true,
+            rate,
+            originalAmount,
+            payableCurrency: 'USD',
+            payableAmount,
+        };
+    }
+
+    toPayableItems(items, conversionMeta) {
+        if (!Array.isArray(items)) return [];
+
+        if (!conversionMeta?.requiresConversion) {
+            return items.map((item) => ({
+                name: item.name,
+                price: this.roundMoney(item.price),
+            }));
+        }
+
+        const rate = Number(conversionMeta.rate) || 0;
+        return items.map((item) => ({
+            name: item.name,
+            price: this.roundMoney((Number(item.price) || 0) / rate),
+        }));
+    }
+
+    formatPaymentAmountForModal(totalAmount) {
+        const meta = this.getPaymentConversionMeta(totalAmount);
+        if (meta.requiresConversion) {
+            if (!meta.rate || meta.payableAmount === null) {
+                return 'нет курса к USD';
+            }
+            return this.formatUsdAmount(meta.payableAmount);
+        }
+
+        return this.formatTotalPrice(totalAmount);
+    }
+
+    formatGrandTotalWithUsd(totalAmount) {
+        const meta = this.getPaymentConversionMeta(totalAmount);
+        const originalFormatted = this.formatTotalPrice(totalAmount);
+
+        if (!meta.requiresConversion) {
+            return originalFormatted;
+        }
+
+        if (!meta.rate || meta.payableAmount === null) {
+            return `${originalFormatted} (нет курса к USD)`;
+        }
+
+        return `${originalFormatted} (${this.formatUsdAmount(meta.payableAmount)})`;
+    }
+
     getPaymentTypeForCard() {
-        const code = String(this.state.currency || '').toLowerCase();
-        if (code.includes('uz') || code === 'uzb' || code === 'uzs') return 'alif';
-        if (code === 'tjs' || code === 'usd') return 'octo';
+        const code = this.normalizeCurrencyCode(this.state.currency);
+        if (code === 'UZS') return 'alif';
+        if (code === 'USD' || code === 'TJS') return 'octo';
         // Default to visa-like flow (Octo)
         return 'octo';
     }
@@ -441,7 +600,16 @@ class CPGenerator {
             return;
         }
 
-        const sum = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const rawSum = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
+        const conversionMeta = this.getPaymentConversionMeta(rawSum);
+
+        if (conversionMeta.requiresConversion && (!conversionMeta.rate || conversionMeta.rate <= 0)) {
+            alert(`Не найден курс для ${conversionMeta.sourceCurrency}. Добавьте курс в разделе "Курс валюты".`);
+            return;
+        }
+
+        const payableItems = this.toPayableItems(items, conversionMeta);
+        const sum = this.roundMoney(payableItems.reduce((s, i) => s + (Number(i.price) || 0), 0));
 
         const payload = {
             organization_id: client.id,
@@ -450,7 +618,7 @@ class CPGenerator {
             email: client.email || '',
             sum,
             payment_type: paymentType,
-            data: items.map((i) => ({ name: i.name, price: i.price })),
+            data: payableItems.map((i) => ({ name: i.name, price: i.price })),
         };
 
         fetch('/client-payment', {
@@ -637,6 +805,7 @@ class CPGenerator {
             this.renderServices();
             this.updateExtraUsersSection();
             this.updateSummary();
+            this.applyPaymentMethodsUI();
         }
 
         this.closeCombo(kind);
@@ -1349,7 +1518,7 @@ class CPGenerator {
         if (periodTotalEl) periodTotalEl.textContent = this.formatTotalPrice(totalToPay);
 
         const grandTotalEl = document.getElementById('grandTotal');
-        if (grandTotalEl) grandTotalEl.textContent = this.formatTotalPrice(totalToPay);
+        if (grandTotalEl) grandTotalEl.textContent = this.formatGrandTotalWithUsd(totalToPay);
         
         if (summaryItems.innerHTML === '') {
             summaryItems.innerHTML = `
@@ -1560,8 +1729,9 @@ class CPGenerator {
                 const payCardProvider = document.getElementById('payCardProvider');
 
                 if (payClientName) payClientName.textContent = client?.name || this.state.clientName || '—';
-                if (payAmount) payAmount.textContent = this.formatTotalPrice(totals.grand || 0);
+                if (payAmount) payAmount.textContent = this.formatPaymentAmountForModal(totals.grand || 0);
                 if (payCardProvider) payCardProvider.textContent = this.getCardProviderLabel();
+                this.applyPaymentMethodsUI();
 
                 if (payModal) payModal.classList.add('active');
             });
@@ -1586,6 +1756,15 @@ class CPGenerator {
                 this.submitPayment('invoice');
             });
         }
+
+        const payByCashBtn = document.getElementById('payByCashBtn');
+        if (payByCashBtn) {
+            payByCashBtn.addEventListener('click', () => {
+                this.submitPayment('cash');
+            });
+        }
+
+        this.applyPaymentMethodsUI();
         
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {

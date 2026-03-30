@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Hash;
 
 class PartnerRepository implements PartnerRepositoryInterface
 {
+    private const PAYMENT_METHODS_DEFAULT = ['card', 'invoice'];
+    private const PAYMENT_METHODS_ALLOWED = ['card', 'invoice', 'cash'];
+
     public function index(array $data)
     {
         $query = User::query()->where('role', 'partner');
@@ -25,6 +28,7 @@ class PartnerRepository implements PartnerRepositoryInterface
         $tariffPercent = isset($data['procent_from_tariff']) ? (int) $data['procent_from_tariff'] : null;
         $packPercent = isset($data['procent_from_pack']) ? (int) $data['procent_from_pack'] : null;
         unset($data['procent_from_tariff'], $data['procent_from_pack']);
+        $data['payment_methods'] = $this->normalizePaymentMethods($data['payment_methods'] ?? null);
 
         $data['partner_status_id'] = PartnerStatus::first()->id;
         $data['login'] = $data['email'];
@@ -94,11 +98,43 @@ class PartnerRepository implements PartnerRepositoryInterface
 
     public function update(User $partner, array $data)
     {
+        if (array_key_exists('payment_methods', $data)) {
+            $data['payment_methods'] = $this->normalizePaymentMethods($data['payment_methods']);
+        }
+
         $partner->update($data);
     }
 
     public function updateManager(User $user, array $data)
     {
         $user->update($data);
+    }
+
+    private function normalizePaymentMethods($methods): array
+    {
+        if (!is_array($methods)) {
+            return self::PAYMENT_METHODS_DEFAULT;
+        }
+
+        $normalized = [];
+        foreach ($methods as $method) {
+            $code = strtolower(trim((string) $method));
+            if (in_array($code, self::PAYMENT_METHODS_ALLOWED, true)) {
+                $normalized[$code] = true;
+            }
+        }
+
+        if (empty($normalized)) {
+            return self::PAYMENT_METHODS_DEFAULT;
+        }
+
+        $ordered = [];
+        foreach (self::PAYMENT_METHODS_ALLOWED as $allowedMethod) {
+            if (isset($normalized[$allowedMethod])) {
+                $ordered[] = $allowedMethod;
+            }
+        }
+
+        return $ordered;
     }
 }

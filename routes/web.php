@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\API\InvoiceController;
+use App\Http\Controllers\AccountController;
+
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\BusinessTypeController;
 use App\Http\Controllers\ClientController;
@@ -139,6 +141,21 @@ Route::middleware('auth')->group(function () {
 
     });
 
+
+    Route::group(['prefix' => 'account'], function () {
+        Route::get('/', [AccountController::class, 'index'])->name('account.index');
+        Route::post('/store', [AccountController::class, 'store'])->name('account.store');
+        Route::patch('/{account}', [AccountController::class, 'update'])->name('account.update');
+        Route::delete('/{account}', [AccountController::class, 'destroy'])->name('account.delete');
+    });
+
+    Route::group(['prefix' => 'currency-rate'], function () {
+        Route::get('/', [\App\Http\Controllers\CurrencyRateController::class, 'index'])->name('currency-rate.index');
+        Route::get('/{currency}', [\App\Http\Controllers\CurrencyRateController::class, 'show'])->name('currency-rate.show');
+        Route::post('/{currency}/store', [\App\Http\Controllers\CurrencyRateController::class, 'store'])->name('currency-rate.store');
+        Route::patch('/{currencyRate}', [\App\Http\Controllers\CurrencyRateController::class, 'update'])->name('currency-rate.update');
+        Route::delete('/{currencyRate}', [\App\Http\Controllers\CurrencyRateController::class, 'destroy'])->name('currency-rate.delete');
+    });
 
     Route::group(['prefix' => 'business-type'], function () {
         Route::get('/', [BusinessTypeController::class, 'index'])->name('business_type.index');

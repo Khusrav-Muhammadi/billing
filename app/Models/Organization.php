@@ -5,13 +5,40 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\DB;
 
 class Organization extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','INN','phone','email','address', 'client_id', 'has_access', 'business_type_id', 'reject_cause', 'balance', 'license_paid', 'sum_paid_for_license',
+    protected $fillable = ['name','INN','phone','email','address', 'client_id', 'has_access', 'business_type_id', 'reject_cause', 'balance', 'license_paid', 'sum_paid_for_license', 'order_number',
         'legal_name', 'legal_address', 'director', 'has_implementation', 'implementation_sum'];
+
+    protected static function booted(): void
+    {
+        static::created(function (self $organization): void {
+            if (!empty($organization->order_number)) {
+                return;
+            }
+
+            DB::transaction(function () use ($organization): void {
+                $currentMax = (int) (self::query()
+                    ->whereNotNull('order_number')
+                    ->where('order_number', '!=', '')
+                    ->lockForUpdate()
+                    ->max('order_number') ?? 0);
+
+                $organization->forceFill([
+                    'order_number' => self::formatOrderNumber($currentMax + 1),
+                ])->saveQuietly();
+            });
+        });
+    }
+
+    public static function formatOrderNumber(int $number): string
+    {
+        return str_pad((string) $number, 9, '0', STR_PAD_LEFT);
+    }
 
     public function client()
     {

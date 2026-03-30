@@ -28,18 +28,35 @@
                     <th>Телефон</th>
                     <th>E-mail</th>
                     <th>Статус</th>
+                    <th>Способы оплаты</th>
                     <th>Адрес</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
                 <tbody>
                 @foreach($partners as $partner)
+                    @php
+                        $methods = is_array($partner->payment_methods) ? $partner->payment_methods : [];
+                        if (empty($methods)) {
+                            $methods = ['card', 'invoice'];
+                        }
+                        $labels = [
+                            'card' => 'Карта',
+                            'invoice' => 'Счет',
+                            'cash' => 'Наличка',
+                        ];
+                    @endphp
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $partner->name }}</td>
                         <td>{{ $partner->phone }}</td>
                         <td>{{ $partner->email }}</td>
                         <td>{{ $partner->partnerStatus?->name }}</td>
+                        <td>
+                            @foreach($methods as $method)
+                                <span class="badge badge-info">{{ $labels[$method] ?? $method }}</span>
+                            @endforeach
+                        </td>
                         <td>{{ $partner->address }}</td>
                         <td>
 
@@ -126,5 +143,4 @@
 
     </script>
 @endsection
-
 
