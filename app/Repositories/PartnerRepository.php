@@ -11,6 +11,7 @@ use App\Models\Partner;
 use App\Models\ProcentPartner;
 use App\Models\PartnerProcent;
 use App\Models\PartnerStatus;
+use App\Models\PartnerStatusHistory;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
@@ -60,6 +61,13 @@ class PartnerRepository implements PartnerRepositoryInterface
             'procent_from_pack' => $packPercent,
         ]);
 
+        PartnerStatusHistory::create([
+            'partner_id' => $user->id,
+            'date' => date('Y-m-d'),
+            'status' => $user->status,
+            'author_id' => Auth::id(),
+        ]);
+
         $this->recordHistory(
             model: $user,
             status: ModelHistoryStatuses::CREATED,
@@ -86,6 +94,15 @@ class PartnerRepository implements PartnerRepositoryInterface
     public function getProcent(int $partner_id)
     {
         return PartnerProcent::where('partner_id', $partner_id)->get();
+    }
+
+    public function getStatusHistory(int $partner_id)
+    {
+        return PartnerStatusHistory::query()
+            ->where('partner_id', $partner_id)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get();
     }
 
     public function storeManager(array $data)
@@ -147,6 +164,42 @@ class PartnerRepository implements PartnerRepositoryInterface
                 userId: Auth::id()
             );
         }
+    }
+
+    public function storeStatus(User $user, array $data)
+    {
+        $previousStatus = (string) ($user->status ?? PartnerStatusEnum::PARTNER->value);
+
+        PartnerStatusHistory::create([
+            'partner_id' => $user->id,
+            'date' => $data['date'],
+            'status' => $data['status'],
+            'author_id' => Auth::id(),
+        ]);
+
+        $user->update([
+            'status' => $data['status'],
+        ]);
+
+        $changes = [];
+        if ($previousStatus !== (string) $data['status']) {
+            $changes['status'] = [
+                'previous_value' => $this->statusLabel($previousStatus),
+                'new_value' => $this->statusLabel((string) $data['status']),
+            ];
+        }
+
+        $changes['status_date'] = [
+            'previous_value' => null,
+            'new_value' => (string) $data['date'],
+        ];
+
+        $this->recordHistory(
+            model: $user,
+            status: ModelHistoryStatuses::UPDATED,
+            changes: $changes,
+            userId: Auth::id()
+        );
     }
 
     public function editProcent(PartnerProcent $procent, array $data)

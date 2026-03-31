@@ -91,6 +91,16 @@ class CommercialOffer extends Model
         return $this->belongsTo(Payment::class);
     }
 
+    public function offerStatuses()
+    {
+        return $this->hasMany(CommercialOfferStatus::class)->orderByDesc('status_date')->orderByDesc('id');
+    }
+
+    public function latestOfferStatus()
+    {
+        return $this->hasOne(CommercialOfferStatus::class)->latestOfMany('id');
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

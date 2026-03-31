@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Partner\StoreProcentRequest;
 use App\Http\Requests\Partner\StoreRequest;
+use App\Http\Requests\Partner\StoreStatusRequest;
 use App\Http\Requests\Partner\UpdateManagerRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Models\Partner;
@@ -27,9 +28,7 @@ class PartnerController extends Controller
 
     public function create()
     {
-        $partnerStatuses = PartnerStatus::all();
-
-        return view('admin.partners.create', compact('partnerStatuses'));
+        return view('admin.partners.create');
     }
 
     public function store(StoreRequest $request)
@@ -45,12 +44,13 @@ class PartnerController extends Controller
 
         $managers = $this->repository->getManagers($partner->id);
         $procents = $this->repository->getProcent($partner->id);
+        $statusHistory = $this->repository->getStatusHistory($partner->id);
         $partnerHistory = $partner->history()
             ->with(['changes', 'user'])
             ->orderByDesc('id')
             ->get();
 
-        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'managers', 'procents', 'partnerHistory'));
+        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'managers', 'procents', 'statusHistory', 'partnerHistory'));
     }
 
     public function update(User $partner, UpdateRequest $request)
@@ -100,6 +100,13 @@ class PartnerController extends Controller
     public function addProcent(User $user, StoreProcentRequest $request)
     {
         $this->repository->storeProcent($user, $request->validated());
+
+        return redirect()->back();
+    }
+
+    public function addStatus(User $user, StoreStatusRequest $request)
+    {
+        $this->repository->storeStatus($user, $request->validated());
 
         return redirect()->back();
     }

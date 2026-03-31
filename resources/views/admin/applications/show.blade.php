@@ -7,10 +7,13 @@
 @section('content')
     <div class="card-body">
         @php
+            $isPaidOffer = (string) ($offer->latestOfferStatus?->status ?? '') === 'paid'
+                || (string) ($offer->status ?? '') === 'paid';
             $query = [
                 'csrf_token' => csrf_token(),
                 'v' => @filemtime(public_path('kp_generator/index.html')) ?: time(),
                 'offer_id' => $offer->id,
+                'is_paid' => $isPaidOffer ? 1 : 0,
             ];
             if ($offer->locked_at) {
                 $query['locked'] = 1;
@@ -22,13 +25,6 @@
             <h4 class="card-title mb-0">Коммерческое предложение #{{ $offer->id }}</h4>
             <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Назад</a>
         </div>
-
-        @if($offer->locked_at)
-            <div class="alert alert-success mb-3">
-                Ссылка на оплату уже была сгенерирована {{ optional($offer->locked_at)->format('d.m.Y H:i') }}.
-                Редактирование КП отключено.
-            </div>
-        @endif
 
         <iframe
             src="{{ $iframeUrl }}"

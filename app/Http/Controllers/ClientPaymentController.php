@@ -42,12 +42,26 @@ class ClientPaymentController extends Controller
 
         try {
             if ($commercialOfferId) {
-                $commercialOffer = CommercialOffer::query()->find($commercialOfferId);
+                $commercialOffer = CommercialOffer::query()
+                    ->with([
+                        'latestOfferStatus' => function ($query) {
+                            $query->select([
+                                'commercial_offer_statuses.id',
+                                'commercial_offer_statuses.commercial_offer_id',
+                                'commercial_offer_statuses.status',
+                            ]);
+                        },
+                    ])
+                    ->find($commercialOfferId);
                 if (!$commercialOffer) {
                     throw new \Exception('КП не найдено.');
                 }
-                if ($commercialOffer->locked_at) {
-                    throw new \Exception('Это КП уже заблокировано после генерации ссылки оплаты.');
+
+                $isPaidOffer = (string) ($commercialOffer->latestOfferStatus?->status ?? '') === 'paid'
+                    || (string) ($commercialOffer->status ?? '') === 'paid';
+
+                if ($isPaidOffer) {
+                    throw new \Exception('Это подключение уже оплачено. Повторная генерация ссылки недоступна.');
                 }
             }
 
@@ -331,11 +345,16 @@ class ClientPaymentController extends Controller
             return;
         }
 
+        $paymentMethod = match (strtolower((string) $payment->payment_type)) {
+            'invoice' => 'invoice',
+            'cash' => 'cash',
+            default => 'card',
+        };
+
         $updated = CommercialOffer::query()
             ->where('id', $offer->id)
-            ->whereNull('locked_at')
             ->update([
-                'status' => 'payment_link_generated',
+                'status' => 'pending',
                 'locked_at' => now(),
                 'payment_id' => $payment->id,
                 'payment_link' => $paymentLink,
@@ -346,6 +365,14 @@ class ClientPaymentController extends Controller
         if ($updated === 0) {
             throw new \Exception('Не удалось заблокировать КП после генерации ссылки оплаты.');
         }
+
+        $offer->offerStatuses()->create([
+            'status' => 'pending',
+            'status_date' => now()->toDateString(),
+            'payment_method' => $paymentMethod,
+            'author_id' => Auth::id(),
+            'account_id' => null,
+        ]);
     }
 
     private function moneyToCents($value): int

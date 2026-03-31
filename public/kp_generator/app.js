@@ -34,7 +34,10 @@ class CPGenerator {
             dealId: '',
             csrfToken: '',
             editOfferId: null,
+            isLocked: false,
+            isPaid: false,
             hasUnsavedChanges: true,
+            savedPayLockSnapshot: null,
             selectedClientId: null,
             selectedPartnerId: null,
             previousCurrency: 'USD',
@@ -62,6 +65,8 @@ class CPGenerator {
         await this.loadOfferDraftIfNeeded();
         this.renderClientPartnerSelectors();
         this.renderAll();
+        this.captureSavedPayLockSnapshot();
+        this.updatePayButtonState();
         this.bindEvents();
     }
 
@@ -168,6 +173,8 @@ class CPGenerator {
         this.state.dealId = params.get('deal_id') || '';
         const offerId = params.get('offer_id');
         this.state.editOfferId = offerId && String(offerId).trim() !== '' ? String(offerId).trim() : null;
+        this.state.isLocked = params.get('locked') === '1';
+        this.state.isPaid = params.get('is_paid') === '1';
         this.state.hasUnsavedChanges = !this.state.editOfferId;
 
         const pricingDate = params.get('date');
@@ -319,14 +326,140 @@ class CPGenerator {
         const payBtn = document.getElementById('payBtn');
         if (!payBtn) return;
 
-        const canPay = this.canOpenPayment();
+        if (this.state.isLocked) {
+            const isEditMode = Boolean(this.state.editOfferId);
+            payBtn.style.display = isEditMode ? '' : 'none';
+            payBtn.disabled = this.state.isPaid;
+            payBtn.title = this.state.isPaid
+                ? 'Оплата недоступна: уже оплачено'
+                : 'Получить ссылку на оплату';
+            return;
+        }
+
+        const isEditMode = Boolean(this.state.editOfferId);
+        payBtn.style.display = isEditMode ? '' : 'none';
+
+        if (!isEditMode) {
+            payBtn.disabled = true;
+            payBtn.title = '';
+            return;
+        }
+
+        const canPay = !this.state.isPaid && this.canOpenPayment() && !this.hasPayLockChanges();
         payBtn.disabled = !canPay;
-        payBtn.title = canPay ? '' : 'Сначала сохраните КП';
+        payBtn.title = canPay ? '' : (this.state.isPaid ? 'Оплата недоступна: уже оплачено' : 'Сначала сохраните изменения КП');
     }
 
     markOfferDirty() {
+        if (this.state.isLocked) {
+            return;
+        }
         this.state.hasUnsavedChanges = true;
         this.updatePayButtonState();
+    }
+
+    applyLockedModeUI() {
+        if (!this.state.isLocked) {
+            return;
+        }
+
+        document.body.classList.add('kp-readonly-locked');
+
+        const saveForm = document.getElementById('saveOfferForm');
+        if (saveForm) {
+            saveForm.style.display = 'none';
+        }
+
+        const payBtn = document.getElementById('payBtn');
+        if (payBtn) {
+            payBtn.style.display = this.state.editOfferId ? '' : 'none';
+            payBtn.disabled = this.state.isPaid;
+        }
+
+        const selectorsToDisable = [
+            '#pricingDate',
+            '#clientSelect',
+            '#partnerSelect',
+            '#usersMinusBtn',
+            '#usersPlusBtn',
+            '#extraUsersInput',
+            '.period-btn',
+            '.service-toggle input',
+            '.channels-control .qty-btn',
+            '.channels-control .qty-input',
+            '.custom-service-name-input',
+            '.custom-service-price-input',
+            '.remove-custom-service-btn',
+            '#saveBtn',
+        ];
+
+        const seen = new Set();
+        selectorsToDisable.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((element) => {
+                if (seen.has(element)) {
+                    return;
+                }
+                seen.add(element);
+
+                if (element.id === 'copyClientOrderBtn') {
+                    return;
+                }
+
+                if ('disabled' in element) {
+                    element.disabled = true;
+                }
+                if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                    element.readOnly = true;
+                }
+                element.setAttribute('aria-disabled', 'true');
+            });
+        });
+
+        if (this.state.isPaid) {
+            ['payByCardBtn', 'payByInvoiceBtn', 'payByCashBtn'].forEach((id) => {
+                const btn = document.getElementById(id);
+                if (btn && 'disabled' in btn) {
+                    btn.disabled = true;
+                }
+            });
+        }
+
+        this.updatePayButtonState();
+    }
+
+    buildPayLockSnapshot() {
+        const selectedServices = this.state.selectedServices || {};
+        const normalizedServices = Object.keys(selectedServices)
+            .sort()
+            .reduce((carry, key) => {
+                const value = selectedServices[key] || {};
+                carry[key] = {
+                    enabled: Boolean(value.enabled),
+                    channels: Math.max(0, Number(value.channels) || 0),
+                };
+                return carry;
+            }, {});
+
+        return JSON.stringify({
+            selected_tariff_key: this.state.selectedTariff || null,
+            extra_users: Math.max(0, Number(this.state.extraUsers) || 0),
+            selected_services: normalizedServices,
+        });
+    }
+
+    captureSavedPayLockSnapshot() {
+        if (!this.state.editOfferId) {
+            this.state.savedPayLockSnapshot = null;
+            return;
+        }
+        this.state.savedPayLockSnapshot = this.buildPayLockSnapshot();
+    }
+
+    hasPayLockChanges() {
+        if (!this.state.editOfferId || !this.state.savedPayLockSnapshot) {
+            return false;
+        }
+        return this.buildPayLockSnapshot() !== this.state.savedPayLockSnapshot;
     }
 
     renderAll() {
@@ -885,6 +1018,11 @@ class CPGenerator {
     }
 
     submitPayment(paymentType) {
+        if (this.state.isPaid) {
+            alert('Подключение уже оплачено. Повторная оплата недоступна.');
+            return;
+        }
+
         if (!this.canOpenPayment()) {
             alert('Сначала сохраните КП, затем можно оплачивать.');
             return;
@@ -1262,6 +1400,10 @@ class CPGenerator {
     }
 
     selectTariff(tariffKey) {
+        if (this.state.isLocked) {
+            return;
+        }
+
         if (this.state.selectedTariff !== tariffKey) {
             this.markOfferDirty();
         }
@@ -1397,6 +1539,9 @@ class CPGenerator {
     bindServiceEvents() {
         document.querySelectorAll('.service-toggle input').forEach(input => {
             input.addEventListener('change', (e) => {
+                if (this.state.isLocked) {
+                    return;
+                }
                 const serviceKey = e.target.dataset.service;
                 if (!this.state.selectedServices[serviceKey]) {
                     this.state.selectedServices[serviceKey] = { enabled: false, channels: 1 };
@@ -1411,6 +1556,9 @@ class CPGenerator {
 
         document.querySelectorAll('.channels-control .qty-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                if (this.state.isLocked) {
+                    return;
+                }
                 const serviceKey = e.target.dataset.service;
                 const action = e.target.dataset.action;
 
@@ -1438,6 +1586,9 @@ class CPGenerator {
 
         document.querySelectorAll('.channels-control .qty-input').forEach(input => {
             input.addEventListener('change', (e) => {
+                if (this.state.isLocked) {
+                    return;
+                }
                 const serviceKey = e.target.dataset.service;
                 const selectedTariff = this.state.selectedTariff
                     ? this.config.tariffs[this.state.selectedTariff]
@@ -1959,6 +2110,10 @@ class CPGenerator {
     }
 
     bindEvents() {
+        if (this.state.isLocked) {
+            this.applyLockedModeUI();
+        }
+
         const pricingDateInput = document.getElementById('pricingDate');
         if (pricingDateInput) {
             pricingDateInput.addEventListener('change', async (e) => {

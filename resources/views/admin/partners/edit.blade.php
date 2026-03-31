@@ -42,20 +42,6 @@
             </div>
 
             <div class="form-group">
-                <label for="status">Статус <span class="text-danger">*</span></label>
-                <select name="status" class="form-control @error('status') is-invalid @enderror" required>
-                    @foreach(\App\Enums\PartnerStatusEnum::cases() as $statusCase)
-                        <option value="{{ $statusCase->value }}" {{ old('status', $partner->status ?? \App\Enums\PartnerStatusEnum::PARTNER->value) === $statusCase->value ? 'selected' : '' }}>
-                            {{ $statusCase->label() }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('status')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-            </div>
-
-            <div class="form-group">
                 <label for="partner_status_id">Статус партнёра</label>
                 <select class="form-control form-control-sm @error('partner_status_id') is-invalid @enderror" name="partner_status_id">
                     @foreach($partnerStatuses as $status)
@@ -133,6 +119,7 @@
                                     @elseif($key === 'procent_from_tariff') Процент от подписки:
                                     @elseif($key === 'procent_from_pack') Процент от пакетов:
                                     @elseif($key === 'procent_date') Дата процента:
+                                    @elseif($key === 'status_date') Дата статуса:
                                     @else {{ $key }}:
                                     @endif
                                     <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }} ==> {{ $value['new_value'] ?? 'N/A' }}</p>
@@ -150,6 +137,42 @@
 
     <!-- Отступ между формой и таблицей -->
     <div style="margin-top: 40px;"></div>
+
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Статусы партнера (Agent / Partner)</h5>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createPartnerStatuses">
+                Добавить
+            </button>
+        </div>
+
+        @if($statusHistory && $statusHistory->count() > 0)
+            <table class="table table-striped table-hover">
+                <thead class="table-light">
+                <tr>
+                    <th width="5%">№</th>
+                    <th width="30%">Дата</th>
+                    <th width="30%">Статус</th>
+                    <th width="35%">Автор</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach($statusHistory as $statusRow)
+                    <tr>
+                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ optional($statusRow->date)->format('d.m.Y') }}</td>
+                        <td>{{ (string) $statusRow->status === \App\Enums\PartnerStatusEnum::AGENT->value ? 'Agent' : 'Partner' }}</td>
+                        <td>{{ $statusRow->author?->name ?? '-' }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        @else
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> У этого партнера пока нет истории статусов.
+            </div>
+        @endif
+    </div>
 
     <!-- Секция менеджеров -->
     <div class="card-body">
@@ -458,10 +481,59 @@
         </div>
     </div>
 
+    <div class="modal fade" id="createPartnerStatuses" tabindex="-1" aria-labelledby="createPartnerStatusesLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST" action="{{ route('partner.status.create', $partner->id) }}">
+                @csrf
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createPartnerStatusesLabel">Добавить статус</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group mb-3">
+                            <label for="partner_status_date">Дата <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control @error('date') is-invalid @enderror" name="date" id="partner_status_date" value="{{ now()->toDateString() }}" required>
+                            @error('date')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label for="partner_status_value">Статус <span class="text-danger">*</span></label>
+                            <select class="form-control @error('status') is-invalid @enderror" name="status" id="partner_status_value" required>
+                                @foreach(\App\Enums\PartnerStatusEnum::cases() as $statusCase)
+                                    <option value="{{ $statusCase->value }}">{{ $statusCase->label() }}</option>
+                                @endforeach
+                            </select>
+                            @error('status')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     @if($errors->any() && request()->has('create_manager'))
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 var modal = new bootstrap.Modal(document.getElementById('createManager'));
+                modal.show();
+            });
+        </script>
+    @endif
+
+    @if($errors->has('status') || $errors->has('date'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var modal = new bootstrap.Modal(document.getElementById('createPartnerStatuses'));
                 modal.show();
             });
         </script>

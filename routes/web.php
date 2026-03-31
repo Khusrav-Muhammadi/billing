@@ -126,6 +126,7 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'application'], function () {
         Route::get('/', [ApplicationController::class, 'index'])->name('application.index');
         Route::post('/store', [ApplicationController::class, 'store'])->name('application.store');
+        Route::post('/{offer}/statuses', [ApplicationController::class, 'storeOfferStatus'])->name('application.status.store');
         Route::post('/kp/store', [ApplicationController::class, 'storeCommercialOffer'])->name('application.kp.store');
         Route::post('/kp/client/store', [ApplicationController::class, 'storeCommercialOfferClient'])->name('application.kp.client.store');
         Route::get('/kp/{offer}', [ApplicationController::class, 'getCommercialOfferState'])->name('application.kp.show');
@@ -215,6 +216,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [PartnerController::class, 'create'])->name('partner.create');
         Route::post('/partner/addManager', [PartnerController::class, 'addManager'])->name('partner.manager.create');
         Route::post('/partner/addProcent/{user}', [PartnerController::class, 'addProcent'])->name('partner.procent.create');
+        Route::post('/partner/addStatus/{user}', [PartnerController::class, 'addStatus'])->name('partner.status.create');
         Route::post('/partner/manager/{user}', [PartnerController::class, 'addManager'])->name('partner.manager.edit');
         Route::patch('/partner/procent/{procent}', [PartnerController::class, 'editProcent'])->name('partner.procent.edit');
         Route::post('/partner/manager/{user}', [PartnerController::class, 'addManager'])->name('partner.manager.edit');

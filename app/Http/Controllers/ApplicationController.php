@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\CommercialOffer;
 use App\Models\Organization;
 use App\Models\Tariff;
@@ -20,11 +21,37 @@ class ApplicationController extends Controller
     public function index()
     {
         $offers = CommercialOffer::query()
-            ->with(['tariff:id,name', 'organization:id,name', 'partner:id,name', 'payment:id,payment_type'])
+            ->with([
+                'tariff:id,name',
+                'organization:id,name',
+                'partner:id,name',
+                'payment:id,payment_type',
+                'latestOfferStatus' => function ($query) {
+                    $query->select([
+                        'commercial_offer_statuses.id',
+                        'commercial_offer_statuses.commercial_offer_id',
+                        'commercial_offer_statuses.status',
+                        'commercial_offer_statuses.status_date',
+                        'commercial_offer_statuses.payment_method',
+                        'commercial_offer_statuses.account_id',
+                        'commercial_offer_statuses.payment_order_number',
+                        'commercial_offer_statuses.author_id',
+                    ]);
+                },
+                'offerStatuses:id,commercial_offer_id,status,status_date,payment_method,account_id,payment_order_number,author_id,created_at',
+                'offerStatuses.author:id,name',
+                'offerStatuses.account:id,name,currency_id',
+                'offerStatuses.account.currency:id,symbol_code,name',
+            ])
             ->orderByDesc('id')
             ->paginate(20);
 
-        return view('admin.applications.index', compact('offers'));
+        $accounts = Account::query()
+            ->with('currency:id,symbol_code,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'currency_id']);
+
+        return view('admin.applications.index', compact('offers', 'accounts'));
     }
 
     public function create()
@@ -228,6 +255,18 @@ class ApplicationController extends Controller
             'organization:id,name,phone,email',
             'partner:id,name,phone,email',
             'payment:id,payment_type',
+            'latestOfferStatus' => function ($query) {
+                $query->select([
+                    'commercial_offer_statuses.id',
+                    'commercial_offer_statuses.commercial_offer_id',
+                    'commercial_offer_statuses.status',
+                    'commercial_offer_statuses.status_date',
+                    'commercial_offer_statuses.payment_method',
+                    'commercial_offer_statuses.account_id',
+                    'commercial_offer_statuses.payment_order_number',
+                    'commercial_offer_statuses.author_id',
+                ]);
+            },
         ]);
 
         $allowedMethods = $offer->allowed_payment_methods;
@@ -238,6 +277,42 @@ class ApplicationController extends Controller
         $cardPaymentType = $offer->card_payment_type ?: ($offer->payable_currency === 'UZS' ? 'alif' : 'octo');
 
         return view('admin.applications.show', compact('offer', 'allowedMethods', 'cardPaymentType'));
+    }
+
+    public function storeOfferStatus(Request $request, CommercialOffer $offer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:pending,paid,canceled'],
+            'status_date' => ['required', 'date'],
+            'payment_method' => ['required', 'in:card,invoice,cash'],
+            'account_id' => ['required', 'integer', 'exists:accounts,id'],
+            'payment_order_number' => ['nullable', 'string', 'max:100', 'required_if:payment_method,invoice'],
+        ]);
+
+        $paymentOrderNumber = isset($validated['payment_order_number'])
+            ? trim((string) $validated['payment_order_number'])
+            : null;
+
+        if ($validated['payment_method'] !== 'invoice' || $paymentOrderNumber === '') {
+            $paymentOrderNumber = null;
+        }
+
+        $offer->offerStatuses()->create([
+            'status' => $validated['status'],
+            'status_date' => $validated['status_date'],
+            'payment_method' => $validated['payment_method'],
+            'account_id' => (int) $validated['account_id'],
+            'payment_order_number' => $paymentOrderNumber,
+            'author_id' => Auth::id(),
+        ]);
+
+        $offer->update([
+            'updated_by' => Auth::id(),
+        ]);
+
+        return redirect()
+            ->route('application.index')
+            ->with('success', 'Статус подключения сохранен.');
     }
 
     public function edit(int $id)
