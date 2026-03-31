@@ -95,12 +95,7 @@
 {{--            <span class="menu-title">Отчёт о доходности</span>--}}
 {{--        </a>--}}
 {{--    </li>--}}
-    <li class="nav-item">
-        <a class="nav-link" href="{{ route('payment.index') }}">
-            <i class="mdi mdi-currency-usd menu-icon"></i>
-            <span class="menu-title">Платежи</span>
-        </a>
-    </li>
+
     <li class="nav-item">
         <a class="nav-link" href="{{ route('application.index') }}">
             <i class="mdi mdi-currency-usd menu-icon"></i>

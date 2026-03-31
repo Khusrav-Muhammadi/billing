@@ -234,6 +234,11 @@ class ApplicationController extends Controller
                 ]);
             }
 
+            // История статусов должна формироваться только через поток оплаты.
+            if ($offer->payment_id === null && $offer->offerStatuses()->exists()) {
+                $offer->offerStatuses()->delete();
+            }
+
             return $offer;
         });
 
