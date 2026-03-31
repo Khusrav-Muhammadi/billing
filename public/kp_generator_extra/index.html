@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Коммерческое предложение</title>
-    <link rel="stylesheet" href="styles.css?v=20260331_02">
+    <title>Подключение доп услуг</title>
+    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260331_02">
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
         <header class="header">
             <div class="header-content">
                 <div class="logo">
@@ -24,6 +23,12 @@
                         <div class="entity-meta" id="selectedClientOrderWrap" hidden>
                             <code class="entity-meta-value" id="selectedClientOrderValue"></code>
                             <button class="entity-meta-copy" id="copyClientOrderBtn" type="button">Копировать</button>
+                        </div>
+                        <div id="connectionRequirementWrap" hidden style="margin-top: 8px; font-size: 12px; color: #b91c1c;">
+                            <span id="connectionRequirementText"></span>
+                            <a id="connectionRequirementLink" href="#" target="_top" style="margin-left: 8px; color: #1d4ed8; text-decoration: underline;">
+                                Перейти к подключению
+                            </a>
                         </div>
                     </label>
                     <label class="entity-field">
@@ -43,39 +48,38 @@
             </div>
         </header>
 
-        <!-- Main Content -->
         <main class="main-content">
-
-
-            <section class="settings-panel">
+            <section class="settings-panel" id="settingsPanel">
                 <div class="setting-group">
                     <label class="setting-label">Период оплаты</label>
                     <div class="period-selector" id="periodSelector">
                         <button class="period-btn active" data-months="6">6 мес</button>
-
-                        <button class="period-btn " data-months="12">
+                        <button class="period-btn" data-months="12">
                             12 мес
                             <span class="discount-badge">-15%</span>
                         </button>
                     </div>
                 </div>
-            </section>
-            <!-- Tariffs -->
-            <section class="tariffs-section">
-                <h2 class="section-title">Выберите тариф</h2>
-                <div class="tariffs-grid" id="tariffsGrid">
-                    <!-- Tariffs will be rendered here -->
+                <div class="setting-group" id="connectionTariffInfoWrap" hidden>
+                    <label class="setting-label">Текущий тариф</label>
+                    <div style="padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; color: #111827; font-weight: 600;">
+                        <span id="connectionTariffName">—</span>
+                    </div>
                 </div>
             </section>
 
-            <!-- Extra Users -->
+            <section class="tariffs-section" id="tariffsSection" style="display: none;">
+                <h2 class="section-title">Выберите тариф</h2>
+                <div class="tariffs-grid" id="tariffsGrid"></div>
+            </section>
+
             <section class="extra-users-section" id="extraUsersSection" style="display: none;">
                 <div class="section-header">
                     <h2 class="section-title">Дополнительные пользователи</h2>
                 </div>
                 <div class="extra-users-control">
                     <div class="users-info">
-                        <span class="included-users">В тариф включено: <strong id="includedUsers">0</strong> пользователей</span>
+                        <span class="included-users" id="includedUsersLabel">В тариф включено: <strong id="includedUsers">0</strong> пользователей</span>
                         <span class="extra-user-price">Доп. пользователь: <strong id="extraUserPrice">0</strong>/мес</span>
                     </div>
                     <div class="quantity-control">
@@ -86,22 +90,16 @@
                 </div>
             </section>
 
-            <!-- Services -->
             <section class="services-section">
-                <h2 class="section-title">Дополнительные услуги</h2>
-                <div class="services-grid" id="servicesGrid">
-                    <!-- Services will be rendered here -->
-                </div>
+                <h2 class="section-title">Новые дополнительные услуги</h2>
+                <div class="services-grid" id="servicesGrid"></div>
             </section>
 
-            <!-- Summary -->
             <section class="summary-section">
                 <div class="summary-card">
                     <h2 class="summary-title">Итого</h2>
                     <div class="summary-content">
-                        <div class="summary-items" id="summaryItems">
-                            <!-- Summary items will be rendered here -->
-                        </div>
+                        <div class="summary-items" id="summaryItems"></div>
                         <div class="summary-divider"></div>
                         <div class="summary-totals">
                             <div class="total-row grand">
@@ -124,10 +122,8 @@
                     </div>
                 </div>
             </section>
-
         </main>
 
-        <!-- Payment Modal -->
         <div class="modal-overlay" id="payModal">
             <div class="modal-content" style="max-width: 520px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
@@ -166,13 +162,11 @@
             </div>
         </div>
 
-        <!-- Footer -->
         <footer class="footer">
             <p>© 2025 SHAMCRM</p>
         </footer>
     </div>
 
-    <!-- Success Modal -->
     <div class="modal-overlay" id="successModal">
         <div class="modal-content success-modal">
             <div class="success-icon">✓</div>
@@ -182,13 +176,12 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
         <p>Обработка...</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="app.js?v=20260331_13"></script>
+    <script src="/kp_generator/app.js?v=20260331_13"></script>
 </body>
 </html>

@@ -395,8 +395,11 @@ class ApplicationController extends Controller
     private function renderCreatePage(string $requestType, ?CommercialOffer $offer = null)
     {
         $normalizedRequestType = $this->normalizeRequestType($requestType);
+        $view = $normalizedRequestType === 'connection_extra_services'
+            ? 'admin.applications.create-connection-extra-services'
+            : 'admin.applications.create';
 
-        return view('admin.applications.create', [
+        return view($view, [
             'offer' => $offer,
             'requestType' => $normalizedRequestType,
             'requestTypeLabel' => self::REQUEST_TYPES[$normalizedRequestType],
@@ -421,6 +424,92 @@ class ApplicationController extends Controller
         }
 
         return $this->normalizeRequestType((string) data_get($snapshot, 'request_type', 'connection'));
+    }
+
+    public function getConnectionContext(Organization $organization): JsonResponse
+    {
+        $successfulOffers = CommercialOffer::query()
+            ->where('organization_id', $organization->id)
+            ->where(function ($query) {
+                $query->where('status', 'paid')
+                    ->orWhereHas('offerStatuses', function ($statusQuery) {
+                        $statusQuery->where('status', 'paid');
+                    });
+            })
+            ->with('offerStatuses:id,commercial_offer_id,status')
+            ->orderByDesc('id')
+            ->get();
+
+        $connectionOffer = $successfulOffers->first(function (CommercialOffer $offer) {
+            $type = (string) data_get($offer->snapshot, 'request_type', 'connection');
+            return $this->normalizeRequestType($type) === 'connection';
+        });
+
+        if (!$connectionOffer) {
+            return response()->json([
+                'has_successful_connection' => false,
+                'organization' => [
+                    'id' => $organization->id,
+                    'name' => $organization->name,
+                    'order_number' => $organization->order_number,
+                ],
+                'message' => 'У этой организации нет подключения, сначала сделайте подключение.',
+                'connection_create_url' => route('application.create.connection', [
+                    'organization_id' => $organization->id,
+                ]),
+            ]);
+        }
+
+        $snapshot = is_array($connectionOffer->snapshot) ? $connectionOffer->snapshot : [];
+        $selectedServices = $this->normalizeSelectedServicesSnapshot(data_get($snapshot, 'selected_services', []));
+        $selectedTariffKey = (string) ($connectionOffer->selected_tariff_key ?: data_get($snapshot, 'selected_tariff_key', ''));
+
+        if ($selectedTariffKey === '' && $connectionOffer->tariff_id) {
+            $selectedTariffKey = 'tariff-' . (int) $connectionOffer->tariff_id;
+        }
+
+        $partnerId = $connectionOffer->partner_id ?: $this->toNullableInt(data_get($snapshot, 'partner_id'));
+        $extraUsers = (int) ($connectionOffer->extra_users ?? data_get($snapshot, 'extra_users', 0));
+
+        return response()->json([
+            'has_successful_connection' => true,
+            'organization' => [
+                'id' => $organization->id,
+                'name' => $organization->name,
+                'order_number' => $organization->order_number,
+            ],
+            'connection_offer' => [
+                'id' => $connectionOffer->id,
+                'selected_tariff_key' => $selectedTariffKey !== '' ? $selectedTariffKey : null,
+                'partner_id' => $partnerId ? (int) $partnerId : null,
+                'partner_name' => $connectionOffer->partner_name,
+                'extra_users' => max(0, $extraUsers),
+                'selected_services' => $selectedServices,
+            ],
+        ]);
+    }
+
+    private function normalizeSelectedServicesSnapshot($services): array
+    {
+        if (!is_array($services)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($services as $serviceKey => $serviceState) {
+            if (!is_array($serviceState)) {
+                continue;
+            }
+
+            $enabled = (bool) data_get($serviceState, 'enabled', false);
+            $channels = $this->toNullableInt(data_get($serviceState, 'channels'));
+            $normalized[(string) $serviceKey] = [
+                'enabled' => $enabled,
+                'channels' => max(0, (int) ($channels ?? 0)),
+            ];
+        }
+
+        return $normalized;
     }
 
     private function toNullableInt($value): ?int

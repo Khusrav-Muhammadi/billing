@@ -43,7 +43,21 @@ class CPGenerator {
             previousCurrency: 'USD',
             previousTariff: null,
             previousSuggestedPrice: 0,
-            implementationPriceWasAutoSet: false
+            implementationPriceWasAutoSet: false,
+            connectionSelectionBlocked: false
+        };
+        this.state.requestType = 'connection';
+        this.state.initialOrganizationId = null;
+        this.state.extraServicesContext = {
+            hasSuccessfulConnection: false,
+            connectionCreateUrl: '',
+            message: '',
+            previousConnectionOfferId: null,
+            selectedTariffKey: null,
+            previousPartnerId: null,
+            previousPartnerName: '',
+            previousExtraUsers: 0,
+            previousSelectedServices: {},
         };
 
         this.state.pricingDate = this.getTodayYmd();
@@ -62,7 +76,18 @@ class CPGenerator {
     async init() {
         this.parseQueryParams();
         await this.loadConfig();
+        if (this.state.selectedClientId) {
+            const selectedClient = this.getSelectedClient();
+            if (selectedClient) {
+                this.state.clientName = selectedClient.name || this.state.clientName || '';
+                this.setCurrencyFromClient(selectedClient);
+            }
+        }
         await this.loadOfferDraftIfNeeded();
+        if (this.isConnectionExtraServicesMode() && this.state.selectedClientId) {
+            await this.loadConnectionContextForOrganization(this.state.selectedClientId);
+            this.applyConnectionExtraServicesContext();
+        }
         this.renderClientPartnerSelectors();
         this.renderAll();
         this.captureSavedPayLockSnapshot();
@@ -134,6 +159,347 @@ class CPGenerator {
         };
     }
 
+    isConnectionExtraServicesMode() {
+        return String(this.state.requestType || '').trim() === 'connection_extra_services';
+    }
+
+    isConnectionMode() {
+        return String(this.state.requestType || '').trim() === 'connection';
+    }
+
+    shouldIncludeBaseTariffInPricing() {
+        return !this.isConnectionExtraServicesMode();
+    }
+
+    getPreviousServiceState(serviceKey) {
+        if (!this.isConnectionExtraServicesMode()) {
+            return null;
+        }
+        const previous = this.state.extraServicesContext?.previousSelectedServices || {};
+        return previous[serviceKey] || null;
+    }
+
+    isPreviouslyPurchasedNonCountableService(serviceKey, service, isIncluded) {
+        if (!this.isConnectionExtraServicesMode() || isIncluded || !service || service.hasChannels) {
+            return false;
+        }
+
+        const previousState = this.getPreviousServiceState(serviceKey);
+        return Boolean(previousState?.enabled);
+    }
+
+    async loadConnectionContextForOrganization(organizationId) {
+        const normalizedId = String(organizationId || '').trim();
+        if (!normalizedId) {
+            this.state.extraServicesContext = {
+                hasSuccessfulConnection: false,
+                connectionCreateUrl: '',
+                message: '',
+                previousConnectionOfferId: null,
+                selectedTariffKey: null,
+                previousPartnerId: null,
+                previousPartnerName: '',
+                previousExtraUsers: 0,
+                previousSelectedServices: {},
+            };
+            return;
+        }
+
+        try {
+            const response = await fetch(`/application/kp/connection-context/${encodeURIComponent(normalizedId)}`, {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`Не удалось проверить подключение организации (HTTP ${response.status})`);
+            }
+
+            const payload = await response.json();
+            const connectionOffer = payload?.connection_offer || {};
+
+            this.state.extraServicesContext = {
+                hasSuccessfulConnection: Boolean(payload?.has_successful_connection),
+                connectionCreateUrl: String(payload?.connection_create_url || ''),
+                message: String(payload?.message || ''),
+                previousConnectionOfferId: connectionOffer?.id || null,
+                selectedTariffKey: connectionOffer?.selected_tariff_key || null,
+                previousPartnerId: connectionOffer?.partner_id || null,
+                previousPartnerName: String(connectionOffer?.partner_name || ''),
+                previousExtraUsers: Math.max(0, Number(connectionOffer?.extra_users) || 0),
+                previousSelectedServices: connectionOffer?.selected_services && typeof connectionOffer.selected_services === 'object'
+                    ? connectionOffer.selected_services
+                    : {},
+            };
+        } catch (error) {
+            console.error(error);
+            this.state.extraServicesContext = {
+                hasSuccessfulConnection: false,
+                connectionCreateUrl: '',
+                message: 'Не удалось проверить подключение. Попробуйте обновить страницу.',
+                previousConnectionOfferId: null,
+                selectedTariffKey: null,
+                previousPartnerId: null,
+                previousPartnerName: '',
+                previousExtraUsers: 0,
+                previousSelectedServices: {},
+            };
+        }
+    }
+
+    applyConnectionExtraServicesContext() {
+        if (!this.isConnectionExtraServicesMode()) {
+            return;
+        }
+
+        const hasConnection = Boolean(this.state.extraServicesContext?.hasSuccessfulConnection);
+        this.applyConnectionRequirementUI();
+        this.setConnectionExtraServicesControlsEnabled(hasConnection);
+
+        if (!hasConnection) {
+            this.state.selectedTariff = null;
+            this.state.extraUsers = 0;
+            this.state.selectedPartnerId = null;
+            this.state.partnerName = '';
+            this.state.selectedServices = {};
+            this.updatePayButtonState();
+            return;
+        }
+
+        const tariffKey = String(this.state.extraServicesContext?.selectedTariffKey || '');
+        if (tariffKey && this.config?.tariffs?.[tariffKey]) {
+            this.state.selectedTariff = tariffKey;
+        }
+
+        const previousPartnerId = this.state.extraServicesContext?.previousPartnerId;
+        if (previousPartnerId) {
+            const partner = (this.partners || []).find((p) => String(p.id) === String(previousPartnerId));
+            if (partner) {
+                this.state.selectedPartnerId = partner.id;
+                this.state.partnerName = partner.name || this.state.partnerName || '';
+            } else if (this.state.extraServicesContext?.previousPartnerName) {
+                this.state.selectedPartnerId = previousPartnerId;
+                this.state.partnerName = this.state.extraServicesContext.previousPartnerName;
+            }
+        }
+
+        if (!this.state.editOfferId) {
+            this.initializeConnectionExtraServicesState();
+        }
+
+        this.updatePayButtonState();
+    }
+
+    initializeConnectionExtraServicesState() {
+        if (!this.isConnectionExtraServicesMode() || !this.state.selectedTariff) {
+            return;
+        }
+
+        const tariff = this.config?.tariffs?.[this.state.selectedTariff];
+        if (!tariff) {
+            return;
+        }
+
+        const previousServices = this.state.extraServicesContext?.previousSelectedServices || {};
+        const includedServices = Array.isArray(tariff.includedServices) ? tariff.includedServices : [];
+        const nextSelectedServices = {};
+
+        Object.entries(this.config?.services || {}).forEach(([serviceKey, service]) => {
+            if (!service) return;
+            const previousState = previousServices[serviceKey] || {};
+            const previouslyEnabled = Boolean(previousState?.enabled);
+            const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+            const isIncluded = includedServices.includes(serviceKey);
+
+            if (service.hasChannels) {
+                if (isIncluded) {
+                    const effectiveIncludedChannels = this.getIncludedChannels(this.state.selectedTariff, serviceKey);
+                    nextSelectedServices[serviceKey] = { enabled: true, channels: effectiveIncludedChannels };
+                    return;
+                }
+
+                if (previousChannels > 0 || previouslyEnabled) {
+                    nextSelectedServices[serviceKey] = { enabled: true, channels: 0 };
+                    return;
+                }
+
+                nextSelectedServices[serviceKey] = { enabled: false, channels: 0 };
+                return;
+            }
+
+            if (isIncluded || previouslyEnabled) {
+                nextSelectedServices[serviceKey] = { enabled: true, channels: 1 };
+                return;
+            }
+
+            nextSelectedServices[serviceKey] = { enabled: false, channels: 1 };
+        });
+
+        this.state.selectedServices = nextSelectedServices;
+        this.state.extraUsers = 0;
+    }
+
+    applyConnectionRequirementUI() {
+        const wrap = document.getElementById('connectionRequirementWrap');
+        const text = document.getElementById('connectionRequirementText');
+        const link = document.getElementById('connectionRequirementLink');
+        if (!wrap || !text || !link) {
+            return;
+        }
+
+        if (!this.isConnectionExtraServicesMode()) {
+            wrap.hidden = true;
+            return;
+        }
+
+        const hasConnection = Boolean(this.state.extraServicesContext?.hasSuccessfulConnection);
+        if (hasConnection || !this.state.selectedClientId) {
+            wrap.hidden = true;
+            return;
+        }
+
+        wrap.hidden = false;
+        text.textContent = this.state.extraServicesContext?.message || 'У этой организации нет подключения, сначала сделайте подключение.';
+        link.href = this.state.extraServicesContext?.connectionCreateUrl || '/application/create/connection';
+    }
+
+    updateConnectionTariffInfo() {
+        const wrap = document.getElementById('connectionTariffInfoWrap');
+        const nameEl = document.getElementById('connectionTariffName');
+        if (!wrap || !nameEl) {
+            return;
+        }
+
+        if (!this.isConnectionExtraServicesMode()) {
+            wrap.hidden = true;
+            return;
+        }
+
+        const hasConnection = Boolean(this.state.extraServicesContext?.hasSuccessfulConnection);
+        const tariff = this.state.selectedTariff ? this.config?.tariffs?.[this.state.selectedTariff] : null;
+        if (!hasConnection || !tariff) {
+            wrap.hidden = true;
+            nameEl.textContent = '—';
+            return;
+        }
+
+        wrap.hidden = false;
+        nameEl.textContent = tariff.name || '—';
+    }
+
+    setConnectionExtraServicesControlsEnabled(enabled) {
+        if (!this.isConnectionExtraServicesMode()) {
+            return;
+        }
+
+        const globalSelectors = [
+            '#pricingDate',
+            '#partnerSelect',
+            '#usersMinusBtn',
+            '#usersPlusBtn',
+            '#extraUsersInput',
+            '.period-btn',
+            '#saveBtn',
+            '#payBtn',
+        ];
+
+        globalSelectors.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((element) => {
+                if ('disabled' in element) {
+                    element.disabled = !enabled;
+                }
+                if (element.tagName === 'INPUT' && element.id !== 'clientSelect') {
+                    element.readOnly = !enabled || element.id === 'partnerSelect';
+                }
+            });
+        });
+
+        if (!enabled) {
+            const detailSelectors = [
+                '.service-toggle input',
+                '.channels-control .qty-btn',
+                '.channels-control .qty-input',
+            ];
+
+            detailSelectors.forEach((selector) => {
+                document.querySelectorAll(selector).forEach((element) => {
+                    if ('disabled' in element) {
+                        element.disabled = true;
+                    }
+                    if (element.tagName === 'INPUT') {
+                        element.readOnly = true;
+                    }
+                });
+            });
+        }
+
+        const partnerInput = document.getElementById('partnerSelect');
+        if (partnerInput) {
+            partnerInput.disabled = true;
+            partnerInput.readOnly = true;
+        }
+    }
+
+    setConnectionCreateControlsEnabled(enabled) {
+        if (!this.isConnectionMode()) {
+            return;
+        }
+
+        const globalSelectors = [
+            '#pricingDate',
+            '#partnerSelect',
+            '#usersMinusBtn',
+            '#usersPlusBtn',
+            '#extraUsersInput',
+            '.period-btn',
+            '#saveBtn',
+            '#payBtn',
+        ];
+
+        globalSelectors.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((element) => {
+                if ('disabled' in element) {
+                    element.disabled = !enabled;
+                }
+                if (element.tagName === 'INPUT' && element.id !== 'clientSelect') {
+                    element.readOnly = !enabled || element.id === 'partnerSelect';
+                }
+            });
+        });
+
+        document.querySelectorAll('.tariff-card').forEach((card) => {
+            card.style.pointerEvents = enabled ? '' : 'none';
+            card.style.opacity = enabled ? '' : '0.6';
+        });
+
+        if (!enabled) {
+            const detailSelectors = [
+                '.service-toggle input',
+                '.channels-control .qty-btn',
+                '.channels-control .qty-input',
+            ];
+
+            detailSelectors.forEach((selector) => {
+                document.querySelectorAll(selector).forEach((element) => {
+                    if ('disabled' in element) {
+                        element.disabled = true;
+                    }
+                    if (element.tagName === 'INPUT') {
+                        element.readOnly = true;
+                    }
+                });
+            });
+        }
+
+        const partnerInput = document.getElementById('partnerSelect');
+        if (partnerInput) {
+            partnerInput.disabled = !enabled;
+            partnerInput.readOnly = !enabled;
+        }
+    }
+
     setCurrencyFromClient(client) {
         if (!client) return;
         const currencies = this.config?.currencies || {};
@@ -171,6 +537,15 @@ class CPGenerator {
         this.state.dealStatusId = params.get('deal_status_id') || '';
         this.state.apiUrl = params.get('url') || '';
         this.state.dealId = params.get('deal_id') || '';
+        const requestType = String(params.get('request_type') || '').trim();
+        if (requestType !== '') {
+            this.state.requestType = requestType;
+        }
+        const initialOrganizationId = String(params.get('organization_id') || '').trim();
+        if (initialOrganizationId !== '') {
+            this.state.initialOrganizationId = initialOrganizationId;
+            this.state.selectedClientId = initialOrganizationId;
+        }
         const offerId = params.get('offer_id');
         this.state.editOfferId = offerId && String(offerId).trim() !== '' ? String(offerId).trim() : null;
         this.state.isLocked = params.get('locked') === '1';
@@ -255,6 +630,10 @@ class CPGenerator {
                 return;
             }
 
+            if (payload.request_type) {
+                this.state.requestType = String(payload.request_type);
+            }
+
             if (payload.organization_id) {
                 this.state.selectedClientId = String(payload.organization_id);
             }
@@ -295,7 +674,7 @@ class CPGenerator {
                 const normalized = {};
                 Object.entries(payload.selected_services).forEach(([key, value]) => {
                     const enabled = Boolean(value?.enabled);
-                    const channels = Math.max(1, Number(value?.channels) || 1);
+                    const channels = Math.max(0, Number(value?.channels) || 0);
                     normalized[key] = { enabled, channels };
                 });
                 this.state.selectedServices = normalized;
@@ -319,6 +698,12 @@ class CPGenerator {
     }
 
     canOpenPayment() {
+        if (this.isConnectionMode() && this.state.connectionSelectionBlocked) {
+            return false;
+        }
+        if (this.isConnectionExtraServicesMode() && !this.state.extraServicesContext.hasSuccessfulConnection) {
+            return false;
+        }
         return Boolean(this.state.editOfferId) && !this.state.hasUnsavedChanges;
     }
 
@@ -463,6 +848,13 @@ class CPGenerator {
     }
 
     renderAll() {
+        if (this.isConnectionExtraServicesMode()) {
+            const tariffsSection = document.getElementById('tariffsSection') || document.querySelector('.tariffs-section');
+            if (tariffsSection) {
+                tariffsSection.style.display = 'none';
+            }
+        }
+
         this.applyTariffDefaults();
         this.renderClientPartnerSelectors();
         this.renderTariffs();
@@ -471,6 +863,14 @@ class CPGenerator {
         this.updateSummary();
         this.applyPaymentMethodsUI();
         this.updateSelectedClientOrderNumberUI();
+        this.applyConnectionRequirementUI();
+        this.updateConnectionTariffInfo();
+        this.setConnectionExtraServicesControlsEnabled(
+            !this.isConnectionExtraServicesMode() || Boolean(this.state.extraServicesContext?.hasSuccessfulConnection)
+        );
+        this.setConnectionCreateControlsEnabled(
+            !this.isConnectionMode() || !this.state.connectionSelectionBlocked
+        );
         this.updatePayButtonState();
     }
 
@@ -485,7 +885,7 @@ class CPGenerator {
             if (!service) return;
 
             const includedMin = service.hasChannels
-                ? Math.max(1, this.getIncludedChannels(this.state.selectedTariff, serviceKey) || 1)
+                ? Math.max(0, this.getIncludedChannels(this.state.selectedTariff, serviceKey))
                 : 1;
 
             const prev = this.state.selectedServices?.[serviceKey] || { enabled: false, channels: includedMin };
@@ -864,12 +1264,14 @@ class CPGenerator {
         const tariff = this.config.tariffs[tariffKey];
         const periodMultiplier = this.getPeriodDiscountMultiplier();
 
-        const tariffMonthlyBase = this.getTariffMonthlyBase(tariffKey);
-        const tariffMonthly = tariffMonthlyBase * periodMultiplier;
-        items.push({
-            name: `Тариф "${tariff.name}" (${this.state.periodMonths} мес)`,
-            price: this.applyPartnerDiscount(tariffMonthly * this.state.periodMonths)
-        });
+        if (this.shouldIncludeBaseTariffInPricing()) {
+            const tariffMonthlyBase = this.getTariffMonthlyBase(tariffKey);
+            const tariffMonthly = tariffMonthlyBase * periodMultiplier;
+            items.push({
+                name: `Тариф "${tariff.name}" (${this.state.periodMonths} мес)`,
+                price: this.applyPartnerDiscount(tariffMonthly * this.state.periodMonths)
+            });
+        }
 
         if (this.state.extraUsers > 0) {
             const extraMonthly = this.getExtraUserMonthlyBase(tariffKey) * this.state.extraUsers * periodMultiplier;
@@ -887,8 +1289,11 @@ class CPGenerator {
             if (!service || service.priceFromTariff) return;
 
             const isIncluded = selectedTariff?.includedServices?.includes(key);
+            if (this.isPreviouslyPurchasedNonCountableService(key, service, isIncluded)) {
+                return;
+            }
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
-            const channels = service.hasChannels ? (serviceState.channels || 1) : 1;
+            const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
             let monthlyPrice = 0;
             let displayChannels = channels;
 
@@ -901,6 +1306,7 @@ class CPGenerator {
             } else if (isIncluded) {
                 return;
             } else {
+                if (service.hasChannels && channels <= 0) return;
                 monthlyPrice = basePrice * channels;
             }
 
@@ -933,8 +1339,12 @@ class CPGenerator {
             throw new Error('Выберите организацию.');
         }
 
+        if (this.isConnectionExtraServicesMode() && !this.state.extraServicesContext.hasSuccessfulConnection) {
+            throw new Error('У выбранной организации нет успешного подключения. Сначала оформите подключение.');
+        }
+
         if (!this.state.selectedTariff) {
-            throw new Error('Выберите тариф.');
+            throw new Error(this.isConnectionExtraServicesMode() ? 'Не удалось определить тариф из успешного подключения.' : 'Выберите тариф.');
         }
 
         const totals = this.calculateTotals();
@@ -987,6 +1397,10 @@ class CPGenerator {
 
         return {
             offer_id: this.state.editOfferId || null,
+            request_type: this.state.requestType || 'connection',
+            previous_connection_offer_id: this.isConnectionExtraServicesMode()
+                ? (this.state.extraServicesContext?.previousConnectionOfferId || null)
+                : null,
             organization_id: client.id,
             partner_id: partner?.id || null,
             selected_tariff_key: this.state.selectedTariff,
@@ -1217,7 +1631,9 @@ class CPGenerator {
             }
             // Use mousedown to avoid input blur closing before click.
             el.addEventListener('mousedown', (e) => e.preventDefault());
-            el.addEventListener('click', () => this.selectComboItem(kind, item));
+            el.addEventListener('click', () => {
+                void this.selectComboItem(kind, item);
+            });
             dropdown.appendChild(el);
         });
     }
@@ -1287,30 +1703,71 @@ class CPGenerator {
         this.renderCombo(kind);
     }
 
-    selectComboItem(kind, item) {
-        if (kind === 'client') {
-            this.state.selectedClientId = item.id;
-            this.state.clientName = item.name || 'Организация';
-            this.setCurrencyFromClient(item);
-            this.renderTariffs();
-            this.renderServices();
-            this.updateExtraUsersSection();
-            this.updateSummary();
-            this.updateSelectedClientOrderNumberUI();
-        } else {
-            this.state.selectedPartnerId = item.id;
-            this.state.partnerName = item.name || 'Партнер';
-            // Partner percent affects all prices, so rerender totals/cards.
-            this.renderTariffs();
-            this.renderServices();
-            this.updateExtraUsersSection();
-            this.updateSummary();
-            this.applyPaymentMethodsUI();
+    async selectComboItem(kind, item) {
+        try {
+            if (kind === 'client') {
+                if (this.isConnectionMode() && !this.state.editOfferId) {
+                    this.showLoading();
+                    await this.loadConnectionContextForOrganization(item.id);
+
+                    if (this.state.extraServicesContext?.hasSuccessfulConnection) {
+                        this.state.connectionSelectionBlocked = true;
+                        this.state.selectedClientId = null;
+                        this.state.clientName = '';
+                        this.state.selectedPartnerId = null;
+                        this.state.partnerName = '';
+
+                        this.closeCombo(kind);
+                        this.renderAll();
+
+                        alert('У этой организации уже есть подключение. Создать повторное подключение нельзя.');
+                        return;
+                    }
+                }
+
+                this.state.connectionSelectionBlocked = false;
+                this.state.selectedClientId = item.id;
+                this.state.clientName = item.name || 'Организация';
+                this.setCurrencyFromClient(item);
+
+                if (this.isConnectionExtraServicesMode()) {
+                    this.showLoading();
+                    await this.loadConnectionContextForOrganization(item.id);
+                    this.applyConnectionExtraServicesContext();
+                }
+
+                this.renderTariffs();
+                this.renderServices();
+                this.updateExtraUsersSection();
+                this.updateSummary();
+                this.updateSelectedClientOrderNumberUI();
+                this.setConnectionCreateControlsEnabled(
+                    !this.isConnectionMode() || !this.state.connectionSelectionBlocked
+                );
+            } else {
+                if (this.isConnectionExtraServicesMode()) {
+                    this.closeCombo(kind);
+                    return;
+                }
+
+                this.state.selectedPartnerId = item.id;
+                this.state.partnerName = item.name || 'Партнер';
+                // Partner percent affects all prices, so rerender totals/cards.
+                this.renderTariffs();
+                this.renderServices();
+                this.updateExtraUsersSection();
+                this.updateSummary();
+                this.applyPaymentMethodsUI();
+            }
+
+            this.markOfferDirty();
+            this.closeCombo(kind);
+        } catch (error) {
+            console.error(error);
+            alert(error?.message || 'Не удалось выбрать организацию');
+        } finally {
+            this.hideLoading();
         }
-
-        this.markOfferDirty();
-
-        this.closeCombo(kind);
     }
 
     updateHeaderInfo() {
@@ -1330,6 +1787,10 @@ class CPGenerator {
     // ========================================
     renderTariffs() {
         const grid = document.getElementById('tariffsGrid');
+        if (!grid) {
+            this.updateConnectionTariffInfo();
+            return;
+        }
         grid.innerHTML = '';
 
         const tariffKeys = Object.keys(this.config.tariffs);
@@ -1366,10 +1827,11 @@ class CPGenerator {
             card.addEventListener('click', () => this.selectTariff(key));
             grid.appendChild(card);
         });
+
+        this.updateConnectionTariffInfo();
     }
 
-    // Get included channels count for a service in a tariff
-    getIncludedChannels(tariffKey, serviceKey) {
+    getTariffIncludedChannelsBase(tariffKey, serviceKey) {
         if (!tariffKey || !serviceKey) return 0;
 
         const tariff = this.config.tariffs[tariffKey];
@@ -1396,6 +1858,29 @@ class CPGenerator {
         return 0;
     }
 
+    // Get included channels count for a service in a tariff.
+    // In connection_extra_services mode this includes channels that were purchased before.
+    getIncludedChannels(tariffKey, serviceKey) {
+        const baseIncluded = this.getTariffIncludedChannelsBase(tariffKey, serviceKey);
+        if (!this.isConnectionExtraServicesMode() || !this.state.extraServicesContext?.hasSuccessfulConnection) {
+            return baseIncluded;
+        }
+
+        const previousState = this.getPreviousServiceState(serviceKey);
+        const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+        const previousAdditional = Math.max(0, previousChannels - baseIncluded);
+        return baseIncluded + previousAdditional;
+    }
+
+    getServiceChannelsCount(serviceState) {
+        const value = Number(serviceState?.channels);
+        if (!Number.isFinite(value)) {
+            return 0;
+        }
+
+        return Math.max(0, Math.floor(value));
+    }
+
     updateExtraUsersSection() {
         if (!this.state.selectedTariff) return;
 
@@ -1403,7 +1888,19 @@ class CPGenerator {
         const extraUsersSection = document.getElementById('extraUsersSection');
         if (extraUsersSection) {
             extraUsersSection.style.display = 'block';
-            document.getElementById('includedUsers').textContent = tariff.users;
+            const includedUsersEl = document.getElementById('includedUsers');
+            if (includedUsersEl) {
+                includedUsersEl.textContent = tariff.users;
+            }
+            const includedUsersLabel = document.getElementById('includedUsersLabel');
+            if (includedUsersLabel && this.isConnectionExtraServicesMode()) {
+                const previousExtraUsers = Math.max(0, Number(this.state.extraServicesContext?.previousExtraUsers) || 0);
+                if (previousExtraUsers > 0) {
+                    includedUsersLabel.innerHTML = `В тариф включено: <strong id="includedUsers">${tariff.users}</strong> пользователей и еще <strong>${previousExtraUsers}</strong> доп пользователей куплено`;
+                } else {
+                    includedUsersLabel.innerHTML = `В тариф включено: <strong id="includedUsers">${tariff.users}</strong> пользователей`;
+                }
+            }
             document.getElementById('extraUserPrice').textContent =
                 this.formatPrice(this.getExtraUserPriceByKey(this.state.selectedTariff));
             const extraUsersInput = document.getElementById('extraUsersInput');
@@ -1415,6 +1912,12 @@ class CPGenerator {
 
     selectTariff(tariffKey) {
         if (this.state.isLocked) {
+            return;
+        }
+        if (this.isConnectionMode() && this.state.connectionSelectionBlocked) {
+            return;
+        }
+        if (this.isConnectionExtraServicesMode()) {
             return;
         }
 
@@ -1441,8 +1944,8 @@ class CPGenerator {
         Object.keys(this.state.selectedServices).forEach(serviceKey => {
             const service = this.config.services[serviceKey];
             if (service && service.hasChannels) {
-                // Reset channels to 1 for services with channels
-                this.state.selectedServices[serviceKey] = { enabled: false, channels: 1 };
+                // Reset channels to 0 for services with channels
+                this.state.selectedServices[serviceKey] = { enabled: false, channels: 0 };
             } else {
                 // Just disable services without channels
                 this.state.selectedServices[serviceKey].enabled = false;
@@ -1457,7 +1960,7 @@ class CPGenerator {
 
                 if (service && service.hasChannels) {
                     // Initialize with included channels
-                    this.state.selectedServices[serviceKey] = { enabled: true, channels: includedChannels || 1 };
+                    this.state.selectedServices[serviceKey] = { enabled: true, channels: Math.max(0, includedChannels) };
                 } else {
                     // Service without channels - just enable it
                     this.state.selectedServices[serviceKey] = { enabled: true, channels: 1 };
@@ -1477,6 +1980,9 @@ class CPGenerator {
     // ========================================
     renderServices() {
         const grid = document.getElementById('servicesGrid');
+        if (!grid) {
+            return;
+        }
         grid.innerHTML = '';
 
         const selectedTariff = this.state.selectedTariff
@@ -1488,13 +1994,31 @@ class CPGenerator {
 
             const isIncluded = selectedTariff?.includedServices?.includes(key);
             const isSelected = this.state.selectedServices[key]?.enabled;
+            const previousState = this.getPreviousServiceState(key);
+            const previousEnabled = Boolean(previousState?.enabled);
+            const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
             const includedChannels = (isIncluded && service.hasChannels)
-                ? Math.max(1, this.getIncludedChannels(this.state.selectedTariff, key))
+                ? Math.max(0, this.getIncludedChannels(this.state.selectedTariff, key))
                 : 0;
-            const channels = this.state.selectedServices[key]?.channels || (includedChannels || 1);
+            const tariffIncludedChannels = (isIncluded && service.hasChannels)
+                ? Math.max(0, this.getTariffIncludedChannelsBase(this.state.selectedTariff, key))
+                : 0;
+            const storedChannels = this.getServiceChannelsCount(this.state.selectedServices[key]);
+            const channels = isIncluded
+                ? Math.max(storedChannels, includedChannels)
+                : storedChannels;
             const counterChannels = (isIncluded && service.hasChannels)
                 ? Math.max(0, channels - includedChannels)
                 : channels;
+            const isNonCountablePurchasedEarlier = this.isConnectionExtraServicesMode()
+                && !service.hasChannels
+                && !isIncluded
+                && previousEnabled;
+            const isCountablePurchasedEarlier = this.isConnectionExtraServicesMode()
+                && service.hasChannels
+                && !isIncluded
+                && previousChannels > 0;
+            const shouldDisableToggle = isIncluded || isNonCountablePurchasedEarlier || isCountablePurchasedEarlier;
             const unitPrice = this.getPriceByCurrency(this.getServicePricesMap(key));
 
             const card = document.createElement('div');
@@ -1503,10 +2027,18 @@ class CPGenerator {
 
             let includedChannelsInfo = '';
             if (isIncluded && service.hasChannels) {
-                const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                if (includedChannels > 0) {
-                    includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${includedChannels} ${includedChannels === 1 ? 'канал включен' : 'канала включено'} в тариф</p>`;
+                const previouslyPurchasedChannels = Math.max(0, previousChannels - tariffIncludedChannels);
+                if (tariffIncludedChannels > 0 || previouslyPurchasedChannels > 0) {
+                    if (this.isConnectionExtraServicesMode() && previouslyPurchasedChannels > 0) {
+                        includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'канал включен' : 'канала включено'} в тариф - ${previouslyPurchasedChannels} ${previouslyPurchasedChannels === 1 ? 'канал куплен' : 'каналов куплено'}</p>`;
+                    } else {
+                        includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'канал включен' : 'канала включено'} в тариф</p>`;
+                    }
                 }
+            } else if (isNonCountablePurchasedEarlier) {
+                includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">Не входит в тариф, приобретено ранее</p>`;
+            } else if (isCountablePurchasedEarlier) {
+                includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">Не входит в тариф, ранее куплено: ${previousChannels}</p>`;
             }
 
             card.innerHTML = `
@@ -1522,25 +2054,28 @@ class CPGenerator {
                     <label class="service-toggle">
                         <input type="checkbox"
                             ${(isSelected || isIncluded) ? 'checked' : ''}
-                            ${isIncluded ? 'disabled' : ''}
+                            ${shouldDisableToggle ? 'disabled' : ''}
                             data-service="${key}">
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
                 ${service.hasChannels ? `
                     <div class="service-channels">
-                        <span class="channels-label">${isIncluded ? 'Доп. каналов:' : 'Каналов:'}</span>
+                        <span class="channels-label">${isIncluded || isCountablePurchasedEarlier ? 'Новых каналов:' : 'Каналов:'}</span>
                         <div class="channels-control">
                             ${(() => {
-                                const minChannels = isIncluded ? 0 : 1;
+                                const minChannels = 0;
                                 return `<button class="qty-btn minus" data-service="${key}" data-action="decrease" ${counterChannels <= minChannels ? 'disabled' : ''}>−</button>
                             <input type="number" class="qty-input" value="${counterChannels}" min="${minChannels}" data-service="${key}">
                             <button class="qty-btn plus" data-service="${key}" data-action="increase">+</button>`;
                             })()}
                         </div>
                         ${isIncluded ? (() => {
-                            const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                            return `<span class="channels-note" style="font-size: 0.75rem; color: #666; margin-left: 8px;">(${includedChannels} ${includedChannels === 1 ? 'включен' : 'включено'}, доп. платно)</span>`;
+                            const previouslyPurchasedChannels = Math.max(0, previousChannels - tariffIncludedChannels);
+                            if (this.isConnectionExtraServicesMode() && previouslyPurchasedChannels > 0) {
+                                return `<span class="channels-note" style="font-size: 0.75rem; color: #666; margin-left: 8px;">(в тарифе ${tariffIncludedChannels}, куплено ${previouslyPurchasedChannels}, новые платно)</span>`;
+                            }
+                            return `<span class="channels-note" style="font-size: 0.75rem; color: #666; margin-left: 8px;">(${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'включен' : 'включено'}, доп. платно)</span>`;
                         })() : ''}
                     </div>
                 ` : ''}
@@ -1560,7 +2095,7 @@ class CPGenerator {
                 }
                 const serviceKey = e.target.dataset.service;
                 if (!this.state.selectedServices[serviceKey]) {
-                    this.state.selectedServices[serviceKey] = { enabled: false, channels: 1 };
+                    this.state.selectedServices[serviceKey] = { enabled: false, channels: 0 };
                 }
                 this.state.selectedServices[serviceKey].enabled = e.target.checked;
                 this.markOfferDirty();
@@ -1587,16 +2122,15 @@ class CPGenerator {
                 if (!this.state.selectedServices[serviceKey]) {
                     this.state.selectedServices[serviceKey] = {
                         enabled: false,
-                        channels: isIncluded ? includedChannels : 1,
+                        channels: isIncluded ? includedChannels : 0,
                     };
                 }
 
-                const minChannels = isIncluded ? 0 : 1;
-                const currentTotalChannels = Number(this.state.selectedServices[serviceKey].channels)
-                    || (isIncluded ? includedChannels : 1);
+                const minChannels = 0;
+                const currentTotalChannels = this.getServiceChannelsCount(this.state.selectedServices[serviceKey]);
                 let currentCounterChannels = isIncluded
                     ? Math.max(0, currentTotalChannels - includedChannels)
-                    : Math.max(1, currentTotalChannels);
+                    : Math.max(0, currentTotalChannels);
 
                 if (action === 'increase') {
                     currentCounterChannels++;
@@ -1624,7 +2158,7 @@ class CPGenerator {
                     : null;
                 const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
                 const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 0;
-                const minChannels = isIncluded ? 0 : 1;
+                const minChannels = 0;
                 const value = Math.max(minChannels, parseInt(e.target.value) || minChannels);
                 const totalChannels = isIncluded ? includedChannels + value : value;
 
@@ -1866,7 +2400,7 @@ class CPGenerator {
             ? this.config.tariffs[this.state.selectedTariff]
             : null;
 
-        if (this.state.selectedTariff && selectedTariff) {
+        if (this.state.selectedTariff && selectedTariff && this.shouldIncludeBaseTariffInPricing()) {
             const baseTariffMonthly = this.getTariffMonthlyBase(this.state.selectedTariff);
             rows.push({
                 name: `Тариф "${selectedTariff.name}"`,
@@ -1890,9 +2424,12 @@ class CPGenerator {
             if (!service || service.priceFromTariff) return;
 
             const isIncluded = selectedTariff?.includedServices?.includes(key);
+            if (this.isPreviouslyPurchasedNonCountableService(key, service, isIncluded)) {
+                return;
+            }
 
             const unitMonthly = this.getPriceByCurrency(this.getServicePricesMap(key));
-            const channels = service.hasChannels ? serviceState.channels : 1;
+            const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
             let displayChannels = channels;
             let qty = channels;
 
@@ -1908,6 +2445,8 @@ class CPGenerator {
                 }
             } else if (isIncluded) {
                 return; // Included service without channels - no charge
+            } else if (service.hasChannels && channels <= 0) {
+                return;
             }
 
             let displayText = service.name;
@@ -2016,22 +2555,34 @@ class CPGenerator {
                 if (!service || service.priceFromTariff) return;
 
                 const isIncluded = selectedTariff?.includedServices?.includes(key);
+                if (this.isPreviouslyPurchasedNonCountableService(key, service, isIncluded)) {
+                    return;
+                }
 
                 if (!isIncluded) {
-                    // Услуга не входит в тариф
-                    hasAdditionalServices = true;
+                    if (service.hasChannels) {
+                        const channels = this.getServiceChannelsCount(serviceState);
+                        if (channels > 0) {
+                            hasAdditionalServices = true;
+                        }
+                    } else {
+                        // Услуга не входит в тариф
+                        hasAdditionalServices = true;
+                    }
                 } else if (service.hasChannels) {
                     // Если услуга входит в тариф, но есть дополнительные каналы
                     const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                    if (serviceState.channels > includedChannels) {
+                    if (this.getServiceChannelsCount(serviceState) > includedChannels) {
                         hasAdditionalServices = true;
                     }
                 }
             });
 
             // Формируем описание
-            let detailsText = `Тариф "${tariff.name}"`;
-            if (hasAdditionalServices) {
+            let detailsText = this.shouldIncludeBaseTariffInPricing()
+                ? `Тариф "${tariff.name}"`
+                : 'Дополнительные услуги';
+            if (hasAdditionalServices && this.shouldIncludeBaseTariffInPricing()) {
                 detailsText += ` + Доп пакеты`;
             }
 
@@ -2159,6 +2710,10 @@ class CPGenerator {
                         if (selectedClient) {
                             this.setCurrencyFromClient(selectedClient);
                         }
+                        if (this.isConnectionExtraServicesMode()) {
+                            await this.loadConnectionContextForOrganization(this.state.selectedClientId);
+                            this.applyConnectionExtraServicesContext();
+                        }
                     }
                     this.renderClientPartnerSelectors();
                     this.renderAll();
@@ -2192,7 +2747,9 @@ class CPGenerator {
                 }
                 if (e.key === 'Enter') {
                     const first = (this.combo.client.items || [])[0];
-                    if (first) this.selectComboItem('client', first);
+                    if (first) {
+                        void this.selectComboItem('client', first);
+                    }
                 }
             });
         }
@@ -2222,7 +2779,9 @@ class CPGenerator {
                 }
                 if (e.key === 'Enter') {
                     const first = (this.combo.partner.items || [])[0];
-                    if (first) this.selectComboItem('partner', first);
+                    if (first) {
+                        void this.selectComboItem('partner', first);
+                    }
                 }
             });
         }
@@ -2560,10 +3119,12 @@ class CPGenerator {
                             <div class="table-header-cell">Сумма</div>
                         </div>
 
-                        <div class="table-row">
-                            <div class="table-cell">Тариф "${tariff.name}" (${periodText})</div>
-                            <div class="table-cell">${this.formatTotalPrice(tariffPrice * this.state.periodMonths)}</div>
-                        </div>
+                        ${this.shouldIncludeBaseTariffInPricing() ? `
+                            <div class="table-row">
+                                <div class="table-cell">Тариф "${tariff.name}" (${periodText})</div>
+                                <div class="table-cell">${this.formatTotalPrice(tariffPrice * this.state.periodMonths)}</div>
+                            </div>
+                        ` : ''}
 
                         ${this.state.extraUsers > 0 ? `
                             <div class="table-row">
@@ -2652,12 +3213,15 @@ class CPGenerator {
             if (!service || service.priceFromTariff) return;
 
             const isIncluded = selectedTariff?.includedServices?.includes(key);
+            if (this.isPreviouslyPurchasedNonCountableService(key, service, isIncluded)) {
+                return;
+            }
 
             // Пропускаем включенные услуги без доп. каналов
             if (isIncluded) {
                 if (service.hasChannels) {
                     const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                    const additionalChannels = serviceState.channels - includedChannels;
+                    const additionalChannels = this.getServiceChannelsCount(serviceState) - includedChannels;
                     if (additionalChannels > 0) {
                         const price = this.getPriceByCurrency(this.getServicePricesMap(key)) * additionalChannels;
                         packages.push({
@@ -2672,7 +3236,10 @@ class CPGenerator {
 
             // Обычные услуги
             if (service.type !== 'one_time') {
-                const channels = service.hasChannels ? serviceState.channels : 1;
+                const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+                if (service.hasChannels && channels <= 0) {
+                    return;
+                }
                 const price = this.getPriceByCurrency(this.getServicePricesMap(key)) * channels;
                 packages.push({
                     name: service.name + (channels > 1 ? ` (×${channels})` : ''),
@@ -2741,12 +3308,15 @@ class CPGenerator {
             if (!service || service.priceFromTariff) return;
 
             const isIncluded = selectedTariff?.includedServices?.includes(key);
+            if (this.isPreviouslyPurchasedNonCountableService(key, service, isIncluded)) {
+                return;
+            }
 
             // Other services
             if (isIncluded) {
                 // For included services with channels, only charge for additional
                 if (service.hasChannels) {
-                    const channels = serviceState.channels || 1;
+                    const channels = this.getServiceChannelsCount(serviceState);
                     const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
                     const additionalChannels = Math.max(0, channels - includedChannels);
                     if (additionalChannels > 0) {
@@ -2762,7 +3332,10 @@ class CPGenerator {
             }
 
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
-            const channels = service.hasChannels ? serviceState.channels : 1;
+            const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+            if (!isIncluded && service.hasChannels && channels <= 0) {
+                return;
+            }
             let totalPrice = basePrice * channels;
             let name = service.name;
             if (channels > 1) name = `${service.name} (×${channels})`;
@@ -2782,12 +3355,14 @@ class CPGenerator {
         const months = this.state.periodMonths;
         const periodMultiplier = this.getPeriodDiscountMultiplier();
 
-        if (this.state.selectedTariff) {
+        if (this.state.selectedTariff && this.shouldIncludeBaseTariffInPricing()) {
             monthlyRaw += this.getTariffMonthlyBase(this.state.selectedTariff);
 
             if (this.state.extraUsers > 0) {
                 monthlyRaw += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
             }
+        } else if (this.state.selectedTariff && this.state.extraUsers > 0) {
+            monthlyRaw += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
         }
 
         const selectedTariff = this.state.selectedTariff
@@ -2801,9 +3376,15 @@ class CPGenerator {
             if (!service || service.priceFromTariff) return;
 
             const isIncluded = selectedTariff?.includedServices?.includes(key);
+            if (this.isPreviouslyPurchasedNonCountableService(key, service, isIncluded)) {
+                return;
+            }
 
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
-            const channels = service.hasChannels ? serviceState.channels : 1;
+            const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+            if (!isIncluded && service.hasChannels && channels <= 0) {
+                return;
+            }
             let totalPrice = 0;
 
             // For included services with channels, only charge for additional channels
@@ -3680,13 +4261,23 @@ class CPGenerator {
                 if (key === 'online_store') return;
 
                 const isIncluded = selectedTariff?.includedServices?.includes(key);
+                if (this.isPreviouslyPurchasedNonCountableService(key, service, isIncluded)) {
+                    return;
+                }
                 if (!isIncluded) {
-                    // Услуга не входит в тариф
-                    hasAdditionalServices = true;
+                    if (service.hasChannels) {
+                        const channels = this.getServiceChannelsCount(serviceState);
+                        if (channels > 0) {
+                            hasAdditionalServices = true;
+                        }
+                    } else {
+                        // Услуга не входит в тариф
+                        hasAdditionalServices = true;
+                    }
                 } else if (service.hasChannels) {
                     // Если услуга входит в тариф, но есть дополнительные каналы
                     const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                    if (serviceState.channels > includedChannels) {
+                    if (this.getServiceChannelsCount(serviceState) > includedChannels) {
                         hasAdditionalServices = true;
                     }
                 }
@@ -3705,9 +4296,11 @@ class CPGenerator {
                 periodText = '8 мес';
             }
 
-            // Формируем описание - всегда добавляем "+ Доп пакеты" если есть доп. услуги
-            let description = `Тариф "${tariff.name}"`;
-            if (hasAdditionalServices) {
+            // Формируем описание
+            let description = this.shouldIncludeBaseTariffInPricing()
+                ? `Тариф "${tariff.name}"`
+                : 'Дополнительные услуги';
+            if (hasAdditionalServices && this.shouldIncludeBaseTariffInPricing()) {
                 description += ` + Доп пакеты`;
             }
             description += ` × ${periodText}`;

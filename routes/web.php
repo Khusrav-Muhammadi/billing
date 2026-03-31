@@ -129,6 +129,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{offer}/statuses', [ApplicationController::class, 'storeOfferStatus'])->name('application.status.store');
         Route::post('/kp/store', [ApplicationController::class, 'storeCommercialOffer'])->name('application.kp.store');
         Route::post('/kp/client/store', [ApplicationController::class, 'storeCommercialOfferClient'])->name('application.kp.client.store');
+        Route::get('/kp/connection-context/{organization}', [ApplicationController::class, 'getConnectionContext'])->name('application.kp.connection-context');
         Route::get('/kp/{offer}', [ApplicationController::class, 'getCommercialOfferState'])->name('application.kp.show');
         Route::get('/show/{offer}', [ApplicationController::class, 'showCommercialOffer'])->name('application.show');
         Route::get('/create', [ApplicationController::class, 'create'])->name('application.create');
