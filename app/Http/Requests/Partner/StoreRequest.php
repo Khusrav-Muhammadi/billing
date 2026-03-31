@@ -30,6 +30,7 @@ class StoreRequest extends FormRequest
             'procent_from_pack' => ['required', 'integer', 'min:0', 'max:100'],
             'payment_methods' => ['nullable', 'array'],
             'payment_methods.*' => ['string', Rule::in(['card', 'invoice', 'cash'])],
+            'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')],
         ];
     }
 }

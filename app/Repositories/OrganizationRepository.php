@@ -107,7 +107,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     public function index(array $data)
     {
         $query = Client::query()->where(function (Builder $builder) {
-            $builder->whereHas('transactions')->orWhere('nfr', true);
+            $builder->whereHas('transactions');
         });
 
         $clientIds = $query->filter($this->extractClientFilters($data))->pluck('id')->toArray();

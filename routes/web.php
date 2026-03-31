@@ -132,6 +132,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/kp/{offer}', [ApplicationController::class, 'getCommercialOfferState'])->name('application.kp.show');
         Route::get('/show/{offer}', [ApplicationController::class, 'showCommercialOffer'])->name('application.show');
         Route::get('/create', [ApplicationController::class, 'create'])->name('application.create');
+        Route::get('/create/connection', [ApplicationController::class, 'createConnection'])->name('application.create.connection');
+        Route::get('/create/connection-extra-services', [ApplicationController::class, 'createConnectionExtraServices'])->name('application.create.connection-extra-services');
+        Route::get('/create/renewal', [ApplicationController::class, 'createRenewal'])->name('application.create.renewal');
+        Route::get('/create/renewal-no-changes', [ApplicationController::class, 'createRenewalNoChanges'])->name('application.create.renewal-no-changes');
         Route::get('edit/{id}', [ApplicationController::class, 'edit'])->name('application.edit');
         Route::patch('/{id}', [ApplicationController::class, 'update'])->name('application.update');
         Route::delete('/{id}', [ApplicationController::class, 'destroy'])->name('application.delete');

@@ -10,7 +10,37 @@
         <h4 class="card-title">Оплата</h4>
         <p>Этот раздел предназначен для проведения оплаты аккаунтов ваших клиентов в shamCRM за вычетом вашей комиссии. От клиента вы получаете полную сумму за лицензии в соответствии с ценами на нашем сайте. В данном разделе вы выставляете счет для себя (он будет уже с учетом партнерской скидки) и оплачиваете его.
         </p>
-        <a href="{{ route('application.create') }}" type="button" class="btn btn-primary mb-3">Добавить запрос</a>
+        <div class="dropdown d-inline-block mb-3">
+            <button class="btn btn-primary dropdown-toggle"
+                    type="button"
+                    id="applicationCreateDropdown"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false">
+                Добавить запрос
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="applicationCreateDropdown">
+                <li>
+                    <a class="dropdown-item" href="{{ route('application.create.connection') }}">
+                        Подключение
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ route('application.create.connection-extra-services') }}">
+                        Подключение доп услуг
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ route('application.create.renewal') }}">
+                        Продление
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ route('application.create.renewal-no-changes') }}">
+                        Продление без изменений
+                    </a>
+                </li>
+            </ul>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
@@ -79,18 +109,24 @@
                         <td>{{ $offer->period_months }} мес.</td>
                         <td>{{ number_format((float) $offer->grand_total, 2, '.', ' ') }} {{ $amountCurrencyCode }}</td>
                         <td>{{ number_format((float) $offer->payable_total, 2, '.', ' ') }} {{ $systemCurrencyCode }}</td>
-                        <td @if($canManageOfferStatus)
-                                class="offer-status-cell offer-status-cell-clickable"
-                                role="button"
-                                tabindex="0"
-                                data-bs-toggle="modal"
-                                data-bs-target="#offerStatusHistoryModal{{ $offer->id }}"
-                                title="Открыть историю статусов подключения"
-                            @endif>
+                        <td class="offer-status-cell">
                             <span class="badge {{ $operationStatusClass }}">{{ $operationStatusLabel }}</span>
-                            @if($canManageOfferStatus)
-                                <div class="offer-status-hint">Нажмите для истории</div>
-                            @endif
+                            <div class="offer-status-actions">
+                                <button type="button"
+                                        class="offer-status-hint offer-status-view-link"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#offerStatusHistoryModal{{ $offer->id }}">
+                                    Нажмите для просмотра
+                                </button>
+                                @if($canManageOfferStatus && $effectiveStatusCode === 'pending')
+                                    <button type="button"
+                                            class="btn btn-outline-primary btn-sm offer-status-confirm-btn"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#offerStatusCreateModal{{ $offer->id }}">
+                                        Подтвердить
+                                    </button>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -112,84 +148,78 @@
                     default => (string) ($offer->latestOfferStatus?->payment_method ?? ''),
                 };
                 $canManageOfferStatus = in_array($paymentTypeCode, ['invoice', 'cash'], true);
+                $defaultAccountId = optional($offer->offerStatuses->firstWhere('account_id', '!=', null))->account_id
+                    ?: ($offer->partner?->account_id ?? null);
             @endphp
-            @if($canManageOfferStatus)
-                <div class="modal fade" id="offerStatusHistoryModal{{ $offer->id }}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">История статусов подключения #{{ $offer->id }}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="table-responsive mb-3">
-                                    <table class="table table-sm table-striped">
-                                        <thead>
+            <div class="modal fade" id="offerStatusHistoryModal{{ $offer->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">История статусов подключения #{{ $offer->id }}</h5>
+                            <button type="button" class="modal-x-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Закрыть">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="table-responsive mb-3">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>Статус</th>
+                                        <th>Способ</th>
+                                        <th>Счет</th>
+                                        <th>№ платежки</th>
+                                        <th>Автор</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    @forelse($offer->offerStatuses as $statusRow)
+                                        @php
+                                            $statusLabel = match ((string) $statusRow->status) {
+                                                'pending' => 'В ожидании',
+                                                'paid' => 'Оплачено',
+                                                'canceled' => 'Отменено',
+                                                default => (string) $statusRow->status,
+                                            };
+                                            $methodLabel = match ((string) $statusRow->payment_method) {
+                                                'card' => 'Карта',
+                                                'invoice' => 'Счет',
+                                                'cash' => 'Наличка',
+                                                default => (string) $statusRow->payment_method,
+                                            };
+                                            $accountCurrency = strtoupper((string) optional(optional($statusRow->account)->currency)->symbol_code);
+                                            $accountLabel = $statusRow->account
+                                                ? trim($statusRow->account->name . ($accountCurrency !== '' ? ' (' . $accountCurrency . ')' : ''))
+                                                : '-';
+                                        @endphp
                                         <tr>
-                                            <th>Дата</th>
-                                            <th>Статус</th>
-                                            <th>Способ</th>
-                                            <th>Счет</th>
-                                            <th>№ платежки</th>
-                                            <th>Автор</th>
+                                            <td>{{ optional($statusRow->status_date)->format('d.m.Y') }}</td>
+                                            <td>{{ $statusLabel }}</td>
+                                            <td>{{ $methodLabel }}</td>
+                                            <td>{{ $accountLabel }}</td>
+                                            <td>{{ $statusRow->payment_order_number ?: '-' }}</td>
+                                            <td>{{ $statusRow->author?->name ?? '-' }}</td>
                                         </tr>
-                                        </thead>
-                                        <tbody>
-                                        @forelse($offer->offerStatuses as $statusRow)
-                                            @php
-                                                $statusLabel = match ((string) $statusRow->status) {
-                                                    'pending' => 'В ожидании',
-                                                    'paid' => 'Оплачено',
-                                                    'canceled' => 'Отменено',
-                                                    default => (string) $statusRow->status,
-                                                };
-                                                $methodLabel = match ((string) $statusRow->payment_method) {
-                                                    'card' => 'Карта',
-                                                    'invoice' => 'Счет',
-                                                    'cash' => 'Наличка',
-                                                    default => (string) $statusRow->payment_method,
-                                                };
-                                                $accountCurrency = strtoupper((string) optional(optional($statusRow->account)->currency)->symbol_code);
-                                                $accountLabel = $statusRow->account
-                                                    ? trim($statusRow->account->name . ($accountCurrency !== '' ? ' (' . $accountCurrency . ')' : ''))
-                                                    : '-';
-                                            @endphp
-                                            <tr>
-                                                <td>{{ optional($statusRow->status_date)->format('d.m.Y') }}</td>
-                                                <td>{{ $statusLabel }}</td>
-                                                <td>{{ $methodLabel }}</td>
-                                                <td>{{ $accountLabel }}</td>
-                                                <td>{{ $statusRow->payment_order_number ?: '-' }}</td>
-                                                <td>{{ $statusRow->author?->name ?? '-' }}</td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="6" class="text-center">История статусов пока пустая</td>
-                                            </tr>
-                                        @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div class="d-flex justify-content-end">
-                                    <button type="button"
-                                            class="btn btn-primary"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#offerStatusCreateModal{{ $offer->id }}">
-                                        Добавить
-                                    </button>
-                                </div>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="text-center">История статусов пока пустая</td>
+                                        </tr>
+                                    @endforelse
+                                    </tbody>
+                                </table>
                             </div>
+
                         </div>
                     </div>
                 </div>
+            </div>
 
+            @if($canManageOfferStatus)
                 <div class="modal fade" id="offerStatusCreateModal{{ $offer->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title">Добавить статус подключения #{{ $offer->id }}</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                                <button type="button" class="modal-x-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Закрыть">×</button>
                             </div>
                             <form method="POST" action="{{ route('application.status.store', $offer) }}">
                                 @csrf
@@ -199,7 +229,6 @@
                                     <div class="form-group mb-3">
                                         <label>Статус</label>
                                         <select class="form-control" name="status" required>
-                                            <option value="pending">В ожидании</option>
                                             <option value="paid">Оплачено</option>
                                             <option value="canceled">Отменено</option>
                                         </select>
@@ -224,12 +253,12 @@
                                     <div class="form-group mb-0">
                                         <label>Счет</label>
                                         <select class="form-control" name="account_id" required>
-                                            <option value="">Выберите счет</option>
+                                            <option value="" {{ $defaultAccountId ? '' : 'selected' }}>Выберите счет</option>
                                             @foreach($accounts as $account)
                                                 @php
                                                     $accountCurrencyCode = strtoupper((string) optional($account->currency)->symbol_code);
                                                 @endphp
-                                                <option value="{{ $account->id }}">
+                                                <option value="{{ $account->id }}" {{ (string) $defaultAccountId === (string) $account->id ? 'selected' : '' }}>
                                                     {{ $account->name }}{{ $accountCurrencyCode !== '' ? ' (' . $accountCurrencyCode . ')' : '' }}
                                                 </option>
                                             @endforeach
@@ -254,30 +283,59 @@
     </div>
 
     <style>
-        .offer-status-cell-clickable {
-            cursor: pointer;
-            min-width: 140px;
-        }
-
-        .offer-status-cell-clickable .badge {
-            border: 1px solid #0d6efd;
-            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.08);
-            transition: all .15s ease-in-out;
-        }
-
-        .offer-status-cell-clickable:hover .badge {
-            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.18);
-            transform: translateY(-1px);
+        .offer-status-cell {
+            min-width: 240px;
         }
 
         .offer-status-hint {
-            margin-top: 4px;
+            margin-top: 0;
             font-size: 11px;
             font-weight: 600;
             color: #0d6efd;
             line-height: 1.1;
             text-transform: uppercase;
             letter-spacing: 0.02em;
+        }
+
+        .offer-status-actions {
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .offer-status-view-link {
+            border: 0;
+            background: transparent;
+            padding: 0;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .offer-status-view-link:hover {
+            text-decoration: underline;
+        }
+
+        .offer-status-confirm-btn {
+            padding: 2px 8px;
+            font-size: 11px;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .modal-x-close {
+            border: 0;
+            background: transparent;
+            color: #4b5563;
+            font-size: 24px;
+            line-height: 1;
+            padding: 0 2px;
+            cursor: pointer;
+        }
+
+        .modal-x-close:hover {
+            color: #111827;
         }
     </style>
 

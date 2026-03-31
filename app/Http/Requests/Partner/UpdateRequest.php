@@ -27,6 +27,7 @@ class UpdateRequest extends FormRequest
             'partner_id' => ['nullable'],
             'payment_methods' => ['nullable', 'array'],
             'payment_methods.*' => ['string', Rule::in(['card', 'invoice', 'cash'])],
+            'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')],
         ];
     }
 }

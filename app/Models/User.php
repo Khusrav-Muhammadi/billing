@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Notifications\Notifiable;
@@ -31,6 +32,7 @@ class User extends Authenticatable
         'partner_id',
         'country_id',
         'payment_methods',
+        'account_id',
     ];
 
     /**
@@ -57,6 +59,11 @@ class User extends Authenticatable
     public function partnerStatus()
     {
         return $this->belongsTo(PartnerStatus::class, 'partner_status_id');
+    }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'account_id');
     }
 
     public function history(): MorphMany

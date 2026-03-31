@@ -103,6 +103,22 @@
                 @enderror
             </div>
 
+            <div class="form-group">
+                <label for="account_id">Счет партнера</label>
+                <select class="form-control @error('account_id') is-invalid @enderror" id="account_id" name="account_id">
+                    <option value="">Не выбран</option>
+                    @foreach(($accounts ?? collect()) as $account)
+                        @php($accountCurrencyCode = strtoupper((string) optional($account->currency)->symbol_code))
+                        <option value="{{ $account->id }}" {{ (string) old('account_id') === (string) $account->id ? 'selected' : '' }}>
+                            {{ $account->name }}{{ $accountCurrencyCode !== '' ? ' (' . $accountCurrencyCode . ')' : '' }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('account_id')
+                <span class="text-danger d-block">{{ $message }}</span>
+                @enderror
+            </div>
+
             <button type="submit" class="btn btn-primary mr-2"> Сохранить </button>
 
         </form>

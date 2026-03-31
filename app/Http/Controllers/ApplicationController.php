@@ -17,6 +17,12 @@ use Illuminate\Validation\ValidationException;
 class ApplicationController extends Controller
 {
     private const OFFER_STATUS_DRAFT = 'draft';
+    private const REQUEST_TYPES = [
+        'connection' => 'Подключение',
+        'connection_extra_services' => 'Подключение доп услуг',
+        'renewal' => 'Продление',
+        'renewal_no_changes' => 'Продление без изменений',
+    ];
 
     public function index()
     {
@@ -24,7 +30,7 @@ class ApplicationController extends Controller
             ->with([
                 'tariff:id,name',
                 'organization:id,name',
-                'partner:id,name',
+                'partner:id,name,account_id',
                 'payment:id,payment_type',
                 'latestOfferStatus' => function ($query) {
                     $query->select([
@@ -54,11 +60,31 @@ class ApplicationController extends Controller
         return view('admin.applications.index', compact('offers', 'accounts'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('admin.applications.create', [
-            'offer' => null,
-        ]);
+        $requestType = $this->normalizeRequestType((string) $request->query('request_type', 'connection'));
+
+        return $this->renderCreatePage($requestType);
+    }
+
+    public function createConnection()
+    {
+        return $this->renderCreatePage('connection');
+    }
+
+    public function createConnectionExtraServices()
+    {
+        return $this->renderCreatePage('connection_extra_services');
+    }
+
+    public function createRenewal()
+    {
+        return $this->renderCreatePage('renewal');
+    }
+
+    public function createRenewalNoChanges()
+    {
+        return $this->renderCreatePage('renewal_no_changes');
     }
 
     public function store(Request $request)
@@ -330,9 +356,7 @@ class ApplicationController extends Controller
                 ->withErrors(['error' => 'Это КП уже заблокировано после генерации ссылки оплаты.']);
         }
 
-        return view('admin.applications.create', [
-            'offer' => $offer,
-        ]);
+        return $this->renderCreatePage($this->resolveRequestTypeFromOffer($offer), $offer);
     }
 
     public function update(int $id, Request $request)
@@ -366,6 +390,37 @@ class ApplicationController extends Controller
                 'payload' => $payload,
             ],
         ]);
+    }
+
+    private function renderCreatePage(string $requestType, ?CommercialOffer $offer = null)
+    {
+        $normalizedRequestType = $this->normalizeRequestType($requestType);
+
+        return view('admin.applications.create', [
+            'offer' => $offer,
+            'requestType' => $normalizedRequestType,
+            'requestTypeLabel' => self::REQUEST_TYPES[$normalizedRequestType],
+        ]);
+    }
+
+    private function normalizeRequestType(?string $requestType): string
+    {
+        $normalized = trim((string) $requestType);
+        if (!array_key_exists($normalized, self::REQUEST_TYPES)) {
+            return 'connection';
+        }
+
+        return $normalized;
+    }
+
+    private function resolveRequestTypeFromOffer(CommercialOffer $offer): string
+    {
+        $snapshot = $offer->snapshot;
+        if (!is_array($snapshot)) {
+            return 'connection';
+        }
+
+        return $this->normalizeRequestType((string) data_get($snapshot, 'request_type', 'connection'));
     }
 
     private function toNullableInt($value): ?int

@@ -7,6 +7,7 @@ use App\Http\Requests\Partner\StoreRequest;
 use App\Http\Requests\Partner\StoreStatusRequest;
 use App\Http\Requests\Partner\UpdateManagerRequest;
 use App\Http\Requests\Partner\UpdateRequest;
+use App\Models\Account;
 use App\Models\Partner;
 use App\Models\PartnerProcent;
 use App\Models\PartnerStatus;
@@ -28,7 +29,12 @@ class PartnerController extends Controller
 
     public function create()
     {
-        return view('admin.partners.create');
+        $accounts = Account::query()
+            ->with('currency:id,symbol_code,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'currency_id']);
+
+        return view('admin.partners.create', compact('accounts'));
     }
 
     public function store(StoreRequest $request)
@@ -41,6 +47,10 @@ class PartnerController extends Controller
     public function edit(User $partner)
     {
         $partnerStatuses = PartnerStatus::all();
+        $accounts = Account::query()
+            ->with('currency:id,symbol_code,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'currency_id']);
 
         $managers = $this->repository->getManagers($partner->id);
         $procents = $this->repository->getProcent($partner->id);
@@ -50,7 +60,7 @@ class PartnerController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'managers', 'procents', 'statusHistory', 'partnerHistory'));
+        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'accounts', 'managers', 'procents', 'statusHistory', 'partnerHistory'));
     }
 
     public function update(User $partner, UpdateRequest $request)
@@ -76,9 +86,9 @@ class PartnerController extends Controller
         return redirect()->back();
     }
 
-    public function destroy(User $user)
+    public function destroy(User $partner)
     {
-        $user->delete();
+        $partner->delete();
 
         return redirect()->back();
     }

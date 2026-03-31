@@ -1,14 +1,18 @@
 @extends('layouts.app')
 
 @section('title')
-    Коммерческое предложение
+    {{ $requestTypeLabel ?? 'Подключение' }}
 @endsection
 
 @section('content')
+    <div class="mb-3">
+        <h5 class="mb-1">{{ $requestTypeLabel ?? 'Подключение' }}</h5>
+    </div>
     @php
         $query = [
             'csrf_token' => csrf_token(),
             'v' => @filemtime(public_path('kp_generator/index.html')) ?: time(),
+            'request_type' => $requestType ?? 'connection',
         ];
         if (isset($offer) && $offer) {
             $query['offer_id'] = $offer->id;

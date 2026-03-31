@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Enums\ModelHistoryStatuses;
 use App\Enums\PartnerStatusEnum;
 use App\Jobs\SendPartnerDataJob;
+use App\Models\Account;
 use App\Models\ChangeHistory;
 use App\Models\ModelHistory;
 use App\Models\Partner;
@@ -77,6 +78,7 @@ class PartnerRepository implements PartnerRepositoryInterface
                 'phone' => ['previous_value' => null, 'new_value' => $user->phone],
                 'status' => ['previous_value' => null, 'new_value' => $this->statusLabel($user->status)],
                 'payment_methods' => ['previous_value' => null, 'new_value' => $this->paymentMethodsLabel($user->payment_methods)],
+                'account_id' => ['previous_value' => null, 'new_value' => $this->accountLabelById($user->account_id)],
                 'procent_from_tariff' => ['previous_value' => null, 'new_value' => $tariffPercent],
                 'procent_from_pack' => ['previous_value' => null, 'new_value' => $packPercent],
             ],
@@ -268,6 +270,7 @@ class PartnerRepository implements PartnerRepositoryInterface
             'address' => $partner->address,
             'status' => $partner->status,
             'payment_methods' => $partner->payment_methods,
+            'account_id' => $partner->account_id,
         ];
 
         $partner->update($data);
@@ -299,6 +302,13 @@ class PartnerRepository implements PartnerRepositoryInterface
             $changes['payment_methods'] = [
                 'previous_value' => $this->paymentMethodsLabel($beforeMethods),
                 'new_value' => $this->paymentMethodsLabel($afterMethods),
+            ];
+        }
+
+        if ((string) ($before['account_id'] ?? '') !== (string) ($partner->account_id ?? '')) {
+            $changes['account_id'] = [
+                'previous_value' => $this->accountLabelById($before['account_id'] ?? null),
+                'new_value' => $this->accountLabelById($partner->account_id),
             ];
         }
 
@@ -377,6 +387,25 @@ class PartnerRepository implements PartnerRepositoryInterface
             PartnerStatusEnum::AGENT->value => 'Agent',
             default => 'Partner',
         };
+    }
+
+    private function accountLabelById($accountId): string
+    {
+        if (!$accountId) {
+            return 'Не выбран';
+        }
+
+        $account = Account::query()
+            ->with('currency:id,symbol_code,name')
+            ->find((int) $accountId);
+
+        if (!$account) {
+            return 'Не выбран';
+        }
+
+        $currencyCode = strtoupper((string) optional($account->currency)->symbol_code);
+
+        return trim($account->name . ($currencyCode !== '' ? ' (' . $currencyCode . ')' : ''));
     }
 
     private function recordHistory(User $model, ModelHistoryStatuses $status, array $changes = [], ?int $userId = null): void

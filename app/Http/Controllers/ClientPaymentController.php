@@ -78,7 +78,7 @@ class ClientPaymentController extends Controller
                 $partner = User::query()
                     ->where('id', $partnerId)
                     ->whereRaw('LOWER(role) = ?', ['partner'])
-                    ->select('id', 'name', 'email', 'phone')
+                    ->select('id', 'name', 'email', 'phone', 'account_id')
                     ->first();
 
                 if (!$partner) {
@@ -129,6 +129,11 @@ class ClientPaymentController extends Controller
                 'payment_type' => $data['payment_type']
             ]);
 
+            $statusAccountId = null;
+            if (($data['payment_type'] ?? null) === 'invoice' && $partner && $partner->account_id) {
+                $statusAccountId = (int) $partner->account_id;
+            }
+
             foreach ($data['data'] as $datum) {
                 PaymentItem::create([
                     'payment_id' => $payment->id,
@@ -141,15 +146,15 @@ class ClientPaymentController extends Controller
 
             if ($data['payment_type'] === 'invoice') {
                 $url = route('client-payment.invoice', $payment);
-                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $url);
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $url, $statusAccountId);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $url])
                     : redirect()->to($url);
             }
 
             if ($data['payment_type'] === 'cash') {
-                $url = route('client-payment.invoice', $payment);
-                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $url);
+                $url = route('application.index');
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, null, null);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $url])
                     : redirect()->to($url);
@@ -157,7 +162,7 @@ class ClientPaymentController extends Controller
 
             if ($data['payment_type'] == 'alif') {
                 $checkoutUrl = $this->generateAlifPayLink($payment);
-                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl);
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $checkoutUrl])
                     : redirect($checkoutUrl);
@@ -165,7 +170,7 @@ class ClientPaymentController extends Controller
 
             if ($data['payment_type'] == 'octo') {
                 $checkoutUrl = $this->generateOctobankPayLink($payment);
-                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl);
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $checkoutUrl])
                     : redirect($checkoutUrl);
@@ -339,7 +344,7 @@ class ClientPaymentController extends Controller
         throw new \Exception('Ошибка при создании платежа Alif Pay: ' . $response->body());
     }
 
-    private function lockCommercialOfferAfterPayment(?CommercialOffer $offer, Payment $payment, ?string $paymentLink = null): void
+    private function lockCommercialOfferAfterPayment(?CommercialOffer $offer, Payment $payment, ?string $paymentLink = null, ?int $statusAccountId = null): void
     {
         if (!$offer) {
             return;
@@ -366,12 +371,21 @@ class ClientPaymentController extends Controller
             throw new \Exception('Не удалось заблокировать КП после генерации ссылки оплаты.');
         }
 
+        // If payment is re-generated, previous pending attempts must be canceled.
+        $offer->offerStatuses()
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'canceled',
+                'status_date' => now()->toDateString(),
+                'updated_at' => now(),
+            ]);
+
         $offer->offerStatuses()->create([
             'status' => 'pending',
             'status_date' => now()->toDateString(),
             'payment_method' => $paymentMethod,
             'author_id' => Auth::id(),
-            'account_id' => null,
+            'account_id' => $paymentMethod === 'invoice' ? $statusAccountId : null,
         ]);
     }
 

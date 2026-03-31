@@ -1096,8 +1096,22 @@ class CPGenerator {
                 if (!resp.ok) {
                     throw new Error(json.error || `Ошибка оплаты (HTTP ${resp.status})`);
                 }
+                this.closeModal('payModal');
+
                 const url = json.redirect_url;
-                if (!url) throw new Error('Не пришла ссылка на оплату');
+                if (paymentType === 'cash') {
+                    const targetUrl = url || '/application';
+                    if (window.top && window.top !== window) {
+                        window.top.location.href = targetUrl;
+                    } else {
+                        window.location.href = targetUrl;
+                    }
+                    return;
+                }
+
+                if (!url) {
+                    throw new Error('Не пришла ссылка на оплату');
+                }
 
                 const w = window.open(url, '_blank', 'noopener,noreferrer');
                 if (!w) {
@@ -1478,6 +1492,9 @@ class CPGenerator {
                 ? Math.max(1, this.getIncludedChannels(this.state.selectedTariff, key))
                 : 0;
             const channels = this.state.selectedServices[key]?.channels || (includedChannels || 1);
+            const counterChannels = (isIncluded && service.hasChannels)
+                ? Math.max(0, channels - includedChannels)
+                : channels;
             const unitPrice = this.getPriceByCurrency(this.getServicePricesMap(key));
 
             const card = document.createElement('div');
@@ -1515,10 +1532,9 @@ class CPGenerator {
                         <span class="channels-label">${isIncluded ? 'Доп. каналов:' : 'Каналов:'}</span>
                         <div class="channels-control">
                             ${(() => {
-                                const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, key) : 0;
-                                const minChannels = isIncluded ? includedChannels : 1;
-                                return `<button class="qty-btn minus" data-service="${key}" data-action="decrease" ${channels <= minChannels ? 'disabled' : ''}>−</button>
-                            <input type="number" class="qty-input" value="${channels}" min="${minChannels}" data-service="${key}">
+                                const minChannels = isIncluded ? 0 : 1;
+                                return `<button class="qty-btn minus" data-service="${key}" data-action="decrease" ${counterChannels <= minChannels ? 'disabled' : ''}>−</button>
+                            <input type="number" class="qty-input" value="${counterChannels}" min="${minChannels}" data-service="${key}">
                             <button class="qty-btn plus" data-service="${key}" data-action="increase">+</button>`;
                             })()}
                         </div>
@@ -1562,21 +1578,34 @@ class CPGenerator {
                 const serviceKey = e.target.dataset.service;
                 const action = e.target.dataset.action;
 
-                if (!this.state.selectedServices[serviceKey]) {
-                    this.state.selectedServices[serviceKey] = { enabled: false, channels: 1 };
-                }
-
                 const selectedTariff = this.state.selectedTariff
                     ? this.config.tariffs[this.state.selectedTariff]
                     : null;
                 const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
-                const minChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 1;
+                const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 0;
+
+                if (!this.state.selectedServices[serviceKey]) {
+                    this.state.selectedServices[serviceKey] = {
+                        enabled: false,
+                        channels: isIncluded ? includedChannels : 1,
+                    };
+                }
+
+                const minChannels = isIncluded ? 0 : 1;
+                const currentTotalChannels = Number(this.state.selectedServices[serviceKey].channels)
+                    || (isIncluded ? includedChannels : 1);
+                let currentCounterChannels = isIncluded
+                    ? Math.max(0, currentTotalChannels - includedChannels)
+                    : Math.max(1, currentTotalChannels);
 
                 if (action === 'increase') {
-                    this.state.selectedServices[serviceKey].channels++;
-                } else if (action === 'decrease' && this.state.selectedServices[serviceKey].channels > minChannels) {
-                    this.state.selectedServices[serviceKey].channels--;
+                    currentCounterChannels++;
+                } else if (action === 'decrease' && currentCounterChannels > minChannels) {
+                    currentCounterChannels--;
                 }
+                this.state.selectedServices[serviceKey].channels = isIncluded
+                    ? includedChannels + currentCounterChannels
+                    : currentCounterChannels;
                 this.markOfferDirty();
 
                 this.renderServices();
@@ -1594,13 +1623,15 @@ class CPGenerator {
                     ? this.config.tariffs[this.state.selectedTariff]
                     : null;
                 const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
-                const minChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 1;
+                const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 0;
+                const minChannels = isIncluded ? 0 : 1;
                 const value = Math.max(minChannels, parseInt(e.target.value) || minChannels);
+                const totalChannels = isIncluded ? includedChannels + value : value;
 
                 if (!this.state.selectedServices[serviceKey]) {
-                    this.state.selectedServices[serviceKey] = { enabled: false, channels: value };
+                    this.state.selectedServices[serviceKey] = { enabled: false, channels: totalChannels };
                 } else {
-                    this.state.selectedServices[serviceKey].channels = value;
+                    this.state.selectedServices[serviceKey].channels = totalChannels;
                 }
                 this.markOfferDirty();
 
