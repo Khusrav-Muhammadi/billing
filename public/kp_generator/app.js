@@ -1205,15 +1205,26 @@ class CPGenerator {
 
         if (!conversionMeta?.requiresConversion) {
             return items.map((item) => ({
-                name: item.name,
+                ...item,
                 price: this.roundMoney(item.price),
+                unit_price: this.roundMoney(
+                    Number(item.unit_price) > 0
+                        ? item.unit_price
+                        : ((Number(item.price) || 0) / Math.max(1, Number(item.quantity) || 1))
+                ),
             }));
         }
 
         const rate = Number(conversionMeta.rate) || 0;
         return items.map((item) => ({
-            name: item.name,
+            ...item,
             price: this.roundMoney((Number(item.price) || 0) / rate),
+            unit_price: this.roundMoney(
+                (Number(item.unit_price) > 0
+                    ? item.unit_price
+                    : ((Number(item.price) || 0) / Math.max(1, Number(item.quantity) || 1))
+                ) / rate
+            ),
         }));
     }
 
@@ -1261,23 +1272,34 @@ class CPGenerator {
         if (!this.state.selectedTariff) return items;
 
         const tariffKey = this.state.selectedTariff;
+        const selectedTariffId = this.extractTariffIdFromKey(tariffKey);
         const tariff = this.config.tariffs[tariffKey];
         const periodMultiplier = this.getPeriodDiscountMultiplier();
 
         if (this.shouldIncludeBaseTariffInPricing()) {
             const tariffMonthlyBase = this.getTariffMonthlyBase(tariffKey);
             const tariffMonthly = tariffMonthlyBase * periodMultiplier;
+            const lineTotal = this.applyPartnerDiscount(tariffMonthly * this.state.periodMonths);
             items.push({
+                service_key: selectedTariffId ? `tariff-${selectedTariffId}` : tariffKey,
                 name: `Тариф "${tariff.name}" (${this.state.periodMonths} мес)`,
-                price: this.applyPartnerDiscount(tariffMonthly * this.state.periodMonths)
+                quantity: 1,
+                unit_price: lineTotal,
+                price: lineTotal
             });
         }
 
         if (this.state.extraUsers > 0) {
-            const extraMonthly = this.getExtraUserMonthlyBase(tariffKey) * this.state.extraUsers * periodMultiplier;
+            const quantity = Math.max(1, Number(this.state.extraUsers) || 1);
+            const lineUnitPrice = this.applyPartnerDiscount(
+                this.getExtraUserMonthlyBase(tariffKey) * periodMultiplier * this.state.periodMonths
+            );
             items.push({
+                service_key: selectedTariffId ? `tariff-${selectedTariffId}-extra-users` : `${tariffKey}-extra-users`,
                 name: `Доп. пользователи (×${this.state.extraUsers})`,
-                price: this.applyPartnerDiscount(extraMonthly * this.state.periodMonths)
+                quantity,
+                unit_price: lineUnitPrice,
+                price: lineUnitPrice * quantity
             });
         }
 
@@ -1317,8 +1339,12 @@ class CPGenerator {
                 name = `${name} (доп. ×${displayChannels})`;
             }
 
+            const lineUnitPrice = this.applyPartnerDiscount(basePrice * periodMultiplier * this.state.periodMonths);
             items.push({
+                service_key: key,
                 name,
+                quantity: Math.max(1, Number(displayChannels) || 1),
+                unit_price: lineUnitPrice,
                 price: this.applyPartnerDiscount(monthlyPrice * periodMultiplier * this.state.periodMonths)
             });
         });
@@ -1376,19 +1402,33 @@ class CPGenerator {
         const partnerPercent = this.getPartnerDiscountPercent();
 
         const items = payableItems.map((item, idx) => {
+            const sourceItem = rawItems[idx] || {};
+            const quantity = Math.max(1, Number(sourceItem.quantity ?? item.quantity) || 1);
             const price = this.roundMoney(item.price);
-            const sourcePrice = this.roundMoney(rawItems[idx]?.price || price);
+            const sourcePrice = this.roundMoney(sourceItem.price || price);
+            const sourceUnitPrice = this.roundMoney(
+                Number(sourceItem.unit_price) > 0
+                    ? sourceItem.unit_price
+                    : (sourcePrice / quantity)
+            );
+            const unitPrice = this.roundMoney(
+                Number(item.unit_price) > 0
+                    ? item.unit_price
+                    : (price / quantity)
+            );
             return {
                 name: item.name,
+                service_key: sourceItem.service_key || item.service_key || null,
                 price,
-                quantity: 1,
-                unit_price: price,
+                quantity,
+                unit_price: unitPrice,
                 months: periodMonths,
-                billing_type: 'period',
+                billing_type: sourceItem.billing_type || item.billing_type || 'period',
                 discount_percent: discountPercent,
                 partner_percent: partnerPercent,
                 meta: {
                     source_price: sourcePrice,
+                    source_unit_price: sourceUnitPrice,
                     source_currency: this.normalizeCurrencyCode(this.state.currency),
                     payable_currency: conversionMeta.requiresConversion ? 'USD' : this.normalizeCurrencyCode(this.state.currency),
                 },
@@ -2074,6 +2114,9 @@ class CPGenerator {
                             const previouslyPurchasedChannels = Math.max(0, previousChannels - tariffIncludedChannels);
                             if (this.isConnectionExtraServicesMode() && previouslyPurchasedChannels > 0) {
                                 return `<span class="channels-note" style="font-size: 0.75rem; color: #666; margin-left: 8px;">(в тарифе ${tariffIncludedChannels}, куплено ${previouslyPurchasedChannels}, новые платно)</span>`;
+                            }
+                            if (this.isConnectionMode() || this.isConnectionExtraServicesMode()) {
+                                return '';
                             }
                             return `<span class="channels-note" style="font-size: 0.75rem; color: #666; margin-left: 8px;">(${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'включен' : 'включено'}, доп. платно)</span>`;
                         })() : ''}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CommercialOfferPaidStatusEvent;
 use App\Models\Account;
 use App\Models\CommercialOffer;
 use App\Models\Organization;
@@ -328,7 +329,7 @@ class ApplicationController extends Controller
             $paymentOrderNumber = null;
         }
 
-        $offer->offerStatuses()->create([
+        $statusRecord = $offer->offerStatuses()->create([
             'status' => $validated['status'],
             'status_date' => $validated['status_date'],
             'payment_method' => $validated['payment_method'],
@@ -338,8 +339,16 @@ class ApplicationController extends Controller
         ]);
 
         $offer->update([
+            'status' => $validated['status'],
             'updated_by' => Auth::id(),
         ]);
+
+        if ((string) $validated['status'] === 'paid') {
+            CommercialOfferPaidStatusEvent::dispatch(
+                $offer->fresh(),
+                $statusRecord->fresh()
+            );
+        }
 
         return redirect()
             ->route('application.index')

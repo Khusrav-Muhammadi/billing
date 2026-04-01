@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Events\ClientHistoryEvent;
+use App\Events\CommercialOfferPaidStatusEvent;
 use App\Events\OrganizationHistoryEvent;
 use App\Listeners\ClientHistoryListener;
+use App\Listeners\CommercialOfferPaidStatusListener;
 use App\Listeners\OrganizationHistoryListener;
 use App\Models\Client;
 use App\Models\Organization;
@@ -35,6 +37,10 @@ class EventServiceProvider extends ServiceProvider
 
         OrganizationHistoryEvent::class => [
             OrganizationHistoryListener::class
+        ],
+
+        CommercialOfferPaidStatusEvent::class => [
+            CommercialOfferPaidStatusListener::class,
         ]
     ];
 
