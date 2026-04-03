@@ -17,7 +17,7 @@ class ConnectedClientServicesRegistryService
         }
 
         $requestType = (string) ($offer->request_type ?: 'connection');
-        if (!in_array($requestType, ['connection', 'connection_extra_services'], true)) {
+        if (!in_array($requestType, ['connection', 'connection_extra_services', 'renewal', 'renewal_no_changes'], true)) {
             return;
         }
 
@@ -31,6 +31,14 @@ class ConnectedClientServicesRegistryService
             ConnectedClientServices::query()
                 ->where('commercial_offer_id', $offer->id)
                 ->update(['status' => false]);
+
+            if ($this->shouldDeactivatePreviousForRenewal($offer)) {
+                ConnectedClientServices::query()
+                    ->where('client_id', (int) $offer->organization_id)
+                    ->where('status', true)
+                    ->where('commercial_offer_id', '!=', (int) $offer->id)
+                    ->update(['status' => false]);
+            }
 
             foreach ($offer->items as $item) {
 
@@ -60,5 +68,18 @@ class ConnectedClientServicesRegistryService
                 ]);
             }
         });
+    }
+
+    private function shouldDeactivatePreviousForRenewal(CommercialOffer $offer): bool
+    {
+        if (!in_array((string) ($offer->request_type ?: ''), ['renewal', 'renewal_no_changes'], true)) {
+            return false;
+        }
+
+        if (!$offer->status_date) {
+            return false;
+        }
+
+        return $offer->status_date->toDateString() === now()->toDateString();
     }
 }

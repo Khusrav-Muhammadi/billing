@@ -10,8 +10,19 @@
             $isPaidOffer = (string) ($offer->latestOfferStatus?->status ?? '') === 'paid'
                 || (string) ($offer->status ?? '') === 'paid';
             $requestType = (string) ($offer->request_type ?? 'connection');
-            $isConnectionExtraServices = $requestType === 'connection_extra_services';
-            $generatorPath = $isConnectionExtraServices ? 'kp_generator_extra/index.html' : 'kp_generator/index.html';
+            $requestTypeLabels = [
+                'connection' => 'Подключение',
+                'connection_extra_services' => 'Подключение доп услуг',
+                'renewal' => 'Продление',
+                'renewal_no_changes' => 'Продление без изменений',
+            ];
+            $requestTypeLabel = $requestTypeLabels[$requestType] ?? 'Подключение';
+            $generatorPath = match ($requestType) {
+                'connection_extra_services' => 'kp_generator_extra/index.html',
+                'renewal' => 'kp_generator_renewal/index.html',
+                'renewal_no_changes' => 'kp_generator_renewal_no_changes/index.html',
+                default => 'kp_generator/index.html',
+            };
             $generatorFile = public_path($generatorPath);
             $query = [
                 'csrf_token' => csrf_token(),
@@ -27,13 +38,13 @@
         @endphp
 
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <h4 class="card-title mb-0">Коммерческое предложение #{{ $offer->id }}</h4>
+            <h4 class="card-title mb-0">{{ $requestTypeLabel }} #{{ $offer->id }}</h4>
             <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Назад</a>
         </div>
 
         <iframe
             src="{{ $iframeUrl }}"
-            title="{{ $isConnectionExtraServices ? 'Просмотр подключения доп услуг' : 'Просмотр КП' }}"
+            title="Просмотр: {{ $requestTypeLabel }}"
             style="width: 100%; min-height: 90vh; border: 1px solid #e6e6e6; border-radius: 8px;"
         ></iframe>
     </div>

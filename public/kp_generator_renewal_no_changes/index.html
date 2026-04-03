@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Продление без изменений</title>
+    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260403_02">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-text"></span>
+                </div>
+                <div class="entity-selects">
+                    <label class="entity-field">
+                        <span class="entity-label">Организация</span>
+                        <div class="entity-combo" id="clientCombo">
+                            <input id="clientSelect" class="entity-combo-input" type="text" placeholder="Выберите организацию" autocomplete="off">
+                            <div class="entity-combo-dropdown" id="clientDropdown" hidden></div>
+                        </div>
+                        <div class="entity-meta" id="selectedClientOrderWrap" hidden>
+                            <code class="entity-meta-value" id="selectedClientOrderValue"></code>
+                            <button class="entity-meta-copy" id="copyClientOrderBtn" type="button">Копировать</button>
+                        </div>
+                        <div id="connectionRequirementWrap" hidden style="margin-top: 8px; font-size: 12px; color: #b91c1c;">
+                            <span id="connectionRequirementText"></span>
+                            <a id="connectionRequirementLink" href="#" target="_top" style="margin-left: 8px; color: #1d4ed8; text-decoration: underline;">
+                                Перейти к подключению
+                            </a>
+                        </div>
+                    </label>
+                    <label class="entity-field">
+                        <span class="entity-label">Дата начала операции</span>
+                        <div class="entity-combo">
+                            <input id="operationStartDate" class="entity-combo-input" type="date">
+                        </div>
+                    </label>
+                    <label class="entity-field">
+                        <span class="entity-label">Дата</span>
+                        <div class="entity-combo">
+                            <input id="pricingDate" class="entity-combo-input" type="date" disabled>
+                        </div>
+                    </label>
+                    <label class="entity-field">
+                        <span class="entity-label">Партнёр</span>
+                        <div class="entity-combo" id="partnerCombo">
+                            <input id="partnerSelect" class="entity-combo-input" type="text" placeholder="Выберите партнёра" autocomplete="off">
+                            <div class="entity-combo-dropdown" id="partnerDropdown" hidden></div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="settings-panel" id="settingsPanel">
+                <div class="setting-group">
+                    <label class="setting-label">Период оплаты</label>
+                    <div class="period-selector" id="periodSelector">
+                        <button class="period-btn active" data-months="6">6 мес</button>
+                        <button class="period-btn" data-months="12">
+                            12 мес
+                            <span class="discount-badge">-15%</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="setting-group" id="connectionTariffInfoWrap" hidden>
+                    <label class="setting-label">Текущий тариф</label>
+                    <div style="padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; color: #111827; font-weight: 600;">
+                        <span id="connectionTariffName">—</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="tariffs-section" id="tariffsSection" style="display: none;">
+                <h2 class="section-title">Выберите тариф</h2>
+                <div class="tariffs-grid" id="tariffsGrid"></div>
+            </section>
+
+            <section class="extra-users-section" id="extraUsersSection" style="display: none;">
+                <div class="section-header">
+                    <h2 class="section-title">Дополнительные пользователи</h2>
+                </div>
+                <div class="extra-users-control">
+                    <div class="users-info">
+                        <span class="included-users" id="includedUsersLabel">В тариф включено: <strong id="includedUsers">0</strong> пользователей</span>
+                        <span class="extra-user-price">Доп. пользователь: <strong id="extraUserPrice">0</strong>/мес</span>
+                    </div>
+                    <div class="quantity-control">
+                        <button class="qty-btn minus" id="usersMinusBtn">−</button>
+                        <input type="number" class="qty-input" id="extraUsersInput" value="0" min="0">
+                        <button class="qty-btn plus" id="usersPlusBtn">+</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="services-section">
+                <h2 class="section-title">Дополнительные услуги</h2>
+                <div class="services-grid" id="servicesGrid"></div>
+            </section>
+
+            <section class="summary-section">
+                <div class="summary-card">
+                    <h2 class="summary-title">Итого</h2>
+                    <div class="summary-content">
+                        <div class="summary-items" id="summaryItems"></div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-totals">
+                            <div class="total-row grand">
+                                <span>К ОПЛАТЕ SHAMCRM:</span>
+                                <span class="total-value" id="grandTotal">0 TJS</span>
+                                <form id="saveOfferForm"
+                                      action="/application/kp/store"
+                                      method="POST"
+                                      target="_top"
+                                      style="display:inline-flex; gap:8px; align-items:center; margin:0;">
+                                    <input type="hidden" id="saveOfferCsrf" name="_token">
+                                    <input type="hidden" id="saveOfferId" name="offer_id">
+                                    <input type="hidden" id="saveOfferOrganizationId" name="organization_id">
+                                    <input type="hidden" id="saveOfferPayload" name="payload">
+                                    <button class="action-btn secondary" id="saveBtn" type="submit">Сохранить</button>
+                                </form>
+                                <button class="action-btn secondary" id="payBtn" type="button" disabled>Оплатить</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div class="modal-overlay" id="payModal">
+            <div class="modal-content" style="max-width: 520px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;">
+                    <h3 style="margin:0;">Оплата</h3>
+                    <button class="action-btn secondary" id="payCloseBtn" type="button" style="padding:6px 10px;">Закрыть</button>
+                </div>
+
+                <div style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; background:#fafafa; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; gap:10px;">
+                        <div>
+                            <div style="font-size:12px; color:#6b7280;" id="payPayerLabel">Клиент</div>
+                            <div id="payClientName" style="font-weight:600;">—</div>
+                            <div id="payPayerContacts" style="font-size:12px; color:#6b7280; margin-top:4px;">—</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:12px; color:#6b7280;">К оплате</div>
+                            <div id="payAmount" style="font-weight:700; font-size:18px;">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="pay-tile" id="payByCardBtn" type="button">
+                        <div style="font-weight:700;">Карта</div>
+                        <div class="pay-sub" id="payCardProvider">—</div>
+                    </button>
+                    <button class="pay-tile" id="payByInvoiceBtn" type="button">
+                        <div style="font-weight:700;">Счет</div>
+                        <div class="pay-sub">Сформировать счет</div>
+                    </button>
+                    <button class="pay-tile" id="payByCashBtn" type="button">
+                        <div style="font-weight:700;">Наличка</div>
+                        <div class="pay-sub">Оплата наличными</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>© 2025 SHAMCRM</p>
+        </footer>
+    </div>
+
+    <div class="modal-overlay" id="successModal">
+        <div class="modal-content success-modal">
+            <div class="success-icon">✓</div>
+            <h3>КП успешно отправлено!</h3>
+            <p>Коммерческое предложение отправлено на CRM</p>
+            <button class="action-btn primary" id="closeSuccessBtn">ОК</button>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p>Обработка...</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="/kp_generator_renewal_no_changes/app.js?v=20260403_01"></script>
+</body>
+</html>

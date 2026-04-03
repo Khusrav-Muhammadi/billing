@@ -370,13 +370,10 @@ class ClientPaymentController extends Controller
             throw new \Exception('Не удалось заблокировать КП после генерации ссылки оплаты.');
         }
 
-        // If payment is re-generated, previous pending attempts must be canceled.
         $offer->offerStatuses()
             ->where('status', 'pending')
             ->update([
                 'status' => 'canceled',
-                'status_date' => now()->toDateString(),
-                'updated_at' => now(),
             ]);
 
         $offer->offerStatuses()->create([

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\CommercialOfferPaidStatusEvent;
 use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
+use App\Events\CommercialOfferRenewalPaidStatusEvent;
 use App\Models\Account;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferItem;
@@ -25,7 +26,7 @@ class ApplicationController extends Controller
         'connection' => 'Подключение',
         'connection_extra_services' => 'Подключение доп услуг',
         'renewal' => 'Продление',
-        'renewal_no_changes' => 'Продление с изменением'
+        'renewal_no_changes' => 'Продление без изменений',
     ];
 
     public function index()
@@ -330,7 +331,8 @@ class ApplicationController extends Controller
         ]);
 
         $offer->update([
-            'status' => $validated['status']
+            'status' => $validated['status'],
+            'status_date' => $validated['status_date'],
         ]);
 
         if ((string) $validated['status'] === 'paid') {
@@ -340,6 +342,8 @@ class ApplicationController extends Controller
 
             if ($requestType === 'connection_extra_services') {
                 CommercialOfferExtraServicesPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } elseif (in_array($requestType, ['renewal', 'renewal_no_changes'], true)) {
+                CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } else {
                 CommercialOfferPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             }
@@ -404,6 +408,7 @@ class ApplicationController extends Controller
         $view = match ($normalizedRequestType) {
             'connection_extra_services' => 'admin.applications.create-connection-extra-services',
             'renewal' => 'admin.applications.create-renewal',
+            'renewal_no_changes' => 'admin.applications.create-renewal-no-changes',
             default => 'admin.applications.create',
         };
 

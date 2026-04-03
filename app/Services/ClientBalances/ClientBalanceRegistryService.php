@@ -17,7 +17,7 @@ class ClientBalanceRegistryService
         }
 
         $requestType = (string) ($offer->request_type ?: 'connection');
-        if (!in_array($requestType, ['connection', 'connection_extra_services'], true)) {
+        if (!in_array($requestType, ['connection', 'connection_extra_services', 'renewal', 'renewal_no_changes'], true)) {
             return;
         }
 
