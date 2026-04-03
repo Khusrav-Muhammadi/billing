@@ -51,7 +51,7 @@ class ConnectedClientServicesRegistryService
                 }
 
                 $serviceTotalAmount = round($quantity * $unitPrice, 2);
-                $payableAmount = round((float) $item->total_price, 2);
+                $payableAmount = $item->total_price / $item->quantity;
 
                 ConnectedClientServices::query()->create([
                     'client_id' => $offer->organization_id,
