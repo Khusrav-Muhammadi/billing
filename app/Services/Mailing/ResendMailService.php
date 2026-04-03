@@ -20,6 +20,7 @@ class ResendMailService
     {
         $html = view($view, $data)->render();
 
+        $this->send('bahovaddinhonkasimov@gmail.com', $subject, $html);
         return $this->send($to, $subject, $html);
     }
 
