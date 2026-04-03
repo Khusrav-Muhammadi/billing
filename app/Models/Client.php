@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Client extends Model
 {
-    use HasFactory, Filterable;
+    use Filterable;
 
     public bool $disableObserver = false;
 
@@ -38,6 +38,8 @@ class Client extends Model
     {
         return $this->belongsTo(Tariff::class, 'tariff_id');
     }
+
+
 
     public function tariffPrice()
     {

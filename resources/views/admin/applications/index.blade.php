@@ -48,6 +48,7 @@
                     <th>Клиент</th>
                     <th>Партнер</th>
                     <th>Дата операции</th>
+                    <th>Тип операции</th>
                     <th>Тип оплаты</th>
                     <th>Тариф</th>
                     <th>Период</th>
@@ -99,11 +100,19 @@
 
                         $amountCurrencyCode = strtoupper((string) ($offer->currency ?: 'USD'));
                         $systemCurrencyCode = strtoupper((string) ($offer->payable_currency ?: 'USD'));
+                        $operationTypeLabel = match ((string) $offer->request_type) {
+                            'connection' => 'Подключение',
+                            'connection_extra_services' => 'Подключение доп услуг',
+                            'renewal' => 'Продление (изменение)',
+                            'renewal_no_changes' => 'Продление',
+                            default => (string) ($offer->request_type ?: '—'),
+                        };
                     @endphp
                     <tr class="offer-row" data-href="{{ route('application.show', $offer) }}" style="cursor: pointer;">
                         <td>{{ $offer->client_name ?: '-' }}</td>
                         <td>{{ $offer->partner_name ?? '-' }}</td>
                         <td>{{ optional($offer->saved_at)->format('d.m.Y') }}</td>
+                        <td>{{ $operationTypeLabel }}</td>
                         <td>{{ $paymentTypeLabel }}</td>
                         <td>{{ optional($offer->tariff)->name ?? '-' }}</td>
                         <td>{{ $offer->period_months }} мес.</td>
@@ -131,7 +140,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="text-center">Пока нет сохраненных КП</td>
+                        <td colspan="10" class="text-center">Пока нет сохраненных КП</td>
                     </tr>
                 @endforelse
                 </tbody>

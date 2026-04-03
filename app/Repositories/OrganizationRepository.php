@@ -96,7 +96,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     private function organizationsQuery(array $clientIds, array $data): Builder
     {
         $query = Organization::query()
-            ->with(['client.tariffPrice.tariff', 'client.partner'])
+            ->with(['client.tariffPrice.tariff', 'client.partner', 'client.currency'])
             ->whereIn('client_id', $clientIds);
 
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
@@ -107,7 +107,9 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     public function index(array $data)
     {
         $query = Client::query()->where(function (Builder $builder) {
-            $builder->whereHas('transactions');
+            $builder->whereHas('transactions')->orWhereHas('organizations', function ($query) {
+                return $query->whereHas('balances');
+            });
         });
 
         $clientIds = $query->filter($this->extractClientFilters($data))->pluck('id')->toArray();

@@ -59,4 +59,9 @@ class Organization extends Model
     {
         return $this->morphMany('App\Models\ModelHistory', 'model');
     }
+
+    public function balances()
+    {
+        return $this->hasMany(ClientBalance::class, 'organization_id');
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Tariff\StoreRequest;
 use App\Http\Requests\Tariff\UpdateRequest;
 use App\Models\Client;
+use App\Models\Organization;
 use App\Models\Tariff;
 use App\Models\TariffCurrency;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class TariffController extends Controller
     public function index()
     {
         $tariffs = Tariff::query()
-            ->with('includedServices')
+            ->with(['includedServices', 'excludedOrganizations'])
             ->orderBy('name')
             ->get();
         $baseTariffs = Tariff::query()
@@ -35,7 +36,12 @@ class TariffController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.tariffs.index', compact('tariffs', 'baseTariffs', 'services'));
+        $organizations = Organization::query()
+            ->select(['id', 'name', 'order_number'])
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.tariffs.index', compact('tariffs', 'baseTariffs', 'services', 'organizations'));
     }
 
     public function store(StoreRequest $request)
@@ -59,6 +65,7 @@ class TariffController extends Controller
         $tariff = Tariff::create($data);
 
         $this->syncIncludedServices($tariff, $request);
+        $this->syncExclusions($tariff, $request);
 
         return redirect()->route('tariff.index');
     }
@@ -81,6 +88,7 @@ class TariffController extends Controller
         $tariff->update($data);
 
         $this->syncIncludedServices($tariff, $request);
+        $this->syncExclusions($tariff, $request);
 
         return redirect()->route('tariff.index');
     }
@@ -116,6 +124,29 @@ class TariffController extends Controller
         }
 
         $tariff->includedServices()->sync($sync);
+    }
+
+    private function syncExclusions(Tariff $tariff, Request $request): void
+    {
+        // Exclusions are applied only for services (not tariffs and not extra-users).
+        if ($tariff->is_tariff || $tariff->is_extra_user) {
+            $tariff->excludedOrganizations()->detach();
+            return;
+        }
+
+        $ids = array_values(array_filter(array_map('intval', (array) $request->input('excluded_organization_ids', []))));
+        if (!$ids) {
+            $tariff->excludedOrganizations()->detach();
+            return;
+        }
+
+        $allowedIds = Organization::query()
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $tariff->excludedOrganizations()->sync($allowedIds);
     }
 
     public function destroy(Tariff $tariff)

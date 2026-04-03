@@ -102,6 +102,12 @@
             <span class="menu-title">Подключение</span>
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('day-closing.index') }}">
+            <i class="mdi mdi-calendar-check menu-icon"></i>
+            <span class="menu-title">Закрытие дня</span>
+        </a>
+    </li>
 {{--    <li class="nav-item">--}}
 {{--        <a class="nav-link collapsed" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">--}}
 {{--            <i class="mdi mdi-settings menu-icon"></i>--}}

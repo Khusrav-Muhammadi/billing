@@ -28,6 +28,8 @@ class StoreRequest extends FormRequest
             'included_services.*' => ['integer', Rule::exists('tariffs', 'id')],
             'included_services_qty' => ['nullable', 'array'],
             'included_services_qty.*' => ['integer', 'min:1'],
+            'excluded_organization_ids' => ['nullable', 'array'],
+            'excluded_organization_ids.*' => ['integer', Rule::exists('organizations', 'id')],
             'parent_tariff_id' => [
                 Rule::requiredIf(fn () => (bool) $this->input('is_extra_user')),
                 'nullable',

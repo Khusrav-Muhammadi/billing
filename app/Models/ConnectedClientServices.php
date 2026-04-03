@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
 
 class ConnectedClientServices extends Model
@@ -31,4 +32,14 @@ class ConnectedClientServices extends Model
         'offer_currency_id' => 'integer',
         'payable_currency_id' => 'integer',
     ];
+
+    public function tariff(): BelongsTo
+    {
+        return $this->belongsTo(Tariff::class, 'tariff_id');
+    }
+
+    public function offerCurrency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class, 'offer_currency_id');
+    }
 }

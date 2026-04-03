@@ -7,6 +7,7 @@ use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\BusinessTypeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ConnectedClientServiceController;
+use App\Http\Controllers\DayClosingController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PackController;
 use App\Http\Controllers\PartnerController;
@@ -140,6 +141,13 @@ Route::middleware('auth')->group(function () {
         Route::get('edit/{id}', [ApplicationController::class, 'edit'])->name('application.edit');
         Route::patch('/{id}', [ApplicationController::class, 'update'])->name('application.update');
         Route::delete('/{id}', [ApplicationController::class, 'destroy'])->name('application.delete');
+    });
+
+    Route::group(['prefix' => 'day-closing'], function () {
+        Route::get('/', [DayClosingController::class, 'index'])->name('day-closing.index');
+        Route::get('/create', [DayClosingController::class, 'create'])->name('day-closing.create');
+        Route::post('/store', [DayClosingController::class, 'store'])->name('day-closing.store');
+        Route::get('/{dayClosing}', [DayClosingController::class, 'show'])->name('day-closing.show');
     });
 
     Route::group(['prefix' => 'connected-client-service'], function () {

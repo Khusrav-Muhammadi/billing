@@ -6,6 +6,7 @@ use App\Events\CommercialOfferPaidStatusEvent;
 use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
 use App\Events\CommercialOfferRenewalPaidStatusEvent;
 use App\Models\Account;
+use App\Models\Client;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferItem;
 use App\Models\ConnectedClientServices;
@@ -332,6 +333,14 @@ class ApplicationController extends Controller
 
         $offer->update([
             'status' => $validated['status']
+        ]);
+
+        $organization = Organization::query()->find($offer->organization_id);
+
+        $client = Client::find($organization->client_id);
+        $client->update([
+            'is_active' => 1,
+            'is_demo' => 0,
         ]);
 
         if ((string) $validated['status'] === 'paid') {

@@ -5,206 +5,138 @@
 @endsection
 
 @section('content')
+    <div class="card-body">
+        <div class="mb-3">
+            <a href="{{ route('organization_v2.index') }}" class="btn btn-outline-danger">Назад</a>
+        </div>
 
-    <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 10px">Назад</a>
-    <a href="" data-bs-toggle="modal" data-bs-target="#history" type="button"
-       class="btn btn-outline-dark mb-2 ml-5">
-        <i class="mdi mdi-history" style="font-size: 30px"></i>
-    </a>
-    <div class="card">
-        <!-- Первая строка -->
-        <div class="row mb-3">
-            <div class="col-4 ml-5 mt-3">
-                <label for="name">Наименование</label>
-                <input type="text" class="form-control" name="name" value="{{ $organization->name }}" disabled>
-            </div>
-            <div class="col-4 mt-3">
-                <label for="phone">Телефон</label>
-                <input type="text" class="form-control" name="phone" value="{{ $organization->phone }}" disabled>
-            </div>
-            <div class="col-3 mt-3">
-                <label for="email">Почта</label>
-                <input type="text" class="form-control" name="email" value="{{ $organization->email }}" disabled>
-            </div>
-            <div class="col-3 mt-3">
-                <label for="INN">ИНН</label>
-                <input type="number" class="form-control" name="INN" value="{{ $organization->INN }}" disabled>
+        <div class="card mb-4 p-3">
+            <h4 class="card-title mb-3">Организация</h4>
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <strong>ID:</strong> {{ $organization->order_number ?? $organization->id }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Наименование:</strong> {{ $organization->name }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Телефон:</strong> {{ $organization->phone ?: '-' }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Почта:</strong> {{ $organization->email ?: ($organization->client?->email ?? '-') }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Клиент:</strong> {{ $organization->client?->name ?? '-' }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Партнер:</strong> {{ $organization->client?->partner?->name ?? '-' }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Тариф:</strong> {{ $organization->client?->tariffPrice?->tariff?->name ?? '-' }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Поддомен:</strong> {{ $organization->client?->sub_domain ?? '-' }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Статус:</strong>
+                    @if($organization->client?->is_active)
+                        <span class="text-success">Активный</span>
+                    @else
+                        <span class="text-danger">Неактивный</span>
+                    @endif
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Последняя активность:</strong>
+                    {{ optional($organization->client?->last_activity)->format('d.m.Y H:i') ?: '-' }}
+                </div>
+                <div class="col-md-3 mb-2">
+                    <strong>Баланс:</strong>
+                    {{ number_format((float) $realBalance, 2, '.', ' ') }}
+                    {{ $organization->client?->currency?->symbol_code ?? '' }}
+                </div>
             </div>
         </div>
 
-        <div class="row mb-3">
-            <div class="col-4 ml-5 mt-3">
-                <label for="name">Кол-во пользователей</label>
-                <input type="text" class="form-control" name="name" value="{{ $userCount }}" disabled>
-            </div>
-            <div class="col-4 mb-5 mr-5">
-                <label for="address">Адрес</label>
-                <textarea name="address" cols="30" rows="5" placeholder="Адрес" class="form-control"
-                          disabled>{{ $organization->address }}</textarea>
-            </div>
-        </div>
-    </div>
-
-    <div class="card-body w-75">
-        <div class="table-responsive">
-            <h4 class="card-title">Подключенные пакеты</h4>
-            <a href="" data-bs-toggle="modal" data-bs-target="#addPack" type="button"
-               class="btn btn-outline-primary mb-2">Подключить</a>
-            <div class="d-flex">
-                <div class="card table-container flex-fill mr-3">
-                    <table class="table table-hover">
-                        <thead>
+        <div class="card mb-4 p-3">
+            <h4 class="card-title mb-3">Подключенные услуги</h4>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Услуга</th>
+                        <th>Валюта услуги</th>
+                        <th>Дата подключения</th>
+                        <th>Сумма в месяц</th>
+                        <th>Активность</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @forelse($connectedServices as $service)
                         <tr>
-                            <th>№</th>
-                            <th>Дата подключения</th>
-                            <th>Пакет</th>
-                            <th>Количество</th>
-                            <th>Сумма</th>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ $service->tariff?->name ?? ('Услуга #' . $service->tariff_id) }}</td>
+                            <td>
+                                {{ $service->offerCurrency?->symbol_code ?? $service->offerCurrency?->name ?? ($service->offer_currency_id ? ('ID: ' . $service->offer_currency_id) : '-') }}
+                            </td>
+                            <td>{{ optional($service->date)->format('d.m.Y H:i') ?: '-' }}</td>
+                            <td>{{ number_format((float) $service->service_total_amount, 2, '.', ' ') }}</td>
+                            <td>
+                                @if($service->status)
+                                    <span class="badge badge-success">Активна</span>
+                                @else
+                                    <span class="badge badge-danger">Неактивна</span>
+                                @endif
+                            </td>
                         </tr>
-                        </thead>
-                        <tbody>
-                        @foreach($organization->packs as $pack)
-                            <tr>
-                                <td>{{ $loop->iteration }}</td>
-                                <td>{{ $pack->date }}</td>
-                                <td>{{ $pack->pack?->name }}</td>
-                                <td>{{ $pack->amount }}</td>
-                                <td>{{ $pack->pack?->price * $pack->amount }}</td>
-                            </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center">Подключенные услуги не найдены</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                            <div class="modal fade" id="history" tabindex="-1"
-                                 aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title"
-                                                id="exampleModalLabel"> История организации</h5>
-                                        </div>
-                                        <div class="modal-body">
-                                            @foreach($organization->history as $history)
-                                                <div style="display: flex; justify-content: space-between;">
-                                                    <h4>{{ $history->status }}</h4>
-                                                    <span>
-                                <strong>{{ $history->user?->name }}</strong> <i
-                                                            style="font-size: 14px">{{ $history->created_at->format('d.m.Y H:i') }}</i>
-                            </span>
-                                                </div>
-                                                <div class="ml-3" style="font-size: 14px">
-                                                    @foreach ($history->changes as $change)
-                                                        @php
-                                                            $bodyData = json_decode($change->body, true);
-                                                        @endphp
-
-
-                                                        @foreach ($bodyData as $key => $value)
-                                                            @if($key == 'name') Имя: <br>
-                                                            @elseif($key == 'phone') Телефон: <br>
-                                                            @elseif($key == 'email') Почта: <br>
-                                                            @elseif($key == 'client_type') Тип клиента: <br>
-                                                            @elseif($key == 'business_type') Тип бизнеса: <br>
-                                                            @elseif($key == 'tariff') Тариф: <br>
-                                                            @elseif($key == 'has_access') Доступ: <br>
-                                                            @elseif($key == 'reject_cause' && $value['new_value']) Причина: <br>
-                                                            @endif
-                                                            @if($key == 'has_access')
-                                                                <p style="margin-left: 20px;">{{ $value['new_value'] == 0 ? 'Отключен' : 'Подключён' }}</p>
-                                                            @elseif($key = 'reject_cause')
-                                                                <p style="margin-left: 20px;">{{ $value['new_value'] ?? 'N/A' }}</p>
-                                                            @else
-                                                                <p style="margin-left: 20px;">{{ $value['previous_value'] ?? 'N/A' }}
-                                                                    ==> {{ $value['new_value'] ?? 'N/A' }}</p>
-                                                            @endif
-                                                        @endforeach
-                                                    @endforeach
-                                                </div>
-                                                <hr>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                        </tbody>
-                    </table>
-                </div>
+        <div class="card p-3">
+            <h4 class="card-title mb-3">Транзакции</h4>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Дата</th>
+                        <th>Тип</th>
+                        <th>Сумма</th>
+                        <th>Валюта</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @forelse($balanceOperations as $operation)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ optional($operation->date)->format('d.m.Y H:i') ?: optional($operation->created_at)->format('d.m.Y H:i') }}</td>
+                            <td>
+                                @if($operation->type === 'income')
+                                    <span class="text-success">Пополнение</span>
+                                @elseif($operation->type === 'outcome')
+                                    <span class="text-danger">Списание</span>
+                                @else
+                                    {{ $operation->type }}
+                                @endif
+                            </td>
+                            <td>{{ number_format((float) $operation->sum, 2, '.', ' ') }}</td>
+                            <td>{{ $operation->currency?->symbol_code ?? $operation->currency?->name ?? '-' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center">Операций баланса не найдено</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-
-    <div class="modal fade" id="addPack" tabindex="-1" aria-labelledby="exampleModalLabel"
-         aria-hidden="true">
-        <div class="modal-dialog">
-            <form method="POST" action="{{ route('organization.addPack', $organization->id) }}">
-                @csrf
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Добавить пакет на
-                            организацию {{ $organization->name }}</h5>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label for="tariff_id">Пакеты</label>
-                            <select class="form-control form-control" name="pack_id" required>
-                                @foreach ($packs as $pack)
-                                <option value="{{ $pack->id }}">{{ $pack->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="name">Дата</label>
-                            <input type="date" class="form-control" name="date" id="date">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="amount">Количество</label>
-                            <input type="number" class="form-control" name="amount" value="1" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="phone">Цена</label>
-                            <input type="number" class="form-control" name="price" value="10">
-                        </div>
-                        <p>Общ. цена: <span id="total-price"><strong>10</strong></span></p>
-
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                            <button type="submit" class="btn btn-primary">Сохранить</button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-
 @endsection
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const amountInput = document.querySelector('input[name="amount"]');
-        const priceInput = document.querySelector('input[name="price"]');
-        const totalPrice = document.getElementById('total-price');
-
-        function updateTotal() {
-            const amount = parseFloat(amountInput.value) || 0;
-            const price = parseFloat(priceInput.value) || 0;
-            totalPrice.textContent = (amount * price).toFixed(2);
-        }
-
-        amountInput.addEventListener("input", updateTotal);
-        priceInput.addEventListener("input", updateTotal);
-    });
-</script>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const dateInput = document.getElementById('date');
-        if (dateInput) {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            dateInput.value = `${year}-${month}-${day}`;
-        }
-    });
-</script>

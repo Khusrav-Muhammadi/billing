@@ -1062,6 +1062,7 @@ class CPGenerator {
         }
 
         this.applyTariffDefaults();
+        this.normalizeSelectedServicesByVisibility();
         this.renderClientPartnerSelectors();
         this.renderTariffs();
         this.renderServices();
@@ -1091,6 +1092,7 @@ class CPGenerator {
         included.forEach((serviceKey) => {
             const service = this.config?.services?.[serviceKey];
             if (!service) return;
+            if (!this.isServiceVisibleForCurrentClient(serviceKey, service)) return;
 
             const includedMin = service.hasChannels
                 ? Math.max(0, this.getIncludedChannels(this.state.selectedTariff, serviceKey))
@@ -1176,6 +1178,51 @@ class CPGenerator {
     getSelectedClient() {
         if (!this.state.selectedClientId) return null;
         return this.clients.find((c) => String(c.id) === String(this.state.selectedClientId)) || null;
+    }
+
+    isServiceVisibleForCurrentClient(serviceKey, service) {
+        if (!service) {
+            return false;
+        }
+
+        const hasAvailabilityFlag = Object.prototype.hasOwnProperty.call(service, 'isAvailableOnDate');
+        if (!hasAvailabilityFlag || Boolean(service.isAvailableOnDate)) {
+            return true;
+        }
+
+        const selectedClientId = String(this.state.selectedClientId || '').trim();
+        if (!selectedClientId) {
+            return false;
+        }
+
+        const excludedIds = Array.isArray(service.excludedOrganizationIds)
+            ? service.excludedOrganizationIds
+            : [];
+
+        return excludedIds.some((id) => String(id) === selectedClientId);
+    }
+
+    normalizeSelectedServicesByVisibility() {
+        if (!this.config?.services) {
+            return;
+        }
+
+        Object.entries(this.config.services).forEach(([serviceKey, service]) => {
+            if (this.isServiceVisibleForCurrentClient(serviceKey, service)) {
+                return;
+            }
+
+            if (!this.state.selectedServices?.[serviceKey]) {
+                return;
+            }
+
+            if (service?.hasChannels) {
+                this.state.selectedServices[serviceKey] = { enabled: false, channels: 0 };
+                return;
+            }
+
+            this.state.selectedServices[serviceKey].enabled = false;
+        });
     }
 
     getSelectedClientOrderNumber() {
@@ -1995,6 +2042,7 @@ class CPGenerator {
                     this.applyConnectionExtraServicesContext();
                 }
 
+                this.normalizeSelectedServicesByVisibility();
                 this.renderTariffs();
                 this.renderServices();
                 this.updateExtraUsersSection();
@@ -2251,6 +2299,9 @@ class CPGenerator {
         if (tariff.includedServices) {
             tariff.includedServices.forEach(serviceKey => {
                 const service = this.config.services[serviceKey];
+                if (!this.isServiceVisibleForCurrentClient(serviceKey, service)) {
+                    return;
+                }
                 const includedChannels = this.getIncludedChannels(tariffKey, serviceKey);
 
                 if (service && service.hasChannels) {
@@ -2286,6 +2337,7 @@ class CPGenerator {
 
         Object.entries(this.config.services).forEach(([key, service]) => {
             if (service.priceFromTariff) return;
+            if (!this.isServiceVisibleForCurrentClient(key, service)) return;
 
             const isConnectionExtraServices = this.isConnectionExtraServicesMode();
             const isIncluded = selectedTariff?.includedServices?.includes(key);

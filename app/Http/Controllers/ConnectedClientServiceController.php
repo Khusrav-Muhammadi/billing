@@ -56,7 +56,12 @@ class ConnectedClientServiceController extends Controller
             ->where(function ($q) {
                 $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
-            ->with(['prices.currency'])
+            ->with([
+                'prices.currency',
+                'excludedOrganizations' => function ($query) {
+                    $query->select('organizations.id');
+                },
+            ])
             ->get()
             ;
 
@@ -113,7 +118,12 @@ class ConnectedClientServiceController extends Controller
             ->where(function ($q) {
                 $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
-            ->with(['prices.currency'])
+            ->with([
+                'prices.currency',
+                'excludedOrganizations' => function ($query) {
+                    $query->select('organizations.id');
+                },
+            ])
             ->get()
             ;
 
@@ -516,11 +526,23 @@ class ConnectedClientServiceController extends Controller
         $servicesForJs = [];
         foreach ($services as $service) {
             $serviceEnd = $this->parseDateToTs($service->end_date ? (string) $service->end_date : null);
-            if ($serviceEnd !== null && $serviceEnd < $today) continue;
+            $isActiveByEndDate = $serviceEnd === null || $serviceEnd >= $today;
 
-            $prices = [];
+            $excludedOrganizationIds = collect($service->excludedOrganizations ?? [])
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn (int $id) => $id > 0)
+                ->values()
+                ->all();
+            $hasExcludedOrganizations = !empty($excludedOrganizationIds);
+
+            if (!$isActiveByEndDate && !$hasExcludedOrganizations) continue;
+
+            $basePrices = $service->prices->whereNull('organization_id')->where('kind', 'base');
+
+            $activePrices = [];
             $bestByCurrency = [];
-            foreach ($service->prices->whereNull('organization_id')->where('kind', 'base') as $price) {
+            foreach ($basePrices as $price) {
                 $symbol = $price->currency?->symbol_code;
                 if (!$symbol) continue;
 
@@ -546,12 +568,50 @@ class ConnectedClientServiceController extends Controller
                 }
             }
             foreach ($bestByCurrency as $symbol => $row) {
-                $prices[$symbol] = (float) $row['sum'];
+                $activePrices[$symbol] = (float) $row['sum'];
             }
+
+            $prices = $activePrices;
 
             if (empty($prices) && $service->price !== null) {
                 foreach ($currenciesForJs as $symbolCode => $_currency) {
                     $prices[$symbolCode] = (float) $service->price;
+                }
+            }
+
+            $isAvailableOnDate = $isActiveByEndDate && !empty($prices);
+
+            // For organizations in exclusions we keep service visible even if date is outdated.
+            // In that case use the latest price not newer than selected date.
+            if (empty($prices) && $hasExcludedOrganizations) {
+                $fallbackBestByCurrency = [];
+                foreach ($basePrices as $price) {
+                    $symbol = $price->currency?->symbol_code;
+                    if (!$symbol) continue;
+
+                    $start = $this->parseDateToTs($price->start_date);
+                    $end = $this->parseDateToTs($price->date);
+
+                    if ($start !== null && $start > $today) continue;
+
+                    $startScore = $start ?? 0;
+                    $endScore = $end ?? PHP_INT_MAX;
+                    $prev = $fallbackBestByCurrency[$symbol] ?? null;
+                    if (
+                        !$prev
+                        || $startScore > $prev['start']
+                        || ($startScore === $prev['start'] && $endScore >= $prev['end'])
+                    ) {
+                        $fallbackBestByCurrency[$symbol] = [
+                            'start' => $startScore,
+                            'end' => $endScore,
+                            'sum' => (float) $price->sum,
+                        ];
+                    }
+                }
+
+                foreach ($fallbackBestByCurrency as $symbol => $row) {
+                    $prices[$symbol] = (float) $row['sum'];
                 }
             }
 
@@ -566,6 +626,8 @@ class ConnectedClientServiceController extends Controller
                 'type'        => 'monthly',
                 'prices'      => $prices,
                 'hasChannels' => (bool) ($service->can_increase ?? false),
+                'isAvailableOnDate' => $isAvailableOnDate,
+                'excludedOrganizationIds' => $excludedOrganizationIds,
             ];
         }
 

@@ -95,10 +95,23 @@
                     })
                         .then(response => response.text())
                         .then(html => {
-                            // Заменяем содержимое контейнера с таблицей
                             tableContainer.innerHTML = html;
                         })
                         .catch(error => console.error('Ошибка пагинации:', error));
+                }
+
+                const row = event.target.closest('.organization-row');
+                if (!row) {
+                    return;
+                }
+
+                if (event.target.closest('a, button, input, select, textarea, label, .modal')) {
+                    return;
+                }
+
+                const href = row.dataset.href;
+                if (href) {
+                    window.location.href = href;
                 }
             });
         });

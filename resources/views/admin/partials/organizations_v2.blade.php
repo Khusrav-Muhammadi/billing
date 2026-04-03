@@ -20,16 +20,21 @@
     </thead>
     <tbody>
     @foreach($organizations as $organization)
-        <tr>
+        <tr class="organization-row"
+            data-href="{{ route('organization_v2.show', $organization->id) }}"
+            style="cursor: pointer;">
             <td>{{ $loop->iteration }}</td>
             <td>{{ $organization->order_number ?? '-' }}</td>
             <td>{{ $organization->name }}</td>
             <td>{{ $organization->phone }}</td>
-            <td>{{ $organization->created_at }}</td>
+            <td>{{ optional($organization->created_at)->format('d.m.Y H:i') }}</td>
             <td>{{ $organization->client?->email }}</td>
             <td>{{ $organization->client?->tariffPrice?->tariff->name }}</td>
-            <td></td>
-            <td>{{ $organization->balance }}</td>
+            <td>{{ $organization->client?->tariffPrice?->tariff?->user_count ?? '-' }}</td>
+            <td>
+                {{ number_format((float) ($organization->real_balance ?? 0), 2, '.', ' ') }}
+                {{ $organization->client?->currency?->symbol_code ?? '' }}
+            </td>
             <td>{{ $organization->client?->validate_date }}</td>
             <td>{{ $organization->client?->last_activity }}</td>
             <td class="text-center">
@@ -42,6 +47,7 @@
             <td>{{ $organization->client?->partner?->name }}</td>
             <td>{{ $organization->client?->sub_domain }}</td>
             <td>
+                <a href="{{ route('organization_v2.show', $organization->id) }}"><i class="mdi mdi-eye" style="font-size: 30px"></i></a>
                 <a href="{{ route('organization.edit', $organization->id) }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                 <a href="" data-bs-toggle="modal" data-bs-target="#deleteClient{{$organization->id}}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
             </td>

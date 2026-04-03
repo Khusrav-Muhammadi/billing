@@ -44,4 +44,15 @@ class Tariff extends Model
             ->withPivot(['quantity'])
             ->withTimestamps();
     }
+
+    public function excludedOrganizations()
+    {
+        return $this->belongsToMany(Organization::class, 'tariff_exclusions', 'tariff_id', 'organization_id')
+            ->withTimestamps();
+    }
+
+    public function exclusions()
+    {
+        return $this->excludedOrganizations();
+    }
 }
