@@ -80,8 +80,7 @@ class OrganizationV2Controller extends Controller
                 'tariff:id,name',
                 'offerCurrency:id,name,symbol_code',
             ])
-            ->orderByDesc('date')
-            ->orderByDesc('id')
+            ->orderBy('date')
             ->get();
 
         $balanceOperations = ClientBalance::query()
