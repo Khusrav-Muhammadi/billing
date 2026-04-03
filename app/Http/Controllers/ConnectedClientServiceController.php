@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Partner\StoreRequest;
 use App\Models\Client;
+use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\CurrencyRate;
 use App\Models\Organization;
@@ -13,6 +14,7 @@ use App\Models\Tariff;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ConnectedClientServiceController extends Controller
 {
@@ -69,6 +71,7 @@ class ConnectedClientServiceController extends Controller
             ->with(['client.currency'])
             ->orderBy('name')
             ->get();
+        $operationStartDates = $this->getOrganizationOperationStartDates($organizations->pluck('id')->all());
 
         $partners = User::role();
 
@@ -125,6 +128,7 @@ class ConnectedClientServiceController extends Controller
             ->with(['client.currency'])
             ->orderBy('name')
             ->get();
+        $operationStartDates = $this->getOrganizationOperationStartDates($organizations->pluck('id')->all());
 
         // Partners live in users table (role column) in this project.
         $partners = User::query()
@@ -148,6 +152,7 @@ class ConnectedClientServiceController extends Controller
                 'email'       => '',
                 'phone'       => $o->phone ?? '',
                 'order_number'=> $o->order_number,
+                'operation_start_date' => $operationStartDates[(int) $o->id] ?? null,
                 'country_id'  => $o->client?->country_id,
                 'currency_id' => $o->client?->currency_id,
                 'currency'    => $o->client?->currency?->symbol_code,
@@ -181,6 +186,7 @@ class ConnectedClientServiceController extends Controller
             ->orderBy('name')
             ->limit(50)
             ->get();
+        $operationStartDates = $this->getOrganizationOperationStartDates($organizations->pluck('id')->all());
 
         return response()->json([
             'clients' => $organizations->map(fn($o) => [
@@ -189,11 +195,49 @@ class ConnectedClientServiceController extends Controller
                 'email'       => '',
                 'phone'       => $o->phone ?? '',
                 'order_number'=> $o->order_number,
+                'operation_start_date' => $operationStartDates[(int) $o->id] ?? null,
                 'country_id'  => $o->client?->country_id,
                 'currency_id' => $o->client?->currency_id,
                 'currency'    => $o->client?->currency?->symbol_code,
             ]),
         ]);
+    }
+
+    private function getOrganizationOperationStartDates(array $organizationIds): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $organizationIds)));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $rows = ConnectedClientServices::query()
+            ->whereIn('client_id', $ids)
+            ->where('status', true)
+            ->select('client_id', DB::raw('MIN(`date`) as operation_start_at'))
+            ->groupBy('client_id')
+            ->get();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $organizationId = (int) ($row->client_id ?? 0);
+            if ($organizationId <= 0) {
+                continue;
+            }
+
+            $value = trim((string) ($row->operation_start_at ?? ''));
+            if ($value === '') {
+                continue;
+            }
+
+            $ts = strtotime($value);
+            if ($ts === false) {
+                continue;
+            }
+
+            $result[$organizationId] = date('Y-m-d', $ts);
+        }
+
+        return $result;
     }
 
     public function partners(Request $request): JsonResponse
@@ -374,6 +418,9 @@ class ConnectedClientServiceController extends Controller
             $extraServices = $extraUserServicesByTariffId && isset($extraUserServicesByTariffId[$tariff->id])
                 ? $extraUserServicesByTariffId[$tariff->id]
                 : null;
+            $extraUserTariffId = $extraServices && $extraServices->isNotEmpty()
+                ? (int) $extraServices->first()->id
+                : null;
 
             if ($extraServices) {
                 foreach ($extraServices as $extraService) {
@@ -454,6 +501,7 @@ class ConnectedClientServiceController extends Controller
                 'id'              => $tariff->id,
                 'name'            => $tariff->name,
                 'users'           => $tariff->user_count ?? 0,
+                'extraUserTariffId' => $extraUserTariffId,
                 'prices'          => $prices,
                 'extraUserPrices' => $extraUserPrices,
                 'prices12Months'  => array_map(fn($p) => round($p * 0.85, 2), $prices),

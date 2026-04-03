@@ -14,7 +14,7 @@ return new class extends Migration
             $table->unsignedBigInteger('commercial_offer_id')->unique();
             $table->decimal('sum', 20, 2)->default(0);
             $table->string('currency', 10);
-            $table->string('type', 16)->index(); // income | outcome
+            $table->string('type', 16)->index();
             $table->timestamps();
         });
     }

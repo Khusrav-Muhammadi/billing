@@ -5,6 +5,7 @@ namespace App\Services\DiscountExpenses;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Models\DiscountExpense;
+use App\Support\CurrencyResolver;
 use Illuminate\Support\Facades\DB;
 
 class DiscountExpensesRegistryService
@@ -15,17 +16,14 @@ class DiscountExpensesRegistryService
             return;
         }
 
-        $requestType = (string) data_get($offer->snapshot, 'request_type', 'connection');
-        if ($requestType !== 'connection') {
+        $requestType = (string) ($offer->request_type ?: 'connection');
+        if (!in_array($requestType, ['connection', 'connection_extra_services'], true)) {
             return;
         }
 
         $offer->loadMissing(['items']);
 
         DB::transaction(function () use ($offer, $status) {
-            DiscountExpense::query()
-                ->where('commercial_offer_id', $offer->id)
-                ->delete();
 
             foreach ($offer->items as $item) {
                 $discountPercent = round(max(0, (float) $item->discount_percent), 2);
@@ -33,8 +31,8 @@ class DiscountExpensesRegistryService
                     continue;
                 }
 
-                $currencyCode = (string) data_get($item->meta, 'source_currency', (string) $offer->currency);
-                $discountedAmount = $this->resolveDiscountedAmount($item, $offer);
+                $currencyId = CurrencyResolver::idFromCode((string) $offer->currency);
+                $discountedAmount = $this->resolveDiscountedAmount($item);
                 if ($discountedAmount <= 0) {
                     continue;
                 }
@@ -45,44 +43,31 @@ class DiscountExpensesRegistryService
                     continue;
                 }
 
-                $resolvedTariffId = $this->resolveTariffId($item->service_key, $offer->tariff_id);
+                $resolvedTariffId = $item->tariff_id ? (int) $item->tariff_id : ($offer->tariff_id ? (int) $offer->tariff_id : null);
                 if ($resolvedTariffId === null) {
                     continue;
                 }
 
-                DiscountExpense::query()->create([
-                    'offer_date' => $offer->pricing_date
-                        ? $offer->pricing_date->toDateString()
-                        : ($status->status_date ? $status->status_date->toDateString() : now()->toDateString()),
+                $attributes = [
+                    'date' => $offer->status_date,
                     'client_id' => (int) $offer->organization_id,
                     'partner_id' => $offer->partner_id ? (int) $offer->partner_id : null,
                     'tariff_id' => $resolvedTariffId,
-                    'service_key' => $item->service_key,
-                    'commercial_offer_id' => (int) $offer->id,
-                    'commercial_offer_item_id' => (int) $item->id,
                     'discount_amount' => $discountAmount,
                     'original_amount' => $originalAmount,
                     'discount_percent' => $discountPercent,
-                    'currency_code' => strtoupper(trim($currencyCode)),
-                ]);
+                    'currency_id' => $currencyId,
+                ];
+
+                DiscountExpense::query()->updateOrCreate($attributes, $attributes);
             }
         });
     }
 
-    private function resolveDiscountedAmount($item, CommercialOffer $offer): float
+    private function resolveDiscountedAmount($item): float
     {
-        $sourceTotal = (float) data_get($item->meta, 'source_price', 0);
-        if ($sourceTotal > 0) {
-            return round($sourceTotal, 2);
-        }
-
-        $sourceCurrency = strtoupper((string) data_get($item->meta, 'source_currency', ''));
-        $offerCurrency = strtoupper((string) $offer->currency);
-        if ($sourceCurrency !== '' && $sourceCurrency === $offerCurrency && (float) $item->total_price > 0) {
-            return round((float) $item->total_price, 2);
-        }
-
-        return 0.0;
+        $itemTotal = (float) $item->total_price;
+        return $itemTotal > 0 ? round($itemTotal, 2) : 0.0;
     }
 
     private function calculateOriginalAmount(float $discountedAmount, float $discountPercent): float
@@ -99,20 +84,5 @@ class DiscountExpensesRegistryService
         return round($discountedAmount / $coefficient, 2);
     }
 
-    private function resolveTariffId(?string $serviceKey, ?int $fallbackTariffId): ?int
-    {
-        $normalizedKey = trim((string) $serviceKey);
-        if ($normalizedKey !== '') {
-            if (preg_match('/^(?:tariff|service)-(\d+)/', $normalizedKey, $matches) === 1) {
-                return (int) $matches[1];
-            }
-        }
 
-        if ($fallbackTariffId) {
-            return (int) $fallbackTariffId;
-        }
-
-        return null;
-    }
 }
-

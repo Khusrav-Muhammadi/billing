@@ -363,7 +363,6 @@ class ClientPaymentController extends Controller
                 'locked_at' => now(),
                 'payment_id' => $payment->id,
                 'payment_link' => $paymentLink,
-                'updated_by' => Auth::id(),
                 'updated_at' => now(),
             ]);
 

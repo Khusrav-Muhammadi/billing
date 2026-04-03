@@ -5,6 +5,7 @@ namespace App\Services\ClientPaymentRegistries;
 use App\Models\ClientPaymentRegistry;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
+use App\Support\CurrencyResolver;
 use Illuminate\Support\Facades\DB;
 
 class ClientPaymentRegistryService
@@ -15,7 +16,7 @@ class ClientPaymentRegistryService
             return;
         }
 
-        $requestType = (string) data_get($offer->snapshot, 'request_type', 'connection');
+        $requestType = (string) ($offer->request_type ?: 'connection');
         if (!in_array($requestType, ['connection', 'connection_extra_services'], true)) {
             return;
         }
@@ -29,21 +30,19 @@ class ClientPaymentRegistryService
 
         DB::transaction(function () use (
             $offer,
-            $status,
             $requestType,
             $grossAmount,
             $netAmount,
             $tariffAmount,
-            $paymentAmount
+            $paymentAmount,
+            $status
         ) {
             ClientPaymentRegistry::query()
                 ->where('commercial_offer_id', $offer->id)
                 ->delete();
 
             ClientPaymentRegistry::query()->create([
-                'offer_date' => $status->status_date
-                    ? $status->status_date->toDateString()
-                    : ($offer->pricing_date ? $offer->pricing_date->toDateString() : now()->toDateString()),
+                'date' => $offer->status_date,
                 'organization_id' => (int) $offer->organization_id,
                 'commercial_offer_id' => (int) $offer->id,
                 'partner_id' => $offer->partner_id ? (int) $offer->partner_id : null,
@@ -51,9 +50,9 @@ class ClientPaymentRegistryService
                 'account_id' => $status->account_id ? (int) $status->account_id : null,
                 'gross_amount' => $grossAmount,
                 'net_amount' => $netAmount,
-                'tariff_currency' => strtoupper((string) $offer->currency),
+                'tariff_currency_id' => CurrencyResolver::idFromCode((string) $offer->currency),
                 'tariff_amount' => $tariffAmount,
-                'payment_currency' => strtoupper((string) ($offer->payable_currency ?: $offer->currency)),
+                'payment_currency_id' => CurrencyResolver::idFromCode((string) ($offer->payable_currency ?: $offer->currency)),
                 'payment_amount' => $paymentAmount,
                 'request_type' => $requestType,
             ]);
@@ -63,10 +62,9 @@ class ClientPaymentRegistryService
     private function calculateGrossAmount(CommercialOffer $offer): float
     {
         $gross = 0.0;
-        $conversionRate = (float) $offer->conversion_rate;
 
         foreach ($offer->items as $item) {
-            $netSourceAmount = $this->resolveNetSourceAmount($offer, $item, $conversionRate);
+            $netSourceAmount = round((float) $item->total_price, 6);
             if ($netSourceAmount <= 0) {
                 continue;
             }
@@ -87,33 +85,6 @@ class ClientPaymentRegistryService
         return round($gross, 2);
     }
 
-    private function resolveNetSourceAmount(CommercialOffer $offer, $item, float $conversionRate): float
-    {
-        $metaSource = (float) data_get($item->meta, 'source_price', 0);
-        if ($metaSource > 0) {
-            return round($metaSource, 6);
-        }
-
-        $itemTotal = (float) $item->total_price;
-        if ($itemTotal <= 0) {
-            return 0.0;
-        }
-
-        $sourceCurrency = strtoupper((string) data_get($item->meta, 'source_currency', $offer->currency));
-        $payableCurrency = strtoupper((string) data_get($item->meta, 'payable_currency', ($offer->payable_currency ?: $offer->currency)));
-        $offerCurrency = strtoupper((string) $offer->currency);
-
-        if ($sourceCurrency === $offerCurrency) {
-            return round($itemTotal, 6);
-        }
-
-        if ($payableCurrency !== $offerCurrency && $conversionRate > 0) {
-            return round($itemTotal * $conversionRate, 6);
-        }
-
-        return round($itemTotal, 6);
-    }
-
     private function reversePercent(float $amount, float $percent): float
     {
         if ($percent <= 0 || $percent >= 100) {
@@ -127,5 +98,6 @@ class ClientPaymentRegistryService
 
         return $amount / $factor;
     }
-}
 
+
+}

@@ -5,6 +5,7 @@ namespace App\Services\ConnectedClientServices;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Models\ConnectedClientServices;
+use App\Support\CurrencyResolver;
 use Illuminate\Support\Facades\DB;
 
 class ConnectedClientServicesRegistryService
@@ -15,8 +16,8 @@ class ConnectedClientServicesRegistryService
             return;
         }
 
-        $requestType = (string) data_get($offer->snapshot, 'request_type', 'connection');
-        if ($requestType !== 'connection') {
+        $requestType = (string) ($offer->request_type ?: 'connection');
+        if (!in_array($requestType, ['connection', 'connection_extra_services'], true)) {
             return;
         }
 
@@ -47,35 +48,17 @@ class ConnectedClientServicesRegistryService
                 ConnectedClientServices::query()->create([
                     'client_id' => $offer->organization_id,
                     'partner_id' => $offer->partner_id,
-                    'tariff_id' => $offer->tariff_id,
+                    'tariff_id' => $item->tariff_id ?: $offer->tariff_id,
                     'commercial_offer_id' => (int) $offer->id,
-                    'commercial_offer_item_id' => (int) $item->id,
                     'account_id' => $status->account_id,
                     'service_total_amount' => $serviceTotalAmount,
                     'status' => true,
-                    'offer_date' => $offer->date,
-                    'offer_currency_id' => (string) $offer->currency,
-                    'payable_currency' => (string) ($offer->payable_currency ?: $offer->currency),
+                    'date' => $offer->status_date,
+                    'offer_currency_id' => CurrencyResolver::idFromCode((string) $offer->currency),
+                    'payable_currency_id' => CurrencyResolver::idFromCode((string) ($offer->payable_currency ?: $offer->currency)),
                     'payable_amount' => $payableAmount,
                 ]);
             }
         });
     }
-
-    private function resolveTariffId(?string $serviceKey, ?int $fallbackTariffId): ?int
-    {
-        $normalizedKey = trim((string) $serviceKey);
-        if ($normalizedKey !== '') {
-            if (preg_match('/^(?:tariff|service)-(\d+)/', $normalizedKey, $matches) === 1) {
-                return (int) $matches[1];
-            }
-        }
-
-        if ($fallbackTariffId) {
-            return (int) $fallbackTariffId;
-        }
-
-        return null;
-    }
 }
-

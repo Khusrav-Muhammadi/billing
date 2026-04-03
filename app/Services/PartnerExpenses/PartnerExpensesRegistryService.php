@@ -3,9 +3,10 @@
 namespace App\Services\PartnerExpenses;
 
 use App\Models\CommercialOffer;
-use App\Models\CommercialOfferItem;
 use App\Models\CommercialOfferStatus;
+use App\Models\PartnerProcent;
 use App\Models\PartnerExpense;
+use App\Support\CurrencyResolver;
 use Illuminate\Support\Facades\DB;
 
 class PartnerExpensesRegistryService
@@ -20,7 +21,7 @@ class PartnerExpensesRegistryService
             return;
         }
 
-        $requestType = (string) data_get($offer->snapshot, 'request_type', 'connection');
+        $requestType = (string) ($offer->request_type ?: 'connection');
         if (!in_array($requestType, ['connection', 'connection_extra_services'], true)) {
             return;
         }
@@ -28,18 +29,16 @@ class PartnerExpensesRegistryService
         $offer->loadMissing(['items']);
 
         DB::transaction(function () use ($offer, $status, $requestType) {
-            PartnerExpense::query()
-                ->where('commercial_offer_id', $offer->id)
-                ->delete();
 
             foreach ($offer->items as $item) {
-                $partnerPercent = round(max(0, (float) $item->partner_percent), 2);
+                $partnerPercent = $this->resolvePartnerPercent($offer, $item, $status);
+
                 if ($partnerPercent <= 0) {
                     continue;
                 }
 
-                $currencyCode = (string) data_get($item->meta, 'source_currency', (string) $offer->currency);
-                $discountedAmount = $this->resolveDiscountedAmount($item, $offer);
+                $currencyId = CurrencyResolver::idFromCode((string) $offer->currency);
+                $discountedAmount = $this->resolveDiscountedAmount($item);
                 if ($discountedAmount <= 0) {
                     continue;
                 }
@@ -50,41 +49,32 @@ class PartnerExpensesRegistryService
                     continue;
                 }
 
-                PartnerExpense::query()->create([
+                $resolvedTariffId = $item->tariff_id ? (int) $item->tariff_id : ($offer->tariff_id ? (int) $offer->tariff_id : null);
+                if ($resolvedTariffId === null) {
+                    continue;
+                }
+
+                $attributes = [
                     'partner_id' => (int) $offer->partner_id,
                     'client_id' => (int) $offer->organization_id,
-                    'offer_date' => $offer->pricing_date
-                        ? $offer->pricing_date->toDateString()
-                        : ($status->status_date ? $status->status_date->toDateString() : now()->toDateString()),
-                    'service_type' => CommercialOfferItem::class,
-                    'service_id' => (int) $item->id,
-                    'service_key' => $item->service_key,
-                    'commercial_offer_id' => (int) $offer->id,
-                    'commercial_offer_item_id' => (int) $item->id,
+                    'date' => $offer->status_date,
+                    'tariff_id' => $resolvedTariffId,
                     'partner_amount' => $partnerAmount,
                     'original_amount' => $originalAmount,
                     'partner_percent' => $partnerPercent,
-                    'currency_code' => strtoupper(trim($currencyCode)),
+                    'currency_id' => $currencyId,
                     'request_type' => $requestType,
-                ]);
+                ];
+
+                PartnerExpense::query()->updateOrCreate($attributes, $attributes);
             }
         });
     }
 
-    private function resolveDiscountedAmount($item, CommercialOffer $offer): float
+    private function resolveDiscountedAmount($item): float
     {
-        $sourceTotal = (float) data_get($item->meta, 'source_price', 0);
-        if ($sourceTotal > 0) {
-            return round($sourceTotal, 2);
-        }
-
-        $sourceCurrency = strtoupper((string) data_get($item->meta, 'source_currency', ''));
-        $offerCurrency = strtoupper((string) $offer->currency);
-        if ($sourceCurrency !== '' && $sourceCurrency === $offerCurrency && (float) $item->total_price > 0) {
-            return round((float) $item->total_price, 2);
-        }
-
-        return 0.0;
+        $itemTotal = (float) $item->total_price;
+        return $itemTotal > 0 ? round($itemTotal, 2) : 0.0;
     }
 
     private function calculateOriginalAmount(float $discountedAmount, float $percent): float
@@ -100,5 +90,38 @@ class PartnerExpensesRegistryService
 
         return round($discountedAmount / $coefficient, 2);
     }
-}
 
+    private function resolvePartnerPercent(CommercialOffer $offer, $item, CommercialOfferStatus $status): float
+    {
+        $itemPercent = round(max(0, (float) $item->partner_percent), 2);
+        if ($itemPercent > 0) {
+            return $itemPercent;
+        }
+
+        if (!$offer->partner_id) {
+            return 0.0;
+        }
+
+        if (!$offer->status_date) {
+            return 0.0;
+        }
+
+        $asOf = $offer->status_date->toDateString();
+
+        $row = PartnerProcent::query()
+            ->where('partner_id', (int) $offer->partner_id)
+            ->whereDate('date', '<=', $asOf)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first(['procent_from_tariff']);
+
+        if (!$row) {
+            return 0.0;
+        }
+
+        $percent = round(max(0, (float) ($row->procent_from_tariff ?? 0)), 2);
+
+        return min(100.0, $percent);
+    }
+
+}

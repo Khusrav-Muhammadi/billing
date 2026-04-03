@@ -101,13 +101,7 @@ class SiteApplicationController extends Controller
         return response()->json(['success' => true]);
     }
 
-    /**
-     * НОВЫЙ API: проверка email.
-     * - формат и длина (Laravel)
-     * - дубликат по email
-     * - дубликат по subdomain (как генерится в системе)
-     * - «реальность» ящика (внешний сервис + DNS), с fallback’ом
-     */
+
     public function verifyEmail(Request $request)
     {
         $request->validate([

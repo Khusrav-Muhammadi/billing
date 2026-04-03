@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Подключение доп услуг</title>
-    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260331_02">
+    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260403_02">
 </head>
 <body>
     <div class="app-container">
@@ -32,9 +32,15 @@
                         </div>
                     </label>
                     <label class="entity-field">
+                        <span class="entity-label">Дата начала операции</span>
+                        <div class="entity-combo">
+                            <input id="operationStartDate" class="entity-combo-input" type="date">
+                        </div>
+                    </label>
+                    <label class="entity-field">
                         <span class="entity-label">Дата</span>
                         <div class="entity-combo">
-                            <input id="pricingDate" class="entity-combo-input" type="date">
+                            <input id="pricingDate" class="entity-combo-input" type="date" disabled>
                         </div>
                     </label>
                     <label class="entity-field">
@@ -182,6 +188,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="/kp_generator/app.js?v=20260331_13"></script>
+    <script src="/kp_generator/app.js?v=20260403_12"></script>
 </body>
 </html>

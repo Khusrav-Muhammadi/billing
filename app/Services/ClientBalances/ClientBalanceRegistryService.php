@@ -5,6 +5,7 @@ namespace App\Services\ClientBalances;
 use App\Models\ClientBalance;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
+use App\Support\CurrencyResolver;
 use Illuminate\Support\Facades\DB;
 
 class ClientBalanceRegistryService
@@ -15,8 +16,8 @@ class ClientBalanceRegistryService
             return;
         }
 
-        $requestType = (string) data_get($offer->snapshot, 'request_type', 'connection');
-        if ($requestType !== 'connection') {
+        $requestType = (string) ($offer->request_type ?: 'connection');
+        if (!in_array($requestType, ['connection', 'connection_extra_services'], true)) {
             return;
         }
 
@@ -24,15 +25,11 @@ class ClientBalanceRegistryService
         $grossAmount = $this->calculateGrossAmount($offer);
 
         DB::transaction(function () use ($offer, $grossAmount) {
-            ClientBalance::query()
-                ->where('commercial_offer_id', $offer->id)
-                ->delete();
-
             ClientBalance::query()->create([
+                'date' => $offer->status_date,
                 'organization_id' => (int) $offer->organization_id,
-                'commercial_offer_id' => (int) $offer->id,
                 'sum' => $grossAmount,
-                'currency' => strtoupper((string) $offer->currency),
+                'currency_id' => CurrencyResolver::idFromCode((string) $offer->currency),
                 'type' => 'income',
             ]);
         });
@@ -41,10 +38,9 @@ class ClientBalanceRegistryService
     private function calculateGrossAmount(CommercialOffer $offer): float
     {
         $gross = 0.0;
-        $conversionRate = (float) $offer->conversion_rate;
 
         foreach ($offer->items as $item) {
-            $netSourceAmount = $this->resolveNetSourceAmount($offer, $item, $conversionRate);
+            $netSourceAmount = round((float) $item->total_price, 6);
             if ($netSourceAmount <= 0) {
                 continue;
             }
@@ -65,33 +61,6 @@ class ClientBalanceRegistryService
         return round($gross, 2);
     }
 
-    private function resolveNetSourceAmount(CommercialOffer $offer, $item, float $conversionRate): float
-    {
-        $metaSource = (float) data_get($item->meta, 'source_price', 0);
-        if ($metaSource > 0) {
-            return round($metaSource, 6);
-        }
-
-        $itemTotal = (float) $item->total_price;
-        if ($itemTotal <= 0) {
-            return 0.0;
-        }
-
-        $sourceCurrency = strtoupper((string) data_get($item->meta, 'source_currency', $offer->currency));
-        $payableCurrency = strtoupper((string) data_get($item->meta, 'payable_currency', ($offer->payable_currency ?: $offer->currency)));
-        $offerCurrency = strtoupper((string) $offer->currency);
-
-        if ($sourceCurrency === $offerCurrency) {
-            return round($itemTotal, 6);
-        }
-
-        if ($payableCurrency !== $offerCurrency && $conversionRate > 0) {
-            return round($itemTotal * $conversionRate, 6);
-        }
-
-        return round($itemTotal, 6);
-    }
-
     private function reversePercent(float $amount, float $percent): float
     {
         if ($percent <= 0 || $percent >= 100) {
@@ -105,5 +74,6 @@ class ClientBalanceRegistryService
 
         return $amount / $factor;
     }
-}
 
+
+}

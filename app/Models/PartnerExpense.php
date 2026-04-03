@@ -12,23 +12,20 @@ class PartnerExpense extends Model
     protected $fillable = [
         'partner_id',
         'client_id',
-        'offer_date',
-        'service_type',
-        'service_id',
-        'service_key',
-        'commercial_offer_id',
-        'commercial_offer_item_id',
+        'date',
+        'tariff_id',
         'partner_amount',
         'original_amount',
         'partner_percent',
-        'currency_code',
+        'currency_id',
         'request_type',
     ];
 
     protected $casts = [
-        'offer_date' => 'date',
+        'date' => 'datetime',
         'partner_amount' => 'decimal:2',
         'original_amount' => 'decimal:2',
         'partner_percent' => 'decimal:2',
+        'currency_id' => 'integer',
     ];
 }

@@ -11,16 +11,13 @@ class CommercialOfferItem extends Model
 
     protected $fillable = [
         'commercial_offer_id',
-        'service_key',
-        'service_name',
-        'billing_type',
+        'tariff_id',
         'quantity',
         'unit_price',
         'months',
         'discount_percent',
         'partner_percent',
         'total_price',
-        'meta',
     ];
 
     protected $casts = [
@@ -29,12 +26,15 @@ class CommercialOfferItem extends Model
         'discount_percent' => 'decimal:2',
         'partner_percent' => 'decimal:2',
         'total_price' => 'decimal:2',
-        'meta' => 'array',
     ];
 
     public function offer()
     {
         return $this->belongsTo(CommercialOffer::class, 'commercial_offer_id');
     }
-}
 
+    public function tariff()
+    {
+        return $this->belongsTo(Tariff::class, 'tariff_id');
+    }
+}

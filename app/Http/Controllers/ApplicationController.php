@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Events\CommercialOfferPaidStatusEvent;
+use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
 use App\Models\Account;
 use App\Models\CommercialOffer;
+use App\Models\CommercialOfferItem;
+use App\Models\ConnectedClientServices;
 use App\Models\Organization;
 use App\Models\Tariff;
 use App\Models\User;
@@ -22,7 +25,7 @@ class ApplicationController extends Controller
         'connection' => 'Подключение',
         'connection_extra_services' => 'Подключение доп услуг',
         'renewal' => 'Продление',
-        'renewal_no_changes' => 'Продление без изменений',
+        'renewal_no_changes' => 'Продление с изменением'
     ];
 
     public function index()
@@ -31,7 +34,7 @@ class ApplicationController extends Controller
             ->with([
                 'tariff:id,name',
                 'organization:id,name',
-                'partner:id,name,account_id',
+                'partner:id,name,account_id,payment_methods',
                 'payment:id,payment_type',
                 'latestOfferStatus' => function ($query) {
                     $query->select([
@@ -130,6 +133,8 @@ class ApplicationController extends Controller
                 $offer->created_by = Auth::id();
             }
 
+            $requestType = $this->normalizeRequestType((string) data_get($payload, 'request_type', 'connection'));
+
             $partnerId = $this->toNullableInt(data_get($payload, 'partner_id'));
             $partner = null;
             if ($partnerId) {
@@ -145,6 +150,7 @@ class ApplicationController extends Controller
             if (!$selectedTariffId) {
                 $selectedTariffId = $this->extractTariffIdFromKey($selectedTariffKey);
             }
+
             $tariff = null;
             if ($selectedTariffId) {
                 $tariff = Tariff::query()->select('id', 'name')->find($selectedTariffId);
@@ -162,36 +168,23 @@ class ApplicationController extends Controller
             $partnerName = (string) (($partner?->name) ?: data_get($payload, 'partner_name', ''));
             $partnerPhone = (string) (($partner?->phone) ?: data_get($payload, 'partner_phone', ''));
             $partnerEmail = (string) (($partner?->email) ?: data_get($payload, 'partner_email', ''));
-
-            $allowedPaymentMethods = data_get($payload, 'allowed_payment_methods', []);
-            if (!is_array($allowedPaymentMethods)) {
-                $allowedPaymentMethods = [];
-            }
-            $allowedPaymentMethods = array_values(array_unique(array_filter(array_map(
-                fn ($value) => strtolower(trim((string) $value)),
-                $allowedPaymentMethods
-            ))));
-
-            $selectedServices = data_get($payload, 'selected_services', []);
-            if (!is_array($selectedServices)) {
-                $selectedServices = [];
-            }
-
-            $snapshot = $payload;
+            $statusDate = $this->toNullableDate(data_get($payload, 'status_date'));
+            $pricingDate = $this->toNullableDate(data_get($payload, 'pricing_date'));
 
             $offer->fill([
                 'organization_id' => $organization->id,
                 'partner_id' => $partner?->id,
                 'tariff_id' => $tariff?->id,
                 'status' => self::OFFER_STATUS_DRAFT,
+                'request_type' => $requestType,
                 'saved_at' => now(),
-                'pricing_date' => $this->toNullableDate(data_get($payload, 'pricing_date')),
+                'status_date' => $statusDate,
+                'pricing_date' => $pricingDate,
                 'currency' => $this->toCurrencyCode(data_get($payload, 'currency', 'USD')),
                 'payable_currency' => $this->toCurrencyCode(data_get($payload, 'payable_currency', data_get($payload, 'currency', 'USD'))),
                 'card_payment_type' => (string) data_get($payload, 'card_payment_type', 'octo'),
                 'period_months' => max(1, (int) data_get($payload, 'period_months', 6)),
                 'extra_users' => max(0, (int) data_get($payload, 'extra_users', 0)),
-                'selected_tariff_key' => $selectedTariffKey !== '' ? $selectedTariffKey : null,
                 'client_name' => $clientName,
                 'client_phone' => $clientPhone,
                 'client_email' => $clientEmail,
@@ -206,10 +199,6 @@ class ApplicationController extends Controller
                 'grand_total' => $this->toDecimal(data_get($payload, 'grand_total', 0)),
                 'payable_total' => $this->toDecimal(data_get($payload, 'payable_total', data_get($payload, 'grand_total', 0))),
                 'conversion_rate' => $this->toNullableDecimal(data_get($payload, 'conversion_rate')),
-                'selected_services' => $selectedServices,
-                'allowed_payment_methods' => $allowedPaymentMethods,
-                'snapshot' => $snapshot,
-                'updated_by' => Auth::id(),
             ]);
 
             $offer->save();
@@ -225,13 +214,21 @@ class ApplicationController extends Controller
                     continue;
                 }
 
-                $name = trim((string) data_get($row, 'name', ''));
-                if ($name === '') {
+                $tariffId = $this->toNullableInt(data_get($row, 'tariff_id'));
+                if (!$tariffId) {
+                    $tariffId = $this->extractTariffIdFromAnyKey(data_get($row, 'service_key'));
+                }
+                if (!$tariffId) {
+                    continue;
+                }
+
+                $itemTariff = Tariff::query()->select('id')->find($tariffId);
+                if (!$itemTariff) {
                     continue;
                 }
 
                 $quantity = max(1, (float) data_get($row, 'quantity', 1));
-                $totalPrice = $this->toDecimal(data_get($row, 'price', data_get($row, 'total_price', 0)));
+                $totalPrice = $this->toDecimal(data_get($row, 'total_price', data_get($row, 'price', 0)));
                 if ($totalPrice <= 0) {
                     continue;
                 }
@@ -242,16 +239,13 @@ class ApplicationController extends Controller
                 }
 
                 $offer->items()->create([
-                    'service_key' => data_get($row, 'service_key'),
-                    'service_name' => $name,
-                    'billing_type' => (string) data_get($row, 'billing_type', 'period'),
+                    'tariff_id' => (int) $itemTariff->id,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'months' => max(1, (int) data_get($row, 'months', data_get($payload, 'period_months', 1))),
                     'discount_percent' => $this->toDecimal(data_get($row, 'discount_percent', 0)),
                     'partner_percent' => $this->toDecimal(data_get($row, 'partner_percent', 0)),
                     'total_price' => $totalPrice,
-                    'meta' => is_array(data_get($row, 'meta')) ? data_get($row, 'meta') : null,
                 ]);
             }
 
@@ -282,10 +276,11 @@ class ApplicationController extends Controller
     public function showCommercialOffer(CommercialOffer $offer)
     {
         $offer->load([
-            'items:id,commercial_offer_id,service_name,billing_type,quantity,unit_price,months,total_price',
+            'items:id,commercial_offer_id,tariff_id,quantity,unit_price,months,total_price',
+            'items.tariff:id,name,is_tariff,is_extra_user',
             'tariff:id,name',
             'organization:id,name,phone,email',
-            'partner:id,name,phone,email',
+            'partner:id,name,phone,email,payment_methods',
             'payment:id,payment_type',
             'latestOfferStatus' => function ($query) {
                 $query->select([
@@ -301,11 +296,7 @@ class ApplicationController extends Controller
             },
         ]);
 
-        $allowedMethods = $offer->allowed_payment_methods;
-        if (!is_array($allowedMethods) || count($allowedMethods) === 0) {
-            $allowedMethods = ['card', 'invoice'];
-        }
-
+        $allowedMethods = $this->normalizeAllowedPaymentMethods($offer->partner?->payment_methods);
         $cardPaymentType = $offer->card_payment_type ?: ($offer->payable_currency === 'UZS' ? 'alif' : 'octo');
 
         return view('admin.applications.show', compact('offer', 'allowedMethods', 'cardPaymentType'));
@@ -339,15 +330,19 @@ class ApplicationController extends Controller
         ]);
 
         $offer->update([
-            'status' => $validated['status'],
-            'updated_by' => Auth::id(),
+            'status' => $validated['status']
         ]);
 
         if ((string) $validated['status'] === 'paid') {
-            CommercialOfferPaidStatusEvent::dispatch(
-                $offer->fresh(),
-                $statusRecord->fresh()
-            );
+            $freshOffer = $offer->fresh();
+            $freshStatus = $statusRecord->fresh();
+            $requestType = $this->normalizeRequestType((string) ($freshOffer?->request_type ?: 'connection'));
+
+            if ($requestType === 'connection_extra_services') {
+                CommercialOfferExtraServicesPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } else {
+                CommercialOfferPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            }
         }
 
         return redirect()
@@ -387,16 +382,18 @@ class ApplicationController extends Controller
 
     public function getCommercialOfferState(CommercialOffer $offer): JsonResponse
     {
-        $payload = $offer->snapshot;
-        if (!is_array($payload)) {
-            $payload = [];
-        }
+        $offer->loadMissing([
+            'items:id,commercial_offer_id,tariff_id,quantity,unit_price,months,discount_percent,partner_percent,total_price',
+            'items.tariff:id,name,is_tariff,is_extra_user,can_increase',
+            'tariff:id,name',
+            'tariff.includedServices:id,can_increase',
+        ]);
 
         return response()->json([
             'offer' => [
                 'id' => $offer->id,
                 'locked' => $offer->locked_at !== null,
-                'payload' => $payload,
+                'payload' => $this->buildOfferPayload($offer),
             ],
         ]);
     }
@@ -404,9 +401,11 @@ class ApplicationController extends Controller
     private function renderCreatePage(string $requestType, ?CommercialOffer $offer = null)
     {
         $normalizedRequestType = $this->normalizeRequestType($requestType);
-        $view = $normalizedRequestType === 'connection_extra_services'
-            ? 'admin.applications.create-connection-extra-services'
-            : 'admin.applications.create';
+        $view = match ($normalizedRequestType) {
+            'connection_extra_services' => 'admin.applications.create-connection-extra-services',
+            'renewal' => 'admin.applications.create-renewal',
+            default => 'admin.applications.create',
+        };
 
         return view($view, [
             'offer' => $offer,
@@ -427,34 +426,25 @@ class ApplicationController extends Controller
 
     private function resolveRequestTypeFromOffer(CommercialOffer $offer): string
     {
-        $snapshot = $offer->snapshot;
-        if (!is_array($snapshot)) {
-            return 'connection';
-        }
-
-        return $this->normalizeRequestType((string) data_get($snapshot, 'request_type', 'connection'));
+        return $this->normalizeRequestType((string) ($offer->request_type ?: 'connection'));
     }
 
     public function getConnectionContext(Organization $organization): JsonResponse
     {
-        $successfulOffers = CommercialOffer::query()
-            ->where('organization_id', $organization->id)
-            ->where(function ($query) {
-                $query->where('status', 'paid')
-                    ->orWhereHas('offerStatuses', function ($statusQuery) {
-                        $statusQuery->where('status', 'paid');
-                    });
-            })
-            ->with('offerStatuses:id,commercial_offer_id,status')
+        $rows = ConnectedClientServices::query()
+            ->where('client_id', $organization->id)
+            ->where('status', true)
+            ->orderByDesc('date')
             ->orderByDesc('id')
-            ->get();
+            ->get([
+                'id',
+                'partner_id',
+                'tariff_id',
+                'commercial_offer_id',
+                'date',
+            ]);
 
-        $connectionOffer = $successfulOffers->first(function (CommercialOffer $offer) {
-            $type = (string) data_get($offer->snapshot, 'request_type', 'connection');
-            return $this->normalizeRequestType($type) === 'connection';
-        });
-
-        if (!$connectionOffer) {
+        if ($rows->isEmpty()) {
             return response()->json([
                 'has_successful_connection' => false,
                 'organization' => [
@@ -469,16 +459,69 @@ class ApplicationController extends Controller
             ]);
         }
 
-        $snapshot = is_array($connectionOffer->snapshot) ? $connectionOffer->snapshot : [];
-        $selectedServices = $this->normalizeSelectedServicesSnapshot(data_get($snapshot, 'selected_services', []));
-        $selectedTariffKey = (string) ($connectionOffer->selected_tariff_key ?: data_get($snapshot, 'selected_tariff_key', ''));
+        $tariffIds = $rows->pluck('tariff_id')
+            ->filter()
+            ->map(fn ($value) => (int) $value)
+            ->unique()
+            ->values()
+            ->all();
 
-        if ($selectedTariffKey === '' && $connectionOffer->tariff_id) {
-            $selectedTariffKey = 'tariff-' . (int) $connectionOffer->tariff_id;
+        $tariffsById = Tariff::query()
+            ->whereIn('id', $tariffIds)
+            ->get(['id', 'name', 'is_tariff', 'is_extra_user', 'can_increase'])
+            ->keyBy('id');
+
+        $connectionRow = $rows->first(function ($row) use ($tariffsById) {
+            $tariff = $tariffsById->get((int) $row->tariff_id);
+            if (!$tariff) {
+                return false;
+            }
+
+            return (bool) $tariff->is_tariff && !(bool) $tariff->is_extra_user;
+        });
+
+        if (!$connectionRow) {
+            return response()->json([
+                'has_successful_connection' => false,
+                'organization' => [
+                    'id' => $organization->id,
+                    'name' => $organization->name,
+                    'order_number' => $organization->order_number,
+                ],
+                'message' => 'У этой организации нет подключения, сначала сделайте подключение.',
+                'connection_create_url' => route('application.create.connection', [
+                    'organization_id' => $organization->id,
+                ]),
+            ]);
         }
 
-        $partnerId = $connectionOffer->partner_id ?: $this->toNullableInt(data_get($snapshot, 'partner_id'));
-        $extraUsers = (int) ($connectionOffer->extra_users ?? data_get($snapshot, 'extra_users', 0));
+        $selectedTariffId = (int) $connectionRow->tariff_id;
+        $quantitiesByOfferTariff = $this->buildConnectedServiceQuantitiesMap($rows);
+        $selectedServices = $this->buildSelectedServicesFromConnectedRows(
+            $selectedTariffId,
+            $rows,
+            $tariffsById->all(),
+            $quantitiesByOfferTariff
+        );
+        $extraUsers = $this->resolveExtraUsersFromConnectedRows(
+            $rows,
+            $tariffsById->all(),
+            $quantitiesByOfferTariff
+        );
+
+        $partnerId = $rows
+            ->pluck('partner_id')
+            ->filter()
+            ->map(fn ($value) => (int) $value)
+            ->first();
+
+        $partnerName = null;
+        if ($partnerId) {
+            $partnerName = User::query()
+                ->where('id', $partnerId)
+                ->whereRaw('LOWER(role) = ?', ['partner'])
+                ->value('name');
+        }
 
         return response()->json([
             'has_successful_connection' => true,
@@ -488,17 +531,280 @@ class ApplicationController extends Controller
                 'order_number' => $organization->order_number,
             ],
             'connection_offer' => [
-                'id' => $connectionOffer->id,
-                'selected_tariff_key' => $selectedTariffKey !== '' ? $selectedTariffKey : null,
-                'partner_id' => $partnerId ? (int) $partnerId : null,
-                'partner_name' => $connectionOffer->partner_name,
-                'extra_users' => max(0, $extraUsers),
+                'id' => $connectionRow->commercial_offer_id ? (int) $connectionRow->commercial_offer_id : null,
+                'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int) $selectedTariffId) : null,
+                'partner_id' => $partnerId ?: null,
+                'partner_name' => $partnerName,
+                'extra_users' => $extraUsers,
                 'selected_services' => $selectedServices,
             ],
         ]);
     }
 
-    private function normalizeSelectedServicesSnapshot($services): array
+    private function buildConnectedServiceQuantitiesMap($rows): array
+    {
+        $offerIds = collect($rows)
+            ->pluck('commercial_offer_id')
+            ->filter()
+            ->map(fn ($value) => (int) $value)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($offerIds)) {
+            return [];
+        }
+
+        $items = CommercialOfferItem::query()
+            ->whereIn('commercial_offer_id', $offerIds)
+            ->get(['commercial_offer_id', 'tariff_id', 'quantity']);
+
+        $map = [];
+        foreach ($items as $item) {
+            $offerId = (int) $item->commercial_offer_id;
+            $tariffId = (int) $item->tariff_id;
+            $key = $offerId . ':' . $tariffId;
+            $map[$key] = ($map[$key] ?? 0.0) + (float) $item->quantity;
+        }
+
+        return $map;
+    }
+
+    private function resolveConnectedRowQuantity($row, array $quantitiesByOfferTariff): int
+    {
+        $offerId = (int) ($row->commercial_offer_id ?? 0);
+        $tariffId = (int) ($row->tariff_id ?? 0);
+
+        if ($offerId > 0 && $tariffId > 0) {
+            $key = $offerId . ':' . $tariffId;
+            if (array_key_exists($key, $quantitiesByOfferTariff)) {
+                return max(0, (int) round((float) $quantitiesByOfferTariff[$key]));
+            }
+        }
+
+        return 1;
+    }
+
+    private function buildSelectedServicesFromConnectedRows(
+        ?int $selectedTariffId,
+        $rows,
+        array $tariffsById,
+        array $quantitiesByOfferTariff
+    ): array {
+        $selectedServices = [];
+        $processedCountableKeys = [];
+
+        if ($selectedTariffId) {
+            $selectedTariff = Tariff::query()
+                ->with('includedServices:id,can_increase')
+                ->find($selectedTariffId);
+
+            if ($selectedTariff) {
+                foreach ($selectedTariff->includedServices as $includedService) {
+                    $serviceKey = 'service-' . (int) $includedService->id;
+                    $includedChannels = max(0, (int) ($includedService->pivot?->quantity ?? 1));
+                    $selectedServices[$serviceKey] = [
+                        'enabled' => true,
+                        'channels' => $includedChannels,
+                    ];
+                }
+            }
+        }
+
+        foreach ($rows as $row) {
+            $tariff = $tariffsById[(int) $row->tariff_id] ?? null;
+            if (!$tariff) {
+                continue;
+            }
+
+            if ((bool) $tariff->is_tariff || (bool) $tariff->is_extra_user) {
+                continue;
+            }
+
+            $serviceKey = 'service-' . (int) $tariff->id;
+            $quantity = $this->resolveConnectedRowQuantity($row, $quantitiesByOfferTariff);
+            if ($quantity <= 0) {
+                $quantity = 1;
+            }
+
+            $hasChannels = (bool) $tariff->can_increase;
+            if ($hasChannels) {
+                $countableKey = $this->buildConnectedCountableKey($row);
+                if (isset($processedCountableKeys[$countableKey])) {
+                    continue;
+                }
+                $processedCountableKeys[$countableKey] = true;
+
+                $currentChannels = (int) data_get($selectedServices, $serviceKey . '.channels', 0);
+                $selectedServices[$serviceKey] = [
+                    'enabled' => true,
+                    'channels' => $currentChannels + $quantity,
+                ];
+                continue;
+            }
+
+            $selectedServices[$serviceKey] = [
+                'enabled' => true,
+                'channels' => 1,
+            ];
+        }
+
+        return $this->normalizeSelectedServices($selectedServices);
+    }
+
+    private function resolveExtraUsersFromConnectedRows($rows, array $tariffsById, array $quantitiesByOfferTariff): int
+    {
+        $extraUsers = 0;
+        $processedCountableKeys = [];
+
+        foreach ($rows as $row) {
+            $tariff = $tariffsById[(int) $row->tariff_id] ?? null;
+            if (!$tariff || !(bool) $tariff->is_extra_user) {
+                continue;
+            }
+
+            $countableKey = $this->buildConnectedCountableKey($row);
+            if (isset($processedCountableKeys[$countableKey])) {
+                continue;
+            }
+            $processedCountableKeys[$countableKey] = true;
+
+            $extraUsers += $this->resolveConnectedRowQuantity($row, $quantitiesByOfferTariff);
+        }
+
+        return max(0, (int) $extraUsers);
+    }
+
+    private function buildConnectedCountableKey($row): string
+    {
+        $offerId = (int) ($row->commercial_offer_id ?? 0);
+        $tariffId = (int) ($row->tariff_id ?? 0);
+        if ($offerId > 0 && $tariffId > 0) {
+            return $offerId . ':' . $tariffId;
+        }
+
+        return 'row:' . (int) ($row->id ?? 0);
+    }
+
+    private function buildOfferPayload(CommercialOffer $offer): array
+    {
+        $requestType = $this->normalizeRequestType((string) ($offer->request_type ?: 'connection'));
+        $selectedTariffId = $offer->tariff_id ?: $this->resolveSelectedTariffIdFromItems($offer);
+
+        return [
+            'offer_id' => $offer->id,
+            'request_type' => $requestType,
+            'organization_id' => $offer->organization_id,
+            'partner_id' => $offer->partner_id,
+            'selected_tariff_id' => $selectedTariffId,
+            'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int) $selectedTariffId) : null,
+            'period_months' => max(1, (int) ($offer->period_months ?: 1)),
+            'extra_users' => max(0, (int) $offer->extra_users),
+            'status_date' => $offer->status_date ? $offer->status_date->toDateString() : null,
+            'pricing_date' => $offer->pricing_date ? $offer->pricing_date->toDateString() : null,
+            'currency' => $this->toCurrencyCode($offer->currency),
+            'payable_currency' => $this->toCurrencyCode($offer->payable_currency ?: $offer->currency),
+            'card_payment_type' => (string) ($offer->card_payment_type ?: ($offer->payable_currency === 'UZS' ? 'alif' : 'octo')),
+            'conversion_rate' => $offer->conversion_rate !== null ? (float) $offer->conversion_rate : null,
+            'manager_name' => (string) ($offer->manager_name ?? ''),
+            'client_name' => (string) ($offer->client_name ?? ''),
+            'client_phone' => (string) ($offer->client_phone ?? ''),
+            'client_email' => (string) ($offer->client_email ?? ''),
+            'partner_name' => (string) ($offer->partner_name ?? ''),
+            'partner_phone' => (string) ($offer->partner_phone ?? ''),
+            'partner_email' => (string) ($offer->partner_email ?? ''),
+            'monthly_total' => (float) $offer->monthly_total,
+            'period_total' => (float) $offer->period_total,
+            'grand_total' => (float) $offer->grand_total,
+            'original_total' => (float) $offer->original_total,
+            'payable_total' => (float) $offer->payable_total,
+            'selected_services' => $this->buildSelectedServicesFromOffer($offer, $selectedTariffId),
+            'items' => $offer->items
+                ->map(fn ($item) => [
+                    'tariff_id' => (int) $item->tariff_id,
+                    'quantity' => (float) $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'months' => (int) $item->months,
+                    'discount_percent' => (float) $item->discount_percent,
+                    'partner_percent' => (float) $item->partner_percent,
+                    'total_price' => (float) $item->total_price,
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function resolveSelectedTariffIdFromItems(CommercialOffer $offer): ?int
+    {
+        foreach ($offer->items as $item) {
+            $tariff = $item->tariff;
+            if (!$tariff) {
+                continue;
+            }
+            if ((bool) $tariff->is_tariff && !(bool) $tariff->is_extra_user) {
+                return (int) $tariff->id;
+            }
+        }
+
+        return null;
+    }
+
+    private function buildSelectedServicesFromOffer(CommercialOffer $offer, ?int $selectedTariffId): array
+    {
+        $selectedServices = [];
+
+        if ($selectedTariffId) {
+            $selectedTariff = Tariff::query()
+                ->with('includedServices:id,can_increase')
+                ->find($selectedTariffId);
+
+            if ($selectedTariff) {
+                foreach ($selectedTariff->includedServices as $includedService) {
+                    $serviceKey = 'service-' . (int) $includedService->id;
+                    $includedChannels = max(0, (int) ($includedService->pivot?->quantity ?? 1));
+                    $selectedServices[$serviceKey] = [
+                        'enabled' => true,
+                        'channels' => $includedChannels,
+                    ];
+                }
+            }
+        }
+
+        foreach ($offer->items as $item) {
+            $tariff = $item->tariff;
+            if (!$tariff) {
+                continue;
+            }
+            if ((bool) $tariff->is_tariff || (bool) $tariff->is_extra_user) {
+                continue;
+            }
+
+            $serviceKey = 'service-' . (int) $tariff->id;
+            $quantity = max(0, (int) round((float) $item->quantity));
+            if ($quantity === 0) {
+                $quantity = 1;
+            }
+
+            $hasChannels = (bool) $tariff->can_increase;
+            if ($hasChannels) {
+                $currentChannels = (int) data_get($selectedServices, $serviceKey . '.channels', 0);
+                $selectedServices[$serviceKey] = [
+                    'enabled' => true,
+                    'channels' => $currentChannels + $quantity,
+                ];
+                continue;
+            }
+
+            $selectedServices[$serviceKey] = [
+                'enabled' => true,
+                'channels' => 1,
+            ];
+        }
+
+        return $this->normalizeSelectedServices($selectedServices);
+    }
+
+    private function normalizeSelectedServices($services): array
     {
         if (!is_array($services)) {
             return [];
@@ -519,6 +825,44 @@ class ApplicationController extends Controller
         }
 
         return $normalized;
+    }
+
+    private function normalizeAllowedPaymentMethods($methods): array
+    {
+        $allowed = ['card', 'invoice', 'cash'];
+        $defaults = ['card', 'invoice'];
+
+        if (is_string($methods)) {
+            $decoded = json_decode($methods, true);
+            if (is_array($decoded)) {
+                $methods = $decoded;
+            }
+        }
+
+        if (!is_array($methods)) {
+            return $defaults;
+        }
+
+        $set = [];
+        foreach ($methods as $method) {
+            $code = strtolower(trim((string) $method));
+            if (in_array($code, $allowed, true)) {
+                $set[$code] = true;
+            }
+        }
+
+        if (empty($set)) {
+            return $defaults;
+        }
+
+        $ordered = [];
+        foreach ($allowed as $method) {
+            if (isset($set[$method])) {
+                $ordered[] = $method;
+            }
+        }
+
+        return $ordered;
     }
 
     private function toNullableInt($value): ?int
@@ -583,6 +927,20 @@ class ApplicationController extends Controller
 
         if (preg_match('/^tariff-(\d+)$/', $raw, $m)) {
             return (int) $m[1];
+        }
+
+        return null;
+    }
+
+    private function extractTariffIdFromAnyKey($key): ?int
+    {
+        $raw = trim((string) $key);
+        if ($raw === '') {
+            return null;
+        }
+
+        if (preg_match('/(?:tariff|service)-(\d+)/', $raw, $matches) === 1) {
+            return (int) $matches[1];
         }
 
         return null;

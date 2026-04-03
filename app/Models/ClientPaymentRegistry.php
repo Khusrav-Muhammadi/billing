@@ -10,7 +10,7 @@ class ClientPaymentRegistry extends Model
     use HasFactory;
 
     protected $fillable = [
-        'offer_date',
+        'date',
         'organization_id',
         'commercial_offer_id',
         'partner_id',
@@ -18,19 +18,20 @@ class ClientPaymentRegistry extends Model
         'account_id',
         'gross_amount',
         'net_amount',
-        'tariff_currency',
+        'tariff_currency_id',
         'tariff_amount',
-        'payment_currency',
+        'payment_currency_id',
         'payment_amount',
         'request_type',
     ];
 
     protected $casts = [
-        'offer_date' => 'date',
+        'date' => 'datetime',
         'gross_amount' => 'decimal:2',
         'net_amount' => 'decimal:2',
         'tariff_amount' => 'decimal:2',
         'payment_amount' => 'decimal:2',
+        'tariff_currency_id' => 'integer',
+        'payment_currency_id' => 'integer',
     ];
 }
-

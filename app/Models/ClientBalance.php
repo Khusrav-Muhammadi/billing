@@ -10,15 +10,16 @@ class ClientBalance extends Model
     use HasFactory;
 
     protected $fillable = [
+        'date',
         'organization_id',
-        'commercial_offer_id',
         'sum',
-        'currency',
+        'currency_id',
         'type',
     ];
 
     protected $casts = [
+        'date' => 'datetime',
         'sum' => 'decimal:2',
+        'currency_id' => 'integer',
     ];
 }
-

@@ -15,17 +15,17 @@ class CommercialOffer extends Model
         'tariff_id',
         'payment_id',
         'created_by',
-        'updated_by',
         'status',
+        'request_type',
         'saved_at',
         'locked_at',
+        'status_date',
         'pricing_date',
         'currency',
         'payable_currency',
         'card_payment_type',
         'period_months',
         'extra_users',
-        'selected_tariff_key',
         'client_name',
         'client_phone',
         'client_email',
@@ -40,19 +40,14 @@ class CommercialOffer extends Model
         'grand_total',
         'payable_total',
         'conversion_rate',
-        'selected_services',
-        'allowed_payment_methods',
-        'snapshot',
         'payment_link',
     ];
 
     protected $casts = [
         'saved_at' => 'datetime',
         'locked_at' => 'datetime',
+        'status_date' => 'date',
         'pricing_date' => 'date',
-        'selected_services' => 'array',
-        'allowed_payment_methods' => 'array',
-        'snapshot' => 'array',
         'original_total' => 'decimal:2',
         'monthly_total' => 'decimal:2',
         'period_total' => 'decimal:2',
@@ -104,10 +99,5 @@ class CommercialOffer extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function updater()
-    {
-        return $this->belongsTo(User::class, 'updated_by');
     }
 }
