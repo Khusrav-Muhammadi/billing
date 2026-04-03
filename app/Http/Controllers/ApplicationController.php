@@ -25,8 +25,8 @@ class ApplicationController extends Controller
     private const REQUEST_TYPES = [
         'connection' => 'Подключение',
         'connection_extra_services' => 'Подключение доп услуг',
-        'renewal' => 'Продление',
-        'renewal_no_changes' => 'Продление без изменений',
+        'renewal' => 'Продление (изменение)',
+        'renewal_no_changes' => 'Продление',
     ];
 
     public function index()
@@ -331,8 +331,7 @@ class ApplicationController extends Controller
         ]);
 
         $offer->update([
-            'status' => $validated['status'],
-            'status_date' => $validated['status_date'],
+            'status' => $validated['status']
         ]);
 
         if ((string) $validated['status'] === 'paid') {

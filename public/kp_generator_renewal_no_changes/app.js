@@ -332,6 +332,7 @@ class CPGenerator {
             this.state.selectedPartnerId = null;
             this.state.partnerName = '';
             this.state.selectedServices = {};
+            this.setRenewalNoChangesControlsEnabled();
             this.updatePayButtonState();
             return;
         }
@@ -361,6 +362,7 @@ class CPGenerator {
             }
         }
 
+        this.setRenewalNoChangesControlsEnabled();
         this.updatePayButtonState();
     }
 
@@ -579,7 +581,6 @@ class CPGenerator {
             '#usersPlusBtn',
             '#extraUsersInput',
             '.period-btn',
-            '#payBtn',
             '.service-toggle input',
             '.channels-control .qty-btn',
             '.channels-control .qty-input',
@@ -909,13 +910,6 @@ class CPGenerator {
     updatePayButtonState() {
         const payBtn = document.getElementById('payBtn');
         if (!payBtn) return;
-
-        if (this.isRenewalNoChangesMode()) {
-            payBtn.style.display = 'none';
-            payBtn.disabled = true;
-            payBtn.title = '';
-            return;
-        }
 
         if (this.state.isLocked) {
             const isEditMode = Boolean(this.state.editOfferId);
@@ -2010,6 +2004,7 @@ class CPGenerator {
                 this.setConnectionCreateControlsEnabled(
                     !this.isConnectionMode() || !this.state.connectionSelectionBlocked
                 );
+                this.setRenewalNoChangesControlsEnabled();
             } else {
                 if (this.isConnectionExtraServicesMode() || this.isRenewalNoChangesMode()) {
                     this.closeCombo(kind);
@@ -2211,6 +2206,9 @@ class CPGenerator {
         if (this.state.isLocked) {
             return;
         }
+        if (this.isRenewalNoChangesMode()) {
+            return;
+        }
         if (this.isConnectionMode() && this.state.connectionSelectionBlocked) {
             return;
         }
@@ -2393,7 +2391,7 @@ class CPGenerator {
     bindServiceEvents() {
         document.querySelectorAll('.service-toggle input').forEach(input => {
             input.addEventListener('change', (e) => {
-                if (this.state.isLocked) {
+                if (this.state.isLocked || this.isRenewalNoChangesMode()) {
                     return;
                 }
                 const serviceKey = e.target.dataset.service;
@@ -2410,7 +2408,7 @@ class CPGenerator {
 
         document.querySelectorAll('.channels-control .qty-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                if (this.state.isLocked) {
+                if (this.state.isLocked || this.isRenewalNoChangesMode()) {
                     return;
                 }
                 const serviceKey = e.target.dataset.service;
@@ -2453,7 +2451,7 @@ class CPGenerator {
 
         document.querySelectorAll('.channels-control .qty-input').forEach(input => {
             input.addEventListener('change', (e) => {
-                if (this.state.isLocked) {
+                if (this.state.isLocked || this.isRenewalNoChangesMode()) {
                     return;
                 }
                 const serviceKey = e.target.dataset.service;
@@ -3103,6 +3101,9 @@ class CPGenerator {
 
         document.querySelectorAll('.period-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                if (this.isRenewalNoChangesMode()) {
+                    return;
+                }
                 const button = e.target.closest('.period-btn');
                 document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
                 button.classList.add('active');
@@ -3113,6 +3114,9 @@ class CPGenerator {
         });
 
         document.getElementById('usersMinusBtn').addEventListener('click', () => {
+            if (this.isRenewalNoChangesMode()) {
+                return;
+            }
             const minValue = this.isRenewalMode() ? this.getSelectedTariffIncludedUsers() : 0;
             const currentValue = this.getDisplayedExtraUsersCount();
             if (currentValue > minValue) {
@@ -3124,6 +3128,9 @@ class CPGenerator {
         });
 
         document.getElementById('usersPlusBtn').addEventListener('click', () => {
+            if (this.isRenewalNoChangesMode()) {
+                return;
+            }
             const currentValue = this.getDisplayedExtraUsersCount();
             this.setExtraUsersFromDisplayedValue(currentValue + 1);
             document.getElementById('extraUsersInput').value = String(this.getDisplayedExtraUsersCount());
@@ -3132,6 +3139,10 @@ class CPGenerator {
         });
 
         document.getElementById('extraUsersInput').addEventListener('change', (e) => {
+            if (this.isRenewalNoChangesMode()) {
+                e.target.value = String(this.getDisplayedExtraUsersCount());
+                return;
+            }
             const minValue = this.isRenewalMode() ? this.getSelectedTariffIncludedUsers() : 0;
             const rawValue = Math.max(minValue, parseInt(e.target.value, 10) || 0);
             this.setExtraUsersFromDisplayedValue(rawValue);
@@ -3141,6 +3152,10 @@ class CPGenerator {
         });
 
         document.getElementById('extraUsersInput').addEventListener('input', (e) => {
+            if (this.isRenewalNoChangesMode()) {
+                e.target.value = String(this.getDisplayedExtraUsersCount());
+                return;
+            }
             const minValue = this.isRenewalMode() ? this.getSelectedTariffIncludedUsers() : 0;
             const rawValue = Math.max(minValue, parseInt(e.target.value, 10) || 0);
             this.setExtraUsersFromDisplayedValue(rawValue);
