@@ -438,6 +438,8 @@ class ApplicationController extends Controller
         $rows = ConnectedClientServices::query()
             ->where('client_id', $organization->id)
             ->where('status', true)
+            ->whereNotNull('date')
+            ->whereDate('date', '<=', now()->toDateString())
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->get([

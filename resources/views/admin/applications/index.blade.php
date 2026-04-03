@@ -31,12 +31,12 @@
                 </li>
                 <li>
                     <a class="dropdown-item" href="{{ route('application.create.renewal') }}">
-                        Продление
+                        Продление (изменение)
                     </a>
                 </li>
                 <li>
                     <a class="dropdown-item" href="{{ route('application.create.renewal-no-changes') }}">
-                        Продление без изменений
+                        Продление
                     </a>
                 </li>
             </ul>

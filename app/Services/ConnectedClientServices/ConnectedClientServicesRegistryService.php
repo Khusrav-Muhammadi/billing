@@ -72,8 +72,13 @@ class ConnectedClientServicesRegistryService
 
     private function shouldDeactivatePreviousForRenewal(CommercialOffer $offer): bool
     {
-        if (!in_array((string) ($offer->request_type ?: ''), ['renewal', 'renewal_no_changes'], true)) {
+        $requestType = (string) ($offer->request_type ?: '');
+        if (!in_array($requestType, ['renewal', 'renewal_no_changes'], true)) {
             return false;
+        }
+
+        if ($requestType === 'renewal_no_changes') {
+            return true;
         }
 
         if (!$offer->status_date) {

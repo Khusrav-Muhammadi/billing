@@ -604,8 +604,8 @@ class CPGenerator {
 
         const operationStartDateInput = document.getElementById('operationStartDate');
         if (operationStartDateInput) {
-            operationStartDateInput.disabled = false;
-            operationStartDateInput.readOnly = false;
+            operationStartDateInput.disabled = true;
+            operationStartDateInput.readOnly = true;
         }
 
         const saveBtn = document.getElementById('saveBtn');
