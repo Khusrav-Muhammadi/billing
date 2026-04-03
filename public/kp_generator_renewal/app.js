@@ -522,8 +522,7 @@ class CPGenerator {
                     element.disabled = !enabled;
                 }
                 if (element.tagName === 'INPUT' && element.id !== 'clientSelect') {
-                    const shouldLockPartner = this.isConnectionExtraServicesMode() && element.id === 'partnerSelect';
-                    element.readOnly = !enabled || shouldLockPartner;
+                    element.readOnly = !enabled;
                 }
             });
         });
@@ -554,13 +553,8 @@ class CPGenerator {
 
         const partnerInput = document.getElementById('partnerSelect');
         if (partnerInput) {
-            if (this.isConnectionExtraServicesMode()) {
-                partnerInput.disabled = true;
-                partnerInput.readOnly = true;
-            } else {
-                partnerInput.disabled = !enabled;
-                partnerInput.readOnly = !enabled;
-            }
+            partnerInput.disabled = !enabled;
+            partnerInput.readOnly = !enabled;
         }
     }
 
@@ -1954,11 +1948,6 @@ class CPGenerator {
                     !this.isConnectionMode() || !this.state.connectionSelectionBlocked
                 );
             } else {
-                if (this.isConnectionExtraServicesMode()) {
-                    this.closeCombo(kind);
-                    return;
-                }
-
                 this.state.selectedPartnerId = item.id;
                 this.state.partnerName = item.name || 'Партнер';
                 // Partner percent affects all prices, so rerender totals/cards.

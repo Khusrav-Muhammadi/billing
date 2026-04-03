@@ -336,6 +336,7 @@ class ApplicationController extends Controller
 
         if ((string) $validated['status'] === 'paid') {
             $freshOffer = $offer->fresh();
+            $this->syncClientPartnerFromPaidOffer($freshOffer);
             $freshStatus = $statusRecord->fresh();
             $requestType = $this->normalizeRequestType((string) ($freshOffer?->request_type ?: 'connection'));
 
@@ -351,6 +352,30 @@ class ApplicationController extends Controller
         return redirect()
             ->route('application.index')
             ->with('success', 'Статус подключения сохранен.');
+    }
+
+    private function syncClientPartnerFromPaidOffer(?CommercialOffer $offer): void
+    {
+        if (!$offer || !$offer->organization_id || !$offer->partner_id) {
+            return;
+        }
+
+        $organization = Organization::query()
+            ->with('client:id,partner_id')
+            ->find((int) $offer->organization_id);
+
+        $client = $organization?->client;
+        if (!$client) {
+            return;
+        }
+
+        $partnerId = (int) $offer->partner_id;
+        if ((int) $client->partner_id === $partnerId) {
+            return;
+        }
+
+        $client->partner_id = $partnerId;
+        $client->save();
     }
 
     public function edit(int $id)
@@ -515,14 +540,13 @@ class ApplicationController extends Controller
             $quantitiesByOfferTariff
         );
 
-        $partnerId = $rows
-            ->pluck('partner_id')
-            ->filter()
-            ->map(fn ($value) => (int) $value)
-            ->first();
+        $partnerId = (int) ($organization->client?->partner_id ?? 0);
+        if ($partnerId <= 0) {
+            $partnerId = null;
+        }
 
         $partnerName = null;
-        if ($partnerId) {
+        if ($partnerId !== null) {
             $partnerName = User::query()
                 ->where('id', $partnerId)
                 ->whereRaw('LOWER(role) = ?', ['partner'])
@@ -539,7 +563,7 @@ class ApplicationController extends Controller
             'connection_offer' => [
                 'id' => $connectionRow->commercial_offer_id ? (int) $connectionRow->commercial_offer_id : null,
                 'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int) $selectedTariffId) : null,
-                'partner_id' => $partnerId ?: null,
+                'partner_id' => $partnerId,
                 'partner_name' => $partnerName,
                 'extra_users' => $extraUsers,
                 'selected_services' => $selectedServices,
