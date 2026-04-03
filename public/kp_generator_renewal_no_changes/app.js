@@ -235,6 +235,31 @@ class CPGenerator {
         return String(this.state.requestType || '').trim() === 'connection';
     }
 
+    getRequestTypeLabel() {
+        const requestType = String(this.state.requestType || '').trim();
+        switch (requestType) {
+            case 'connection':
+                return 'Подключение';
+            case 'connection_extra_services':
+                return 'Подключение доп услуг';
+            case 'renewal':
+                return 'Продление (изменение)';
+            case 'renewal_no_changes':
+                return 'Продление';
+            default:
+                return requestType || '—';
+        }
+    }
+
+    updateOperationTypeUI() {
+        const valueEl = document.getElementById('operationTypeValue');
+        if (!valueEl) {
+            return;
+        }
+
+        valueEl.textContent = this.getRequestTypeLabel();
+    }
+
     shouldIncludeBaseTariffInPricing() {
         return !this.isConnectionExtraServicesMode();
     }
@@ -1063,6 +1088,7 @@ class CPGenerator {
 
         this.applyTariffDefaults();
         this.normalizeSelectedServicesByVisibility();
+        this.updateOperationTypeUI();
         this.renderClientPartnerSelectors();
         this.renderTariffs();
         this.renderServices();
