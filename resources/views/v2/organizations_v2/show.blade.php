@@ -52,7 +52,7 @@
                 <div class="col-md-3 mb-2">
                     <strong>Баланс:</strong>
                     {{ number_format((float) $realBalance, 2, '.', ' ') }}
-                    {{ $organization->client?->currency?->symbol_code ?? '' }}
+                    {{ $organization->client?->country?->currency?->symbol_code ?? '' }}
                 </div>
             </div>
         </div>

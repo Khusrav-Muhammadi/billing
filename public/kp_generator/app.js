@@ -645,16 +645,9 @@ class CPGenerator {
         const currencies = this.config?.currencies || {};
         const byId = this.config?.currenciesById || {};
 
-        const codeFromCountry = (() => {
-            const id = Number(client.country_id);
-            if (id === 1) return 'TJS';
-            if (id === 2) return 'UZS';
-            return 'USD';
-        })();
-
         const codeFromClient = client.currency && currencies[client.currency] ? client.currency : null;
         const codeFromId = client.currency_id && byId[String(client.currency_id)] ? byId[String(client.currency_id)] : null;
-        const code = codeFromCountry || codeFromClient || codeFromId;
+        const code = codeFromClient || codeFromId;
 
         if (code && currencies[code]) {
             this.state.currency = code;
@@ -1371,10 +1364,9 @@ class CPGenerator {
     }
 
     applyPartnerDiscount(amount) {
-        const a = Number(amount) || 0;
-        const pct = this.getPartnerDiscountPercent();
-        if (!pct) return a;
-        return a * (1 - pct / 100);
+        // Partner percent is not a discount for the client.
+        // Client pays full amount; partner share is accounted separately in registries.
+        return Number(amount) || 0;
     }
 
     normalizeCurrencyCode(code) {
@@ -1513,21 +1505,20 @@ class CPGenerator {
         if (this.shouldIncludeBaseTariffInPricing()) {
             const tariffMonthlyBase = this.getTariffMonthlyBase(tariffKey);
             const tariffMonthly = tariffMonthlyBase * periodMultiplier;
-            const lineTotal = this.applyPartnerDiscount(tariffMonthly * this.state.periodMonths);
+            const lineUnitPrice = tariffMonthly;
+            const lineTotal = this.roundMoney(lineUnitPrice * this.state.periodMonths);
             items.push({
                 service_key: selectedTariffId ? `tariff-${selectedTariffId}` : tariffKey,
                 name: `Тариф "${tariff.name}" (${this.state.periodMonths} мес)`,
                 quantity: 1,
-                unit_price: lineTotal,
+                unit_price: lineUnitPrice,
                 price: lineTotal
             });
         }
 
         if (this.state.extraUsers > 0) {
             const quantity = Math.max(1, Number(this.state.extraUsers) || 1);
-            const lineUnitPrice = this.applyPartnerDiscount(
-                this.getExtraUserMonthlyBase(tariffKey) * periodMultiplier * this.state.periodMonths
-            );
+            const lineUnitPrice = this.getExtraUserMonthlyBase(tariffKey) * periodMultiplier;
             const extraUserTariffId = Number(tariff?.extraUserTariffId) || null;
             items.push({
                 service_key: extraUserTariffId
@@ -1536,7 +1527,7 @@ class CPGenerator {
                 name: `Доп. пользователи (×${this.state.extraUsers})`,
                 quantity,
                 unit_price: lineUnitPrice,
-                price: lineUnitPrice * quantity
+                price: this.roundMoney(lineUnitPrice * quantity * this.state.periodMonths)
             });
         }
 
@@ -1576,13 +1567,14 @@ class CPGenerator {
                 name = `${name} (доп. ×${displayChannels})`;
             }
 
-            const lineUnitPrice = this.applyPartnerDiscount(basePrice * periodMultiplier * this.state.periodMonths);
+            const lineUnitPrice = basePrice * periodMultiplier;
+            const lineMonthlyTotal = monthlyPrice * periodMultiplier;
             items.push({
                 service_key: key,
                 name,
                 quantity: Math.max(1, Number(displayChannels) || 1),
                 unit_price: lineUnitPrice,
-                price: this.applyPartnerDiscount(monthlyPrice * periodMultiplier * this.state.periodMonths)
+                price: this.roundMoney(lineMonthlyTotal * this.state.periodMonths)
             });
         });
 
@@ -2795,7 +2787,7 @@ class CPGenerator {
         const totalDiscount = computed.reduce((s, r) => s + r.discountAmount, 0);
         const totalAfterDiscount = computed.reduce((s, r) => s + r.afterDiscount, 0);
         const totalPartnerShare = computed.reduce((s, r) => s + r.partnerShare, 0);
-        const totalToPay = totalAfterDiscount - totalPartnerShare;
+        const totalToPay = totalAfterDiscount;
 
         if (computed.length > 0) {
             let tableHTML = '<div class="payments-table-wrap"><table class="payments-table payments-table-wide">';
@@ -2850,7 +2842,7 @@ class CPGenerator {
 
         const monthlyRaw = rows.reduce((s, r) => s + (Number(r.unitMonthly) || 0) * (Number(r.qty) || 0), 0);
         const monthlyAfterDiscount = monthlyRaw * periodMultiplier;
-        const monthlyToPay = this.applyPartnerDiscount(monthlyAfterDiscount);
+        const monthlyToPay = monthlyAfterDiscount;
 
         // Build period details string
         const periodDetailsEl = document.getElementById('periodDetails');
@@ -3774,8 +3766,8 @@ class CPGenerator {
         });
 
         const monthlyAfterDiscount = monthlyRaw * periodMultiplier;
-        const monthlyToPay = this.applyPartnerDiscount(monthlyAfterDiscount);
-        const periodToPay = monthlyToPay * months;
+        const monthlyToPay = monthlyAfterDiscount;
+        const periodToPay = monthlyAfterDiscount * months;
 
         return {
             monthly: monthlyToPay,

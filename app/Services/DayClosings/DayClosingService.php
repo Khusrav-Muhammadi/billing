@@ -60,9 +60,9 @@ class DayClosingService
                 ->where('is_active', true)
                 ->with([
                     'organizations:id,client_id,name',
-                    'currency:id,name,symbol_code',
+                    'country:id,currency_id',
                 ])
-                ->select(['id', 'name', 'currency_id'])
+                ->select(['id', 'name', 'country_id'])
                 ->orderBy('id')
                 ->get();
 
@@ -83,12 +83,9 @@ class DayClosingService
                         continue;
                     }
 
-                    $currencyId = (int) ($client->currency_id ?? 0);
-                    if ($currencyId <= 0) {
-                        $currencyId = (int) ($services->first()->payable_currency_id
-                            ?: $services->first()->offer_currency_id
-                            ?: 0);
-                    }
+                    $currencyId = (int) ($services->first()->offer_currency_id
+                        ?: $services->first()->payable_currency_id
+                        ?: ($client->country?->currency_id ?? 0));
 
                     $services = $this->filterServicesByCurrency($services, $currencyId);
                     if ($services->isEmpty()) {
@@ -241,7 +238,7 @@ class DayClosingService
 
         $filtered = $services
             ->filter(function (ConnectedClientServices $service) use ($currencyId): bool {
-                $serviceCurrencyId = (int) ($service->payable_currency_id ?: $service->offer_currency_id ?: 0);
+                $serviceCurrencyId = (int) ($service->offer_currency_id ?: $service->payable_currency_id ?: 0);
 
                 return $serviceCurrencyId === 0 || $serviceCurrencyId === $currencyId;
             })

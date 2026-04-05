@@ -21,7 +21,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 {
     private function getTariffMonthlyPriceFromPriceList(Client $client, Carbon $asOf): float
     {
-        $currencyId = (int) ($client->currency_id ?? 0);
+        $currencyId = (int) ($client->country?->currency_id ?? 0);
         if ($currencyId <= 0) return 0.0;
 
         // Client::tariff_id points to TariffCurrency in some flows, so prefer the base tariff id from tariffPrice.
@@ -96,7 +96,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     private function organizationsQuery(array $clientIds, array $data): Builder
     {
         $query = Organization::query()
-            ->with(['client.tariffPrice.tariff', 'client.partner', 'client.currency'])
+            ->with(['client.tariffPrice.tariff', 'client.partner', 'client.country.currency'])
             ->whereIn('client_id', $clientIds);
 
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
@@ -149,9 +149,14 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                 $sum = $monthlyTariffPrice / $daysInMonth;
 
                 if (!$client->is_demo) {
-                    $currency = $client->currency;
+                    $client->loadMissing(['country.currency.latestExchangeRate', 'tariff', 'tariffPrice', 'sale']);
+                    $currencyCode = (string) ($client->country?->currency?->symbol_code ?: 'USD');
+                    $exchangeRate = (float) ($client->country?->currency?->latestExchangeRate?->kurs ?? 1);
+                    if ($exchangeRate <= 0) {
+                        $exchangeRate = 1;
+                    }
 
-                    $accountedAmount = $currency->symbol_code == 'USD' ? $sum / $currency->latestExchangeRate->kurs : $sum;
+                    $accountedAmount = $currencyCode === 'USD' ? $sum : $sum / $exchangeRate;
 
                     Transaction::create([
                         'client_id' => $client->id,
@@ -165,9 +170,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                     ]);
                     $sum = $monthlyTariffPrice;
 
-                    $currency = $client->currency;
-
-                    $accountedAmount = $currency->symbol_code == 'USD' ? $sum / $currency->latestExchangeRate->kurs : $sum;
+                    $accountedAmount = $currencyCode === 'USD' ? $sum : $sum / $exchangeRate;
 
                     Transaction::create([
                         'client_id' => $client->id,

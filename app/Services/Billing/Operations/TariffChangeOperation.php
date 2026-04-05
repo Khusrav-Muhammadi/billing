@@ -46,7 +46,7 @@ class TariffChangeOperation extends BaseBillingOperation
             'subdomain' => $this->client->sub_domain,
             'license_difference' => $this->organization->implementation_sum, //$this->newTariff->license_price > $this->organization->sum_paid_for_license? ($this->newTariff->license_price - $this->organization->sum_paid_for_license) : 0,
             'tariff_price' => $this->newTariff->tariff_price,
-            'currency_id' => $this->client->currency_id,
+            'currency_id' => $this->client->country?->currency_id,
             'months' => $this->operationData["months"],
             'organization_balance' => $this->organization->balance
         ];
@@ -99,7 +99,7 @@ class TariffChangeOperation extends BaseBillingOperation
     {
         $isUSD = $this->getCurrency() === 'USD';
         if(!$isUSD) {
-            $exchangeRate = $this->client->currency->latestExchangeRate?->kurs ?? 1;
+            $exchangeRate = $this->client->country?->currency?->latestExchangeRate?->kurs ?? 1;
         }
 
         Transaction::create([

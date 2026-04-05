@@ -3,6 +3,7 @@
 namespace App\Services\Payment;
 
 use App\Exceptions\PaymentException;
+use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceStatus;
@@ -249,7 +250,7 @@ class OctoBankProvider implements PaymentProviderInterface
                 'email' => $dto->metadata['email']
             ],
             'total_sum' => $totalSumString,
-            'currency' => $dto->metadata['currency_id'] == 1 ? 'USD' : 'UZS',
+            'currency' => $this->resolveOctoCurrencyCode($dto->metadata['currency_id'] ?? null),
             'description' => $this->getPaymentDescription($dto->operationType, $dto->metadata),
             'basket' => $basket,
             'return_url' => $this->generateReturnUrl($dto),
@@ -291,6 +292,20 @@ class OctoBankProvider implements PaymentProviderInterface
         }
 
         return $responseData['data'] ?? $responseData;
+    }
+
+    private function resolveOctoCurrencyCode($currencyId): string
+    {
+        $id = is_numeric($currencyId) ? (int) $currencyId : null;
+        if (!$id) {
+            return 'USD';
+        }
+
+        $code = (string) (Currency::query()->where('id', $id)->value('symbol_code') ?: 'USD');
+        $code = strtoupper(trim($code));
+
+        // OctoBank is typically configured for USD/UZS; keep a safe fallback.
+        return $code === 'USD' ? 'USD' : 'UZS';
     }
 
     private function generateShopTransactionId(int $invoiceId): string

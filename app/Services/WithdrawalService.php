@@ -24,9 +24,14 @@ class WithdrawalService
             $organization->balance -= $sum;
             $organization->save();
 
-            $currency = $client->currency;
+            $client->loadMissing(['country.currency.latestExchangeRate', 'tariffPrice', 'sale']);
+            $currencyCode = (string) ($client->country?->currency?->symbol_code ?: 'USD');
+            $exchangeRate = (float) ($client->country?->currency?->latestExchangeRate?->kurs ?? 1);
+            if ($exchangeRate <= 0) {
+                $exchangeRate = 1;
+            }
 
-            $accountedAmount = $currency->symbol_code == 'USD' ? $sum : $sum / $currency->latestExchangeRate->kurs;
+            $accountedAmount = $currencyCode === 'USD' ? $sum : $sum / $exchangeRate;
 
             Transaction::create([
                 'client_id' => $client->id,

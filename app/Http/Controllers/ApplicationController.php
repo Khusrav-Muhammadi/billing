@@ -230,21 +230,20 @@ class ApplicationController extends Controller
                 }
 
                 $quantity = max(1, (float) data_get($row, 'quantity', 1));
+                $months = max(1, (int) data_get($row, 'months', data_get($payload, 'period_months', 1)));
                 $totalPrice = $this->toDecimal(data_get($row, 'total_price', data_get($row, 'price', 0)));
                 if ($totalPrice <= 0) {
                     continue;
                 }
 
                 $unitPrice = $this->toDecimal(data_get($row, 'unit_price'));
-                if ($unitPrice <= 0) {
-                    $unitPrice = $quantity > 0 ? $this->toDecimal($totalPrice / $quantity) : $totalPrice;
-                }
+                $unitPrice = $this->normalizeMonthlyUnitPrice($unitPrice, $totalPrice, $quantity, $months);
 
                 $offer->items()->create([
                     'tariff_id' => (int) $itemTariff->id,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
-                    'months' => max(1, (int) data_get($row, 'months', data_get($payload, 'period_months', 1))),
+                    'months' => $months,
                     'discount_percent' => $this->toDecimal(data_get($row, 'discount_percent', 0)),
                     'partner_percent' => $this->toDecimal(data_get($row, 'partner_percent', 0)),
                     'total_price' => $totalPrice,
@@ -268,6 +267,38 @@ class ApplicationController extends Controller
         return redirect()
             ->route('application.show', $offer)
             ->with('success', 'КП успешно сохранено.');
+    }
+
+
+    private function normalizeMonthlyUnitPrice(float $unitPrice, float $totalPrice, float $quantity, int $months): float
+    {
+        $qty = max(1.0, (float) $quantity);
+        $m = max(1, (int) $months);
+
+        $periodPerUnit = $qty > 0 ? ($totalPrice / $qty) : $totalPrice;
+        $monthlyPerUnitFromTotal = $m > 0 ? ($periodPerUnit / $m) : $periodPerUnit;
+
+        $provided = (float) $unitPrice;
+        if ($provided <= 0) {
+            return $this->toDecimal($monthlyPerUnitFromTotal);
+        }
+
+        // If UI sends 'unit_price' already multiplied by period months (common in KP generator),
+        // then total_price ~= unit_price * quantity and we should divide it by months.
+        $ratio = ($provided * $qty) > 0 ? ($totalPrice / ($provided * $qty)) : null;
+        if ($m > 1 && $ratio !== null) {
+            // ratio ~ 1 => unit_price is period price per unit.
+            if (abs($ratio - 1.0) <= 0.05) {
+                return $this->toDecimal($provided / $m);
+            }
+
+            // ratio ~ months => unit_price is monthly already.
+            if (abs($ratio - (float) $m) <= max(0.1, 0.05 * $m)) {
+                return $this->toDecimal($provided);
+            }
+        }
+
+        return $this->toDecimal($monthlyPerUnitFromTotal);
     }
 
     public function storeCommercialOfferClient(Request $request): RedirectResponse

@@ -67,8 +67,9 @@ class OrganizationV2Controller extends Controller
     public function show(Organization $organization)
     {
         $organization->load([
-            'client:id,name,email,phone,sub_domain,last_activity,is_active,currency_id,partner_id,tariff_id',
-            'client.currency:id,name,symbol_code',
+            'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,country_id',
+            'client.country:id,name,currency_id',
+            'client.country.currency:id,name,symbol_code',
             'client.partner:id,name',
             'client.tariffPrice:id,tariff_id',
             'client.tariffPrice.tariff:id,name,user_count',
@@ -157,7 +158,7 @@ class OrganizationV2Controller extends Controller
 
         foreach ($organizations as $organization) {
             $rows = $balanceByOrganization->get((int) $organization->id, collect());
-            $targetCurrencyId = (int) ($organization->client?->currency_id ?? 0);
+            $targetCurrencyId = (int) ($organization->client?->country?->currency_id ?? 0);
 
             if ($targetCurrencyId > 0) {
                 $sameCurrencyRows = $rows->where('currency_id', $targetCurrencyId)->values();
@@ -175,7 +176,7 @@ class OrganizationV2Controller extends Controller
 
     private function calculateRealBalance(Organization $organization, Collection $operations): float
     {
-        $targetCurrencyId = (int) ($organization->client?->currency_id ?? 0);
+        $targetCurrencyId = (int) ($organization->client?->country?->currency_id ?? 0);
 
         $rows = $operations;
         if ($targetCurrencyId > 0) {

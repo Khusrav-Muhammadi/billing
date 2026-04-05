@@ -73,7 +73,7 @@ class ConnectedClientServiceController extends Controller
 
         $organizations = Organization::query()
             ->select('id', 'name', 'phone', 'client_id', 'order_number')
-            ->with(['client.currency'])
+            ->with(['client.country.currency'])
             ->orderBy('name')
             ->get();
         $operationStartDates = $this->getOrganizationOperationStartDates($organizations->pluck('id')->all());
@@ -135,7 +135,7 @@ class ConnectedClientServiceController extends Controller
 
         $organizations = Organization::query()
             ->select('id', 'name', 'phone', 'client_id', 'order_number')
-            ->with(['client.currency'])
+            ->with(['client.country.currency'])
             ->orderBy('name')
             ->get();
         $operationStartDates = $this->getOrganizationOperationStartDates($organizations->pluck('id')->all());
@@ -164,8 +164,8 @@ class ConnectedClientServiceController extends Controller
                 'order_number'=> $o->order_number,
                 'operation_start_date' => $operationStartDates[(int) $o->id] ?? null,
                 'country_id'  => $o->client?->country_id,
-                'currency_id' => $o->client?->currency_id,
-                'currency'    => $o->client?->currency?->symbol_code,
+                'currency_id' => $o->client?->country?->currency_id,
+                'currency'    => $o->client?->country?->currency?->symbol_code,
             ]),
             'partners'      => $partners->map(fn($p) => [
                 'id'    => $p->id,
@@ -184,7 +184,7 @@ class ConnectedClientServiceController extends Controller
 
         $organizations = Organization::query()
             ->select('id', 'name', 'phone', 'client_id', 'order_number')
-            ->with(['client.currency'])
+            ->with(['client.country.currency'])
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%' . $search . '%';
                 $query->where(function ($q) use ($like) {
@@ -207,8 +207,8 @@ class ConnectedClientServiceController extends Controller
                 'order_number'=> $o->order_number,
                 'operation_start_date' => $operationStartDates[(int) $o->id] ?? null,
                 'country_id'  => $o->client?->country_id,
-                'currency_id' => $o->client?->currency_id,
-                'currency'    => $o->client?->currency?->symbol_code,
+                'currency_id' => $o->client?->country?->currency_id,
+                'currency'    => $o->client?->country?->currency?->symbol_code,
             ]),
         ]);
     }

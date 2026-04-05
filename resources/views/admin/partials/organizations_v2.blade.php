@@ -33,7 +33,7 @@
             <td>{{ $organization->client?->tariffPrice?->tariff?->user_count ?? '-' }}</td>
             <td>
                 {{ number_format((float) ($organization->real_balance ?? 0), 2, '.', ' ') }}
-                {{ $organization->client?->currency?->symbol_code ?? '' }}
+                {{ $organization->client?->country?->currency?->symbol_code ?? '' }}
             </td>
             <td>{{ $organization->client?->validate_date }}</td>
             <td>{{ $organization->client?->last_activity }}</td>

@@ -362,11 +362,6 @@ class SiteApplicationController extends Controller
             default => 4,
         };
 
-        $currency_id = match ($countryId) {
-            2 => 2,
-            default => 1,
-        };
-
         $clientData = [
             'name' => $data['fio'],
             'phone' => $data['phone'],
@@ -375,7 +370,6 @@ class SiteApplicationController extends Controller
             'is_demo' => true,
             'tariff_id' => $tariffId,
             'sub_domain' => $this->generateSubdomain($data['email']),
-            'currency_id' => $currency_id,
             'manager_id' => $data['manager_id'] ?? null,
             'partner_id' => $data['partner_id'] ?? null,
         ];

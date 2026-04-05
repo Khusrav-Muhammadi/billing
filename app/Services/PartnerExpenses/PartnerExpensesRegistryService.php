@@ -38,13 +38,15 @@ class PartnerExpensesRegistryService
                 }
 
                 $currencyId = CurrencyResolver::idFromCode((string) $offer->currency);
-                $discountedAmount = $this->resolveDiscountedAmount($item);
-                if ($discountedAmount <= 0) {
+                $grossAmount = $this->resolveDiscountedAmount($item);
+                if ($grossAmount <= 0) {
                     continue;
                 }
 
-                $originalAmount = $this->calculateOriginalAmount($discountedAmount, $partnerPercent);
-                $partnerAmount = round(max(0, $originalAmount - $discountedAmount), 2);
+                // Partner percent is a commission share, not a discount for the client.
+                // `total_price` already contains the amount paid by the client (after period discount, if any).
+                $originalAmount = round($grossAmount, 2);
+                $partnerAmount = round(max(0, $originalAmount * ($partnerPercent / 100)), 2);
                 if ($partnerAmount <= 0) {
                     continue;
                 }

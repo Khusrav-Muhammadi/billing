@@ -43,15 +43,32 @@ class ConnectedClientServicesRegistryService
             foreach ($offer->items as $item) {
 
                 $quantity = max(1, (float) $item->quantity);
-                $unitPrice = (float) $item->unit_price;
-                if ($unitPrice <= 0) {
-                    $unitPrice = $quantity > 0
-                        ? ((float) $item->total_price / $quantity)
-                        : (float) $item->total_price;
+                $months = max(1, (int) ($item->months ?? 1));
+
+                $periodTotal = round((float) $item->total_price, 2);
+                if ($periodTotal <= 0) {
+                    continue;
                 }
 
-                $serviceTotalAmount = round($quantity * $unitPrice, 2);
-                $payableAmount = $item->total_price / $item->quantity;
+                // Store monthly totals in registry to support day-closing daily accrual.
+                $monthlyTotal = round($periodTotal / $months, 2);
+                $monthlyUnitPrice = $quantity > 0 ? round($monthlyTotal / $quantity, 2) : 0.0;
+
+                $offerCurrencyCode = (string) ($offer->currency ?: ($offer->payable_currency ?: 'USD'));
+                $payableCurrencyCode = (string) ($offer->payable_currency ?: $offerCurrencyCode);
+
+                $offerCurrencyId = CurrencyResolver::idFromCode($offerCurrencyCode);
+                $payableCurrencyId = CurrencyResolver::idFromCode($payableCurrencyCode);
+
+                // `payable_amount` stores monthly total in payable currency (for reporting/controls),
+                // not per-unit price.
+                $payableAmount = $monthlyTotal;
+                if ($payableCurrencyCode !== $offerCurrencyCode) {
+                    $rate = (float) ($offer->conversion_rate ?? 0);
+                    if ($rate > 0) {
+                        $payableAmount = round($payableAmount / $rate, 2);
+                    }
+                }
 
                 ConnectedClientServices::query()->create([
                     'client_id' => $offer->organization_id,
@@ -59,11 +76,11 @@ class ConnectedClientServicesRegistryService
                     'tariff_id' => $item->tariff_id ?: $offer->tariff_id,
                     'commercial_offer_id' => (int) $offer->id,
                     'account_id' => $status->account_id,
-                    'service_total_amount' => $serviceTotalAmount,
+                    'service_total_amount' => $monthlyTotal,
                     'status' => true,
                     'date' => $offer->status_date,
-                    'offer_currency_id' => CurrencyResolver::idFromCode((string) $offer->currency),
-                    'payable_currency_id' => CurrencyResolver::idFromCode((string) ($offer->payable_currency ?: $offer->currency)),
+                    'offer_currency_id' => $offerCurrencyId,
+                    'payable_currency_id' => $payableCurrencyId,
                     'payable_amount' => $payableAmount,
                 ]);
             }

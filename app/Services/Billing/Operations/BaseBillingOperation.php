@@ -17,6 +17,6 @@ abstract class BaseBillingOperation
 
     public function getCurrency(): string
     {
-        return $this->client->currency->symbol_code;
+        return (string) ($this->client->country?->currency?->symbol_code ?: 'USD');
     }
 }

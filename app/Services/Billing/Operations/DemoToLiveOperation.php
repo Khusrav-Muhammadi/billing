@@ -51,7 +51,7 @@ class DemoToLiveOperation extends BaseBillingOperation
             'subdomain' => $this->client->sub_domain,
             'license_price' => $this->organization->implementation_sum,
             'tariff_price' => $this->newTariff->tariff_price,
-            'currency_id' => $this->client->currency_id,
+            'currency_id' => $this->client->country?->currency_id,
             'months' => $this->operationData["months"],
         ];
     }
@@ -91,7 +91,7 @@ class DemoToLiveOperation extends BaseBillingOperation
     {
         $isUSD = $this->getCurrency() === 'USD';
         if (!$isUSD) {
-            $exchangeRate = $this->client->currency->latestExchangeRate?->kurs ?? 1;
+            $exchangeRate = $this->client->country?->currency?->latestExchangeRate?->kurs ?? 1;
         }
 
         Transaction::create([

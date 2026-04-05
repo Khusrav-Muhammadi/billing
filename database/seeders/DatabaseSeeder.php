@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
+            GeoSeeder::class,
             TariffSeeder::class,
             PartnerStatusSeeder::class,
             PackSeeder::class,

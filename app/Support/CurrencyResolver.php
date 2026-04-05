@@ -18,6 +18,11 @@ class CurrencyResolver
             return null;
         }
 
+        // Legacy aliases.
+        if ($normalized === 'UZB') {
+            $normalized = 'UZS';
+        }
+
         if (array_key_exists($normalized, self::$idByCode)) {
             return self::$idByCode[$normalized];
         }
@@ -31,4 +36,3 @@ class CurrencyResolver
         return self::$idByCode[$normalized];
     }
 }
-

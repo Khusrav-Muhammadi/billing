@@ -126,23 +126,27 @@ class PaymentRepository implements PaymentRepositoryInterface
         $organization = Organization::findOrFail($invoice->organization_id);
         $organization->increment('balance', $price);
 
-        $client = Client::with(['currency.latestExchangeRate', 'tariff', 'tariffPrice', 'sale'])
+        $client = Client::with(['country.currency.latestExchangeRate', 'tariff', 'tariffPrice', 'sale'])
             ->where('phone', $invoice->phone)
             ->firstOrFail();
 
-        $currency = $client->currency;
-        $exchangeRate = $currency->latestExchangeRate?->kurs ?? 1;
+        $currency = $client->country?->currency;
+        $currencyCode = (string) ($currency?->symbol_code ?: 'USD');
+        $exchangeRate = (float) ($currency?->latestExchangeRate?->kurs ?? 1);
+        if ($exchangeRate <= 0) {
+            $exchangeRate = 1;
+        }
 
-        $amounts = $this->calculateAmounts($client, $price, $currency, $exchangeRate);
+        $amounts = $this->calculateAmounts($client, $price, $currencyCode, $exchangeRate);
 
         $this->createTransaction($client, $organization, $price, $amounts['accounted_amount']);
 
         $this->processDemoClient($client, $organization, $amounts);
     }
 
-    private function calculateAmounts(Client $client, float $price, $currency, float $exchangeRate): array
+    private function calculateAmounts(Client $client, float $price, string $currencyCode, float $exchangeRate): array
     {
-        $isUSD = $currency->symbol_code != 'USD';
+        $isNonUSD = $currencyCode !== 'USD';
 
         $licenseSum = $client->tariffPrice->license_price ?? 0;
 
@@ -152,9 +156,9 @@ class PaymentRepository implements PaymentRepositoryInterface
         return [
             'license_sum' => $licenseSum,
             'tariff_sum' => $tariffSum,
-            'accounted_amount' => $isUSD ? $price / $exchangeRate : $price,
-            'license_accounted' => $isUSD ? $licenseSum / $exchangeRate : $licenseSum,
-            'tariff_accounted' => $isUSD ? $tariffSum / $exchangeRate : $tariffSum,
+            'accounted_amount' => $isNonUSD ? $price / $exchangeRate : $price,
+            'license_accounted' => $isNonUSD ? $licenseSum / $exchangeRate : $licenseSum,
+            'tariff_accounted' => $isNonUSD ? $tariffSum / $exchangeRate : $tariffSum,
         ];
     }
 

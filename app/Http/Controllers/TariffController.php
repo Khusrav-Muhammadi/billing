@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Tariff;
 use App\Models\TariffCurrency;
+use App\Support\CurrencyResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -236,20 +237,29 @@ class TariffController extends Controller
 
         $parts = explode('.', $host);
         $subdomain = count($parts) > 2 ? $parts[0] : null;
-        $client = Client::query()->where('sub_domain', $subdomain)->first();
+        $client = Client::query()
+            ->with('country:id,currency_id')
+            ->where('sub_domain', $subdomain)
+            ->first();
 
-        $tariffs = TariffCurrency::query()->where('currency_id', $client->currency_id)->with('tariff')->get();
+        $currencyId = (int) ($client?->country?->currency_id ?? 0);
+        $tariffs = TariffCurrency::query()
+            ->when($currencyId > 0, fn ($q) => $q->where('currency_id', $currencyId))
+            ->with('tariff')
+            ->get();
 
         return response()->json($tariffs);
     }
 
     public function tariff(Request $request)
     {
-        if ($request->code == 998) {
-            $tariff = TariffCurrency::query()->where('currency_id', 2)->with('tariff')->get();
-        } else {
-            $tariff = TariffCurrency::query()->where('currency_id', 1)->with('tariff')->get();
-        }
+        $currencyCode = ((int) $request->code === 998) ? 'UZS' : 'TJS';
+        $currencyId = CurrencyResolver::idFromCode($currencyCode);
+
+        $tariff = TariffCurrency::query()
+            ->when($currencyId > 0, fn ($q) => $q->where('currency_id', $currencyId))
+            ->with('tariff')
+            ->get();
 
         return response()->json($tariff);
 

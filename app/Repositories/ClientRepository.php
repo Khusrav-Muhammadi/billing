@@ -151,7 +151,16 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function update(Client $client, array $data)
     {
-        $tariff_id = $client->country_id == 2 ? TariffCurrency::query()->where('tariff_id', $data['tariff_id'])->where('currency_id', $client->currency_id)->first()->id : $data['tariff_id'];
+        $currencyId = (int) ($client->country?->currency_id ?? 0);
+        $tariffCurrency = null;
+        if ((int) $client->country_id === 2 && $currencyId > 0) {
+            $tariffCurrency = TariffCurrency::query()
+                ->where('tariff_id', $data['tariff_id'])
+                ->where('currency_id', $currencyId)
+                ->first();
+        }
+
+        $tariff_id = $tariffCurrency?->id ?: $data['tariff_id'];
 
         if ($client->tariff_id != $tariff_id) UpdateTariffJob::dispatch($client, $tariff_id, $client->sub_domain);
 
@@ -223,7 +232,7 @@ class ClientRepository implements ClientRepositoryInterface
     {
         $query = Client::query()
             ->where('nfr', false)
-            ->with(['tariffPrice.tariff', 'country', 'partner'])->filter($data);
+            ->with(['tariffPrice.tariff', 'country.currency', 'partner'])->filter($data);
 
         if (auth()->user()->role == 'partner') {
             $query->where('partner_id', auth()->id());
@@ -253,14 +262,15 @@ class ClientRepository implements ClientRepositoryInterface
                 $balance += $organization->balance;
             }
 
-            $currency = $client->currency;
+            $currency = $client->country?->currency;
 
             $client->balance = $balance;
 
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;
             $client->validate_date = $this->calculateValidateDate($client);
 
-            $client->balance = "$balance $currency?->symbol_code";
+            $currencyCode = $currency?->symbol_code ?? '';
+            $client->balance = trim("$balance $currencyCode");
 
             return $client;
         });
@@ -318,8 +328,15 @@ class ClientRepository implements ClientRepositoryInterface
         $client = Client::where('sub_domain', $data['sub_domain'])->first();
 
         $organization = Organization::find($data['organization_id']);
-        $newTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('id', $data['tariff_id'])->first();
-        $lastTariff = TariffCurrency::query()->where('currency_id', $client->currency_id)->where('id', $client->tariff_id)->first();
+        $currencyId = (int) ($client?->country?->currency_id ?? 0);
+        $newTariff = TariffCurrency::query()
+            ->when($currencyId > 0, fn ($q) => $q->where('currency_id', $currencyId))
+            ->where('id', $data['tariff_id'])
+            ->first();
+        $lastTariff = TariffCurrency::query()
+            ->when($currencyId > 0, fn ($q) => $q->where('currency_id', $currencyId))
+            ->where('id', $client->tariff_id)
+            ->first();
 
 //        $licenseDifference = $newTariff->license_price > $lastTariff->license_price ? ($newTariff->license_price - $lastTariff->license_price) : 0;
         $tariffPrice = $newTariff->tariff_price;
@@ -365,7 +382,7 @@ class ClientRepository implements ClientRepositoryInterface
 //            'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
             'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay, 2)) : 0,
-            'currency' => $client->currency,
+            'currency' => $client->country?->currency,
             'implementation' => $implementation
         ];
     }
