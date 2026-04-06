@@ -741,6 +741,12 @@ class CPGenerator {
             return;
         }
 
+        const requestType = String(this.state.requestType || '').trim();
+        if (requestType === 'renewal_no_changes') {
+            this.setOperationStartDate(this.getTodayYmd());
+            return;
+        }
+
         const raw = String(client?.operation_start_date || '').trim();
         if (!raw) {
             return;

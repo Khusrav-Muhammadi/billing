@@ -101,6 +101,11 @@
 
         <div class="card p-3">
             <h4 class="card-title mb-3">Транзакции</h4>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 12px;">
+                <button type="button" class="btn btn-sm btn-outline-secondary active" data-transaction-filter="all" aria-pressed="true">Все</button>
+                <button type="button" class="btn btn-sm btn-outline-success" data-transaction-filter="income" aria-pressed="false">Пополнения</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-transaction-filter="outcome" aria-pressed="false">Списания</button>
+            </div>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
@@ -114,7 +119,7 @@
                     </thead>
                     <tbody>
                     @forelse($balanceOperations as $operation)
-                        <tr>
+                        <tr data-transaction-type="{{ $operation->type }}">
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ optional($operation->date)->format('d.m.Y H:i') ?: optional($operation->created_at)->format('d.m.Y H:i') }}</td>
                             <td>
@@ -139,4 +144,43 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('script')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const buttons = Array.from(document.querySelectorAll('[data-transaction-filter]'));
+            const rows = Array.from(document.querySelectorAll('tr[data-transaction-type]'));
+            if (!buttons.length || !rows.length) return;
+
+            const setActiveButton = (activeBtn) => {
+                buttons.forEach((btn) => {
+                    const isActive = btn === activeBtn;
+                    btn.classList.toggle('active', isActive);
+                    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                });
+            };
+
+            const applyFilter = (filter) => {
+                const normalized = String(filter || 'all');
+                rows.forEach((row) => {
+                    const type = String(row.getAttribute('data-transaction-type') || '');
+                    const shouldShow = normalized === 'all' || type === normalized;
+                    row.style.display = shouldShow ? '' : 'none';
+                });
+            };
+
+            buttons.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const filter = btn.getAttribute('data-transaction-filter') || 'all';
+                    setActiveButton(btn);
+                    applyFilter(filter);
+                });
+            });
+
+            const active = buttons.find((b) => b.classList.contains('active')) || buttons[0];
+            setActiveButton(active);
+            applyFilter(active.getAttribute('data-transaction-filter') || 'all');
+        });
+    </script>
 @endsection

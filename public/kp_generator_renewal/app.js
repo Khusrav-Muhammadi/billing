@@ -687,6 +687,11 @@ class CPGenerator {
             return;
         }
 
+        if (this.isRenewalMode()) {
+            this.setOperationStartDate(this.getTodayYmd());
+            return;
+        }
+
         const raw = String(client?.operation_start_date || '').trim();
         if (!raw) {
             return;
