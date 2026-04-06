@@ -126,7 +126,7 @@
                                     {{ $operation->type }}
                                 @endif
                             </td>
-                            <td>{{ number_format((float) $operation->sum, 2, '.', ' ') }}</td>
+                            <td>{{ number_format((float) $operation->sum, 4, '.', ' ') }}</td>
                             <td>{{ $operation->currency?->symbol_code ?? $operation->currency?->name ?? '-' }}</td>
                         </tr>
                     @empty

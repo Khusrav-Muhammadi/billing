@@ -1432,7 +1432,7 @@ class CPGenerator {
 
     formatUsdAmount(amount) {
         const val = Number(amount) || 0;
-        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return `$${formatted}`;
     }
 
@@ -1516,7 +1516,7 @@ class CPGenerator {
             return `${originalFormatted} (нет курса к USD)`;
         }
 
-        return `${originalFormatted} (${this.formatUsdAmount(meta.payableAmount)})`;
+        return `${originalFormatted} / ${this.formatUsdAmount(meta.payableAmount)}`;
     }
 
     getPaymentTypeForCard() {
@@ -2240,7 +2240,7 @@ class CPGenerator {
                 includedUsersLabel.innerHTML = `В тариф включено: <strong id="includedUsers">${tariff.users}</strong> пользователей`;
             }
             document.getElementById('extraUserPrice').textContent =
-                this.formatPrice(this.getExtraUserPriceByKey(this.state.selectedTariff));
+                this.formatServicePrice(this.getExtraUserPriceByKey(this.state.selectedTariff));
             const extraUsersInput = document.getElementById('extraUsersInput');
             if (extraUsersInput) {
                 extraUsersInput.value = String(this.getDisplayedExtraUsersCount());
@@ -2276,7 +2276,7 @@ class CPGenerator {
 
         document.getElementById('includedUsers').textContent = tariff.users;
         document.getElementById('extraUserPrice').textContent =
-            this.formatPrice(this.getExtraUserPriceByKey(tariffKey));
+            this.formatServicePrice(this.getExtraUserPriceByKey(tariffKey));
         document.getElementById('extraUsersInput').value = String(this.getDisplayedExtraUsersCount());
 
         // Clear all selected services first (reset to disabled and reset channels)
@@ -2395,7 +2395,7 @@ class CPGenerator {
                     <div class="service-info">
                         <h3>${service.name}${isIncluded ? ' <span style="font-size: 0.75rem; color: #666;">(включено)</span>' : ''}</h3>
                         <div class="service-price" style="margin-top: 6px; font-size: 0.9rem; color: #111;">
-                            ${isIncluded && !service.hasChannels ? 'Включено' : `${this.formatPrice(unitPrice)}${service.hasChannels ? ' /канал/мес' : ' /мес'}`}
+                            ${isIncluded && !service.hasChannels ? 'Включено' : `${this.formatServicePrice(unitPrice)}${service.hasChannels ? ' /канал/мес' : ' /мес'}`}
                         </div>
                         <p>${service.description}</p>
                         ${includedChannelsInfo}
@@ -2628,7 +2628,7 @@ class CPGenerator {
         const implHint = document.getElementById('implementationHint');
         if (implHint) {
             if (suggestedPrice > 0) {
-                implHint.textContent = `${this.formatPrice(suggestedPrice)} (скидка до 50 процентов)`;
+                implHint.textContent = `${this.formatServicePrice(suggestedPrice)} (скидка до 50 процентов)`;
             } else {
                 implHint.textContent = '';
             }
@@ -2888,13 +2888,13 @@ class CPGenerator {
                     <tr>
                         <td>${r.name}</td>
                         <td>${r.qty}</td>
-                        <td>${this.formatPrice(r.unitMonthly)}</td>
+                        <td>${r.kind === 'tariff' ? this.formatPrice(r.unitMonthly) : this.formatServicePrice(r.unitMonthly)}</td>
                         <td>${r.months}</td>
-                        <td>${this.formatPrice(r.sum)}</td>
-                        <td>${this.formatPrice(r.discountAmount)} (${r.discountPercent}%)</td>
-                        <td>${this.formatPrice(r.afterDiscount)}</td>
+                        <td>${this.formatTotalPrice(r.sum)}</td>
+                        <td>${this.formatTotalPrice(r.discountAmount)} (${r.discountPercent}%)</td>
+                        <td>${this.formatTotalPrice(r.afterDiscount)}</td>
                         <td>${r.partnerPercent}%</td>
-                        <td>${this.formatPrice(r.partnerShare)}</td>
+                        <td>${this.formatTotalPrice(r.partnerShare)}</td>
                     </tr>
                 `;
             });
@@ -2909,11 +2909,11 @@ class CPGenerator {
                     <td></td>
                     <td></td>
                     <td></td>
-                    <td style="font-weight:700; color:#111;">${this.formatPrice(totalSum)}</td>
-                    <td style="font-weight:700; color:#111;">${this.formatPrice(totalDiscount)}</td>
-                    <td style="font-weight:700; color:#111;">${this.formatPrice(totalAfterDiscount)}</td>
+                    <td style="font-weight:700; color:#111;">${this.formatTotalPrice(totalSum)}</td>
+                    <td style="font-weight:700; color:#111;">${this.formatTotalPrice(totalDiscount)}</td>
+                    <td style="font-weight:700; color:#111;">${this.formatTotalPrice(totalAfterDiscount)}</td>
                     <td style="font-weight:700; color:#111;">${partnerTotalLabel}</td>
-                    <td style="font-weight:700; color:#111;">${this.formatPrice(totalPartnerShare)}</td>
+                    <td style="font-weight:700; color:#111;">${this.formatTotalPrice(totalPartnerShare)}</td>
                 </tr>
             `;
 
@@ -3030,9 +3030,17 @@ class CPGenerator {
     }
 
     formatPrice(amount) {
+        return this.formatCurrencyAmount(amount, 2);
+    }
+
+    formatServicePrice(amount) {
+        return this.formatCurrencyAmount(amount, 0);
+    }
+
+    formatTotalPrice(amount) {
         const currency = this.getCurrentCurrency();
         const val = Number(amount) || 0;
-        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         if (this.state.currency === 'USD') {
             return `$${formatted}`;
@@ -3041,11 +3049,11 @@ class CPGenerator {
         return `${formatted} ${currency.symbol}`;
     }
 
-    formatTotalPrice(amount) {
-        // Итоговую сумму показываем с точностью 4 знака после запятой
+    formatCurrencyAmount(amount, fractionDigits) {
         const currency = this.getCurrentCurrency();
         const val = Number(amount) || 0;
-        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+        const digits = Math.max(0, Math.floor(Number(fractionDigits) || 0));
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
         if (this.state.currency === 'USD') {
             return `$${formatted}`;
@@ -3445,7 +3453,7 @@ class CPGenerator {
                         <div class="summary-row">Пользователей в тарифе: <strong>${tariff.users}</strong></div>
                         <div class="summary-row">Стоимость тарифа: <strong>${this.formatPrice(tariffPrice)}/мес</strong></div>
                         ${this.state.extraUsers > 0 ? `
-                            <div class="summary-row">Доп. пользователи: <strong>${this.state.extraUsers} × ${this.formatPrice(this.getExtraUserPriceByKey(this.state.selectedTariff))} = ${this.formatPrice(this.getExtraUserPriceByKey(this.state.selectedTariff) * this.state.extraUsers)}/мес</strong></div>
+                            <div class="summary-row">Доп. пользователи: <strong>${this.state.extraUsers} × ${this.formatServicePrice(this.getExtraUserPriceByKey(this.state.selectedTariff))} = ${this.formatServicePrice(this.getExtraUserPriceByKey(this.state.selectedTariff) * this.state.extraUsers)}/мес</strong></div>
                         ` : ''}
                     </div>
 
@@ -3464,7 +3472,7 @@ class CPGenerator {
                                         ${pkg.description ? `<div class="feature-subtitle">${pkg.description}</div>` : ''}
                                     </div>
                                     <div class="table-cell" style="text-align: right; font-weight: 600;">
-                                        ${this.formatPrice(pkg.price)}
+                                        ${this.formatServicePrice(pkg.price)}
                                     </div>
                                 </div>
                             `).join('')}
@@ -3486,7 +3494,7 @@ class CPGenerator {
                                         ${payment.description ? `<div class="feature-subtitle">${payment.description}</div>` : ''}
                                     </div>
                                     <div class="table-cell" style="text-align: right; font-weight: 600;">
-                                        ${this.formatPrice(payment.price)}
+                                        ${this.formatServicePrice(payment.price)}
                                     </div>
                                 </div>
                             `).join('')}
@@ -3544,7 +3552,7 @@ class CPGenerator {
                         ${oneTimePayments.length > 0 ? oneTimePayments.map(payment => `
                             <div class="table-row">
                                 <div class="table-cell">${payment.name}</div>
-                                <div class="table-cell">${this.formatPrice(payment.price)}</div>
+                                <div class="table-cell">${this.formatServicePrice(payment.price)}</div>
                             </div>
                         `).join('') : ''}
 
