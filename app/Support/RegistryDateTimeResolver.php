@@ -10,8 +10,8 @@ class RegistryDateTimeResolver
 {
     public static function resolve(CommercialOffer $offer, CommercialOfferStatus $status): Carbon
     {
-        $baseDate = $status->status_date
-            ?: $offer->status_date
+        $baseDate = $offer->status_date
+            ?: $status->status_date
             ?: now();
 
         $timeSource = $status->created_at ?: now();
