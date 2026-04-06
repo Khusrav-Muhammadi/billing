@@ -20,7 +20,7 @@ class ClientBalance extends Model
 
     protected $casts = [
         'date' => 'datetime',
-        'sum' => 'decimal:2',
+        'sum' => 'decimal:4',
         'currency_id' => 'integer',
     ];
 

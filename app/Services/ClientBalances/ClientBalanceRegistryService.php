@@ -6,6 +6,7 @@ use App\Models\ClientBalance;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Support\CurrencyResolver;
+use App\Support\RegistryDateTimeResolver;
 use Illuminate\Support\Facades\DB;
 
 class ClientBalanceRegistryService
@@ -22,13 +23,13 @@ class ClientBalanceRegistryService
         }
 
         $offer->loadMissing(['items']);
-        $grossAmount = $this->calculateGrossAmount($offer);
+        $incomeAmount = $this->calculateGrossAmount($offer);
 
-        DB::transaction(function () use ($offer, $grossAmount) {
+        DB::transaction(function () use ($offer, $incomeAmount, $status) {
             ClientBalance::query()->create([
-                'date' => $offer->status_date,
+                'date' => RegistryDateTimeResolver::resolve($offer, $status),
                 'organization_id' => (int) $offer->organization_id,
-                'sum' => $grossAmount,
+                'sum' => $incomeAmount,
                 'currency_id' => CurrencyResolver::idFromCode((string) $offer->currency),
                 'type' => 'income',
             ]);
@@ -46,19 +47,15 @@ class ClientBalanceRegistryService
             }
 
             $discountPercent = round(max(0, (float) $item->discount_percent), 4);
-            $partnerPercent = round(max(0, (float) $item->partner_percent), 4);
-
-            $grossLine = $netSourceAmount;
-            $grossLine = $this->reversePercent($grossLine, $partnerPercent);
-            $grossLine = $this->reversePercent($grossLine, $discountPercent);
+            $grossLine = $this->reversePercent($netSourceAmount, $discountPercent);
             $gross += $grossLine;
         }
 
         if ($gross <= 0) {
-            return round((float) $offer->grand_total, 2);
+            return round((float) $offer->grand_total, 4);
         }
 
-        return round($gross, 2);
+        return round($gross, 4);
     }
 
     private function reversePercent(float $amount, float $percent): float
@@ -74,6 +71,4 @@ class ClientBalanceRegistryService
 
         return $amount / $factor;
     }
-
-
 }

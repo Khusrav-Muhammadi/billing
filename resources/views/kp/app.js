@@ -749,27 +749,26 @@ class CPGenerator {
     formatPrice(amount) {
         const currency = this.config.currencies[this.state.currency];
         if (!currency) return amount;
+        const val = Number(amount) || 0;
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
         if (this.state.currency === 'USD') {
-            return `$${amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            return `$${formatted}`;
         }
 
-        const formatted = amount.toLocaleString('ru-RU', {
-            minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-            maximumFractionDigits: 2
-        });
         return `${formatted} ${currency.symbol}`;
     }
 
     formatTotalPrice(amount) {
         const currency = this.config.currencies[this.state.currency];
         if (!currency) return amount;
-        const rounded = Math.round(amount);
+        const val = Number(amount) || 0;
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
         if (this.state.currency === 'USD') {
-            return `$${rounded.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            return `$${formatted}`;
         }
-        return `${rounded.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${currency.symbol}`;
+        return `${formatted} ${currency.symbol}`;
     }
 
     getCurrencyDisplayName() {
@@ -780,7 +779,7 @@ class CPGenerator {
     formatNumberInput(value) {
         if (!value && value !== 0) return '';
         const num = parseFloat(value.toString().replace(/\s/g, '').replace(/,/g, '.')) || 0;
-        return num.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2, useGrouping: true });
+        return num.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 4, useGrouping: true });
     }
 
     parseNumberInput(value) {

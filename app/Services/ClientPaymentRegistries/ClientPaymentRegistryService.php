@@ -6,6 +6,7 @@ use App\Models\ClientPaymentRegistry;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Support\CurrencyResolver;
+use App\Support\RegistryDateTimeResolver;
 use Illuminate\Support\Facades\DB;
 
 class ClientPaymentRegistryService
@@ -23,10 +24,11 @@ class ClientPaymentRegistryService
 
         $offer->loadMissing(['items']);
 
-        $grossAmount = $this->calculateGrossAmount($offer);
-        $netAmount = round((float) $offer->grand_total, 2);
+        $grossAmount = round((float) $offer->grand_total, 4);
+        $partnerAmount = $this->calculatePartnerExpenseAmount($offer);
+        $netAmount = round(max(0, $grossAmount - $partnerAmount), 4);
         $tariffAmount = $netAmount;
-        $paymentAmount = round((float) $offer->payable_total, 2);
+        $paymentAmount = round((float) $offer->payable_total, 4);
 
         DB::transaction(function () use (
             $offer,
@@ -42,7 +44,7 @@ class ClientPaymentRegistryService
                 ->delete();
 
             ClientPaymentRegistry::query()->create([
-                'date' => $offer->status_date,
+                'date' => RegistryDateTimeResolver::resolve($offer, $status),
                 'organization_id' => (int) $offer->organization_id,
                 'commercial_offer_id' => (int) $offer->id,
                 'partner_id' => $offer->partner_id ? (int) $offer->partner_id : null,
@@ -61,42 +63,28 @@ class ClientPaymentRegistryService
 
     private function calculateGrossAmount(CommercialOffer $offer): float
     {
-        $gross = 0.0;
+        return round((float) $offer->grand_total, 4);
+    }
+
+    private function calculatePartnerExpenseAmount(CommercialOffer $offer): float
+    {
+        $sum = 0.0;
 
         foreach ($offer->items as $item) {
-            $netSourceAmount = round((float) $item->total_price, 6);
-            if ($netSourceAmount <= 0) {
+            $lineAmount = round((float) $item->total_price, 6);
+            if ($lineAmount <= 0) {
                 continue;
             }
 
-            $discountPercent = round(max(0, (float) $item->discount_percent), 4);
             $partnerPercent = round(max(0, (float) $item->partner_percent), 4);
+            if ($partnerPercent <= 0) {
+                continue;
+            }
 
-            $grossLine = $netSourceAmount;
-            $grossLine = $this->reversePercent($grossLine, $partnerPercent);
-            $grossLine = $this->reversePercent($grossLine, $discountPercent);
-            $gross += $grossLine;
+            $sum += $lineAmount * ($partnerPercent / 100);
         }
 
-        if ($gross <= 0) {
-            return round((float) $offer->grand_total, 2);
-        }
-
-        return round($gross, 2);
-    }
-
-    private function reversePercent(float $amount, float $percent): float
-    {
-        if ($percent <= 0 || $percent >= 100) {
-            return $amount;
-        }
-
-        $factor = 1 - ($percent / 100);
-        if ($factor <= 0) {
-            return $amount;
-        }
-
-        return $amount / $factor;
+        return round($sum, 4);
     }
 
 

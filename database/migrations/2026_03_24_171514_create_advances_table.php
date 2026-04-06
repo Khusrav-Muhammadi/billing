@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('date');
             $table->unsignedInteger('organization_id');
             $table->unsignedInteger('currency_id')->nullable();
-            $table->decimal('sum');
+            $table->decimal('sum', 20, 4)->default(0);
             $table->string('type');
             $table->timestamps();
         });

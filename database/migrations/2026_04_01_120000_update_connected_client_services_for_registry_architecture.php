@@ -37,7 +37,7 @@ return new class extends Migration
 
             DB::statement("
                 ALTER TABLE `connected_client_services`
-                    CHANGE COLUMN `sum` `service_total_amount` DECIMAL(20,2) NOT NULL DEFAULT 0,
+                    CHANGE COLUMN `sum` `service_total_amount` DECIMAL(20,4) NOT NULL DEFAULT 0,
                     CHANGE COLUMN `status` `status` TINYINT(1) NOT NULL DEFAULT 1,
                     CHANGE COLUMN `date` `offer_date` DATE NULL,
                     ADD COLUMN `partner_id` BIGINT UNSIGNED NULL AFTER `client_id`,
@@ -46,7 +46,7 @@ return new class extends Migration
                     ADD COLUMN `account_id` BIGINT UNSIGNED NULL AFTER `commercial_offer_item_id`,
                     ADD COLUMN `offer_currency` VARCHAR(10) NULL AFTER `account_id`,
                     ADD COLUMN `payable_currency` VARCHAR(10) NULL AFTER `offer_currency`,
-                    ADD COLUMN `payable_amount` DECIMAL(20,2) NOT NULL DEFAULT 0 AFTER `payable_currency`
+                    ADD COLUMN `payable_amount` DECIMAL(20,4) NOT NULL DEFAULT 0 AFTER `payable_currency`
             ");
 
             return;
@@ -66,7 +66,7 @@ return new class extends Migration
                 $table->unsignedBigInteger('account_id')->nullable();
             }
             if (!Schema::hasColumn('connected_client_services', 'service_total_amount')) {
-                $table->decimal('service_total_amount', 20, 2)->default(0);
+                $table->decimal('service_total_amount', 20, 4)->default(0);
             }
             if (!Schema::hasColumn('connected_client_services', 'offer_date')) {
                 $table->date('offer_date')->nullable();
@@ -78,7 +78,7 @@ return new class extends Migration
                 $table->string('payable_currency', 10)->nullable();
             }
             if (!Schema::hasColumn('connected_client_services', 'payable_amount')) {
-                $table->decimal('payable_amount', 20, 2)->default(0);
+                $table->decimal('payable_amount', 20, 4)->default(0);
             }
         });
 
@@ -106,7 +106,7 @@ return new class extends Migration
                     DROP COLUMN `offer_currency`,
                     DROP COLUMN `payable_currency`,
                     DROP COLUMN `payable_amount`,
-                    CHANGE COLUMN `service_total_amount` `sum` DECIMAL(20,2) NOT NULL DEFAULT 0,
+                    CHANGE COLUMN `service_total_amount` `sum` DECIMAL(20,4) NOT NULL DEFAULT 0,
                     CHANGE COLUMN `status` `status` VARCHAR(255) NOT NULL DEFAULT '1',
                     CHANGE COLUMN `offer_date` `date` VARCHAR(255) NULL
             ");

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('organizations', function (Blueprint $table) {
             $table->boolean('has_implementation')->default(false);
-            $table->decimal('implementation_sum')->default(0);
+            $table->decimal('implementation_sum', 20, 4)->default(0);
         });
     }
 

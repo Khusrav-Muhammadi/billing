@@ -17,12 +17,12 @@ return new class extends Migration
             $table->string('payment_method', 32)->nullable()->index();
             $table->unsignedBigInteger('account_id')->nullable()->index();
 
-            $table->decimal('gross_amount', 20, 2)->default(0);
-            $table->decimal('net_amount', 20, 2)->default(0);
+            $table->decimal('gross_amount', 20, 4)->default(0);
+            $table->decimal('net_amount', 20, 4)->default(0);
             $table->string('tariff_currency', 10)->nullable();
-            $table->decimal('tariff_amount', 20, 2)->default(0);
+            $table->decimal('tariff_amount', 20, 4)->default(0);
             $table->string('payment_currency', 10)->nullable();
-            $table->decimal('payment_amount', 20, 2)->default(0);
+            $table->decimal('payment_amount', 20, 4)->default(0);
             $table->string('request_type', 64)->nullable()->index();
 
             $table->timestamps();
@@ -36,4 +36,3 @@ return new class extends Migration
         Schema::dropIfExists('client_payment_registries');
     }
 };
-

@@ -11,6 +11,13 @@ class Price extends Model
 
     protected $fillable = ['tariff_id', 'organization_id', 'start_date', 'date', 'sum', 'currency_id', 'kind'];
 
+    protected $casts = [
+        'sum' => 'decimal:4',
+        'currency_id' => 'integer',
+        'tariff_id' => 'integer',
+        'organization_id' => 'integer',
+    ];
+
     public function tariff()
     {
         return $this->belongsTo(Tariff::class);

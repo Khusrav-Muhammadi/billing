@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedInteger('partner_id');
             $table->string('date');
             $table->morphs('service');
-            $table->decimal('sum');
+            $table->decimal('sum', 20, 4)->default(0);
             $table->timestamps();
         });
     }

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedInteger('client_id');
             $table->unsignedInteger('tariff_id');
             $table->unsignedInteger('sale_id');
-            $table->decimal('sum',20,2);
+            $table->decimal('sum', 20, 4);
             $table->string('type');
             $table->timestamps();
         });

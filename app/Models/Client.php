@@ -31,7 +31,8 @@ class Client extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_demo' => 'boolean',
-        'last_activity' => 'datetime'
+        'last_activity' => 'datetime',
+        'balance' => 'decimal:4',
     ];
 
     public function tariff()

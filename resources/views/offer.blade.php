@@ -626,7 +626,7 @@
                                 (× {{ $service['quantity'] }})
                             @endif
                         </td>
-                        <td>{{ $currency }}{{ number_format($service['monthly_price'] * ($service['quantity'] ?? 1), 2, ',', ' ') }}</td>
+                        <td>{{ $currency }}{{ number_format((float) ($service['monthly_price'] * ($service['quantity'] ?? 1)), 4, ',', ' ') }}</td>
                     </tr>
                 @endforeach
                 </tbody>
@@ -649,7 +649,7 @@
                 @foreach($one_time_payments as $payment)
                     <tr>
                         <td>{{ $payment['name'] }}</td>
-                        <td>{{ $currency }}{{ number_format($payment['price'], 2, ',', ' ') }}</td>
+                        <td>{{ $currency }}{{ number_format((float) $payment['price'], 4, ',', ' ') }}</td>
                     </tr>
                 @endforeach
                 </tbody>

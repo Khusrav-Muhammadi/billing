@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('payment_items', function (Blueprint $table) {
             $table->id();
             $table->string('service_name');
-            $table->decimal('price',20,2);
+            $table->decimal('price', 20, 4);
             $table->unsignedInteger('payment_id');
             $table->timestamps();
         });

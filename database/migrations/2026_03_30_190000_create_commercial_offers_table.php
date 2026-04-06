@@ -43,11 +43,11 @@ return new class extends Migration
             $table->string('payer_type', 20)->default('client');
             $table->string('manager_name')->nullable();
 
-            $table->decimal('original_total', 20, 2)->default(0);
-            $table->decimal('monthly_total', 20, 2)->default(0);
-            $table->decimal('period_total', 20, 2)->default(0);
-            $table->decimal('grand_total', 20, 2)->default(0);
-            $table->decimal('payable_total', 20, 2)->default(0);
+            $table->decimal('original_total', 20, 4)->default(0);
+            $table->decimal('monthly_total', 20, 4)->default(0);
+            $table->decimal('period_total', 20, 4)->default(0);
+            $table->decimal('grand_total', 20, 4)->default(0);
+            $table->decimal('payable_total', 20, 4)->default(0);
             $table->decimal('conversion_rate', 20, 6)->nullable();
 
             $table->json('selected_services')->nullable();
@@ -67,4 +67,3 @@ return new class extends Migration
         Schema::dropIfExists('commercial_offers');
     }
 };
-

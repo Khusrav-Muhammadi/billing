@@ -6,6 +6,7 @@ use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Models\ConnectedClientServices;
 use App\Support\CurrencyResolver;
+use App\Support\RegistryDateTimeResolver;
 use Illuminate\Support\Facades\DB;
 
 class ConnectedClientServicesRegistryService
@@ -45,14 +46,15 @@ class ConnectedClientServicesRegistryService
                 $quantity = max(1, (float) $item->quantity);
                 $months = max(1, (int) ($item->months ?? 1));
 
-                $periodTotal = round((float) $item->total_price, 2);
-                if ($periodTotal <= 0) {
+                $periodNetTotal = round((float) $item->total_price, 4);
+                if ($periodNetTotal <= 0) {
                     continue;
                 }
 
-                // Store monthly totals in registry to support day-closing daily accrual.
-                $monthlyTotal = round($periodTotal / $months, 2);
-                $monthlyUnitPrice = $quantity > 0 ? round($monthlyTotal / $quantity, 2) : 0.0;
+                // Store monthly list totals (before period discounts) in registry to support day-closing daily accrual.
+                $discountPercent = round(max(0, (float) $item->discount_percent), 4);
+                $periodGrossTotal = round($this->reversePercent($periodNetTotal, $discountPercent), 4);
+                $monthlyTotal = round($periodGrossTotal / $months, 4);
 
                 $offerCurrencyCode = (string) ($offer->currency ?: ($offer->payable_currency ?: 'USD'));
                 $payableCurrencyCode = (string) ($offer->payable_currency ?: $offerCurrencyCode);
@@ -66,7 +68,7 @@ class ConnectedClientServicesRegistryService
                 if ($payableCurrencyCode !== $offerCurrencyCode) {
                     $rate = (float) ($offer->conversion_rate ?? 0);
                     if ($rate > 0) {
-                        $payableAmount = round($payableAmount / $rate, 2);
+                        $payableAmount = round($payableAmount / $rate, 4);
                     }
                 }
 
@@ -78,7 +80,7 @@ class ConnectedClientServicesRegistryService
                     'account_id' => $status->account_id,
                     'service_total_amount' => $monthlyTotal,
                     'status' => true,
-                    'date' => $offer->status_date,
+                    'date' => RegistryDateTimeResolver::resolve($offer, $status),
                     'offer_currency_id' => $offerCurrencyId,
                     'payable_currency_id' => $payableCurrencyId,
                     'payable_amount' => $payableAmount,
@@ -103,5 +105,19 @@ class ConnectedClientServicesRegistryService
         }
 
         return $offer->status_date->toDateString() === now()->toDateString();
+    }
+
+    private function reversePercent(float $amount, float $percent): float
+    {
+        if ($percent <= 0 || $percent >= 100) {
+            return $amount;
+        }
+
+        $factor = 1 - ($percent / 100);
+        if ($factor <= 0) {
+            return $amount;
+        }
+
+        return $amount / $factor;
     }
 }

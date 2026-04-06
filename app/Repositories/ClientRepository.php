@@ -376,12 +376,12 @@ class ClientRepository implements ClientRepositoryInterface
 //            'sale_license_price' => round($saleLicensePrice, 2),
             'tariff_price' => $tariffPrice,
             'tariff_price_by_month' => $tariffPriceByMonth,
-            'sale_tariff_price' => round($saleTariffPrice, 2),
+            'sale_tariff_price' => round($saleTariffPrice, 4),
             'must_pay' => false, //$difference < 0,
 //            'upgrade' => $organization->sum_paid_for_license,
 //            'license_for_pay' => $licenseForPay,
             'tariff_for_pay' => $tariffForPay,
-            'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay, 2)) : 0,
+            'sum_for_pay' => $sumForPay < 0 ? abs(round($sumForPay, 4)) : 0,
             'currency' => $client->country?->currency,
             'implementation' => $implementation
         ];

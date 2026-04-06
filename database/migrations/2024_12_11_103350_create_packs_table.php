@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('type');
             $table->unsignedInteger('amount');
             $table->unsignedInteger('tariff_id');
-            $table->decimal('price');
+            $table->decimal('price', 20, 4)->default(0);
             $table->timestamps();
         });
     }

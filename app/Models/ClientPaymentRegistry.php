@@ -27,10 +27,10 @@ class ClientPaymentRegistry extends Model
 
     protected $casts = [
         'date' => 'datetime',
-        'gross_amount' => 'decimal:2',
-        'net_amount' => 'decimal:2',
-        'tariff_amount' => 'decimal:2',
-        'payment_amount' => 'decimal:2',
+        'gross_amount' => 'decimal:4',
+        'net_amount' => 'decimal:4',
+        'tariff_amount' => 'decimal:4',
+        'payment_amount' => 'decimal:4',
         'tariff_currency_id' => 'integer',
         'payment_currency_id' => 'integer',
     ];

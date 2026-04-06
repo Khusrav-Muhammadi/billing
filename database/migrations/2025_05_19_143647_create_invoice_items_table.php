@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('marking_code')->nullable();
             $table->string('spic');
             $table->integer('amount');
-            $table->decimal('price', 20,2);
+            $table->decimal('price', 20, 4);
             $table->integer('discount')->nullable();
             $table->integer('vat_percent')->nullable();
             $table->timestamps();

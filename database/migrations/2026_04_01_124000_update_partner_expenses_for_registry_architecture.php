@@ -29,12 +29,12 @@ return new class extends Migration
             DB::statement("
                 ALTER TABLE `partner_expenses`
                     CHANGE COLUMN `date` `offer_date` DATE NULL,
-                    CHANGE COLUMN `sum` `partner_amount` DECIMAL(20,2) NOT NULL DEFAULT 0,
+                    CHANGE COLUMN `sum` `partner_amount` DECIMAL(20,4) NOT NULL DEFAULT 0,
                     ADD COLUMN `client_id` BIGINT UNSIGNED NULL AFTER `partner_id`,
                     ADD COLUMN `service_key` VARCHAR(255) NULL AFTER `service_id`,
                     ADD COLUMN `commercial_offer_id` BIGINT UNSIGNED NULL AFTER `service_key`,
                     ADD COLUMN `commercial_offer_item_id` BIGINT UNSIGNED NULL AFTER `commercial_offer_id`,
-                    ADD COLUMN `original_amount` DECIMAL(20,2) NOT NULL DEFAULT 0 AFTER `partner_amount`,
+                    ADD COLUMN `original_amount` DECIMAL(20,4) NOT NULL DEFAULT 0 AFTER `partner_amount`,
                     ADD COLUMN `partner_percent` DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER `original_amount`,
                     ADD COLUMN `currency_code` VARCHAR(10) NULL AFTER `partner_percent`,
                     ADD COLUMN `request_type` VARCHAR(64) NULL AFTER `currency_code`
@@ -48,7 +48,7 @@ return new class extends Migration
                 $table->date('offer_date')->nullable();
             }
             if (!Schema::hasColumn('partner_expenses', 'partner_amount')) {
-                $table->decimal('partner_amount', 20, 2)->default(0);
+                $table->decimal('partner_amount', 20, 4)->default(0);
             }
             if (!Schema::hasColumn('partner_expenses', 'client_id')) {
                 $table->unsignedBigInteger('client_id')->nullable();
@@ -63,7 +63,7 @@ return new class extends Migration
                 $table->unsignedBigInteger('commercial_offer_item_id')->nullable();
             }
             if (!Schema::hasColumn('partner_expenses', 'original_amount')) {
-                $table->decimal('original_amount', 20, 2)->default(0);
+                $table->decimal('original_amount', 20, 4)->default(0);
             }
             if (!Schema::hasColumn('partner_expenses', 'partner_percent')) {
                 $table->decimal('partner_percent', 5, 2)->default(0);
@@ -102,7 +102,7 @@ return new class extends Migration
                     DROP COLUMN `currency_code`,
                     DROP COLUMN `request_type`,
                     CHANGE COLUMN `offer_date` `date` VARCHAR(255) NULL,
-                    CHANGE COLUMN `partner_amount` `sum` DECIMAL(20,2) NOT NULL DEFAULT 0
+                    CHANGE COLUMN `partner_amount` `sum` DECIMAL(20,4) NOT NULL DEFAULT 0
             ");
 
             return;
@@ -128,4 +128,3 @@ return new class extends Migration
         });
     }
 };
-

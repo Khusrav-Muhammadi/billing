@@ -6,6 +6,7 @@ use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Models\DiscountExpense;
 use App\Support\CurrencyResolver;
+use App\Support\RegistryDateTimeResolver;
 use Illuminate\Support\Facades\DB;
 
 class DiscountExpensesRegistryService
@@ -38,7 +39,7 @@ class DiscountExpensesRegistryService
                 }
 
                 $originalAmount = $this->calculateOriginalAmount($discountedAmount, $discountPercent);
-                $discountAmount = round(max(0, $originalAmount - $discountedAmount), 2);
+                $discountAmount = round(max(0, $originalAmount - $discountedAmount), 4);
                 if ($discountAmount <= 0) {
                     continue;
                 }
@@ -49,7 +50,7 @@ class DiscountExpensesRegistryService
                 }
 
                 $attributes = [
-                    'date' => $offer->status_date,
+                    'date' => RegistryDateTimeResolver::resolve($offer, $status),
                     'client_id' => (int) $offer->organization_id,
                     'partner_id' => $offer->partner_id ? (int) $offer->partner_id : null,
                     'tariff_id' => $resolvedTariffId,
@@ -67,21 +68,21 @@ class DiscountExpensesRegistryService
     private function resolveDiscountedAmount($item): float
     {
         $itemTotal = (float) $item->total_price;
-        return $itemTotal > 0 ? round($itemTotal, 2) : 0.0;
+        return $itemTotal > 0 ? round($itemTotal, 4) : 0.0;
     }
 
     private function calculateOriginalAmount(float $discountedAmount, float $discountPercent): float
     {
         if ($discountPercent <= 0 || $discountPercent >= 100) {
-            return round($discountedAmount, 2);
+            return round($discountedAmount, 4);
         }
 
         $coefficient = 1 - ($discountPercent / 100);
         if ($coefficient <= 0) {
-            return round($discountedAmount, 2);
+            return round($discountedAmount, 4);
         }
 
-        return round($discountedAmount / $coefficient, 2);
+        return round($discountedAmount / $coefficient, 4);
     }
 
 

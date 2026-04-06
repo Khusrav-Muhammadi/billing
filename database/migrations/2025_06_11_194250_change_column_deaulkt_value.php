@@ -17,7 +17,7 @@ return new class extends Migration
 
 
         Schema::table('organizations', function (Blueprint $table) {
-            $table->decimal('balance', 20, 0)->default(0)->change();
+            $table->decimal('balance', 20, 4)->default(0)->change();
         });
     }
 

@@ -39,9 +39,9 @@
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $detail->organization?->name ?? '-' }}</td>
                         <td>{{ $detail->currency?->name ?? $detail->currency?->symbol_code ?? '-' }}</td>
-                        <td>{{ number_format((float) $detail->balance_before_accrual, 2, '.', ' ') }}</td>
-                        <td>{{ number_format((float) $detail->balance_after_accrual, 2, '.', ' ') }}</td>
-                        <td>{{ number_format(max(0, (float) $detail->balance_before_accrual - (float) $detail->balance_after_accrual), 2, '.', ' ') }}</td>
+                        <td>{{ number_format((float) $detail->balance_before_accrual, 4, '.', ' ') }}</td>
+                        <td>{{ number_format((float) $detail->balance_after_accrual, 4, '.', ' ') }}</td>
+                        <td>{{ number_format(max(0, (float) $detail->balance_before_accrual - (float) $detail->balance_after_accrual), 4, '.', ' ') }}</td>
                         <td>
                             <span class="badge {{ $detail->status_after_accrual ? 'badge-success' : 'badge-danger' }}">
                                 {{ $detail->status_after_accrual ? 'Активный' : 'Пассивный' }}
@@ -75,8 +75,8 @@
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $serviceRow['organization_name'] }}</td>
                         <td>{{ $serviceRow['service_name'] }}</td>
-                        <td>{{ number_format((float) $serviceRow['monthly_sum'], 2, '.', ' ') }}</td>
-                        <td>{{ number_format((float) $serviceRow['daily_sum'], 2, '.', ' ') }}</td>
+                        <td>{{ number_format((float) $serviceRow['monthly_sum'], 4, '.', ' ') }}</td>
+                        <td>{{ number_format((float) $serviceRow['daily_sum'], 4, '.', ' ') }}</td>
                     </tr>
                 @empty
                     <tr>

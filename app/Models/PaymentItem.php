@@ -10,4 +10,8 @@ class PaymentItem extends Model
     use HasFactory;
 
     protected $fillable = ['service_name', 'price', 'payment_id'];
+
+    protected $casts = [
+        'price' => 'decimal:4',
+    ];
 }

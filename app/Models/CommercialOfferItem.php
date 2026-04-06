@@ -22,10 +22,10 @@ class CommercialOfferItem extends Model
 
     protected $casts = [
         'quantity' => 'decimal:2',
-        'unit_price' => 'decimal:2',
+        'unit_price' => 'decimal:4',
         'discount_percent' => 'decimal:2',
         'partner_percent' => 'decimal:2',
-        'total_price' => 'decimal:2',
+        'total_price' => 'decimal:4',
     ];
 
     public function offer()

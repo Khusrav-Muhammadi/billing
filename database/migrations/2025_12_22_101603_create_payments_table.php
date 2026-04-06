@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('phone');
             $table->string('email');
-            $table->decimal('sum',20,2);
+            $table->decimal('sum', 20, 4);
             $table->string('payment_type');
             $table->timestamps();
         });

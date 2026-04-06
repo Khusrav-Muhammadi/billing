@@ -147,7 +147,7 @@ class ConnectedClientServiceController extends Controller
             ->orderBy('name')
             ->get();
 
-        $partnerPercentsById = $this->getPartnerTariffPercents($partners->pluck('id')->all(), $asOfTs);
+        $partnerPercentsById = $this->getPartnerPercents($partners->pluck('id')->all(), $asOfTs);
 
         $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, $asOfTs, null);
         $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, $asOfTs);
@@ -172,7 +172,8 @@ class ConnectedClientServiceController extends Controller
                 'name'  => $p->name,
                 'email' => $p->email ?? '',
                 'phone' => $p->phone ?? '',
-                'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id] ?? 0),
+                'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id]['tariff'] ?? 0),
+                'procent_from_pack' => (int) ($partnerPercentsById[(string) $p->id]['pack'] ?? 0),
                 'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
             ]),
         ]);
@@ -270,7 +271,7 @@ class ConnectedClientServiceController extends Controller
             ->limit(50)
             ->get();
 
-        $partnerPercentsById = $this->getPartnerTariffPercents($partners->pluck('id')->all(), $asOfTs);
+        $partnerPercentsById = $this->getPartnerPercents($partners->pluck('id')->all(), $asOfTs);
 
         return response()->json([
             'partners' => $partners->map(fn($p) => [
@@ -278,7 +279,8 @@ class ConnectedClientServiceController extends Controller
                 'name'  => $p->name,
                 'email' => $p->email ?? '',
                 'phone' => $p->phone ?? '',
-                'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id] ?? 0),
+                'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id]['tariff'] ?? 0),
+                'procent_from_pack' => (int) ($partnerPercentsById[(string) $p->id]['pack'] ?? 0),
                 'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
             ]),
         ]);
@@ -322,7 +324,10 @@ class ConnectedClientServiceController extends Controller
         return $ordered;
     }
 
-    private function getPartnerTariffPercents(array $partnerIds, int $asOfTs): array
+    /**
+     * @return array<string,array{tariff:int,pack:int}>
+     */
+    private function getPartnerPercents(array $partnerIds, int $asOfTs): array
     {
         $partnerIds = array_values(array_filter(array_map('intval', $partnerIds)));
         if (!$partnerIds) return [];
@@ -338,9 +343,13 @@ class ConnectedClientServiceController extends Controller
             $ts = $this->parseDateToTs($row->date) ?? 0;
             if ($ts > $asOfTs) continue;
 
-            $val = (int) ($row->procent_from_tariff ?? 0);
-            if ($val < 0) $val = 0;
-            if ($val > 100) $val = 100;
+            $tariffVal = (int) ($row->procent_from_tariff ?? 0);
+            if ($tariffVal < 0) $tariffVal = 0;
+            if ($tariffVal > 100) $tariffVal = 100;
+
+            $packVal = (int) ($row->procent_from_pack ?? 0);
+            if ($packVal < 0) $packVal = 0;
+            if ($packVal > 100) $packVal = 100;
 
             $prev = $best[$pid] ?? null;
             if (
@@ -348,13 +357,21 @@ class ConnectedClientServiceController extends Controller
                 || $ts > $prev['ts']
                 || ($ts === $prev['ts'] && (int) $row->id > $prev['id'])
             ) {
-                $best[$pid] = ['ts' => $ts, 'id' => (int) $row->id, 'value' => $val];
+                $best[$pid] = [
+                    'ts' => $ts,
+                    'id' => (int) $row->id,
+                    'tariff' => $tariffVal,
+                    'pack' => $packVal,
+                ];
             }
         }
 
         $out = [];
         foreach ($best as $pid => $row) {
-            $out[$pid] = $row['value'];
+            $out[$pid] = [
+                'tariff' => (int) ($row['tariff'] ?? 0),
+                'pack' => (int) ($row['pack'] ?? 0),
+            ];
         }
         return $out;
     }
@@ -514,7 +531,7 @@ class ConnectedClientServiceController extends Controller
                 'extraUserTariffId' => $extraUserTariffId,
                 'prices'          => $prices,
                 'extraUserPrices' => $extraUserPrices,
-                'prices12Months'  => array_map(fn($p) => round($p * 0.85, 2), $prices),
+                'prices12Months'  => array_map(fn($p) => round($p * 0.85, 4), $prices),
                 'extraUserPrice'  => $extraUserPrices,
                 'includedServices' => $includedServicesKeys,
                 'includedServiceQuantities' => $includedQty,

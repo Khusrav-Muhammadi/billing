@@ -28,8 +28,8 @@ class DayClosingDetail extends Model
         'day_closing_id' => 'integer',
         'organization_id' => 'integer',
         'currency_id' => 'integer',
-        'balance_before_accrual' => 'decimal:2',
-        'balance_after_accrual' => 'decimal:2',
+        'balance_before_accrual' => 'decimal:4',
+        'balance_after_accrual' => 'decimal:4',
         'status_after_accrual' => 'boolean',
     ];
 
@@ -53,4 +53,3 @@ class DayClosingDetail extends Model
         return $this->hasMany(DayClosingClientDetails::class, 'day_closing_details_id');
     }
 }
-

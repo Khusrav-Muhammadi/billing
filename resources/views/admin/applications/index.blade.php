@@ -259,20 +259,22 @@
                                         </div>
                                     @endif
 
-                                    <div class="form-group mb-0">
-                                        <label>Счет</label>
-                                        <select class="form-control" name="account_id" required>
-                                            <option value="" {{ $defaultAccountId ? '' : 'selected' }}>Выберите счет</option>
-                                            @foreach($accounts as $account)
-                                                @php
-                                                    $accountCurrencyCode = strtoupper((string) optional($account->currency)->symbol_code);
-                                                @endphp
-                                                <option value="{{ $account->id }}" {{ (string) $defaultAccountId === (string) $account->id ? 'selected' : '' }}>
-                                                    {{ $account->name }}{{ $accountCurrencyCode !== '' ? ' (' . $accountCurrencyCode . ')' : '' }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
+                                    @if($paymentTypeCode === 'invoice')
+                                        <div class="form-group mb-0">
+                                            <label>Счет</label>
+                                            <select class="form-control" name="account_id" required>
+                                                <option value="" {{ $defaultAccountId ? '' : 'selected' }}>Выберите счет</option>
+                                                @foreach($accounts as $account)
+                                                    @php
+                                                        $accountCurrencyCode = strtoupper((string) optional($account->currency)->symbol_code);
+                                                    @endphp
+                                                    <option value="{{ $account->id }}" {{ (string) $defaultAccountId === (string) $account->id ? 'selected' : '' }}>
+                                                        {{ $account->name }}{{ $accountCurrencyCode !== '' ? ' (' . $accountCurrencyCode . ')' : '' }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    @endif
                                 </div>
 
                                 <div class="modal-footer">

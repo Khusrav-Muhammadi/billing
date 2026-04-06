@@ -19,11 +19,11 @@ return new class extends Migration
             $table->string('service_name');
             $table->string('billing_type', 32)->default('period');
             $table->decimal('quantity', 12, 2)->default(1);
-            $table->decimal('unit_price', 20, 2)->default(0);
+            $table->decimal('unit_price', 20, 4)->default(0);
             $table->unsignedSmallInteger('months')->default(1);
             $table->decimal('discount_percent', 5, 2)->default(0);
             $table->decimal('partner_percent', 5, 2)->default(0);
-            $table->decimal('total_price', 20, 2)->default(0);
+            $table->decimal('total_price', 20, 4)->default(0);
             $table->json('meta')->nullable();
 
             $table->timestamps();
@@ -38,4 +38,3 @@ return new class extends Migration
         Schema::dropIfExists('commercial_offer_items');
     }
 };
-

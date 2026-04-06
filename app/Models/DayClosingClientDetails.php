@@ -24,8 +24,8 @@ class DayClosingClientDetails extends Model
         'day_closing_details_id' => 'integer',
         'client_id' => 'integer',
         'tariff_id' => 'integer',
-        'monthly_sum' => 'decimal:2',
-        'daily_sum' => 'decimal:2',
+        'monthly_sum' => 'decimal:4',
+        'daily_sum' => 'decimal:4',
     ];
 
     public function detail(): BelongsTo

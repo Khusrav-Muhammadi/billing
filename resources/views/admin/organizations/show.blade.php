@@ -186,11 +186,11 @@
         const priceInput = document.querySelector('input[name="price"]');
         const totalPrice = document.getElementById('total-price');
 
-        function updateTotal() {
-            const amount = parseFloat(amountInput.value) || 0;
-            const price = parseFloat(priceInput.value) || 0;
-            totalPrice.textContent = (amount * price).toFixed(2);
-        }
+	        function updateTotal() {
+	            const amount = parseFloat(amountInput.value) || 0;
+	            const price = parseFloat(priceInput.value) || 0;
+	            totalPrice.textContent = (amount * price).toFixed(4);
+	        }
 
         amountInput.addEventListener("input", updateTotal);
         priceInput.addEventListener("input", updateTotal);

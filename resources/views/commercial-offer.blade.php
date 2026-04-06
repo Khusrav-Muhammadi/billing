@@ -1,13 +1,6 @@
 @php
-    // Форматирование числа с сохранением десятичных (если есть)
     function formatPrice($number) {
-        if (floor($number) == $number) {
-            // Целое число
-            return number_format($number, 0, ',', ' ');
-        } else {
-            // Дробное число - показываем 2 знака после запятой
-            return number_format($number, 2, ',', ' ');
-        }
+        return number_format((float) $number, 4, ',', ' ');
     }
 @endphp
 <!DOCTYPE html>
@@ -795,7 +788,6 @@
                     </a>
                 </div>
             </div>
-
         </div>
 
         <div class="validity-line">

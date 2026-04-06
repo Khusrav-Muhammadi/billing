@@ -241,7 +241,7 @@
             <td>{{ $item->name }}</td>
             <td class="quantity">{{ $item->amount }}</td>
             <td class="price">{{ number_format($item->unit_price ?? ($item->price / $item->amount), 2, ',', ' ') }}</td>
-            <td class="total">{{ number_format($item->price, 2, ',', ' ') }}</td>
+            <td class="total">{{ number_format((float) $item->price, 4, ',', ' ') }}</td>
         </tr>
     @endforeach
     </tbody>
@@ -249,7 +249,7 @@
 
 <div class="total-section">
     <div class="total-amount">
-        <strong>Итого к оплате: {{ number_format($totalAmount, 2, ',', ' ') }} {{ $currency }}</strong>
+        <strong>Итого к оплате: {{ number_format((float) $totalAmount, 4, ',', ' ') }} {{ $currency }}</strong>
     </div>
 {{--    <div class="amount-words">--}}
 {{--      123  {{  $currency }}--}}

@@ -16,8 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('day_closing_id');
             $table->unsignedBigInteger('organization_id');
             $table->integer('currency_id');
-            $table->decimal('balance_before_accrual');
-            $table->decimal('balance_after_accrual');
+            $table->decimal('balance_before_accrual', 20, 4)->default(0);
+            $table->decimal('balance_after_accrual', 20, 4)->default(0);
             $table->boolean('status_after_accrual')->default(true);
         });
     }

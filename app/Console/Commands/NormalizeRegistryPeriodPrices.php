@@ -47,23 +47,23 @@ class NormalizeRegistryPeriodPrices extends Command
 
                     $months = max(1, (int) ($row->months ?? 1));
                     $qty = max(1.0, (float) ($row->quantity ?? 1));
-                    $unitPrice = round((float) ($row->unit_price ?? 0), 2);
-                    $totalPrice = round((float) ($row->total_price ?? 0), 2);
+                    $unitPrice = round((float) ($row->unit_price ?? 0), 4);
+                    $totalPrice = round((float) ($row->total_price ?? 0), 4);
 
                     if ($months <= 1 || $totalPrice <= 0 || $unitPrice <= 0) {
                         continue;
                     }
 
-                    $periodPerUnit = $qty > 0 ? round($totalPrice / $qty, 2) : $totalPrice;
-                    $monthlyPerUnit = $qty > 0 ? round($totalPrice / ($qty * $months), 2) : $totalPrice;
+                    $periodPerUnit = $qty > 0 ? round($totalPrice / $qty, 4) : $totalPrice;
+                    $monthlyPerUnit = $qty > 0 ? round($totalPrice / ($qty * $months), 4) : $totalPrice;
 
                     // Buggy case: unit_price equals period-per-unit (not monthly).
-                    if (abs($unitPrice - $periodPerUnit) > 0.01) {
+                    if (abs($unitPrice - $periodPerUnit) > 0.0001) {
                         continue;
                     }
 
                     // Already monthly.
-                    if (abs($unitPrice - $monthlyPerUnit) <= 0.01) {
+                    if (abs($unitPrice - $monthlyPerUnit) <= 0.0001) {
                         continue;
                     }
 
@@ -115,6 +115,7 @@ class NormalizeRegistryPeriodPrices extends Command
                 'co.conversion_rate as conversion_rate',
                 'coi.quantity as quantity',
                 'coi.months as months',
+                'coi.discount_percent as discount_percent',
                 'coi.total_price as total_price',
             ])
             ->chunkById(500, function ($rows) use (&$scanned, &$updated, $dryRun): void {
@@ -122,14 +123,16 @@ class NormalizeRegistryPeriodPrices extends Command
                     $scanned++;
 
                     $months = max(1, (int) ($row->months ?? 1));
-                    $qty = max(1.0, (float) ($row->quantity ?? 1));
-                    $periodTotal = round((float) ($row->total_price ?? 0), 2);
+                    $periodTotal = round((float) ($row->total_price ?? 0), 4);
 
                     if ($periodTotal <= 0 || $months <= 1) {
                         continue;
                     }
 
-                    $monthlyTotal = round($periodTotal / $months, 2);
+                    // service_total_amount stores monthly list totals (before period discounts).
+                    $discountPercent = round(max(0, (float) ($row->discount_percent ?? 0)), 4);
+                    $periodGrossTotal = $this->reversePercent($periodTotal, $discountPercent);
+                    $monthlyTotal = round($periodGrossTotal / $months, 4);
 
                     $rate = (float) ($row->conversion_rate ?? 0);
                     $offerCurrency = (string) ($row->offer_currency ?? '');
@@ -137,14 +140,14 @@ class NormalizeRegistryPeriodPrices extends Command
 
                     $payableMonthlyTotal = $monthlyTotal;
                     if ($payableCurrency !== '' && $offerCurrency !== '' && $payableCurrency !== $offerCurrency && $rate > 0) {
-                        $payableMonthlyTotal = round($payableMonthlyTotal / $rate, 2);
+                        $payableMonthlyTotal = round($payableMonthlyTotal / $rate, 4);
                     }
 
-                    $currentMonthlyTotal = round((float) ($row->current_service_total_amount ?? 0), 2);
-                    $currentPayable = round((float) ($row->current_payable_amount ?? 0), 2);
+                    $currentMonthlyTotal = round((float) ($row->current_service_total_amount ?? 0), 4);
+                    $currentPayable = round((float) ($row->current_payable_amount ?? 0), 4);
 
-                    $needsUpdate = abs($currentMonthlyTotal - $monthlyTotal) > 0.01
-                        || abs($currentPayable - $payableMonthlyTotal) > 0.01;
+                    $needsUpdate = abs($currentMonthlyTotal - $monthlyTotal) > 0.0001
+                        || abs($currentPayable - $payableMonthlyTotal) > 0.0001;
 
                     if (!$needsUpdate) {
                         continue;
@@ -169,5 +172,19 @@ class NormalizeRegistryPeriodPrices extends Command
             $scanned,
             $updated
         ));
+    }
+
+    private function reversePercent(float $amount, float $percent): float
+    {
+        if ($percent <= 0 || $percent >= 100) {
+            return $amount;
+        }
+
+        $factor = 1 - ($percent / 100);
+        if ($factor <= 0) {
+            return $amount;
+        }
+
+        return $amount / $factor;
     }
 }

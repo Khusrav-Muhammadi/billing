@@ -23,8 +23,8 @@ class PartnerExpense extends Model
 
     protected $casts = [
         'date' => 'datetime',
-        'partner_amount' => 'decimal:2',
-        'original_amount' => 'decimal:2',
+        'partner_amount' => 'decimal:4',
+        'original_amount' => 'decimal:4',
         'partner_percent' => 'decimal:2',
         'currency_id' => 'integer',
     ];

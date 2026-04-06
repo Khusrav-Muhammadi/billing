@@ -170,7 +170,7 @@ class OrganizationV2Controller extends Controller
             $income = (float) $rows->sum('total_income');
             $outcome = (float) $rows->sum('total_outcome');
 
-            $organization->setAttribute('real_balance', round($income - $outcome, 2));
+            $organization->setAttribute('real_balance', round($income - $outcome, 4));
         }
     }
 
@@ -189,7 +189,7 @@ class OrganizationV2Controller extends Controller
         $income = (float) $rows->where('type', 'income')->sum('sum');
         $outcome = (float) $rows->where('type', 'outcome')->sum('sum');
 
-        return round($income - $outcome, 2);
+        return round($income - $outcome, 4);
     }
 
 }

@@ -11,6 +11,7 @@ use App\Models\CommercialOffer;
 use App\Models\CommercialOfferItem;
 use App\Models\ConnectedClientServices;
 use App\Models\Organization;
+use App\Models\PartnerProcent;
 use App\Models\Tariff;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -114,7 +115,7 @@ class ApplicationController extends Controller
         }
 
         $organization = Organization::query()
-            ->with('client:id,phone,email')
+            ->with('client:id,phone,email,partner_id')
             ->findOrFail((int) $validated['organization_id']);
 
         $offer = DB::transaction(function () use ($validated, $payload, $organization) {
@@ -138,6 +139,9 @@ class ApplicationController extends Controller
             $requestType = $this->normalizeRequestType((string) data_get($payload, 'request_type', 'connection'));
 
             $partnerId = $this->toNullableInt(data_get($payload, 'partner_id'));
+            if (!$partnerId) {
+                $partnerId = $this->toNullableInt($organization->client?->partner_id);
+            }
             $partner = null;
             if ($partnerId) {
                 $partner = User::query()
@@ -172,6 +176,29 @@ class ApplicationController extends Controller
             $partnerEmail = (string) (($partner?->email) ?: data_get($payload, 'partner_email', ''));
             $statusDate = $this->toNullableDate(data_get($payload, 'status_date'));
             $pricingDate = $this->toNullableDate(data_get($payload, 'pricing_date'));
+            $periodMonths = max(1, (int) data_get($payload, 'period_months', 6));
+            $periodDiscountPercent = $this->resolvePeriodDiscountPercent($periodMonths);
+
+            $partnerPercents = [
+                'tariff' => 0.0,
+                'pack' => 0.0,
+            ];
+            if ($partner) {
+                $asOf = $statusDate ?: now()->toDateString();
+                $row = PartnerProcent::query()
+                    ->where('partner_id', (int) $partner->id)
+                    ->whereDate('date', '<=', $asOf)
+                    ->orderByDesc('date')
+                    ->orderByDesc('id')
+                    ->first(['procent_from_tariff', 'procent_from_pack']);
+
+                if ($row) {
+                    $partnerPercents = [
+                        'tariff' => (float) max(0, min(100, (float) ($row->procent_from_tariff ?? 0))),
+                        'pack' => (float) max(0, min(100, (float) ($row->procent_from_pack ?? 0))),
+                    ];
+                }
+            }
 
             $offer->fill([
                 'organization_id' => $organization->id,
@@ -185,7 +212,7 @@ class ApplicationController extends Controller
                 'currency' => $this->toCurrencyCode(data_get($payload, 'currency', 'USD')),
                 'payable_currency' => $this->toCurrencyCode(data_get($payload, 'payable_currency', data_get($payload, 'currency', 'USD'))),
                 'card_payment_type' => (string) data_get($payload, 'card_payment_type', 'octo'),
-                'period_months' => max(1, (int) data_get($payload, 'period_months', 6)),
+                'period_months' => $periodMonths,
                 'extra_users' => max(0, (int) data_get($payload, 'extra_users', 0)),
                 'client_name' => $clientName,
                 'client_phone' => $clientPhone,
@@ -224,13 +251,13 @@ class ApplicationController extends Controller
                     continue;
                 }
 
-                $itemTariff = Tariff::query()->select('id')->find($tariffId);
+                $itemTariff = Tariff::query()->select('id', 'is_tariff', 'is_extra_user')->find($tariffId);
                 if (!$itemTariff) {
                     continue;
                 }
 
                 $quantity = max(1, (float) data_get($row, 'quantity', 1));
-                $months = max(1, (int) data_get($row, 'months', data_get($payload, 'period_months', 1)));
+                $months = max(1, (int) data_get($row, 'months', $periodMonths));
                 $totalPrice = $this->toDecimal(data_get($row, 'total_price', data_get($row, 'price', 0)));
                 if ($totalPrice <= 0) {
                     continue;
@@ -239,13 +266,19 @@ class ApplicationController extends Controller
                 $unitPrice = $this->toDecimal(data_get($row, 'unit_price'));
                 $unitPrice = $this->normalizeMonthlyUnitPrice($unitPrice, $totalPrice, $quantity, $months);
 
+                $isTariffLine = (bool) ($itemTariff->is_tariff) && !(bool) ($itemTariff->is_extra_user);
+                $discountPercent = $isTariffLine ? $periodDiscountPercent : 0.0;
+                $partnerPercent = $partner
+                    ? ($isTariffLine ? (float) ($partnerPercents['tariff'] ?? 0) : (float) ($partnerPercents['pack'] ?? 0))
+                    : 0.0;
+
                 $offer->items()->create([
                     'tariff_id' => (int) $itemTariff->id,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'months' => $months,
-                    'discount_percent' => $this->toDecimal(data_get($row, 'discount_percent', 0)),
-                    'partner_percent' => $this->toDecimal(data_get($row, 'partner_percent', 0)),
+                    'discount_percent' => $discountPercent,
+                    'partner_percent' => $partnerPercent,
                     'total_price' => $totalPrice,
                 ]);
             }
@@ -301,6 +334,18 @@ class ApplicationController extends Controller
         return $this->toDecimal($monthlyPerUnitFromTotal);
     }
 
+    private function resolvePeriodDiscountPercent(int $periodMonths): float
+    {
+        $months = max(1, (int) $periodMonths);
+        if ($months === 12) {
+            return 15.0;
+        }
+        if ($months === 8) {
+            return 50.0;
+        }
+        return 0.0;
+    }
+
     public function storeCommercialOfferClient(Request $request): RedirectResponse
     {
         return $this->storeCommercialOffer($request);
@@ -341,9 +386,14 @@ class ApplicationController extends Controller
             'status' => ['required', 'in:pending,paid,canceled'],
             'status_date' => ['required', 'date'],
             'payment_method' => ['required', 'in:card,invoice,cash'],
-            'account_id' => ['required', 'integer', 'exists:accounts,id'],
+            'account_id' => ['nullable', 'integer', 'exists:accounts,id', 'required_if:payment_method,invoice'],
             'payment_order_number' => ['nullable', 'string', 'max:100', 'required_if:payment_method,invoice'],
         ]);
+
+        $accountId = isset($validated['account_id']) ? (int) $validated['account_id'] : null;
+        if ($validated['payment_method'] !== 'invoice') {
+            $accountId = null;
+        }
 
         $paymentOrderNumber = isset($validated['payment_order_number'])
             ? trim((string) $validated['payment_order_number'])
@@ -357,7 +407,7 @@ class ApplicationController extends Controller
             'status' => $validated['status'],
             'status_date' => $validated['status_date'],
             'payment_method' => $validated['payment_method'],
-            'account_id' => (int) $validated['account_id'],
+            'account_id' => $accountId,
             'payment_order_number' => $paymentOrderNumber,
             'author_id' => Auth::id(),
         ]);
@@ -952,7 +1002,7 @@ class ApplicationController extends Controller
         if (!is_numeric($normalized)) {
             return 0.0;
         }
-        return round((float) $normalized, 2);
+        return round((float) $normalized, 4);
     }
 
     private function toNullableDecimal($value): ?float

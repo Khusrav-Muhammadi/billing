@@ -16,8 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('day_closing_details_id');
             $table->unsignedBigInteger('client_id');
             $table->unsignedBigInteger('tariff_id');
-            $table->decimal('monthly_sum', 4);
-            $table->decimal('daily_sum', 4);
+            $table->decimal('monthly_sum', 20, 4)->default(0);
+            $table->decimal('daily_sum', 20, 4)->default(0);
             $table->timestamps();
         });
     }

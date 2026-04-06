@@ -27,8 +27,8 @@ class ConnectedClientServices extends Model
     protected $casts = [
         'status' => 'boolean',
         'date' => 'datetime',
-        'service_total_amount' => 'decimal:2',
-        'payable_amount' => 'decimal:2',
+        'service_total_amount' => 'decimal:4',
+        'payable_amount' => 'decimal:4',
         'offer_currency_id' => 'integer',
         'payable_currency_id' => 'integer',
     ];

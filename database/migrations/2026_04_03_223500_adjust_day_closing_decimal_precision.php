@@ -14,11 +14,11 @@ return new class extends Migration
 
         if (Schema::hasTable('day_closing_details')) {
             if (Schema::hasColumn('day_closing_details', 'balance_before_accrual')) {
-                DB::statement('ALTER TABLE `day_closing_details` MODIFY `balance_before_accrual` DECIMAL(20,2) NOT NULL');
+                DB::statement('ALTER TABLE `day_closing_details` MODIFY `balance_before_accrual` DECIMAL(20,4) NOT NULL');
             }
 
             if (Schema::hasColumn('day_closing_details', 'balance_after_accrual')) {
-                DB::statement('ALTER TABLE `day_closing_details` MODIFY `balance_after_accrual` DECIMAL(20,2) NOT NULL');
+                DB::statement('ALTER TABLE `day_closing_details` MODIFY `balance_after_accrual` DECIMAL(20,4) NOT NULL');
             }
 
             if (Schema::hasColumn('day_closing_details', 'currency_id')) {
@@ -28,11 +28,11 @@ return new class extends Migration
 
         if (Schema::hasTable('day_closing_client_details')) {
             if (Schema::hasColumn('day_closing_client_details', 'monthly_sum')) {
-                DB::statement('ALTER TABLE `day_closing_client_details` MODIFY `monthly_sum` DECIMAL(20,2) NOT NULL');
+                DB::statement('ALTER TABLE `day_closing_client_details` MODIFY `monthly_sum` DECIMAL(20,4) NOT NULL');
             }
 
             if (Schema::hasColumn('day_closing_client_details', 'daily_sum')) {
-                DB::statement('ALTER TABLE `day_closing_client_details` MODIFY `daily_sum` DECIMAL(20,2) NOT NULL');
+                DB::statement('ALTER TABLE `day_closing_client_details` MODIFY `daily_sum` DECIMAL(20,4) NOT NULL');
             }
         }
     }
@@ -68,4 +68,3 @@ return new class extends Migration
         }
     }
 };
-

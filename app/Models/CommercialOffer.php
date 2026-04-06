@@ -48,11 +48,11 @@ class CommercialOffer extends Model
         'locked_at' => 'datetime',
         'status_date' => 'date',
         'pricing_date' => 'date',
-        'original_total' => 'decimal:2',
-        'monthly_total' => 'decimal:2',
-        'period_total' => 'decimal:2',
-        'grand_total' => 'decimal:2',
-        'payable_total' => 'decimal:2',
+        'original_total' => 'decimal:4',
+        'monthly_total' => 'decimal:4',
+        'period_total' => 'decimal:4',
+        'grand_total' => 'decimal:4',
+        'payable_total' => 'decimal:4',
         'conversion_rate' => 'decimal:6',
     ];
 

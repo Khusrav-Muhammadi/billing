@@ -11,6 +11,11 @@ class Transaction extends Model
 
     protected $fillable = ['client_id', 'sum', 'tariff_id', 'sale_id', 'type', 'organization_id', 'source_type', 'approved', 'purpose', 'provider', 'accounted_amount'];
 
+    protected $casts = [
+        'sum' => 'decimal:4',
+        'accounted_amount' => 'decimal:4',
+    ];
+
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');

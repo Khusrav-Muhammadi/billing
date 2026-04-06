@@ -20,6 +20,13 @@ class Sale extends Model
         'end_date',
     ];
 
+    protected $casts = [
+        'amount' => 'decimal:4',
+        'is_active' => 'boolean',
+        'start_date' => 'date',
+        'end_date' => 'date',
+    ];
+
     public function isActive(): bool
     {
         if (!$this->is_active) return false;

@@ -30,11 +30,11 @@ return new class extends Migration
                 ALTER TABLE `discount_expenses`
                     CHANGE COLUMN `date` `offer_date` DATE NULL,
                     CHANGE COLUMN `partner_id` `partner_id` INT UNSIGNED NULL,
-                    CHANGE COLUMN `sum` `discount_amount` DECIMAL(20,2) NOT NULL DEFAULT 0,
+                    CHANGE COLUMN `sum` `discount_amount` DECIMAL(20,4) NOT NULL DEFAULT 0,
                     ADD COLUMN `service_key` VARCHAR(255) NULL AFTER `tariff_id`,
                     ADD COLUMN `commercial_offer_id` BIGINT UNSIGNED NULL AFTER `service_key`,
                     ADD COLUMN `commercial_offer_item_id` BIGINT UNSIGNED NULL AFTER `commercial_offer_id`,
-                    ADD COLUMN `original_amount` DECIMAL(20,2) NOT NULL DEFAULT 0 AFTER `discount_amount`,
+                    ADD COLUMN `original_amount` DECIMAL(20,4) NOT NULL DEFAULT 0 AFTER `discount_amount`,
                     ADD COLUMN `discount_percent` DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER `original_amount`,
                     ADD COLUMN `currency_code` VARCHAR(10) NULL AFTER `discount_percent`
             ");
@@ -56,10 +56,10 @@ return new class extends Migration
                 $table->unsignedBigInteger('commercial_offer_item_id')->nullable();
             }
             if (!Schema::hasColumn('discount_expenses', 'discount_amount')) {
-                $table->decimal('discount_amount', 20, 2)->default(0);
+                $table->decimal('discount_amount', 20, 4)->default(0);
             }
             if (!Schema::hasColumn('discount_expenses', 'original_amount')) {
-                $table->decimal('original_amount', 20, 2)->default(0);
+                $table->decimal('original_amount', 20, 4)->default(0);
             }
             if (!Schema::hasColumn('discount_expenses', 'discount_percent')) {
                 $table->decimal('discount_percent', 5, 2)->default(0);
@@ -94,7 +94,7 @@ return new class extends Migration
                     DROP COLUMN `currency_code`,
                     CHANGE COLUMN `offer_date` `date` VARCHAR(255) NULL,
                     CHANGE COLUMN `partner_id` `partner_id` INT UNSIGNED NOT NULL,
-                    CHANGE COLUMN `discount_amount` `sum` DECIMAL(20,2) NOT NULL DEFAULT 0
+                    CHANGE COLUMN `discount_amount` `sum` DECIMAL(20,4) NOT NULL DEFAULT 0
             ");
 
             return;
@@ -118,4 +118,3 @@ return new class extends Migration
         });
     }
 };
-

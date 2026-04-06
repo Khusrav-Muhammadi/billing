@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedInteger('tariff_id');
             $table->unsignedInteger('client_id')->nullable();
             $table->string('date');
-            $table->decimal('sum');
+            $table->decimal('sum', 20, 4)->default(0);
             $table->unsignedInteger('currency_id');
             $table->timestamps();
         });

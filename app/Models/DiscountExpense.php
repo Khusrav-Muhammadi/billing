@@ -22,8 +22,8 @@ class DiscountExpense extends Model
 
     protected $casts = [
         'date' => 'datetime',
-        'discount_amount' => 'decimal:2',
-        'original_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:4',
+        'original_amount' => 'decimal:4',
         'discount_percent' => 'decimal:2',
         'currency_id' => 'integer',
     ];

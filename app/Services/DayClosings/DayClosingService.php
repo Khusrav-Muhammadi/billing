@@ -97,12 +97,12 @@ class DayClosingService
 
                     $serviceRows = [];
                     foreach ($services as $service) {
-                        $monthlySum = round((float) $service->service_total_amount, 2);
+                        $monthlySum = round((float) $service->service_total_amount, 4);
                         if ($monthlySum <= 0) {
                             continue;
                         }
 
-                        $dailySum = round($monthlySum / $daysInMonth, 2);
+                        $dailySum = round($monthlySum / $daysInMonth, 4);
                         $dailyAccrual += $dailySum;
 
                         $serviceRows[] = [
@@ -117,7 +117,7 @@ class DayClosingService
                         continue;
                     }
 
-                    $dailyAccrual = round($dailyAccrual, 2);
+                    $dailyAccrual = round($dailyAccrual, 4);
                     $balanceBeforeAccrual = $this->calculateBalance(
                         (int) $organization->id,
                         $currencyId > 0 ? $currencyId : null
@@ -125,7 +125,7 @@ class DayClosingService
 
                     $canAccrue = $dailyAccrual > 0 && $balanceBeforeAccrual >= $dailyAccrual;
                     $balanceAfterAccrual = $canAccrue
-                        ? round($balanceBeforeAccrual - $dailyAccrual, 2)
+                        ? round($balanceBeforeAccrual - $dailyAccrual, 4)
                         : $balanceBeforeAccrual;
 
                     $detail = DayClosingDetail::query()->create([
@@ -261,6 +261,6 @@ class DayClosingService
         $income = (clone $query)->where('type', 'income')->sum('sum');
         $outcome = (clone $query)->where('type', 'outcome')->sum('sum');
 
-        return round((float) $income - (float) $outcome, 2);
+        return round((float) $income - (float) $outcome, 4);
     }
 }

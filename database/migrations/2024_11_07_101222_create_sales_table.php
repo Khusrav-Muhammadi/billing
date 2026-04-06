@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('sale_type');
-            $table->decimal('amount',20,2);
+            $table->decimal('amount', 20, 4);
             $table->boolean('active')->default(true);
             $table->timestamps();
         });

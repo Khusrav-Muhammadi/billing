@@ -16,7 +16,7 @@ return new class extends Migration
         });
 
         Schema::table('transactions', function (Blueprint $table) {
-            $table->decimal('accounted_amount', 10,2)->nullable();
+            $table->decimal('accounted_amount', 20, 4)->nullable();
         });
     }
 

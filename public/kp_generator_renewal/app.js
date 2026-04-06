@@ -68,6 +68,34 @@ class CPGenerator {
         this.init();
     }
 
+    normalizePeriodMonths(value) {
+        const months = Math.floor(Number(value));
+        if (!Number.isFinite(months) || months <= 0) {
+            return 6;
+        }
+        return months;
+    }
+
+    syncPeriodSelectorUI() {
+        const buttons = Array.from(document.querySelectorAll('.period-btn'));
+        if (!buttons.length) {
+            return;
+        }
+
+        const months = this.normalizePeriodMonths(this.state.periodMonths);
+        this.state.periodMonths = months;
+
+        const matched = buttons.some((button) => Math.floor(Number(button.dataset.months)) === months);
+        if (!matched) {
+            return;
+        }
+
+        buttons.forEach((button) => {
+            const buttonMonths = Math.floor(Number(button.dataset.months));
+            button.classList.toggle('active', buttonMonths === months);
+        });
+    }
+
     getTodayYmd() {
         const now = new Date();
         const yyyy = now.getFullYear();
@@ -1011,6 +1039,8 @@ class CPGenerator {
     }
 
     renderAll() {
+        this.syncPeriodSelectorUI();
+
         if (this.isConnectionExtraServicesMode()) {
             const tariffsSection = document.getElementById('tariffsSection') || document.querySelector('.tariffs-section');
             if (tariffsSection) {
@@ -1134,7 +1164,8 @@ class CPGenerator {
     }
 
     getExtraUserPriceByKey(tariffKey) {
-        return this.getExtraUserMonthlyBase(tariffKey) * this.getPeriodDiscountMultiplier();
+        // Period discount (e.g. 12 months -15%) applies only to the base tariff, not to add-ons.
+        return this.getExtraUserMonthlyBase(tariffKey);
     }
 
     getSelectedClient() {
@@ -1346,9 +1377,16 @@ class CPGenerator {
         });
     }
 
-    getPartnerDiscountPercent() {
+    getPartnerTariffPercent() {
         const partner = this.getSelectedPartner();
         const raw = partner?.procent_from_tariff ?? 0;
+        const val = Number(raw) || 0;
+        return Math.max(0, Math.min(100, val));
+    }
+
+    getPartnerPackPercent() {
+        const partner = this.getSelectedPartner();
+        const raw = partner?.procent_from_pack ?? partner?.procent_from_tariff ?? 0;
         const val = Number(raw) || 0;
         return Math.max(0, Math.min(100, val));
     }
@@ -1389,12 +1427,12 @@ class CPGenerator {
 
     roundMoney(amount) {
         const val = Number(amount) || 0;
-        return Math.round((val + Number.EPSILON) * 100) / 100;
+        return Math.round((val + Number.EPSILON) * 10000) / 10000;
     }
 
     formatUsdAmount(amount) {
         const val = Number(amount) || 0;
-        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
         return `$${formatted}`;
     }
 
@@ -1500,17 +1538,18 @@ class CPGenerator {
         const tariffKey = this.state.selectedTariff;
         const selectedTariffId = this.extractTariffIdFromKey(tariffKey);
         const tariff = this.config.tariffs[tariffKey];
-        const periodMultiplier = this.getPeriodDiscountMultiplier();
+        const tariffPeriodMultiplier = this.getPeriodDiscountMultiplier();
 
         if (this.shouldIncludeBaseTariffInPricing()) {
             const tariffMonthlyBase = this.getTariffMonthlyBase(tariffKey);
-            const tariffMonthly = tariffMonthlyBase * periodMultiplier;
+            const tariffMonthly = tariffMonthlyBase * tariffPeriodMultiplier;
             const lineUnitPrice = tariffMonthly;
             const lineTotal = this.roundMoney(lineUnitPrice * this.state.periodMonths);
             items.push({
                 service_key: selectedTariffId ? `tariff-${selectedTariffId}` : tariffKey,
                 name: `Тариф "${tariff.name}" (${this.state.periodMonths} мес)`,
                 quantity: 1,
+                pricing_kind: 'tariff',
                 unit_price: lineUnitPrice,
                 price: lineTotal
             });
@@ -1518,7 +1557,7 @@ class CPGenerator {
 
         if (this.state.extraUsers > 0) {
             const quantity = Math.max(1, Number(this.state.extraUsers) || 1);
-            const lineUnitPrice = this.getExtraUserMonthlyBase(tariffKey) * periodMultiplier;
+            const lineUnitPrice = this.getExtraUserMonthlyBase(tariffKey);
             const extraUserTariffId = Number(tariff?.extraUserTariffId) || null;
             items.push({
                 service_key: extraUserTariffId
@@ -1526,6 +1565,7 @@ class CPGenerator {
                     : (selectedTariffId ? `tariff-${selectedTariffId}-extra-users` : `${tariffKey}-extra-users`),
                 name: `Доп. пользователи (×${this.state.extraUsers})`,
                 quantity,
+                pricing_kind: 'pack',
                 unit_price: lineUnitPrice,
                 price: this.roundMoney(lineUnitPrice * quantity * this.state.periodMonths)
             });
@@ -1567,12 +1607,13 @@ class CPGenerator {
                 name = `${name} (доп. ×${displayChannels})`;
             }
 
-            const lineUnitPrice = basePrice * periodMultiplier;
-            const lineMonthlyTotal = monthlyPrice * periodMultiplier;
+            const lineUnitPrice = basePrice;
+            const lineMonthlyTotal = monthlyPrice;
             items.push({
                 service_key: key,
                 name,
                 quantity: Math.max(1, Number(displayChannels) || 1),
+                pricing_kind: 'pack',
                 unit_price: lineUnitPrice,
                 price: this.roundMoney(lineMonthlyTotal * this.state.periodMonths)
             });
@@ -1633,7 +1674,8 @@ class CPGenerator {
         const periodMonths = Math.max(1, Number(this.state.periodMonths) || 6);
         const selectedTariffId = this.extractTariffIdFromKey(this.state.selectedTariff);
         const discountPercent = this.getPeriodDiscountPercent();
-        const partnerPercent = this.getPartnerDiscountPercent();
+        const tariffPartnerPercent = this.getPartnerTariffPercent();
+        const packPartnerPercent = this.getPartnerPackPercent();
 
         const items = rawItems
             .map((item) => {
@@ -1645,13 +1687,15 @@ class CPGenerator {
                     : (sourcePrice / quantity)
             );
             const tariffId = this.extractTariffOrServiceIdFromKey(item.service_key);
+            const isTariffLine = item.pricing_kind === 'tariff'
+                || (selectedTariffId && String(item.service_key) === `tariff-${selectedTariffId}`);
             return {
                 tariff_id: tariffId,
                 quantity,
                 unit_price: sourceUnitPrice,
                 months: periodMonths,
-                discount_percent: discountPercent,
-                partner_percent: partnerPercent,
+                discount_percent: isTariffLine ? discountPercent : 0,
+                partner_percent: isTariffLine ? tariffPartnerPercent : packPartnerPercent,
                 total_price: sourcePrice,
             };
         })
@@ -2331,11 +2375,14 @@ class CPGenerator {
             if (isIncluded && service.hasChannels) {
                 const previouslyPurchasedChannels = Math.max(0, previousChannels - tariffIncludedChannels);
                 if (tariffIncludedChannels > 0 || previouslyPurchasedChannels > 0) {
-                    if (isConnectionExtraServices && previouslyPurchasedChannels > 0) {
-                        includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'канал включен' : 'канала включено'} в тариф - ${previouslyPurchasedChannels} ${previouslyPurchasedChannels === 1 ? 'канал куплен' : 'каналов куплено'}</p>`;
-                    } else {
-                        includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'канал включен' : 'канала включено'} в тариф</p>`;
+                    const lines = [];
+                    if (tariffIncludedChannels > 0) {
+                        lines.push(`<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'канал включен' : 'канала включено'} в тариф</p>`);
                     }
+                    if (isConnectionExtraServices && previouslyPurchasedChannels > 0) {
+                        lines.push(`<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${previouslyPurchasedChannels} ${previouslyPurchasedChannels === 1 ? 'канал куплен' : 'каналов куплено'}</p>`);
+                    }
+                    includedChannelsInfo = lines.join('');
                 }
             } else if (isNonCountablePurchasedEarlier) {
                 includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">Не входит в тариф, приобретено ранее</p>`;
@@ -2372,16 +2419,7 @@ class CPGenerator {
                             <button class="qty-btn plus" data-service="${key}" data-action="increase">+</button>`;
                             })()}
                         </div>
-                        ${isIncluded ? (() => {
-                            const previouslyPurchasedChannels = Math.max(0, previousChannels - tariffIncludedChannels);
-                            if (isConnectionExtraServices && previouslyPurchasedChannels > 0) {
-                                return `<span class="channels-note" style="font-size: 0.75rem; color: #666; margin-left: 8px;">(в тарифе ${tariffIncludedChannels}, куплено ${previouslyPurchasedChannels}, новые платно)</span>`;
-                            }
-                            if (this.isConnectionMode() || isConnectionExtraServices || this.isRenewalMode()) {
-                                return '';
-                            }
-                            return `<span class="channels-note" style="font-size: 0.75rem; color: #666; margin-left: 8px;">(${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'включен' : 'включено'}, доп. платно)</span>`;
-                        })() : ''}
+                        ${''}
                     </div>
                 ` : ''}
             `;
@@ -2402,7 +2440,25 @@ class CPGenerator {
                 if (!this.state.selectedServices[serviceKey]) {
                     this.state.selectedServices[serviceKey] = { enabled: false, channels: 0 };
                 }
-                this.state.selectedServices[serviceKey].enabled = e.target.checked;
+
+                const service = this.config?.services?.[serviceKey];
+                const isEnabled = Boolean(e.target.checked);
+                this.state.selectedServices[serviceKey].enabled = isEnabled;
+                if (service?.hasChannels) {
+                    if (!isEnabled) {
+                        this.state.selectedServices[serviceKey].channels = 0;
+                    } else if (this.getServiceChannelsCount(this.state.selectedServices[serviceKey]) <= 0) {
+                        const selectedTariff = this.state.selectedTariff
+                            ? this.config?.tariffs?.[this.state.selectedTariff]
+                            : null;
+                        const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
+                        const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 0;
+                        const minChannels = Math.max(1, includedChannels);
+                        this.state.selectedServices[serviceKey].channels = minChannels;
+                    }
+                } else if (isEnabled) {
+                    this.state.selectedServices[serviceKey].channels = 1;
+                }
                 this.markOfferDirty();
 
                 this.renderServices();
@@ -2446,6 +2502,7 @@ class CPGenerator {
                 this.state.selectedServices[serviceKey].channels = useAdditionalOnlyCounter
                     ? includedChannels + currentCounterChannels
                     : currentCounterChannels;
+                this.state.selectedServices[serviceKey].enabled = isIncluded || this.getServiceChannelsCount(this.state.selectedServices[serviceKey]) > 0;
                 this.markOfferDirty();
 
                 this.renderServices();
@@ -2474,6 +2531,7 @@ class CPGenerator {
                 } else {
                     this.state.selectedServices[serviceKey].channels = totalChannels;
                 }
+                this.state.selectedServices[serviceKey].enabled = isIncluded || this.getServiceChannelsCount(this.state.selectedServices[serviceKey]) > 0;
                 this.markOfferDirty();
 
                 this.renderServices();
@@ -2701,7 +2759,8 @@ class CPGenerator {
         const months = this.state.periodMonths;
         const periodDiscountPercent = this.getPeriodDiscountPercent();
         const periodMultiplier = this.getPeriodDiscountMultiplier();
-        const partnerPercent = this.getPartnerDiscountPercent();
+        const tariffPartnerPercent = this.getPartnerTariffPercent();
+        const packPartnerPercent = this.getPartnerPackPercent();
 
         const selectedTariff = this.state.selectedTariff
             ? this.config.tariffs[this.state.selectedTariff]
@@ -2714,6 +2773,9 @@ class CPGenerator {
                     name: `Тариф "${selectedTariff.name}"`,
                     qty: 1,
                     unitMonthly: baseTariffMonthly,
+                    kind: 'tariff',
+                    discountPercent: periodDiscountPercent,
+                    partnerPercent: tariffPartnerPercent,
                 });
             }
 
@@ -2722,6 +2784,9 @@ class CPGenerator {
                     name: `Доп. пользователи`,
                     qty: this.state.extraUsers,
                     unitMonthly: this.getExtraUserMonthlyBase(this.state.selectedTariff),
+                    kind: 'pack',
+                    discountPercent: 0,
+                    partnerPercent: packPartnerPercent,
                 });
             }
         }
@@ -2759,9 +2824,16 @@ class CPGenerator {
             }
 
             let displayText = service.name;
-            if (isIncluded && service.hasChannels) {
-                const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                displayText = `${service.name} (${includedChannels} ${includedChannels === 1 ? 'канал включен' : 'канала включено'}, +${displayChannels} доп.)`;
+            if (service.hasChannels) {
+                const channelLabel = (n) => {
+                    const v = Math.abs(Number(n) || 0);
+                    const mod10 = v % 10;
+                    const mod100 = v % 100;
+                    if (mod10 === 1 && mod100 !== 11) return 'канал';
+                    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'канала';
+                    return 'каналов';
+                };
+                displayText = `${service.name} ${displayChannels} ${channelLabel(displayChannels)}`;
             } else if (channels > 1) {
                 displayText = `${service.name} (×${channels})`;
             }
@@ -2770,6 +2842,9 @@ class CPGenerator {
                 name: displayText,
                 qty,
                 unitMonthly,
+                kind: 'pack',
+                discountPercent: 0,
+                partnerPercent: packPartnerPercent,
             });
         });
 
@@ -2777,10 +2852,12 @@ class CPGenerator {
             const qty = Number(r.qty) || 0;
             const unitMonthly = Number(r.unitMonthly) || 0;
             const sum = unitMonthly * qty * months;
-            const discountAmount = sum * (periodDiscountPercent / 100);
+            const discountPercent = Number(r.discountPercent) || 0;
+            const partnerPercent = Number(r.partnerPercent) || 0;
+            const discountAmount = sum * (discountPercent / 100);
             const afterDiscount = sum - discountAmount;
             const partnerShare = afterDiscount * (partnerPercent / 100);
-            return { ...r, qty, unitMonthly, months, sum, discountAmount, afterDiscount, partnerShare };
+            return { ...r, qty, unitMonthly, months, sum, discountAmount, afterDiscount, partnerShare, discountPercent, partnerPercent };
         });
 
         const totalSum = computed.reduce((s, r) => s + r.sum, 0);
@@ -2814,13 +2891,17 @@ class CPGenerator {
                         <td>${this.formatPrice(r.unitMonthly)}</td>
                         <td>${r.months}</td>
                         <td>${this.formatPrice(r.sum)}</td>
-                        <td>${this.formatPrice(r.discountAmount)} (${periodDiscountPercent}%)</td>
+                        <td>${this.formatPrice(r.discountAmount)} (${r.discountPercent}%)</td>
                         <td>${this.formatPrice(r.afterDiscount)}</td>
-                        <td>${partnerPercent}%</td>
+                        <td>${r.partnerPercent}%</td>
                         <td>${this.formatPrice(r.partnerShare)}</td>
                     </tr>
                 `;
             });
+
+            const partnerTotalLabel = tariffPartnerPercent === packPartnerPercent
+                ? `${tariffPartnerPercent}%`
+                : '—';
 
             tableHTML += `
                 <tr class="payments-table-total">
@@ -2829,9 +2910,9 @@ class CPGenerator {
                     <td></td>
                     <td></td>
                     <td style="font-weight:700; color:#111;">${this.formatPrice(totalSum)}</td>
-                    <td style="font-weight:700; color:#111;">${this.formatPrice(totalDiscount)} (${periodDiscountPercent}%)</td>
+                    <td style="font-weight:700; color:#111;">${this.formatPrice(totalDiscount)}</td>
                     <td style="font-weight:700; color:#111;">${this.formatPrice(totalAfterDiscount)}</td>
-                    <td style="font-weight:700; color:#111;">${partnerPercent}%</td>
+                    <td style="font-weight:700; color:#111;">${partnerTotalLabel}</td>
                     <td style="font-weight:700; color:#111;">${this.formatPrice(totalPartnerShare)}</td>
                 </tr>
             `;
@@ -2841,8 +2922,7 @@ class CPGenerator {
         }
 
         const monthlyRaw = rows.reduce((s, r) => s + (Number(r.unitMonthly) || 0) * (Number(r.qty) || 0), 0);
-        const monthlyAfterDiscount = monthlyRaw * periodMultiplier;
-        const monthlyToPay = monthlyAfterDiscount;
+        const monthlyToPay = months > 0 ? (totalToPay / months) : totalToPay;
 
         // Build period details string
         const periodDetailsEl = document.getElementById('periodDetails');
@@ -2895,16 +2975,29 @@ class CPGenerator {
                 detailsText += ` + Доп пакеты`;
             }
 
+            const showTariffDiscount = this.shouldIncludeBaseTariffInPricing();
             if (this.state.periodMonths === 12) {
-                detailsText += ` × ${this.state.periodMonths} мес (скидка 15%)`;
+                detailsText += showTariffDiscount
+                    ? ` × ${this.state.periodMonths} мес (скидка 15% на тариф)`
+                    : ` × ${this.state.periodMonths} мес`;
             } else if (this.state.periodMonths === 8) {
-                detailsText += ` × ${this.state.periodMonths} мес (скидка 50%)`;
+                detailsText += showTariffDiscount
+                    ? ` × ${this.state.periodMonths} мес (скидка 50% на тариф)`
+                    : ` × ${this.state.periodMonths} мес`;
             } else {
                 detailsText += ` × ${this.state.periodMonths} мес`;
             }
 
-            if (partnerPercent > 0) {
-                detailsText += `, партнер ${partnerPercent}%`;
+            const partnerLabel = this.shouldIncludeBaseTariffInPricing()
+                ? (tariffPartnerPercent === packPartnerPercent
+                    ? tariffPartnerPercent
+                    : null)
+                : packPartnerPercent;
+
+            if (partnerLabel !== null && partnerLabel > 0) {
+                detailsText += `, партнер ${partnerLabel}%`;
+            } else if (this.shouldIncludeBaseTariffInPricing() && (tariffPartnerPercent > 0 || packPartnerPercent > 0)) {
+                detailsText += `, партнер: тариф ${tariffPartnerPercent}%, пакеты ${packPartnerPercent}%`;
             }
 
             periodDetailsEl.innerHTML = detailsText;
@@ -2938,25 +3031,21 @@ class CPGenerator {
 
     formatPrice(amount) {
         const currency = this.getCurrentCurrency();
+        const val = Number(amount) || 0;
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
         if (this.state.currency === 'USD') {
-            // Для USD показываем 2 знака после запятой без округления
-            return `$${amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            return `$${formatted}`;
         }
 
-        // Для других валют показываем без округления (с точностью до 2 знаков если есть дробная часть)
-        const formatted = amount.toLocaleString('ru-RU', {
-            minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-            maximumFractionDigits: 2
-        });
         return `${formatted} ${currency.symbol}`;
     }
 
     formatTotalPrice(amount) {
-        // Итоговую сумму показываем с точностью 2 знака после запятой
+        // Итоговую сумму показываем с точностью 4 знака после запятой
         const currency = this.getCurrentCurrency();
         const val = Number(amount) || 0;
-        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
         if (this.state.currency === 'USD') {
             return `$${formatted}`;
@@ -2984,7 +3073,7 @@ class CPGenerator {
         // Используем пробел как разделитель тысяч (как в ru-RU)
         return num.toLocaleString('ru-RU', {
             minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
+            maximumFractionDigits: 4,
             useGrouping: true
         });
     }
@@ -3663,18 +3752,19 @@ class CPGenerator {
     }
 
     calculateTotals() {
-        let monthlyRaw = 0;
+        let monthlyTariffBase = 0;
+        let monthlyPacks = 0;
         const months = this.state.periodMonths;
         const periodMultiplier = this.getPeriodDiscountMultiplier();
 
         if (this.state.selectedTariff && this.shouldIncludeBaseTariffInPricing()) {
-            monthlyRaw += this.getTariffMonthlyBase(this.state.selectedTariff);
+            monthlyTariffBase += this.getTariffMonthlyBase(this.state.selectedTariff);
 
             if (this.state.extraUsers > 0) {
-                monthlyRaw += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
+                monthlyPacks += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
             }
         } else if (this.state.selectedTariff && this.state.extraUsers > 0) {
-            monthlyRaw += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
+            monthlyPacks += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
         }
 
         const selectedTariff = this.state.selectedTariff
@@ -3714,12 +3804,11 @@ class CPGenerator {
                 totalPrice = basePrice * channels;
             }
 
-            monthlyRaw += totalPrice;
+            monthlyPacks += totalPrice;
         });
 
-        const monthlyAfterDiscount = monthlyRaw * periodMultiplier;
-        const monthlyToPay = monthlyAfterDiscount;
-        const periodToPay = monthlyAfterDiscount * months;
+        const monthlyToPay = (monthlyTariffBase * periodMultiplier) + monthlyPacks;
+        const periodToPay = monthlyToPay * months;
 
         return {
             monthly: monthlyToPay,
