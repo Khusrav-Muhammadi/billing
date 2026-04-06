@@ -2808,7 +2808,6 @@ class CPGenerator {
 
             const unitMonthly = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
-            let displayChannels = channels;
             let qty = channels;
 
             // For included services with channels, only charge for additional channels
@@ -2817,7 +2816,6 @@ class CPGenerator {
                 const additionalChannels = channels - includedChannels;
                 if (additionalChannels > 0) {
                     qty = additionalChannels;
-                    displayChannels = additionalChannels;
                 } else {
                     return; // No additional charges
                 }
@@ -2827,23 +2825,8 @@ class CPGenerator {
                 return;
             }
 
-            let displayText = service.name;
-            if (service.hasChannels) {
-                const channelLabel = (n) => {
-                    const v = Math.abs(Number(n) || 0);
-                    const mod10 = v % 10;
-                    const mod100 = v % 100;
-                    if (mod10 === 1 && mod100 !== 11) return 'канал';
-                    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'канала';
-                    return 'каналов';
-                };
-                displayText = `${service.name} ${displayChannels} ${channelLabel(displayChannels)}`;
-            } else if (channels > 1) {
-                displayText = `${service.name} (×${channels})`;
-            }
-
             rows.push({
-                name: displayText,
+                name: service.name,
                 qty,
                 unitMonthly,
                 kind: 'pack',
