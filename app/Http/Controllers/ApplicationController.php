@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\CommercialOfferPaidStatusEvent;
 use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
+use App\Events\CommercialOfferRenewalNoChangePaidStatusEvent;
 use App\Events\CommercialOfferRenewalPaidStatusEvent;
 use App\Models\Account;
 use App\Models\Client;
@@ -432,8 +433,12 @@ class ApplicationController extends Controller
 
             if ($requestType === 'connection_extra_services') {
                 CommercialOfferExtraServicesPaidStatusEvent::dispatch($freshOffer, $freshStatus);
-            } elseif (in_array($requestType, ['renewal', 'renewal_no_changes'], true)) {
-                CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            }
+            elseif ($requestType == 'renewal') {
+            CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            }
+            elseif ($requestType == 'renewal_no_changes') {
+                CommercialOfferRenewalNoChangePaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } else {
                 CommercialOfferPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             }
