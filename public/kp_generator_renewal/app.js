@@ -1407,6 +1407,38 @@ class CPGenerator {
         return Number(amount) || 0;
     }
 
+    shouldSubtractPartnerShareFromPayment() {
+        const payer = this.getPaymentPayer();
+        return (payer?.type === 'partner');
+    }
+
+    applyPartnerShare(amount, percent) {
+        const val = Number(amount) || 0;
+        const p = Math.max(0, Math.min(100, Number(percent) || 0));
+        if (p <= 0) return val;
+        return this.roundMoney(val * (1 - (p / 100)));
+    }
+
+    applyPartnerShareToPaymentItems(items) {
+        if (!Array.isArray(items)) return [];
+        if (!this.shouldSubtractPartnerShareFromPayment()) return items;
+
+        const tariffPercent = this.getPartnerTariffPercent();
+        const packPercent = this.getPartnerPackPercent();
+
+        return items
+            .map((item) => {
+                const kind = String(item?.pricing_kind || '');
+                const percent = kind === 'tariff' ? tariffPercent : packPercent;
+                return {
+                    ...item,
+                    price: this.applyPartnerShare(item?.price, percent),
+                    unit_price: this.applyPartnerShare(item?.unit_price, percent),
+                };
+            })
+            .filter((i) => (Number(i?.price) || 0) > 0);
+    }
+
     normalizeCurrencyCode(code) {
         return String(code || '').trim().toUpperCase();
     }
@@ -1649,20 +1681,23 @@ class CPGenerator {
             throw new Error(this.isConnectedContextMode() ? 'Не удалось определить тариф из успешного подключения.' : 'Выберите тариф.');
         }
 
-        const totals = this.calculateTotals();
-        const originalTotal = this.roundMoney(totals.grand || 0);
+        const grossTotals = this.calculateTotals();
+        const payableTotals = this.calculatePayableTotals();
+        const originalTotal = this.roundMoney(grossTotals.grand || 0);
+        const amountToPay = this.roundMoney(payableTotals.grand || 0);
 
         const rawItems = this.buildPaymentItems();
         if (!rawItems.length) {
             throw new Error('Нет позиций для сохранения КП.');
         }
 
-        const conversionMeta = this.getPaymentConversionMeta(originalTotal);
+        const paymentItems = this.applyPartnerShareToPaymentItems(rawItems);
+        const conversionMeta = this.getPaymentConversionMeta(amountToPay);
         if (conversionMeta.requiresConversion && (!conversionMeta.rate || conversionMeta.rate <= 0)) {
             throw new Error(`Не найден курс для ${conversionMeta.sourceCurrency}. Добавьте курс в разделе "Курс валюты".`);
         }
 
-        const payableItems = this.toPayableItems(rawItems, conversionMeta);
+        const payableItems = this.toPayableItems(paymentItems, conversionMeta);
         const payableTotal = this.roundMoney(payableItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0));
 
         const payer = this.getPaymentPayer(client);
@@ -1727,8 +1762,8 @@ class CPGenerator {
             partner_phone: partner?.phone || '',
             partner_email: partner?.email || '',
             payer,
-            monthly_total: this.roundMoney(totals.monthly || 0),
-            period_total: this.roundMoney(totals.period || 0),
+            monthly_total: this.roundMoney(grossTotals.monthly || 0),
+            period_total: this.roundMoney(grossTotals.period || 0),
             grand_total: originalTotal,
             original_total: originalTotal,
             payable_total: payableTotal,
@@ -1758,11 +1793,13 @@ class CPGenerator {
             return;
         }
 
-        const items = this.buildPaymentItems();
-        if (!items.length) {
+        const rawItems = this.buildPaymentItems();
+        if (!rawItems.length) {
             alert('Нет позиций для оплаты.');
             return;
         }
+
+        const items = this.applyPartnerShareToPaymentItems(rawItems);
 
         const payer = this.getPaymentPayer(client);
         if (payer.type === 'partner') {
@@ -2847,7 +2884,10 @@ class CPGenerator {
         const totalDiscount = computed.reduce((s, r) => s + r.discountAmount, 0);
         const totalAfterDiscount = computed.reduce((s, r) => s + r.afterDiscount, 0);
         const totalPartnerShare = computed.reduce((s, r) => s + r.partnerShare, 0);
-        const totalToPay = totalAfterDiscount;
+        const payer = this.getPaymentPayer();
+        const totalToPay = payer?.type === 'partner'
+            ? Math.max(0, this.roundMoney(totalAfterDiscount - totalPartnerShare))
+            : totalAfterDiscount;
 
         if (computed.length > 0) {
             let tableHTML = '<div class="payments-table-wrap"><table class="payments-table payments-table-wide">';
@@ -3241,7 +3281,7 @@ class CPGenerator {
             payBtn.addEventListener('click', () => {
                 const client = this.getSelectedClient();
                 const payer = this.getPaymentPayer(client);
-                const totals = this.calculateTotals();
+                const totals = this.calculatePayableTotals();
                 const payModal = document.getElementById('payModal');
                 const payClientName = document.getElementById('payClientName');
                 const payPayerLabel = document.getElementById('payPayerLabel');
@@ -3805,6 +3845,83 @@ class CPGenerator {
             monthly: monthlyToPay,
             period: periodToPay,
             grand: periodToPay
+        };
+    }
+
+    calculatePayableTotals() {
+        const grossTotals = this.calculateTotals();
+        if (!this.shouldSubtractPartnerShareFromPayment()) {
+            return grossTotals;
+        }
+
+        let monthlyTariffBase = 0;
+        let monthlyPacks = 0;
+        const months = Math.max(1, Number(this.state.periodMonths) || 1);
+        const periodMultiplier = this.getPeriodDiscountMultiplier();
+
+        if (this.state.selectedTariff && this.shouldIncludeBaseTariffInPricing()) {
+            monthlyTariffBase += this.getTariffMonthlyBase(this.state.selectedTariff);
+
+            if (this.state.extraUsers > 0) {
+                monthlyPacks += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
+            }
+        } else if (this.state.selectedTariff && this.state.extraUsers > 0) {
+            monthlyPacks += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
+        }
+
+        const selectedTariff = this.state.selectedTariff
+            ? this.config.tariffs[this.state.selectedTariff]
+            : null;
+
+        Object.entries(this.state.selectedServices).forEach(([key, serviceState]) => {
+            if (!serviceState.enabled) return;
+
+            const service = this.config.services[key];
+            if (!service || service.priceFromTariff) return;
+
+            const isIncluded = selectedTariff?.includedServices?.includes(key);
+            if (this.isPreviouslyPurchasedNonCountableService(key, service, isIncluded)) {
+                return;
+            }
+
+            const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
+            const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+            if (!isIncluded && service.hasChannels && channels <= 0) {
+                return;
+            }
+            let totalPrice = 0;
+
+            if (isIncluded && service.hasChannels) {
+                const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
+                const additionalChannels = Math.max(0, channels - includedChannels);
+                if (additionalChannels > 0) {
+                    totalPrice = basePrice * additionalChannels;
+                } else {
+                    return;
+                }
+            } else if (isIncluded) {
+                return;
+            } else {
+                totalPrice = basePrice * channels;
+            }
+
+            monthlyPacks += totalPrice;
+        });
+
+        const monthlyTariffAfterDiscount = monthlyTariffBase * periodMultiplier;
+        const tariffPercent = this.getPartnerTariffPercent();
+        const packPercent = this.getPartnerPackPercent();
+
+        const monthlyNet = this.roundMoney(
+            this.applyPartnerShare(monthlyTariffAfterDiscount, tariffPercent)
+            + this.applyPartnerShare(monthlyPacks, packPercent)
+        );
+        const periodNet = this.roundMoney(monthlyNet * months);
+
+        return {
+            monthly: monthlyNet,
+            period: periodNet,
+            grand: periodNet,
         };
     }
 
