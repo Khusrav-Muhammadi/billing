@@ -70,7 +70,7 @@ class ApplicationController extends Controller
 
     public function create(Request $request)
     {
-        $requestType = $this->normalizeRequestType((string) $request->query('request_type', 'connection'));
+        $requestType = $this->normalizeRequestType((string)$request->query('request_type', 'connection'));
 
         return $this->renderCreatePage($requestType);
     }
@@ -108,7 +108,7 @@ class ApplicationController extends Controller
             'payload' => ['required', 'string'],
         ]);
 
-        $payload = json_decode((string) $validated['payload'], true);
+        $payload = json_decode((string)$validated['payload'], true);
         if (!is_array($payload)) {
             throw ValidationException::withMessages([
                 'payload' => 'Некорректный формат данных КП.',
@@ -117,10 +117,10 @@ class ApplicationController extends Controller
 
         $organization = Organization::query()
             ->with('client:id,phone,email,partner_id')
-            ->findOrFail((int) $validated['organization_id']);
+            ->findOrFail((int)$validated['organization_id']);
 
         $offer = DB::transaction(function () use ($validated, $payload, $organization) {
-            $offerId = isset($validated['offer_id']) ? (int) $validated['offer_id'] : null;
+            $offerId = isset($validated['offer_id']) ? (int)$validated['offer_id'] : null;
 
             if ($offerId) {
                 $offer = CommercialOffer::query()
@@ -137,7 +137,7 @@ class ApplicationController extends Controller
                 $offer->created_by = Auth::id();
             }
 
-            $requestType = $this->normalizeRequestType((string) data_get($payload, 'request_type', 'connection'));
+            $requestType = $this->normalizeRequestType((string)data_get($payload, 'request_type', 'connection'));
 
             $partnerId = $this->toNullableInt(data_get($payload, 'partner_id'));
             if (!$partnerId) {
@@ -152,7 +152,7 @@ class ApplicationController extends Controller
                     ->first();
             }
 
-            $selectedTariffKey = (string) (data_get($payload, 'selected_tariff_key') ?? '');
+            $selectedTariffKey = (string)(data_get($payload, 'selected_tariff_key') ?? '');
             $selectedTariffId = $this->toNullableInt(data_get($payload, 'selected_tariff_id'));
             if (!$selectedTariffId) {
                 $selectedTariffId = $this->extractTariffIdFromKey($selectedTariffKey);
@@ -163,21 +163,21 @@ class ApplicationController extends Controller
                 $tariff = Tariff::query()->select('id', 'name')->find($selectedTariffId);
             }
 
-            $payerType = (string) (data_get($payload, 'payer.type') ?? ($partner ? 'partner' : 'client'));
+            $payerType = (string)(data_get($payload, 'payer.type') ?? ($partner ? 'partner' : 'client'));
             if (!in_array($payerType, ['client', 'partner'], true)) {
                 $payerType = $partner ? 'partner' : 'client';
             }
 
-            $clientName = (string) ($organization->name ?? data_get($payload, 'client_name', ''));
-            $clientPhone = (string) ($organization->phone ?: ($organization->client?->phone ?: data_get($payload, 'client_phone', '')));
-            $clientEmail = (string) ($organization->email ?: ($organization->client?->email ?: data_get($payload, 'client_email', '')));
+            $clientName = (string)($organization->name ?? data_get($payload, 'client_name', ''));
+            $clientPhone = (string)($organization->phone ?: ($organization->client?->phone ?: data_get($payload, 'client_phone', '')));
+            $clientEmail = (string)($organization->email ?: ($organization->client?->email ?: data_get($payload, 'client_email', '')));
 
-            $partnerName = (string) (($partner?->name) ?: data_get($payload, 'partner_name', ''));
-            $partnerPhone = (string) (($partner?->phone) ?: data_get($payload, 'partner_phone', ''));
-            $partnerEmail = (string) (($partner?->email) ?: data_get($payload, 'partner_email', ''));
+            $partnerName = (string)(($partner?->name) ?: data_get($payload, 'partner_name', ''));
+            $partnerPhone = (string)(($partner?->phone) ?: data_get($payload, 'partner_phone', ''));
+            $partnerEmail = (string)(($partner?->email) ?: data_get($payload, 'partner_email', ''));
             $statusDate = $this->toNullableDate(data_get($payload, 'status_date'));
             $pricingDate = $this->toNullableDate(data_get($payload, 'pricing_date'));
-            $periodMonths = max(1, (int) data_get($payload, 'period_months', 6));
+            $periodMonths = max(1, (int)data_get($payload, 'period_months', 6));
             $periodDiscountPercent = $this->resolvePeriodDiscountPercent($periodMonths);
 
             $partnerPercents = [
@@ -187,7 +187,7 @@ class ApplicationController extends Controller
             if ($partner) {
                 $asOf = $statusDate ?: now()->toDateString();
                 $row = PartnerProcent::query()
-                    ->where('partner_id', (int) $partner->id)
+                    ->where('partner_id', (int)$partner->id)
                     ->whereDate('date', '<=', $asOf)
                     ->orderByDesc('date')
                     ->orderByDesc('id')
@@ -195,8 +195,8 @@ class ApplicationController extends Controller
 
                 if ($row) {
                     $partnerPercents = [
-                        'tariff' => (float) max(0, min(100, (float) ($row->procent_from_tariff ?? 0))),
-                        'pack' => (float) max(0, min(100, (float) ($row->procent_from_pack ?? 0))),
+                        'tariff' => (float)max(0, min(100, (float)($row->procent_from_tariff ?? 0))),
+                        'pack' => (float)max(0, min(100, (float)($row->procent_from_pack ?? 0))),
                     ];
                 }
             }
@@ -212,9 +212,9 @@ class ApplicationController extends Controller
                 'pricing_date' => $pricingDate,
                 'currency' => $this->toCurrencyCode(data_get($payload, 'currency', 'USD')),
                 'payable_currency' => $this->toCurrencyCode(data_get($payload, 'payable_currency', data_get($payload, 'currency', 'USD'))),
-                'card_payment_type' => (string) data_get($payload, 'card_payment_type', 'octo'),
+                'card_payment_type' => (string)data_get($payload, 'card_payment_type', 'octo'),
                 'period_months' => $periodMonths,
-                'extra_users' => max(0, (int) data_get($payload, 'extra_users', 0)),
+                'extra_users' => max(0, (int)data_get($payload, 'extra_users', 0)),
                 'client_name' => $clientName,
                 'client_phone' => $clientPhone,
                 'client_email' => $clientEmail,
@@ -222,7 +222,7 @@ class ApplicationController extends Controller
                 'partner_phone' => $partnerPhone !== '' ? $partnerPhone : null,
                 'partner_email' => $partnerEmail !== '' ? $partnerEmail : null,
                 'payer_type' => $payerType,
-                'manager_name' => (string) data_get($payload, 'manager_name', ''),
+                'manager_name' => (string)data_get($payload, 'manager_name', ''),
                 'original_total' => $this->toDecimal(data_get($payload, 'original_total', data_get($payload, 'grand_total', 0))),
                 'monthly_total' => $this->toDecimal(data_get($payload, 'monthly_total', 0)),
                 'period_total' => $this->toDecimal(data_get($payload, 'period_total', data_get($payload, 'grand_total', 0))),
@@ -257,24 +257,24 @@ class ApplicationController extends Controller
                     continue;
                 }
 
-                $quantity = max(1, (float) data_get($row, 'quantity', 1));
-                $months = max(1, (int) data_get($row, 'months', $periodMonths));
+                $quantity = max(1, (float)data_get($row, 'quantity', 1));
+                $months = max(1, (int)data_get($row, 'months', $periodMonths));
                 $totalPrice = $this->toDecimal(data_get($row, 'total_price', data_get($row, 'price', 0)));
                 if ($totalPrice <= 0) {
                     continue;
                 }
 
-                $unitPrice = $this->toDecimal(data_get($row, 'unit_price'));
-                $unitPrice = $this->normalizeMonthlyUnitPrice($unitPrice, $totalPrice, $quantity, $months);
-
-                $isTariffLine = (bool) ($itemTariff->is_tariff) && !(bool) ($itemTariff->is_extra_user);
+                $isTariffLine = (bool)($itemTariff->is_tariff) && !(bool)($itemTariff->is_extra_user);
                 $discountPercent = $isTariffLine ? $periodDiscountPercent : 0.0;
                 $partnerPercent = $partner
-                    ? ($isTariffLine ? (float) ($partnerPercents['tariff'] ?? 0) : (float) ($partnerPercents['pack'] ?? 0))
+                    ? ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0))
                     : 0.0;
 
+                $unitPrice = $this->toDecimal(data_get($row, 'unit_price'));
+                $unitPrice = $this->normalizeMonthlyUnitPrice($unitPrice, $totalPrice, $quantity, $months, $discountPercent);
+
                 $offer->items()->create([
-                    'tariff_id' => (int) $itemTariff->id,
+                    'tariff_id' => (int)$itemTariff->id,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'months' => $months,
@@ -304,40 +304,70 @@ class ApplicationController extends Controller
     }
 
 
-    private function normalizeMonthlyUnitPrice(float $unitPrice, float $totalPrice, float $quantity, int $months): float
+    private function normalizeMonthlyUnitPrice(
+        float $unitPrice,
+        float $totalPrice,
+        float $quantity,
+        int   $months,
+        float $discountPercent = 0.0
+    ): float
     {
-        $qty = max(1.0, (float) $quantity);
-        $m = max(1, (int) $months);
+        $qty = max(1.0, (float)$quantity);
+        $m = max(1, (int)$months);
 
-        $periodPerUnit = $qty > 0 ? ($totalPrice / $qty) : $totalPrice;
-        $monthlyPerUnitFromTotal = $m > 0 ? ($periodPerUnit / $m) : $periodPerUnit;
+        $periodPerUnitNet = $qty > 0 ? ($totalPrice / $qty) : $totalPrice;
+        $monthlyPerUnitNetFromTotal = $m > 0 ? ($periodPerUnitNet / $m) : $periodPerUnitNet;
 
-        $provided = (float) $unitPrice;
+        $discount = round(max(0.0, min(100.0, (float)$discountPercent)), 4);
+        $discountFactor = 1 - ($discount / 100);
+        if ($discountFactor <= 0 || $discountFactor > 1) {
+            $discountFactor = 1;
+        }
+
+        $monthlyPerUnitGrossFromTotal = $discountFactor > 0
+            ? ($monthlyPerUnitNetFromTotal / $discountFactor)
+            : $monthlyPerUnitNetFromTotal;
+
+        $provided = (float)$unitPrice;
         if ($provided <= 0) {
-            return $this->toDecimal($monthlyPerUnitFromTotal);
+            return $this->toDecimal($monthlyPerUnitGrossFromTotal);
         }
 
-        // If UI sends 'unit_price' already multiplied by period months (common in KP generator),
-        // then total_price ~= unit_price * quantity and we should divide it by months.
-        $ratio = ($provided * $qty) > 0 ? ($totalPrice / ($provided * $qty)) : null;
-        if ($m > 1 && $ratio !== null) {
-            // ratio ~ 1 => unit_price is period price per unit.
-            if (abs($ratio - 1.0) <= 0.05) {
-                return $this->toDecimal($provided / $m);
-            }
+        $tolerance = 0.05;
 
-            // ratio ~ months => unit_price is monthly already.
-            if (abs($ratio - (float) $m) <= max(0.1, 0.05 * $m)) {
-                return $this->toDecimal($provided);
-            }
+        // Case 1: unit_price is period net per unit.
+        $expectedPeriodNet = $provided * $qty;
+        if ($expectedPeriodNet > 0 && abs($totalPrice - $expectedPeriodNet) / $expectedPeriodNet <= $tolerance) {
+            $monthlyNet = $provided / $m;
+            $monthlyGross = $discountFactor > 0 ? ($monthlyNet / $discountFactor) : $monthlyNet;
+            return $this->toDecimal($monthlyGross);
         }
 
-        return $this->toDecimal($monthlyPerUnitFromTotal);
+        // Case 2: unit_price is period gross per unit (net total = gross * discountFactor).
+        $expectedPeriodNetFromGross = $provided * $qty * $discountFactor;
+        if ($expectedPeriodNetFromGross > 0 && abs($totalPrice - $expectedPeriodNetFromGross) / $expectedPeriodNetFromGross <= $tolerance) {
+            return $this->toDecimal($provided / $m);
+        }
+
+        // Case 3: unit_price is monthly net per unit.
+        $expectedPeriodNetFromMonthlyNet = $provided * $qty * $m;
+        if ($expectedPeriodNetFromMonthlyNet > 0 && abs($totalPrice - $expectedPeriodNetFromMonthlyNet) / $expectedPeriodNetFromMonthlyNet <= $tolerance) {
+            $monthlyGross = $discountFactor > 0 ? ($provided / $discountFactor) : $provided;
+            return $this->toDecimal($monthlyGross);
+        }
+
+        // Case 4: unit_price is monthly gross per unit (net total = gross * months * discountFactor).
+        $expectedPeriodNetFromMonthlyGross = $provided * $qty * $m * $discountFactor;
+        if ($expectedPeriodNetFromMonthlyGross > 0 && abs($totalPrice - $expectedPeriodNetFromMonthlyGross) / $expectedPeriodNetFromMonthlyGross <= $tolerance) {
+            return $this->toDecimal($provided);
+        }
+
+        return $this->toDecimal($monthlyPerUnitGrossFromTotal);
     }
 
     private function resolvePeriodDiscountPercent(int $periodMonths): float
     {
-        $months = max(1, (int) $periodMonths);
+        $months = max(1, (int)$periodMonths);
         if ($months === 12) {
             return 15.0;
         }
@@ -391,13 +421,13 @@ class ApplicationController extends Controller
             'payment_order_number' => ['nullable', 'string', 'max:100', 'required_if:payment_method,invoice'],
         ]);
 
-        $accountId = isset($validated['account_id']) ? (int) $validated['account_id'] : null;
+        $accountId = isset($validated['account_id']) ? (int)$validated['account_id'] : null;
         if ($validated['payment_method'] !== 'invoice') {
             $accountId = null;
         }
 
         $paymentOrderNumber = isset($validated['payment_order_number'])
-            ? trim((string) $validated['payment_order_number'])
+            ? trim((string)$validated['payment_order_number'])
             : null;
 
         if ($validated['payment_method'] !== 'invoice' || $paymentOrderNumber === '') {
@@ -425,19 +455,17 @@ class ApplicationController extends Controller
             'is_demo' => 0,
         ]);
 
-        if ((string) $validated['status'] === 'paid') {
+        if ((string)$validated['status'] === 'paid') {
             $freshOffer = $offer->fresh();
             $this->syncClientPartnerFromPaidOffer($freshOffer);
             $freshStatus = $statusRecord->fresh();
-            $requestType = $this->normalizeRequestType((string) ($freshOffer?->request_type ?: 'connection'));
+            $requestType = $this->normalizeRequestType((string)($freshOffer?->request_type ?: 'connection'));
 
             if ($requestType === 'connection_extra_services') {
                 CommercialOfferExtraServicesPaidStatusEvent::dispatch($freshOffer, $freshStatus);
-            }
-            elseif ($requestType == 'renewal') {
-            CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
-            }
-            elseif ($requestType == 'renewal_no_changes') {
+            } elseif ($requestType == 'renewal') {
+                CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } elseif ($requestType == 'renewal_no_changes') {
                 CommercialOfferRenewalNoChangePaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } else {
                 CommercialOfferPaidStatusEvent::dispatch($freshOffer, $freshStatus);
@@ -457,15 +485,15 @@ class ApplicationController extends Controller
 
         $organization = Organization::query()
             ->with('client:id,partner_id')
-            ->find((int) $offer->organization_id);
+            ->find((int)$offer->organization_id);
 
         $client = $organization?->client;
         if (!$client) {
             return;
         }
 
-        $partnerId = (int) $offer->partner_id;
-        if ((int) $client->partner_id === $partnerId) {
+        $partnerId = (int)$offer->partner_id;
+        if ((int)$client->partner_id === $partnerId) {
             return;
         }
 
@@ -540,7 +568,7 @@ class ApplicationController extends Controller
 
     private function normalizeRequestType(?string $requestType): string
     {
-        $normalized = trim((string) $requestType);
+        $normalized = trim((string)$requestType);
         if (!array_key_exists($normalized, self::REQUEST_TYPES)) {
             return 'connection';
         }
@@ -550,7 +578,7 @@ class ApplicationController extends Controller
 
     private function resolveRequestTypeFromOffer(CommercialOffer $offer): string
     {
-        return $this->normalizeRequestType((string) ($offer->request_type ?: 'connection'));
+        return $this->normalizeRequestType((string)($offer->request_type ?: 'connection'));
     }
 
     public function getConnectionContext(Organization $organization): JsonResponse
@@ -587,7 +615,7 @@ class ApplicationController extends Controller
 
         $tariffIds = $rows->pluck('tariff_id')
             ->filter()
-            ->map(fn ($value) => (int) $value)
+            ->map(fn($value) => (int)$value)
             ->unique()
             ->values()
             ->all();
@@ -598,12 +626,12 @@ class ApplicationController extends Controller
             ->keyBy('id');
 
         $connectionRow = $rows->first(function ($row) use ($tariffsById) {
-            $tariff = $tariffsById->get((int) $row->tariff_id);
+            $tariff = $tariffsById->get((int)$row->tariff_id);
             if (!$tariff) {
                 return false;
             }
 
-            return (bool) $tariff->is_tariff && !(bool) $tariff->is_extra_user;
+            return (bool)$tariff->is_tariff && !(bool)$tariff->is_extra_user;
         });
 
         if (!$connectionRow) {
@@ -621,7 +649,7 @@ class ApplicationController extends Controller
             ]);
         }
 
-        $selectedTariffId = (int) $connectionRow->tariff_id;
+        $selectedTariffId = (int)$connectionRow->tariff_id;
         $quantitiesByOfferTariff = $this->buildConnectedServiceQuantitiesMap($rows);
         $selectedServices = $this->buildSelectedServicesFromConnectedRows(
             $selectedTariffId,
@@ -635,7 +663,7 @@ class ApplicationController extends Controller
             $quantitiesByOfferTariff
         );
 
-        $partnerId = (int) ($organization->client?->partner_id ?? 0);
+        $partnerId = (int)($organization->client?->partner_id ?? 0);
         if ($partnerId <= 0) {
             $partnerId = null;
         }
@@ -656,8 +684,8 @@ class ApplicationController extends Controller
                 'order_number' => $organization->order_number,
             ],
             'connection_offer' => [
-                'id' => $connectionRow->commercial_offer_id ? (int) $connectionRow->commercial_offer_id : null,
-                'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int) $selectedTariffId) : null,
+                'id' => $connectionRow->commercial_offer_id ? (int)$connectionRow->commercial_offer_id : null,
+                'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int)$selectedTariffId) : null,
                 'partner_id' => $partnerId,
                 'partner_name' => $partnerName,
                 'extra_users' => $extraUsers,
@@ -671,7 +699,7 @@ class ApplicationController extends Controller
         $offerIds = collect($rows)
             ->pluck('commercial_offer_id')
             ->filter()
-            ->map(fn ($value) => (int) $value)
+            ->map(fn($value) => (int)$value)
             ->unique()
             ->values()
             ->all();
@@ -686,10 +714,10 @@ class ApplicationController extends Controller
 
         $map = [];
         foreach ($items as $item) {
-            $offerId = (int) $item->commercial_offer_id;
-            $tariffId = (int) $item->tariff_id;
+            $offerId = (int)$item->commercial_offer_id;
+            $tariffId = (int)$item->tariff_id;
             $key = $offerId . ':' . $tariffId;
-            $map[$key] = ($map[$key] ?? 0.0) + (float) $item->quantity;
+            $map[$key] = ($map[$key] ?? 0.0) + (float)$item->quantity;
         }
 
         return $map;
@@ -697,13 +725,13 @@ class ApplicationController extends Controller
 
     private function resolveConnectedRowQuantity($row, array $quantitiesByOfferTariff): int
     {
-        $offerId = (int) ($row->commercial_offer_id ?? 0);
-        $tariffId = (int) ($row->tariff_id ?? 0);
+        $offerId = (int)($row->commercial_offer_id ?? 0);
+        $tariffId = (int)($row->tariff_id ?? 0);
 
         if ($offerId > 0 && $tariffId > 0) {
             $key = $offerId . ':' . $tariffId;
             if (array_key_exists($key, $quantitiesByOfferTariff)) {
-                return max(0, (int) round((float) $quantitiesByOfferTariff[$key]));
+                return max(0, (int)round((float)$quantitiesByOfferTariff[$key]));
             }
         }
 
@@ -711,11 +739,12 @@ class ApplicationController extends Controller
     }
 
     private function buildSelectedServicesFromConnectedRows(
-        ?int $selectedTariffId,
-        $rows,
+        ?int  $selectedTariffId,
+              $rows,
         array $tariffsById,
         array $quantitiesByOfferTariff
-    ): array {
+    ): array
+    {
         $selectedServices = [];
         $processedCountableKeys = [];
 
@@ -726,8 +755,8 @@ class ApplicationController extends Controller
 
             if ($selectedTariff) {
                 foreach ($selectedTariff->includedServices as $includedService) {
-                    $serviceKey = 'service-' . (int) $includedService->id;
-                    $includedChannels = max(0, (int) ($includedService->pivot?->quantity ?? 1));
+                    $serviceKey = 'service-' . (int)$includedService->id;
+                    $includedChannels = max(0, (int)($includedService->pivot?->quantity ?? 1));
                     $selectedServices[$serviceKey] = [
                         'enabled' => true,
                         'channels' => $includedChannels,
@@ -737,22 +766,22 @@ class ApplicationController extends Controller
         }
 
         foreach ($rows as $row) {
-            $tariff = $tariffsById[(int) $row->tariff_id] ?? null;
+            $tariff = $tariffsById[(int)$row->tariff_id] ?? null;
             if (!$tariff) {
                 continue;
             }
 
-            if ((bool) $tariff->is_tariff || (bool) $tariff->is_extra_user) {
+            if ((bool)$tariff->is_tariff || (bool)$tariff->is_extra_user) {
                 continue;
             }
 
-            $serviceKey = 'service-' . (int) $tariff->id;
+            $serviceKey = 'service-' . (int)$tariff->id;
             $quantity = $this->resolveConnectedRowQuantity($row, $quantitiesByOfferTariff);
             if ($quantity <= 0) {
                 $quantity = 1;
             }
 
-            $hasChannels = (bool) $tariff->can_increase;
+            $hasChannels = (bool)$tariff->can_increase;
             if ($hasChannels) {
                 $countableKey = $this->buildConnectedCountableKey($row);
                 if (isset($processedCountableKeys[$countableKey])) {
@@ -760,7 +789,7 @@ class ApplicationController extends Controller
                 }
                 $processedCountableKeys[$countableKey] = true;
 
-                $currentChannels = (int) data_get($selectedServices, $serviceKey . '.channels', 0);
+                $currentChannels = (int)data_get($selectedServices, $serviceKey . '.channels', 0);
                 $selectedServices[$serviceKey] = [
                     'enabled' => true,
                     'channels' => $currentChannels + $quantity,
@@ -783,8 +812,8 @@ class ApplicationController extends Controller
         $processedCountableKeys = [];
 
         foreach ($rows as $row) {
-            $tariff = $tariffsById[(int) $row->tariff_id] ?? null;
-            if (!$tariff || !(bool) $tariff->is_extra_user) {
+            $tariff = $tariffsById[(int)$row->tariff_id] ?? null;
+            if (!$tariff || !(bool)$tariff->is_extra_user) {
                 continue;
             }
 
@@ -797,23 +826,23 @@ class ApplicationController extends Controller
             $extraUsers += $this->resolveConnectedRowQuantity($row, $quantitiesByOfferTariff);
         }
 
-        return max(0, (int) $extraUsers);
+        return max(0, (int)$extraUsers);
     }
 
     private function buildConnectedCountableKey($row): string
     {
-        $offerId = (int) ($row->commercial_offer_id ?? 0);
-        $tariffId = (int) ($row->tariff_id ?? 0);
+        $offerId = (int)($row->commercial_offer_id ?? 0);
+        $tariffId = (int)($row->tariff_id ?? 0);
         if ($offerId > 0 && $tariffId > 0) {
             return $offerId . ':' . $tariffId;
         }
 
-        return 'row:' . (int) ($row->id ?? 0);
+        return 'row:' . (int)($row->id ?? 0);
     }
 
     private function buildOfferPayload(CommercialOffer $offer): array
     {
-        $requestType = $this->normalizeRequestType((string) ($offer->request_type ?: 'connection'));
+        $requestType = $this->normalizeRequestType((string)($offer->request_type ?: 'connection'));
         $selectedTariffId = $offer->tariff_id ?: $this->resolveSelectedTariffIdFromItems($offer);
 
         return [
@@ -822,37 +851,37 @@ class ApplicationController extends Controller
             'organization_id' => $offer->organization_id,
             'partner_id' => $offer->partner_id,
             'selected_tariff_id' => $selectedTariffId,
-            'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int) $selectedTariffId) : null,
-            'period_months' => max(1, (int) ($offer->period_months ?: 1)),
-            'extra_users' => max(0, (int) $offer->extra_users),
+            'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int)$selectedTariffId) : null,
+            'period_months' => max(1, (int)($offer->period_months ?: 1)),
+            'extra_users' => max(0, (int)$offer->extra_users),
             'status_date' => $offer->status_date ? $offer->status_date->toDateString() : null,
             'pricing_date' => $offer->pricing_date ? $offer->pricing_date->toDateString() : null,
             'currency' => $this->toCurrencyCode($offer->currency),
             'payable_currency' => $this->toCurrencyCode($offer->payable_currency ?: $offer->currency),
-            'card_payment_type' => (string) ($offer->card_payment_type ?: ($offer->payable_currency === 'UZS' ? 'alif' : 'octo')),
-            'conversion_rate' => $offer->conversion_rate !== null ? (float) $offer->conversion_rate : null,
-            'manager_name' => (string) ($offer->manager_name ?? ''),
-            'client_name' => (string) ($offer->client_name ?? ''),
-            'client_phone' => (string) ($offer->client_phone ?? ''),
-            'client_email' => (string) ($offer->client_email ?? ''),
-            'partner_name' => (string) ($offer->partner_name ?? ''),
-            'partner_phone' => (string) ($offer->partner_phone ?? ''),
-            'partner_email' => (string) ($offer->partner_email ?? ''),
-            'monthly_total' => (float) $offer->monthly_total,
-            'period_total' => (float) $offer->period_total,
-            'grand_total' => (float) $offer->grand_total,
-            'original_total' => (float) $offer->original_total,
-            'payable_total' => (float) $offer->payable_total,
+            'card_payment_type' => (string)($offer->card_payment_type ?: ($offer->payable_currency === 'UZS' ? 'alif' : 'octo')),
+            'conversion_rate' => $offer->conversion_rate !== null ? (float)$offer->conversion_rate : null,
+            'manager_name' => (string)($offer->manager_name ?? ''),
+            'client_name' => (string)($offer->client_name ?? ''),
+            'client_phone' => (string)($offer->client_phone ?? ''),
+            'client_email' => (string)($offer->client_email ?? ''),
+            'partner_name' => (string)($offer->partner_name ?? ''),
+            'partner_phone' => (string)($offer->partner_phone ?? ''),
+            'partner_email' => (string)($offer->partner_email ?? ''),
+            'monthly_total' => (float)$offer->monthly_total,
+            'period_total' => (float)$offer->period_total,
+            'grand_total' => (float)$offer->grand_total,
+            'original_total' => (float)$offer->original_total,
+            'payable_total' => (float)$offer->payable_total,
             'selected_services' => $this->buildSelectedServicesFromOffer($offer, $selectedTariffId),
             'items' => $offer->items
-                ->map(fn ($item) => [
-                    'tariff_id' => (int) $item->tariff_id,
-                    'quantity' => (float) $item->quantity,
-                    'unit_price' => (float) $item->unit_price,
-                    'months' => (int) $item->months,
-                    'discount_percent' => (float) $item->discount_percent,
-                    'partner_percent' => (float) $item->partner_percent,
-                    'total_price' => (float) $item->total_price,
+                ->map(fn($item) => [
+                    'tariff_id' => (int)$item->tariff_id,
+                    'quantity' => (float)$item->quantity,
+                    'unit_price' => (float)$item->unit_price,
+                    'months' => (int)$item->months,
+                    'discount_percent' => (float)$item->discount_percent,
+                    'partner_percent' => (float)$item->partner_percent,
+                    'total_price' => (float)$item->total_price,
                 ])
                 ->values()
                 ->all(),
@@ -866,8 +895,8 @@ class ApplicationController extends Controller
             if (!$tariff) {
                 continue;
             }
-            if ((bool) $tariff->is_tariff && !(bool) $tariff->is_extra_user) {
-                return (int) $tariff->id;
+            if ((bool)$tariff->is_tariff && !(bool)$tariff->is_extra_user) {
+                return (int)$tariff->id;
             }
         }
 
@@ -885,8 +914,8 @@ class ApplicationController extends Controller
 
             if ($selectedTariff) {
                 foreach ($selectedTariff->includedServices as $includedService) {
-                    $serviceKey = 'service-' . (int) $includedService->id;
-                    $includedChannels = max(0, (int) ($includedService->pivot?->quantity ?? 1));
+                    $serviceKey = 'service-' . (int)$includedService->id;
+                    $includedChannels = max(0, (int)($includedService->pivot?->quantity ?? 1));
                     $selectedServices[$serviceKey] = [
                         'enabled' => true,
                         'channels' => $includedChannels,
@@ -900,19 +929,19 @@ class ApplicationController extends Controller
             if (!$tariff) {
                 continue;
             }
-            if ((bool) $tariff->is_tariff || (bool) $tariff->is_extra_user) {
+            if ((bool)$tariff->is_tariff || (bool)$tariff->is_extra_user) {
                 continue;
             }
 
-            $serviceKey = 'service-' . (int) $tariff->id;
-            $quantity = max(0, (int) round((float) $item->quantity));
+            $serviceKey = 'service-' . (int)$tariff->id;
+            $quantity = max(0, (int)round((float)$item->quantity));
             if ($quantity === 0) {
                 $quantity = 1;
             }
 
-            $hasChannels = (bool) $tariff->can_increase;
+            $hasChannels = (bool)$tariff->can_increase;
             if ($hasChannels) {
-                $currentChannels = (int) data_get($selectedServices, $serviceKey . '.channels', 0);
+                $currentChannels = (int)data_get($selectedServices, $serviceKey . '.channels', 0);
                 $selectedServices[$serviceKey] = [
                     'enabled' => true,
                     'channels' => $currentChannels + $quantity,
@@ -941,11 +970,11 @@ class ApplicationController extends Controller
                 continue;
             }
 
-            $enabled = (bool) data_get($serviceState, 'enabled', false);
+            $enabled = (bool)data_get($serviceState, 'enabled', false);
             $channels = $this->toNullableInt(data_get($serviceState, 'channels'));
-            $normalized[(string) $serviceKey] = [
+            $normalized[(string)$serviceKey] = [
                 'enabled' => $enabled,
-                'channels' => max(0, (int) ($channels ?? 0)),
+                'channels' => max(0, (int)($channels ?? 0)),
             ];
         }
 
@@ -970,7 +999,7 @@ class ApplicationController extends Controller
 
         $set = [];
         foreach ($methods as $method) {
-            $code = strtolower(trim((string) $method));
+            $code = strtolower(trim((string)$method));
             if (in_array($code, $allowed, true)) {
                 $set[$code] = true;
             }
@@ -998,16 +1027,16 @@ class ApplicationController extends Controller
         if (!is_numeric($value)) {
             return null;
         }
-        return (int) $value;
+        return (int)$value;
     }
 
     private function toDecimal($value): float
     {
-        $normalized = str_replace(',', '.', (string) $value);
+        $normalized = str_replace(',', '.', (string)$value);
         if (!is_numeric($normalized)) {
             return 0.0;
         }
-        return round((float) $normalized, 4);
+        return round((float)$normalized, 4);
     }
 
     private function toNullableDecimal($value): ?float
@@ -1015,22 +1044,22 @@ class ApplicationController extends Controller
         if ($value === null || $value === '') {
             return null;
         }
-        $normalized = str_replace(',', '.', (string) $value);
+        $normalized = str_replace(',', '.', (string)$value);
         if (!is_numeric($normalized)) {
             return null;
         }
-        return round((float) $normalized, 6);
+        return round((float)$normalized, 6);
     }
 
     private function toCurrencyCode($value): string
     {
-        $code = strtoupper(trim((string) $value));
+        $code = strtoupper(trim((string)$value));
         return $code !== '' ? $code : 'USD';
     }
 
     private function toNullableDate($value): ?string
     {
-        $raw = trim((string) $value);
+        $raw = trim((string)$value);
         if ($raw === '') {
             return null;
         }
@@ -1045,13 +1074,13 @@ class ApplicationController extends Controller
 
     private function extractTariffIdFromKey(?string $key): ?int
     {
-        $raw = trim((string) $key);
+        $raw = trim((string)$key);
         if ($raw === '') {
             return null;
         }
 
         if (preg_match('/^tariff-(\d+)$/', $raw, $m)) {
-            return (int) $m[1];
+            return (int)$m[1];
         }
 
         return null;
@@ -1059,13 +1088,13 @@ class ApplicationController extends Controller
 
     private function extractTariffIdFromAnyKey($key): ?int
     {
-        $raw = trim((string) $key);
+        $raw = trim((string)$key);
         if ($raw === '') {
             return null;
         }
 
         if (preg_match('/(?:tariff|service)-(\d+)/', $raw, $matches) === 1) {
-            return (int) $matches[1];
+            return (int)$matches[1];
         }
 
         return null;

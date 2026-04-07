@@ -1772,6 +1772,7 @@ class CPGenerator {
         const discountPercent = this.getPeriodDiscountPercent();
         const tariffPartnerPercent = this.getPartnerTariffPercent();
         const packPartnerPercent = this.getPartnerPackPercent();
+        const baseTariffMonthly = this.getTariffMonthlyBase(this.state.selectedTariff);
 
         const items = rawItems
             .map((item) => {
@@ -1788,7 +1789,7 @@ class CPGenerator {
             return {
                 tariff_id: tariffId,
                 quantity,
-                unit_price: sourceUnitPrice,
+                unit_price: isTariffLine ? baseTariffMonthly : sourceUnitPrice,
                 months: periodMonths,
                 discount_percent: isTariffLine ? discountPercent : 0,
                 partner_percent: isTariffLine ? tariffPartnerPercent : packPartnerPercent,
@@ -2478,25 +2479,6 @@ class CPGenerator {
             card.className = `service-card${isSelected ? ' selected' : ''}${isIncluded ? ' included' : ''}`;
             card.dataset.service = key;
 
-            let includedChannelsInfo = '';
-            if (isIncluded && service.hasChannels) {
-                const previouslyPurchasedChannels = Math.max(0, previousChannels - tariffIncludedChannels);
-                if (tariffIncludedChannels > 0 || previouslyPurchasedChannels > 0) {
-                    const lines = [];
-                    if (tariffIncludedChannels > 0) {
-                        lines.push(`<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${tariffIncludedChannels} ${tariffIncludedChannels === 1 ? 'канал включен' : 'канала включено'} в тариф</p>`);
-                    }
-                    if (isConnectionExtraServices && previouslyPurchasedChannels > 0) {
-                        lines.push(`<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">✓ ${previouslyPurchasedChannels} ${previouslyPurchasedChannels === 1 ? 'канал куплен' : 'каналов куплено'}</p>`);
-                    }
-                    includedChannelsInfo = lines.join('');
-                }
-            } else if (isNonCountablePurchasedEarlier) {
-                includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">Не входит в тариф, приобретено ранее</p>`;
-            } else if (isCountablePurchasedEarlier) {
-                includedChannelsInfo = `<p style="font-size: 0.75rem; color: #666; margin-top: 4px;">Не входит в тариф, ранее куплено: ${previousChannels}</p>`;
-            }
-
             card.innerHTML = `
                 <div class="service-header">
                     <div class="service-info">
@@ -2505,7 +2487,6 @@ class CPGenerator {
                             ${isIncluded && !service.hasChannels ? 'Включено' : `${this.formatServicePrice(unitPrice)}${service.hasChannels ? ' /канал/мес' : ' /мес'}`}
                         </div>
                         <p>${service.description}</p>
-                        ${includedChannelsInfo}
                     </div>
                     <label class="service-toggle">
                         <input type="checkbox"
