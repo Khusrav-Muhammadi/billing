@@ -55,10 +55,11 @@ class CommercialFooferController extends Controller
     {
         $asOfTs = $this->getAsOfTs($request);
         $clients = $this->buildOrganizationsForCurrentUser($request);
-        $organizationIds = array_map(
-            static fn(array $row): int => (int)($row['id'] ?? 0),
-            $clients
-        );
+        $organizationIds = collect($clients)
+            ->map(static fn($row): int => (int)data_get($row, 'id', 0))
+            ->filter(static fn(int $id): bool => $id > 0)
+            ->values()
+            ->all();
         $allowedOrganizationIds = array_values(array_filter($organizationIds, static fn(int $id): bool => $id > 0));
 
         $config = $this->buildCommercialConfig($asOfTs);
@@ -385,24 +386,44 @@ class CommercialFooferController extends Controller
 
     private function buildOrganizationsForCurrentUser(Request $request): array
     {
+        $search = trim((string)$request->query('search', ''));
+
         $organizations = Organization::query()
             ->select('id', 'name', 'phone', 'client_id', 'order_number')
             ->with(['client.country.currency'])
+            ->when($search !== '', function (Builder $query) use ($search) {
+                $like = '%' . $search . '%';
+                $query->where(function (Builder $q) use ($like) {
+                    $q->where('name', 'like', $like)
+                        ->orWhere('phone', 'like', $like)
+                        ->orWhere('order_number', 'like', $like);
+                });
+            })
             ->orderBy('name')
             ->get();
 
-        return [
-             $organizations->map(fn($o) => [
-                'id'          => $o->id,
-                'name'        => $o->name,
-                'email'       => '',
-                'phone'       => $o->phone ?? '',
-                'order_number'=> $o->order_number,
-                'country_id'  => $o->client?->country_id,
-                'currency_id' => $o->client?->country?->currency_id,
-                'currency'    => $o->client?->country?->currency?->symbol_code,
-            ]),
-        ];
+        $operationStartDates = $this->getOrganizationOperationStartDates(
+            $organizations->pluck('id')->map(static fn($id): int => (int)$id)->all()
+        );
+
+        return $organizations
+            ->map(static function ($o) use ($operationStartDates): array {
+                $organizationId = (int)$o->id;
+
+                return [
+                    'id' => $organizationId,
+                    'name' => (string)$o->name,
+                    'email' => '',
+                    'phone' => (string)($o->phone ?? ''),
+                    'order_number' => (string)($o->order_number ?? ''),
+                    'country_id' => data_get($o, 'client.country_id'),
+                    'currency_id' => data_get($o, 'client.country.currency_id'),
+                    'currency' => data_get($o, 'client.country.currency.symbol_code'),
+                    'operation_start_date' => $operationStartDates[$organizationId] ?? null,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function getOrganizationOperationStartDates(array $organizationIds): array
