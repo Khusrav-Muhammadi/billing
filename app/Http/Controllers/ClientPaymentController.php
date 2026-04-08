@@ -296,6 +296,14 @@ class ClientPaymentController extends Controller
     {
         $secretKey = config('payments.alif.token');
         $url = config('payments.alif.url');
+        $paymentPage = (string) config('payments.alif.payment_page');
+
+        if (!$secretKey || !$url) {
+            throw new \Exception('Alif Pay: не настроен token/url в config(payments.alif).');
+        }
+        if ($paymentPage === '') {
+            throw new \Exception('Alif Pay: не настроен payment_page в config(payments.alif).');
+        }
 
         $items = $payment->paymentItems()->get(['service_name', 'price']);
 
@@ -334,21 +342,29 @@ class ClientPaymentController extends Controller
             'Accept' => 'application/json',
         ])->post($url, $orderData);
 
-        if (!$response['id']) {
-            throw new \Exception('Alif Pay: не пришла ссылка на оплату (url/checkout_url). Ответ: ' . $response->body());
-        }
-        if ($response->successful()) {
-
-            $checkoutUrl = config('payments.alif.payment_page') . $response['id'];
-
-            if (!$checkoutUrl) {
-                throw new \Exception('Alif Pay: не пришла ссылка на оплату (url/checkout_url). Ответ: ' . $response->body());
-            }
-
-            return $checkoutUrl;
+        if (!$response->successful()) {
+            throw new \Exception('Ошибка при создании платежа Alif Pay (HTTP ' . $response->status() . '): ' . $response->body());
         }
 
-        throw new \Exception('Ошибка при создании платежа Alif Pay: ' . $response->body());
+        $json = $response->json();
+        if (!is_array($json)) {
+            throw new \Exception('Alif Pay: ответ не JSON. Ответ: ' . $response->body());
+        }
+
+        $invoiceId = data_get($json, 'id')
+            ?? data_get($json, 'data.id')
+            ?? data_get($json, 'invoice.id')
+            ?? data_get($json, 'invoice_id')
+            ?? data_get($json, 'result.id');
+
+        $invoiceId = $invoiceId !== null ? trim((string) $invoiceId) : '';
+        if ($invoiceId === '') {
+            $providerMessage = trim((string) (data_get($json, 'message') ?? data_get($json, 'error') ?? ''));
+            $details = $providerMessage !== '' ? $providerMessage : $response->body();
+            throw new \Exception('Alif Pay: не пришел invoice id. Ответ: ' . $details);
+        }
+
+        return $paymentPage . rawurlencode($invoiceId);
     }
 
     private function lockCommercialOfferAfterPayment(?CommercialOffer $offer, Payment $payment, ?string $paymentLink = null, ?int $statusAccountId = null): void
