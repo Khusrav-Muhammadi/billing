@@ -92,8 +92,7 @@ class CommercialFooferController extends Controller
         $organizations = $this->buildOrganizationsForCurrentUser($request);
 
         return response()->json([
-            'organizations' => $organizations,
-            'clients' => $organizations,
+            'organizations' => $organizations
         ]);
     }
 
@@ -386,86 +385,24 @@ class CommercialFooferController extends Controller
 
     private function buildOrganizationsForCurrentUser(Request $request): array
     {
-        $search = mb_strtolower(trim((string)$request->query('search', '')));
+        $organizations = Organization::query()
+            ->select('id', 'name', 'phone', 'client_id', 'order_number')
+            ->with(['client.country.currency'])
+            ->orderBy('name')
+            ->get();
 
-        $query = Client::query()
-            ->with([
-                'country:id,currency_id',
-                'country.currency:id,symbol_code',
-                'organizations:id,client_id,name,email,phone,order_number',
-            ])
-            ->orderBy('name');
-
-        $this->applyCurrentUserClientScope($query);
-        $clients = $query->get(['id', 'name', 'email', 'phone', 'country_id']);
-
-        $organizations = [];
-        $seen = [];
-
-        foreach ($clients as $client) {
-            $clientCurrency = strtoupper(trim((string)data_get($client, 'country.currency.symbol_code', '')));
-            $clientCurrencyId = (int)data_get($client, 'country.currency_id', 0);
-            $clientCountryId = (int)data_get($client, 'country_id', 0);
-
-            $clientOrganizations = $client->organizations;
-            if ($clientOrganizations->isEmpty()) {
-                $clientOrganizations = collect([[
-                    'id' => (int)$client->id,
-                    'name' => (string)$client->name,
-                    'email' => (string)$client->email,
-                    'phone' => (string)$client->phone,
-                    'order_number' => null,
-                ]]);
-            }
-
-            foreach ($clientOrganizations as $organization) {
-                $orgId = (int)data_get($organization, 'id', 0);
-                if ($orgId <= 0 || isset($seen[$orgId])) {
-                    continue;
-                }
-                $seen[$orgId] = true;
-
-                $item = [
-                    'id' => $orgId,
-                    'name' => (string)(data_get($organization, 'name', '') ?: $client->name),
-                    'email' => (string)(data_get($organization, 'email', '') ?: $client->email),
-                    'phone' => (string)(data_get($organization, 'phone', '') ?: $client->phone),
-                    'order_number' => (string)data_get($organization, 'order_number', ''),
-                    'country_id' => $clientCountryId > 0 ? $clientCountryId : null,
-                    'currency_id' => $clientCurrencyId > 0 ? $clientCurrencyId : null,
-                    'currency' => $clientCurrency !== '' ? $clientCurrency : null,
-                    'operation_start_date' => null,
-                ];
-
-                if ($search !== '') {
-                    $haystack = mb_strtolower(implode(' ', [
-                        (string)($item['name'] ?? ''),
-                        (string)($item['phone'] ?? ''),
-                        (string)($item['order_number'] ?? ''),
-                        (string)($item['email'] ?? ''),
-                    ]));
-                    if (!str_contains($haystack, $search)) {
-                        continue;
-                    }
-                }
-
-                $organizations[] = $item;
-            }
-        }
-
-        usort($organizations, static fn(array $a, array $b) => strcmp((string)$a['name'], (string)$b['name']));
-
-        $operationStartDates = $this->getOrganizationOperationStartDates(
-            array_map(static fn(array $row): int => (int)$row['id'], $organizations)
-        );
-
-        foreach ($organizations as &$organization) {
-            $orgId = (int)($organization['id'] ?? 0);
-            $organization['operation_start_date'] = $operationStartDates[$orgId] ?? null;
-        }
-        unset($organization);
-
-        return array_values($organizations);
+        return [
+             $organizations->map(fn($o) => [
+                'id'          => $o->id,
+                'name'        => $o->name,
+                'email'       => '',
+                'phone'       => $o->phone ?? '',
+                'order_number'=> $o->order_number,
+                'country_id'  => $o->client?->country_id,
+                'currency_id' => $o->client?->country?->currency_id,
+                'currency'    => $o->client?->country?->currency?->symbol_code,
+            ]),
+        ];
     }
 
     private function getOrganizationOperationStartDates(array $organizationIds): array

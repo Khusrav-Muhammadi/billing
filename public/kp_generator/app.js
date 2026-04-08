@@ -3095,7 +3095,7 @@ class CPGenerator {
     }
 
     parseNumberInput(value) {
-        // Парсит отформатированное число из input (убирает разделители)
+
         if (!value) return 0;
         // Убираем все пробелы (обычные и неразрывные - разделители тысяч) и заменяем запятую на точку
         const cleaned = value.toString()
