@@ -28,7 +28,7 @@ class CommercialFooferController extends Controller
         'renewal_no_changes',
     ];
 
-    public function index(Request $request): JsonResponse
+    public function offers(Request $request): JsonResponse
     {
         $perPage = (int)$request->query('per_page', 20);
         $perPage = max(1, min(100, $perPage));
@@ -51,7 +51,7 @@ class CommercialFooferController extends Controller
         return response()->json($offers);
     }
 
-    public function config(Request $request): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $asOfTs = $this->getAsOfTs($request);
         $clients = $this->buildOrganizationsForCurrentUser($request);
@@ -59,19 +59,41 @@ class CommercialFooferController extends Controller
             static fn(array $row): int => (int)($row['id'] ?? 0),
             $clients
         );
+        $allowedOrganizationIds = array_values(array_filter($organizationIds, static fn(int $id): bool => $id > 0));
+
+        $config = $this->buildCommercialConfig($asOfTs);
+        $clientPrices = $this->buildClientPricesForOrganizations($asOfTs, $organizationIds);
+        $organizationId = (int)$request->query('organization_id', 0);
+        if ($organizationId > 0) {
+            if (!in_array($organizationId, $allowedOrganizationIds, true)) {
+                return response()->json([
+                    'message' => 'Организация не найдена или недоступна.',
+                ], 403);
+            }
+
+            $config = $this->applyOrganizationOverridesToConfig(
+                $config,
+                (array)($clientPrices[$organizationId] ?? [])
+            );
+        }
 
         return response()->json([
-            'config' => $this->buildCommercialConfig($asOfTs),
-            'client_prices' => $this->buildClientPricesForOrganizations($asOfTs, $organizationIds),
+            'organization_id' => $organizationId > 0 ? $organizationId : null,
+            'config' => $config,
+            'client_prices' => $clientPrices,
             'clients' => $clients,
+            'organizations' => $clients,
             'partners' => $this->buildCurrentPartnerRows($request, $asOfTs),
         ]);
     }
 
-    public function clients(Request $request): JsonResponse
+    public function organizations(Request $request): JsonResponse
     {
+        $organizations = $this->buildOrganizationsForCurrentUser($request);
+
         return response()->json([
-            'clients' => array_slice($this->buildOrganizationsForCurrentUser($request), 0, 50),
+            'organizations' => $organizations,
+            'clients' => $organizations,
         ]);
     }
 
@@ -1055,6 +1077,55 @@ class CommercialFooferController extends Controller
         }
 
         return $result;
+    }
+
+    private function applyOrganizationOverridesToConfig(array $config, array $organizationPrices): array
+    {
+        $tariffOverrides = (array)($organizationPrices['tariffs'] ?? []);
+        foreach ($tariffOverrides as $tariffKey => $prices) {
+            if (!isset($config['tariffs'][$tariffKey]) || !is_array($prices)) {
+                continue;
+            }
+
+            foreach ($prices as $currencyCode => $sum) {
+                if ($currencyCode === '__meta') {
+                    continue;
+                }
+                $config['tariffs'][$tariffKey]['prices'][(string)$currencyCode] = (float)$sum;
+                $config['tariffs'][$tariffKey]['prices12Months'][(string)$currencyCode] = round((float)$sum * 0.85, 4);
+            }
+        }
+
+        $serviceOverrides = (array)($organizationPrices['services'] ?? []);
+        foreach ($serviceOverrides as $serviceKey => $prices) {
+            if (!isset($config['services'][$serviceKey]) || !is_array($prices)) {
+                continue;
+            }
+
+            foreach ($prices as $currencyCode => $sum) {
+                if ($currencyCode === '__meta') {
+                    continue;
+                }
+                $config['services'][$serviceKey]['prices'][(string)$currencyCode] = (float)$sum;
+            }
+        }
+
+        $extraUserOverrides = (array)($organizationPrices['extra_users'] ?? []);
+        foreach ($extraUserOverrides as $tariffKey => $prices) {
+            if (!isset($config['tariffs'][$tariffKey]) || !is_array($prices)) {
+                continue;
+            }
+
+            foreach ($prices as $currencyCode => $sum) {
+                if ($currencyCode === '__meta') {
+                    continue;
+                }
+                $config['tariffs'][$tariffKey]['extraUserPrices'][(string)$currencyCode] = (float)$sum;
+                $config['tariffs'][$tariffKey]['extraUserPrice'][(string)$currencyCode] = (float)$sum;
+            }
+        }
+
+        return $config;
     }
 
     private function assignClientPrice(

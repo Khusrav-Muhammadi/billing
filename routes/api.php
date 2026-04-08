@@ -60,20 +60,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('partner-request/{partnerRequest}', [\App\Http\Controllers\API\PartnerRequestController::class, 'update']);
     Route::patch('partner-request/change-status/{partnerRequest}', [\App\Http\Controllers\API\PartnerRequestController::class, 'changeStatus']);
 
-    Route::get('commercial-foofers', [CommercialFooferController::class, 'index']);
-    Route::get('commercial-foofers/config', [CommercialFooferController::class, 'config']);
-    Route::get('commercial-foofers/clients', [CommercialFooferController::class, 'clients']);
-    Route::get('commercial-foofers/partners', [CommercialFooferController::class, 'partners']);
+    Route::get('commercial-foofers', [CommercialFooferController::class, 'offers']);
     Route::post('commercial-foofers', [CommercialFooferController::class, 'store']);
     Route::get('commercial-foofers/connection-context/{organization}', [CommercialFooferController::class, 'connectionContext']);
     Route::get('commercial-foofers/{commercialOffer}', [CommercialFooferController::class, 'show']);
     Route::patch('commercial-foofers/{commercialOffer}', [CommercialFooferController::class, 'update']);
 
+    Route::get('application-data', [CommercialFooferController::class, 'index']);
+    Route::get('application-data/organizations', [CommercialFooferController::class, 'organizations']);
+    Route::get('application-data/partners', [CommercialFooferController::class, 'partners']);
+
     // alias for conventional naming
-    Route::get('commercial-offers', [CommercialFooferController::class, 'index']);
-    Route::get('commercial-offers/config', [CommercialFooferController::class, 'config']);
-    Route::get('commercial-offers/clients', [CommercialFooferController::class, 'clients']);
-    Route::get('commercial-offers/partners', [CommercialFooferController::class, 'partners']);
+    Route::get('commercial-offers', [CommercialFooferController::class, 'offers']);
     Route::post('commercial-offers', [CommercialFooferController::class, 'store']);
     Route::get('commercial-offers/connection-context/{organization}', [CommercialFooferController::class, 'connectionContext']);
     Route::get('commercial-offers/{commercialOffer}', [CommercialFooferController::class, 'show']);
