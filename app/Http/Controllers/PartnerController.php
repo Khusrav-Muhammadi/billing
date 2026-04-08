@@ -53,6 +53,12 @@ class PartnerController extends Controller
             ->get(['id', 'name', 'currency_id']);
 
         $managers = $this->repository->getManagers($partner->id);
+        $curators = $this->repository->getCurators($partner->id);
+        $availableCurators = User::query()
+            ->where('role', 'manager')
+            ->whereNotIn('id', $curators->pluck('id')->all())
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'email']);
         $procents = $this->repository->getProcent($partner->id);
         $statusHistory = $this->repository->getStatusHistory($partner->id);
         $partnerHistory = $partner->history()
@@ -60,7 +66,7 @@ class PartnerController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'accounts', 'managers', 'procents', 'statusHistory', 'partnerHistory'));
+        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'accounts', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory'));
     }
 
     public function update(User $partner, UpdateRequest $request)
@@ -110,6 +116,34 @@ class PartnerController extends Controller
     public function addProcent(User $user, StoreProcentRequest $request)
     {
         $this->repository->storeProcent($user, $request->validated());
+
+        return redirect()->back();
+    }
+
+    public function addCurator(User $partner, Request $request)
+    {
+        $validated = $request->validate([
+            'curator_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $curatorId = (int) $validated['curator_id'];
+        $curator = User::query()
+            ->where('id', $curatorId)
+            ->where('role', 'manager')
+            ->first();
+
+        if (!$curator) {
+            abort(404);
+        }
+
+        $this->repository->attachCurator((int) $partner->id, $curatorId);
+
+        return redirect()->back();
+    }
+
+    public function removeCurator(User $partner, User $curator)
+    {
+        $this->repository->detachCurator((int) $partner->id, (int) $curator->id);
 
         return redirect()->back();
     }

@@ -67,6 +67,7 @@
                         <th>Услуга</th>
                         <th>Валюта услуги</th>
                         <th>Дата подключения</th>
+                        <th>Дата отключения</th>
                         <th>Сумма в месяц</th>
                         <th>Активность</th>
                     </tr>
@@ -80,6 +81,13 @@
                                 {{ $service->offerCurrency?->symbol_code ?? $service->offerCurrency?->name ?? ($service->offer_currency_id ? ('ID: ' . $service->offer_currency_id) : '-') }}
                             </td>
                             <td>{{ optional($service->date)->format('d.m.Y H:i') ?: '-' }}</td>
+                            <td>
+                                @if($service->status)
+                                    —
+                                @else
+                                    {{ optional($service->deactivated_at ?? $service->updated_at)->format('d.m.Y H:i') ?: '-' }}
+                                @endif
+                            </td>
                             <td>{{ number_format((float) $service->service_total_amount, 2, '.', ' ') }}</td>
                             <td>
                                 @if($service->status)
@@ -91,7 +99,66 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center">Подключенные услуги не найдены</td>
+                            <td colspan="7" class="text-center">Подключенные услуги не найдены</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-4 p-3">
+            <h4 class="card-title mb-3">История подключения</h4>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Дата</th>
+                        <th>Статус</th>
+                        <th>Документ</th>
+                        <th>Автор</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @forelse(($connectionStatusHistory ?? collect()) as $row)
+                        @php
+                            $reason = (string) ($row->reason ?? '');
+                            $reasonLabel = [
+                                'connection' => 'Подключение',
+                                'renewal' => 'Продление',
+                                'renewal_no_changes' => 'Продление без изменений',
+                                'insufficient_balance' => 'Недостаточно баланса',
+                            ][$reason] ?? ($reason !== '' ? $reason : '—');
+                        @endphp
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ optional($row->status_date)->format('d.m.Y H:i') ?: '-' }}</td>
+                            <td>
+                                @if((string) $row->status === 'connected')
+                                    <span class="badge badge-success">Подключено</span>
+                                @else
+                                    <span class="badge badge-danger">Отключено</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($row->commercial_offer_id)
+                                    <a href="{{ route('application.show', $row->commercial_offer_id) }}" target="_blank" class="text-primary">
+                                        КП #{{ $row->commercial_offer_id }}
+                                    </a>
+                                @elseif($row->day_closing_id)
+                                    <a href="{{ route('day-closing.show', $row->day_closing_id) }}" target="_blank" class="text-primary">
+                                        Закрытие #{{ $row->dayClosing?->doc_number ?? $row->day_closing_id }}
+                                    </a>
+                                @else
+                                    —
+                                @endif
+                            </td>
+                            <td>{{ $row->author?->name ?? '-' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center">История подключения не найдена</td>
                         </tr>
                     @endforelse
                     </tbody>

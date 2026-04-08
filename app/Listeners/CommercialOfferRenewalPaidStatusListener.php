@@ -7,6 +7,7 @@ use App\Services\ClientBalances\ClientBalanceRegistryService;
 use App\Services\ClientPaymentRegistries\ClientPaymentRegistryService;
 use App\Services\ConnectedClientServices\ConnectedClientServicesRegistryService;
 use App\Services\DiscountExpenses\DiscountExpensesRegistryService;
+use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
 use App\Services\PartnerExpenses\PartnerExpensesRegistryService;
 
 class CommercialOfferRenewalPaidStatusListener
@@ -16,7 +17,8 @@ class CommercialOfferRenewalPaidStatusListener
         private DiscountExpensesRegistryService $discountExpensesRegistryService,
         private PartnerExpensesRegistryService $partnerExpensesRegistryService,
         private ClientPaymentRegistryService $clientPaymentRegistryService,
-        private ClientBalanceRegistryService $clientBalanceRegistryService
+        private ClientBalanceRegistryService $clientBalanceRegistryService,
+        private OrganizationConnectionStatusRegistryService $organizationConnectionStatusRegistryService
     ) {
     }
 
@@ -27,6 +29,6 @@ class CommercialOfferRenewalPaidStatusListener
         $this->partnerExpensesRegistryService->register($event->offer, $event->status);
         $this->clientPaymentRegistryService->register($event->offer, $event->status);
         $this->clientBalanceRegistryService->register($event->offer, $event->status);
+        $this->organizationConnectionStatusRegistryService->registerConnected($event->offer, $event->status);
     }
 }
-

@@ -17,6 +17,9 @@ interface PartnerRepositoryInterface
     public function editProcent(PartnerProcent $procent, array $data);
     public function updateManager(User $user, array $data);
     public function getManagers(int $partner_id);
+    public function getCurators(int $partner_id);
+    public function attachCurator(int $partner_id, int $curator_id): void;
+    public function detachCurator(int $partner_id, int $curator_id): void;
     public function getProcent(int $partner_id);
     public function getStatusHistory(int $partner_id);
 

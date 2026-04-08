@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\ConnectedClientServices;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DeactivateConnectedServicesBeforeRenewal extends Command
 {
@@ -60,7 +61,14 @@ class DeactivateConnectedServicesBeforeRenewal extends Command
             $totalRows += $affected;
 
             if (!$dryRun) {
-                $query->update(['status' => false]);
+                $update = [
+                    'status' => false,
+                    'updated_at' => now(),
+                ];
+                if (Schema::hasColumn('connected_client_services', 'deactivated_at')) {
+                    $update['deactivated_at'] = now();
+                }
+                $query->update($update);
             }
 
             $this->line(sprintf(

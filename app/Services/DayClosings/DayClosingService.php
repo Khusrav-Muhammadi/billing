@@ -8,6 +8,7 @@ use App\Models\ConnectedClientServices;
 use App\Models\DayClosing;
 use App\Models\DayClosingClientDetails;
 use App\Models\DayClosingDetail;
+use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\DB;
 
 class DayClosingService
 {
+    public function __construct(private OrganizationConnectionStatusRegistryService $organizationConnectionStatusRegistryService)
+    {
+    }
+
     /**
      * @return Collection<int, DayClosing>
      *
@@ -59,7 +64,7 @@ class DayClosingService
             $clients = Client::query()
                 ->where('is_active', true)
                 ->with([
-                    'organizations:id,client_id,name',
+                    'organizations:id,client_id,name,has_access',
                     'country:id,currency_id',
                 ])
                 ->select(['id', 'name', 'country_id'])
@@ -68,6 +73,10 @@ class DayClosingService
 
             foreach ($clients as $client) {
                 foreach ($client->organizations as $organization) {
+                    if ($organization->has_access !== null && !(bool) $organization->has_access) {
+                        continue;
+                    }
+
                     $services = ConnectedClientServices::query()
                         ->where('client_id', (int) $organization->id)
                         ->where('status', true)
@@ -158,6 +167,13 @@ class DayClosingService
                         ]);
                     } else {
                         $hasInsufficientBalance = true;
+                        $this->organizationConnectionStatusRegistryService->registerDisconnected(
+                            (int) $organization->id,
+                            $dayClosing->date ?: $date->copy()->setTime(23, 30, 0),
+                            (int) $dayClosing->id,
+                            $authorId,
+                            'insufficient_balance'
+                        );
                     }
 
                     $organizationsCount++;

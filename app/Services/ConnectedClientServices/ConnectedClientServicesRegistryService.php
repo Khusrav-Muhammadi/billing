@@ -8,6 +8,7 @@ use App\Models\ConnectedClientServices;
 use App\Support\CurrencyResolver;
 use App\Support\RegistryDateTimeResolver;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ConnectedClientServicesRegistryService
 {
@@ -28,17 +29,29 @@ class ConnectedClientServicesRegistryService
             return;
         }
 
-        DB::transaction(function () use ($offer, $status) {
+        $statusDateTime = RegistryDateTimeResolver::resolve($offer, $status);
+        $hasDeactivatedAtColumn = Schema::hasColumn('connected_client_services', 'deactivated_at');
+
+        DB::transaction(function () use ($offer, $status, $statusDateTime, $hasDeactivatedAtColumn) {
+            $deactivateUpdate = [
+                'status' => false,
+                'updated_at' => now(),
+            ];
+            if ($hasDeactivatedAtColumn) {
+                $deactivateUpdate['deactivated_at'] = $statusDateTime;
+            }
+
             ConnectedClientServices::query()
                 ->where('commercial_offer_id', $offer->id)
-                ->update(['status' => false]);
+                ->where('status', true)
+                ->update($deactivateUpdate);
 
             if ($this->shouldDeactivatePreviousForRenewal($offer)) {
                 ConnectedClientServices::query()
                     ->where('client_id', (int) $offer->organization_id)
                     ->where('status', true)
                     ->where('commercial_offer_id', '!=', (int) $offer->id)
-                    ->update(['status' => false]);
+                    ->update($deactivateUpdate);
             }
 
             foreach ($offer->items as $item) {
@@ -80,7 +93,7 @@ class ConnectedClientServicesRegistryService
                     'account_id' => $status->account_id,
                     'service_total_amount' => $monthlyTotal,
                     'status' => true,
-                    'date' => RegistryDateTimeResolver::resolve($offer, $status),
+                    'date' => $statusDateTime,
                     'offer_currency_id' => $offerCurrencyId,
                     'payable_currency_id' => $payableCurrencyId,
                     'payable_amount' => $payableAmount,

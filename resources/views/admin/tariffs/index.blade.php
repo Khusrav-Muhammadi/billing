@@ -42,6 +42,8 @@
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             @if($tariff->is_tariff && !$tariff->is_extra_user)
                                 <a href="{{ route('tariff.included_services.index', $tariff->id) }}"><i class="mdi mdi-eye" style="font-size: 30px"></i></a>
+                            @elseif(!$tariff->is_tariff && !$tariff->is_extra_user)
+                                <a href="{{ route('tariff.exclusions.index', $tariff->id) }}"><i class="mdi mdi-eye" style="font-size: 30px"></i></a>
                             @endif
                             <a href="#" data-bs-toggle="modal" data-bs-target="#delete{{ $tariff->id }}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
                         </td>
@@ -113,24 +115,6 @@
                                             </select>
                                         </div>
 
-                                        <div class="form-group js-exclusions-wrap" style="{{ (!$tariff->is_tariff && !$tariff->is_extra_user) ? '' : 'display:none;' }}">
-                                            <label>Исключение (Организации)</label>
-                                            <input type="text"
-                                                   class="form-control js-exclusion-search mb-2"
-                                                   placeholder="Поиск организации для исключения...">
-                                            <select class="form-control js-exclusion-select"
-                                                    name="excluded_organization_ids[]"
-                                                    multiple
-                                                    size="8">
-                                                @foreach($organizations as $organization)
-                                                    <option value="{{ $organization->id }}"
-                                                            {{ $tariff->excludedOrganizations->contains('id', $organization->id) ? 'selected' : '' }}>
-                                                        {{ $organization->name }} {{ $organization->order_number ? '(' . $organization->order_number . ')' : '' }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            <small class="text-muted">Можно выбрать несколько значений.</small>
-                                        </div>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -246,45 +230,9 @@
         document.addEventListener('DOMContentLoaded', function () {
             const sync = (root) => {
                 const cb = root.querySelector('.js-is-extra-user');
-                const isTariffCb = root.querySelector('.js-is-tariff');
                 const wrap = root.querySelector('.js-parent-tariff-wrap');
-                const exclusionsWrap = root.querySelector('.js-exclusions-wrap');
                 if (!cb || !wrap) return;
                 wrap.style.display = cb.checked ? '' : 'none';
-                if (exclusionsWrap) {
-                    const isService = !(isTariffCb && isTariffCb.checked) && !cb.checked;
-                    exclusionsWrap.style.display = isService ? '' : 'none';
-                }
-
-            };
-
-            const bindExclusionSearch = (root) => {
-                const searchInput = root.querySelector('.js-exclusion-search');
-                const select = root.querySelector('.js-exclusion-select');
-                if (!searchInput || !select) return;
-
-                searchInput.addEventListener('input', () => {
-                    const term = (searchInput.value || '').toLowerCase().trim();
-                    Array.from(select.options).forEach((option) => {
-                        const text = (option.textContent || '').toLowerCase();
-                        option.hidden = term !== '' && !text.includes(term);
-                    });
-                });
-            };
-
-            const bindExclusionToggleByClick = (root) => {
-                const select = root.querySelector('.js-exclusion-select');
-                if (!select) return;
-
-                select.addEventListener('mousedown', (event) => {
-                    const option = event.target.closest('option');
-                    if (!option) return;
-
-                    // Toggle option by simple click without Ctrl/Cmd.
-                    event.preventDefault();
-                    option.selected = !option.selected;
-                    select.focus();
-                });
             };
 
             // Create modal
@@ -296,8 +244,6 @@
                     }
                 });
                 sync(createModal);
-                bindExclusionSearch(createModal);
-                bindExclusionToggleByClick(createModal);
             }
 
             // Edit modals
@@ -308,8 +254,6 @@
                     }
                 });
                 sync(modal);
-                bindExclusionSearch(modal);
-                bindExclusionToggleByClick(modal);
             });
         });
     </script>

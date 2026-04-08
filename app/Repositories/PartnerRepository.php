@@ -16,6 +16,7 @@ use App\Models\PartnerStatusHistory;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class PartnerRepository implements PartnerRepositoryInterface
@@ -91,6 +92,41 @@ class PartnerRepository implements PartnerRepositoryInterface
     public function getManagers(int $partner_id)
     {
         return User::query()->where('role', 'manager')->where('partner_id', $partner_id)->get();
+    }
+
+    public function getCurators(int $partner_id)
+    {
+        return User::query()
+            ->join('partner_curators', 'partner_curators.curator_id', '=', 'users.id')
+            ->where('partner_curators.partner_id', $partner_id)
+            ->where('users.role', 'manager')
+            ->orderBy('users.name')
+            ->select('users.*')
+            ->get();
+    }
+
+    public function attachCurator(int $partner_id, int $curator_id): void
+    {
+        $now = now();
+
+        DB::table('partner_curators')->updateOrInsert(
+            [
+                'partner_id' => $partner_id,
+                'curator_id' => $curator_id,
+            ],
+            [
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]
+        );
+    }
+
+    public function detachCurator(int $partner_id, int $curator_id): void
+    {
+        DB::table('partner_curators')
+            ->where('partner_id', $partner_id)
+            ->where('curator_id', $curator_id)
+            ->delete();
     }
 
     public function getProcent(int $partner_id)

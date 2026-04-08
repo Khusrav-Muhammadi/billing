@@ -135,6 +135,12 @@ class TariffController extends Controller
             return;
         }
 
+        // Exclusions are managed on a dedicated page; do not detach on regular updates
+        // when the field is not part of the submitted form.
+        if (!$request->exists('excluded_organization_ids')) {
+            return;
+        }
+
         $ids = array_values(array_filter(array_map('intval', (array) $request->input('excluded_organization_ids', []))));
         if (!$ids) {
             $tariff->excludedOrganizations()->detach();
@@ -228,6 +234,47 @@ class TariffController extends Controller
         $tariff->includedServices()->detach($service->id);
 
         return redirect()->route('tariff.included_services.index', $tariff);
+    }
+
+    public function exclusionsIndex(Tariff $tariff)
+    {
+        abort_if((bool) $tariff->is_tariff || (bool) $tariff->is_extra_user, 404);
+
+        $tariff->load('excludedOrganizations:id,name,order_number');
+
+        $excludedIds = $tariff->excludedOrganizations->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $organizations = Organization::query()
+            ->when(!empty($excludedIds), fn ($q) => $q->whereNotIn('id', $excludedIds))
+            ->select(['id', 'name', 'order_number'])
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.tariffs.exclusions', compact('tariff', 'organizations'));
+    }
+
+    public function exclusionsStore(Tariff $tariff, Request $request)
+    {
+        abort_if((bool) $tariff->is_tariff || (bool) $tariff->is_extra_user, 404);
+
+        $data = $request->validate([
+            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+        ]);
+
+        $organizationId = (int) $data['organization_id'];
+
+        $tariff->excludedOrganizations()->syncWithoutDetaching([$organizationId]);
+
+        return redirect()->route('tariff.exclusions.index', $tariff);
+    }
+
+    public function exclusionsDestroy(Tariff $tariff, Organization $organization)
+    {
+        abort_if((bool) $tariff->is_tariff || (bool) $tariff->is_extra_user, 404);
+
+        $tariff->excludedOrganizations()->detach((int) $organization->id);
+
+        return redirect()->route('tariff.exclusions.index', $tariff);
     }
 
     public function getTariffByCurrency(Request $request)

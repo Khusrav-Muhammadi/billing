@@ -193,6 +193,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/{tariff}/included-services', [TariffController::class, 'includedServicesStore'])->name('tariff.included_services.store');
         Route::patch('/{tariff}/included-services/{service}', [TariffController::class, 'includedServicesUpdate'])->name('tariff.included_services.update');
         Route::delete('/{tariff}/included-services/{service}', [TariffController::class, 'includedServicesDestroy'])->name('tariff.included_services.destroy');
+        Route::get('/{tariff}/exclusions', [TariffController::class, 'exclusionsIndex'])->name('tariff.exclusions.index');
+        Route::post('/{tariff}/exclusions', [TariffController::class, 'exclusionsStore'])->name('tariff.exclusions.store');
+        Route::delete('/{tariff}/exclusions/{organization}', [TariffController::class, 'exclusionsDestroy'])->name('tariff.exclusions.destroy');
     });
 
     Route::group(['prefix' => 'price_list'], function () {
@@ -228,6 +231,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/store', [PartnerController::class, 'store'])->name('partner.store');
         Route::get('/create', [PartnerController::class, 'create'])->name('partner.create');
         Route::post('/partner/addManager', [PartnerController::class, 'addManager'])->name('partner.manager.create');
+        Route::post('/{partner}/curators', [PartnerController::class, 'addCurator'])->name('partner.curator.create');
+        Route::delete('/{partner}/curators/{curator}', [PartnerController::class, 'removeCurator'])->name('partner.curator.delete');
         Route::post('/partner/addProcent/{user}', [PartnerController::class, 'addProcent'])->name('partner.procent.create');
         Route::post('/partner/addStatus/{user}', [PartnerController::class, 'addStatus'])->name('partner.status.create');
         Route::post('/partner/manager/{user}', [PartnerController::class, 'addManager'])->name('partner.manager.edit');

@@ -18,6 +18,7 @@ class ConnectedClientServices extends Model
         'account_id',
         'service_total_amount',
         'status',
+        'deactivated_at',
         'date',
         'offer_currency_id',
         'payable_currency_id',
@@ -27,6 +28,7 @@ class ConnectedClientServices extends Model
     protected $casts = [
         'status' => 'boolean',
         'date' => 'datetime',
+        'deactivated_at' => 'datetime',
         'service_total_amount' => 'decimal:4',
         'payable_amount' => 'decimal:4',
         'offer_currency_id' => 'integer',

@@ -12,12 +12,14 @@ use App\Models\ClientBalance;
 use App\Models\ConnectedClientServices;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
+use App\Models\OrganizationConnectionStatus;
 use App\Models\Tariff;
 use App\Models\User;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class OrganizationV2Controller extends Controller
 {
@@ -84,6 +86,20 @@ class OrganizationV2Controller extends Controller
             ->orderBy('date')
             ->get();
 
+        $connectionStatusHistory = collect();
+        if (Schema::hasTable('organization_connection_statuses')) {
+            $connectionStatusHistory = OrganizationConnectionStatus::query()
+                ->where('organization_id', (int) $organization->id)
+                ->with([
+                    'author:id,name',
+                    'commercialOffer:id,request_type',
+                    'dayClosing:id,doc_number,date',
+                ])
+                ->orderByDesc('status_date')
+                ->orderByDesc('id')
+                ->get();
+        }
+
         $balanceOperations = ClientBalance::query()
             ->where('organization_id', (int) $organization->id)
             ->with('currency:id,name,symbol_code')
@@ -96,6 +112,7 @@ class OrganizationV2Controller extends Controller
         return view('v2.organizations_v2.show', compact(
             'organization',
             'connectedServices',
+            'connectionStatusHistory',
             'balanceOperations',
             'realBalance'
         ));
