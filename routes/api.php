@@ -62,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('commercial-foofers', [CommercialFooferController::class, 'offers']);
     Route::post('commercial-foofers', [CommercialFooferController::class, 'store']);
+    Route::post('commercial-foofers/payment', [\App\Http\Controllers\ClientPaymentController::class, 'store']);
     Route::get('commercial-foofers/connection-context/{organization}', [CommercialFooferController::class, 'connectionContext']);
     Route::get('commercial-foofers/{commercialOffer}', [CommercialFooferController::class, 'show']);
     Route::patch('commercial-foofers/{commercialOffer}', [CommercialFooferController::class, 'update']);
@@ -73,6 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // alias for conventional naming
     Route::get('commercial-offers', [CommercialFooferController::class, 'offers']);
     Route::post('commercial-offers', [CommercialFooferController::class, 'store']);
+    Route::post('commercial-offers/payment', [\App\Http\Controllers\ClientPaymentController::class, 'store']);
     Route::get('commercial-offers/connection-context/{organization}', [CommercialFooferController::class, 'connectionContext']);
     Route::get('commercial-offers/{commercialOffer}', [CommercialFooferController::class, 'show']);
     Route::patch('commercial-offers/{commercialOffer}', [CommercialFooferController::class, 'update']);

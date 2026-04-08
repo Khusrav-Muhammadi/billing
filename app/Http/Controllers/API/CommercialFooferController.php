@@ -122,6 +122,19 @@ class CommercialFooferController extends Controller
                 'tariff:id,name',
                 'organization:id,name,phone,email,order_number',
                 'partner:id,name,phone,email,payment_methods',
+                'payment:id,payment_type',
+                'latestOfferStatus' => static function ($query) {
+                    $query->select([
+                        'commercial_offer_statuses.id',
+                        'commercial_offer_statuses.commercial_offer_id',
+                        'commercial_offer_statuses.status',
+                        'commercial_offer_statuses.status_date',
+                        'commercial_offer_statuses.payment_method',
+                        'commercial_offer_statuses.account_id',
+                        'commercial_offer_statuses.payment_order_number',
+                        'commercial_offer_statuses.author_id',
+                    ]);
+                },
             ])
             ->firstOrFail();
 
@@ -129,6 +142,10 @@ class CommercialFooferController extends Controller
             'offer' => [
                 'id' => $offer->id,
                 'locked' => $offer->locked_at !== null,
+                'status' => (string)($offer->status ?? 'draft'),
+                'latest_status' => (string)($offer->latestOfferStatus?->status ?? $offer->status ?? 'draft'),
+                'payment_type' => (string)($offer->payment?->payment_type ?? ''),
+                'payment_link' => (string)($offer->payment_link ?? ''),
                 'payload' => $this->buildOfferPayload($offer),
             ],
         ]);
