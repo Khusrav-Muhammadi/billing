@@ -131,6 +131,12 @@
                                 'insufficient_balance' => 'Недостаточно баланса',
                             ][$reason] ?? ($reason !== '' ? $reason : '—');
                         @endphp
+
+
+
+
+
+
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ optional($row->status_date)->format('d.m.Y H:i') ?: '-' }}</td>

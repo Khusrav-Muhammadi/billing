@@ -31,6 +31,11 @@ Route::middleware('auth.basic')->group(function () {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Partners app expects to create a payment for a commercial offer via this endpoint.
+    // IMPORTANT: Keep this route BEFORE any potential apiResource('commercial-foofers', ...)
+    // to avoid Laravel treating "payment" as a {commercial_foofer} id (405 on POST).
+    Route::post('commercial-foofers/payment', [\App\Http\Controllers\ClientPaymentController::class, 'store']);
+
     Route::get('clients', [\App\Http\Controllers\API\ClientController::class, 'index']);
     Route::get('clients/nfr', [\App\Http\Controllers\API\ClientController::class, 'getNfr']);
     Route::post('clients/store', [\App\Http\Controllers\API\ClientController::class, 'store']);
