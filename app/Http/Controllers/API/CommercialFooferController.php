@@ -37,7 +37,15 @@ class CommercialFooferController extends Controller
             ->with([
                 'tariff:id,name',
                 'organization:id,name,phone,email,order_number',
-                'latestOfferStatus:id,commercial_offer_id,status,status_date,payment_method',
+                'latestOfferStatus' => static function ($query) {
+                    $query->select([
+                        'commercial_offer_statuses.id',
+                        'commercial_offer_statuses.commercial_offer_id',
+                        'commercial_offer_statuses.status',
+                        'commercial_offer_statuses.status_date',
+                        'commercial_offer_statuses.payment_method',
+                    ]);
+                },
             ])
             ->orderByDesc('id');
 
