@@ -146,6 +146,13 @@ class ClientPaymentController extends Controller
 
             if ($data['payment_type'] === 'invoice') {
                 $url = route('client-payment.invoice', $payment);
+                // When payment is created via API (partners app), open invoice page in partners UI.
+                if ($request->is('api/*')) {
+                    $partnersBaseUrl = rtrim((string) config('partners.url', 'https://partners.shamcrm.com'), '/');
+                    if ($partnersBaseUrl !== '') {
+                        $url = $partnersBaseUrl . '/client-payment/invoice/' . $payment->id;
+                    }
+                }
                 $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $url, $statusAccountId);
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $url])

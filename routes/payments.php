@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\ClientPaymentController as ApiClientPaymentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,3 +14,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('client-payment/invoice/{payment}', [ApiClientPaymentController::class, 'invoice']);
+});
