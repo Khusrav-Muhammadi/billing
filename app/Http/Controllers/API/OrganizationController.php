@@ -137,7 +137,7 @@ class OrganizationController extends Controller
             'client.tariffPrice.tariff:id,name,user_count',
         ]);
 
-  
+
         $connectedServices = ConnectedClientServices::query()
             ->where('client_id', (int) $organization->id)
             ->with([
