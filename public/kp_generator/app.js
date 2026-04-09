@@ -51,6 +51,7 @@ class CPGenerator {
         this.state.initialOrganizationId = null;
         this.state.extraServicesContext = {
             hasSuccessfulConnection: false,
+            hasActiveConnectedService: false,
             connectionCreateUrl: '',
             message: '',
             previousConnectionOfferId: null,
@@ -180,6 +181,10 @@ class CPGenerator {
         this.captureSavedPayLockSnapshot();
         this.updatePayButtonState();
         this.bindEvents();
+    }
+
+    getTopWindow() {
+        return (window.top && window.top !== window) ? window.top : window;
     }
 
     async loadConfig() {
@@ -313,6 +318,7 @@ class CPGenerator {
         if (!normalizedId) {
             this.state.extraServicesContext = {
                 hasSuccessfulConnection: false,
+                hasActiveConnectedService: false,
                 connectionCreateUrl: '',
                 message: '',
                 previousConnectionOfferId: null,
@@ -342,6 +348,7 @@ class CPGenerator {
 
             this.state.extraServicesContext = {
                 hasSuccessfulConnection: Boolean(payload?.has_successful_connection),
+                hasActiveConnectedService: Boolean(payload?.has_active_connected_service),
                 connectionCreateUrl: String(payload?.connection_create_url || ''),
                 message: String(payload?.message || ''),
                 previousConnectionOfferId: connectionOffer?.id || null,
@@ -357,6 +364,7 @@ class CPGenerator {
             console.error(error);
             this.state.extraServicesContext = {
                 hasSuccessfulConnection: false,
+                hasActiveConnectedService: false,
                 connectionCreateUrl: '',
                 message: 'Не удалось проверить подключение. Попробуйте обновить страницу.',
                 previousConnectionOfferId: null,
@@ -880,6 +888,7 @@ class CPGenerator {
                 this.state.extraServicesContext = {
                     ...this.state.extraServicesContext,
                     hasSuccessfulConnection: Boolean(this.state.selectedClientId),
+                    hasActiveConnectedService: Boolean(this.state.selectedClientId),
                     connectionCreateUrl: '',
                     message: '',
                 };
@@ -1791,30 +1800,55 @@ class CPGenerator {
     }
 
     submitPayment(paymentType) {
+        let invoiceTab = null;
+        if (paymentType === 'invoice') {
+            const topWindow = this.getTopWindow();
+            try {
+                invoiceTab = topWindow.open('about:blank', '_blank');
+            } catch (error) {
+                invoiceTab = null;
+            }
+        }
+
         if (this.state.isPaid) {
             alert('Подключение уже оплачено. Повторная оплата недоступна.');
+            if (invoiceTab && !invoiceTab.closed) {
+                invoiceTab.close();
+            }
             return;
         }
 
         if (!this.canOpenPayment()) {
             alert('Сначала сохраните КП, затем можно оплачивать.');
+            if (invoiceTab && !invoiceTab.closed) {
+                invoiceTab.close();
+            }
             return;
         }
 
         if (!this.state.csrfToken) {
             alert('CSRF токен не найден. Обновите страницу.');
+            if (invoiceTab && !invoiceTab.closed) {
+                invoiceTab.close();
+            }
             return;
         }
 
         const client = this.getSelectedClient();
         if (!client) {
             alert('Выберите организацию.');
+            if (invoiceTab && !invoiceTab.closed) {
+                invoiceTab.close();
+            }
             return;
         }
 
         const rawItems = this.buildPaymentItems();
         if (!rawItems.length) {
             alert('Нет позиций для оплаты.');
+            if (invoiceTab && !invoiceTab.closed) {
+                invoiceTab.close();
+            }
             return;
         }
 
@@ -1824,10 +1858,16 @@ class CPGenerator {
         if (payer.type === 'partner') {
             if (!payer.email) {
                 alert('У выбранного партнёра не заполнен email.');
+                if (invoiceTab && !invoiceTab.closed) {
+                    invoiceTab.close();
+                }
                 return;
             }
             if (!payer.phone) {
                 alert('У выбранного партнёра не заполнен номер телефона.');
+                if (invoiceTab && !invoiceTab.closed) {
+                    invoiceTab.close();
+                }
                 return;
             }
         }
@@ -1837,6 +1877,9 @@ class CPGenerator {
 
         if (conversionMeta.requiresConversion && (!conversionMeta.rate || conversionMeta.rate <= 0)) {
             alert(`Не найден курс для ${conversionMeta.sourceCurrency}. Добавьте курс в разделе "Курс валюты".`);
+            if (invoiceTab && !invoiceTab.closed) {
+                invoiceTab.close();
+            }
             return;
         }
 
@@ -1888,6 +1931,21 @@ class CPGenerator {
                     throw new Error('Не пришла ссылка на оплату');
                 }
 
+                if (paymentType === 'invoice') {
+                    const topWindow = this.getTopWindow();
+                    let opened = invoiceTab;
+                    if (!opened || opened.closed) {
+                        opened = topWindow.open(url, '_blank');
+                    } else {
+                        opened.location.href = url;
+                    }
+                    if (!opened || opened.closed) {
+                        throw new Error('Браузер заблокировал новую вкладку для счета. Разрешите pop-up для этого сайта.');
+                    }
+                    topWindow.location.reload();
+                    return;
+                }
+
                 const w = window.open(url, '_blank', 'noopener,noreferrer');
                 if (!w) {
                     throw new Error('Браузер заблокировал новое окно. Разрешите pop-up для этого сайта.');
@@ -1896,6 +1954,9 @@ class CPGenerator {
             })
             .catch((err) => {
                 console.error(err);
+                if (invoiceTab && !invoiceTab.closed) {
+                    invoiceTab.close();
+                }
                 alert(err?.message || 'Ошибка оплаты');
             });
     }
@@ -2076,7 +2137,7 @@ class CPGenerator {
                     this.showLoading();
                     await this.loadConnectionContextForOrganization(item.id);
 
-                    if (this.state.extraServicesContext?.hasSuccessfulConnection) {
+                    if (this.state.extraServicesContext?.hasActiveConnectedService) {
                         this.state.connectionSelectionBlocked = true;
                         this.state.selectedClientId = null;
                         this.state.clientName = '';

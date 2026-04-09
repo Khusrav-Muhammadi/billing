@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\CommercialOffer;
+use App\Models\CommercialOfferItem;
 use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\CurrencyRate;
@@ -330,20 +331,24 @@ class CommercialFooferController extends Controller
 
     public function connectionContext(Organization $organization): JsonResponse
     {
-        $offer = $this->ownedOffersQuery()
-            ->where('organization_id', $organization->id)
-            ->where('request_type', 'connection')
-            ->with([
-                'items:id,commercial_offer_id,tariff_id,quantity',
-                'items.tariff:id,name,is_tariff,is_extra_user,can_increase',
-                'partner:id,name',
-            ])
+        $rows = ConnectedClientServices::query()
+            ->where('client_id', $organization->id)
+            ->where('status', true)
+            ->whereNotNull('date')
+            ->whereDate('date', '<=', now()->toDateString())
             ->orderByDesc('id')
-            ->first();
+            ->get([
+                'id',
+                'partner_id',
+                'tariff_id',
+                'commercial_offer_id',
+                'date',
+            ]);
 
-        if (!$offer) {
+        if ($rows->isEmpty()) {
             return response()->json([
                 'has_successful_connection' => false,
+                'has_active_connected_service' => false,
                 'organization' => [
                     'id' => $organization->id,
                     'name' => $organization->name,
@@ -354,26 +359,236 @@ class CommercialFooferController extends Controller
             ]);
         }
 
-        $selectedTariffId = $this->resolveSelectedTariffIdFromItems($offer);
-        $selectedServices = $this->buildSelectedServicesFromOffer($offer, $selectedTariffId);
-        $extraUsers = $this->resolveExtraUsersFromOffer($offer);
+        $tariffIds = $rows->pluck('tariff_id')
+            ->filter()
+            ->map(fn ($value) => (int) $value)
+            ->unique()
+            ->values()
+            ->all();
+
+        $tariffsById = Tariff::query()
+            ->whereIn('id', $tariffIds)
+            ->get(['id', 'name', 'is_tariff', 'is_extra_user', 'can_increase'])
+            ->keyBy('id');
+
+        $connectionRow = $rows->first(function ($row) use ($tariffsById) {
+            $tariff = $tariffsById->get((int) $row->tariff_id);
+            if (!$tariff) {
+                return false;
+            }
+
+            return (bool) $tariff->is_tariff && !(bool) $tariff->is_extra_user;
+        });
+
+        if (!$connectionRow) {
+            return response()->json([
+                'has_successful_connection' => false,
+                'has_active_connected_service' => true,
+                'organization' => [
+                    'id' => $organization->id,
+                    'name' => $organization->name,
+                    'order_number' => $organization->order_number,
+                ],
+                'message' => 'У этой организации нет подключения, сначала сделайте подключение.',
+                'connection_create_url' => null,
+            ]);
+        }
+
+        $selectedTariffId = (int) $connectionRow->tariff_id;
+        $quantitiesByOfferTariff = $this->buildConnectedServiceQuantitiesMap($rows);
+        $selectedServices = $this->buildSelectedServicesFromConnectedRows(
+            $selectedTariffId,
+            $rows,
+            $tariffsById->all(),
+            $quantitiesByOfferTariff
+        );
+        $extraUsers = $this->resolveExtraUsersFromConnectedRows(
+            $rows,
+            $tariffsById->all(),
+            $quantitiesByOfferTariff
+        );
+
+        $partnerId = (int) ($organization->client?->partner_id ?? 0);
+        if ($partnerId <= 0) {
+            $partnerId = (int) ($connectionRow->partner_id ?? 0);
+        }
+        $partnerId = $partnerId > 0 ? $partnerId : null;
+
+        $partnerName = null;
+        if ($partnerId !== null) {
+            $partnerName = User::query()
+                ->where('id', $partnerId)
+                ->whereRaw('LOWER(role) = ?', ['partner'])
+                ->value('name');
+        }
 
         return response()->json([
             'has_successful_connection' => true,
+            'has_active_connected_service' => true,
             'organization' => [
                 'id' => $organization->id,
                 'name' => $organization->name,
                 'order_number' => $organization->order_number,
             ],
             'connection_offer' => [
-                'id' => (int)$offer->id,
-                'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int)$selectedTariffId) : null,
-                'partner_id' => $offer->partner?->id,
-                'partner_name' => $offer->partner?->name,
+                'id' => $connectionRow->commercial_offer_id ? (int) $connectionRow->commercial_offer_id : null,
+                'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int) $selectedTariffId) : null,
+                'partner_id' => $partnerId,
+                'partner_name' => $partnerName,
                 'extra_users' => $extraUsers,
                 'selected_services' => $selectedServices,
             ],
         ]);
+    }
+
+    private function buildConnectedServiceQuantitiesMap($rows): array
+    {
+        $offerIds = collect($rows)
+            ->pluck('commercial_offer_id')
+            ->filter()
+            ->map(fn ($value) => (int) $value)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($offerIds)) {
+            return [];
+        }
+
+        $items = CommercialOfferItem::query()
+            ->whereIn('commercial_offer_id', $offerIds)
+            ->get(['commercial_offer_id', 'tariff_id', 'quantity']);
+
+        $map = [];
+        foreach ($items as $item) {
+            $offerId = (int) $item->commercial_offer_id;
+            $tariffId = (int) $item->tariff_id;
+            $key = $offerId . ':' . $tariffId;
+            $map[$key] = ($map[$key] ?? 0.0) + (float) $item->quantity;
+        }
+
+        return $map;
+    }
+
+    private function resolveConnectedRowQuantity($row, array $quantitiesByOfferTariff): int
+    {
+        $offerId = (int) ($row->commercial_offer_id ?? 0);
+        $tariffId = (int) ($row->tariff_id ?? 0);
+
+        if ($offerId > 0 && $tariffId > 0) {
+            $key = $offerId . ':' . $tariffId;
+            if (array_key_exists($key, $quantitiesByOfferTariff)) {
+                return max(0, (int) round((float) $quantitiesByOfferTariff[$key]));
+            }
+        }
+
+        return 1;
+    }
+
+    private function buildSelectedServicesFromConnectedRows(
+        ?int $selectedTariffId,
+        $rows,
+        array $tariffsById,
+        array $quantitiesByOfferTariff
+    ): array {
+        $selectedServices = [];
+        $processedCountableKeys = [];
+        $includedDefaults = $this->getIncludedServiceDefaultsForTariff($selectedTariffId);
+
+        foreach ($includedDefaults as $serviceKey => $meta) {
+            $canIncrease = (bool) data_get($meta, 'can_increase', false);
+            if ($canIncrease) {
+                $includedChannels = max(0, (int) data_get($meta, 'included_channels', 0));
+                if ($includedChannels <= 0) {
+                    continue;
+                }
+
+                $selectedServices[$serviceKey] = [
+                    'enabled' => true,
+                    'channels' => $includedChannels,
+                ];
+                continue;
+            }
+
+            $selectedServices[$serviceKey] = [
+                'enabled' => true,
+                'channels' => 1,
+            ];
+        }
+
+        foreach ($rows as $row) {
+            $tariff = $tariffsById[(int) $row->tariff_id] ?? null;
+            if (!$tariff) {
+                continue;
+            }
+
+            if ((bool) $tariff->is_tariff || (bool) $tariff->is_extra_user) {
+                continue;
+            }
+
+            $serviceKey = 'service-' . (int) $tariff->id;
+            $quantity = $this->resolveConnectedRowQuantity($row, $quantitiesByOfferTariff);
+            if ($quantity <= 0) {
+                $quantity = 1;
+            }
+
+            $hasChannels = (bool) $tariff->can_increase;
+            if ($hasChannels) {
+                $countableKey = $this->buildConnectedCountableKey($row);
+                if (isset($processedCountableKeys[$countableKey])) {
+                    continue;
+                }
+                $processedCountableKeys[$countableKey] = true;
+
+                $currentChannels = (int) data_get($selectedServices, $serviceKey . '.channels', 0);
+                $selectedServices[$serviceKey] = [
+                    'enabled' => true,
+                    'channels' => $currentChannels + $quantity,
+                ];
+                continue;
+            }
+
+            $selectedServices[$serviceKey] = [
+                'enabled' => true,
+                'channels' => 1,
+            ];
+        }
+
+        return $this->normalizeSelectedServices($selectedServices);
+    }
+
+    private function resolveExtraUsersFromConnectedRows($rows, array $tariffsById, array $quantitiesByOfferTariff): int
+    {
+        $extraUsers = 0;
+        $processedCountableKeys = [];
+
+        foreach ($rows as $row) {
+            $tariff = $tariffsById[(int) $row->tariff_id] ?? null;
+            if (!$tariff || !(bool) $tariff->is_extra_user) {
+                continue;
+            }
+
+            $countableKey = $this->buildConnectedCountableKey($row);
+            if (isset($processedCountableKeys[$countableKey])) {
+                continue;
+            }
+            $processedCountableKeys[$countableKey] = true;
+
+            $extraUsers += $this->resolveConnectedRowQuantity($row, $quantitiesByOfferTariff);
+        }
+
+        return max(0, (int) $extraUsers);
+    }
+
+    private function buildConnectedCountableKey($row): string
+    {
+        $offerId = (int) ($row->commercial_offer_id ?? 0);
+        $tariffId = (int) ($row->tariff_id ?? 0);
+        if ($offerId > 0 && $tariffId > 0) {
+            return $offerId . ':' . $tariffId;
+        }
+
+        return 'row:' . (int) ($row->id ?? 0);
     }
 
     private function getAsOfTs(Request $request): int

@@ -601,6 +601,7 @@ class ApplicationController extends Controller
         if ($rows->isEmpty()) {
             return response()->json([
                 'has_successful_connection' => false,
+                'has_active_connected_service' => false,
                 'organization' => [
                     'id' => $organization->id,
                     'name' => $organization->name,
@@ -637,6 +638,7 @@ class ApplicationController extends Controller
         if (!$connectionRow) {
             return response()->json([
                 'has_successful_connection' => false,
+                'has_active_connected_service' => true,
                 'organization' => [
                     'id' => $organization->id,
                     'name' => $organization->name,
@@ -678,6 +680,7 @@ class ApplicationController extends Controller
 
         return response()->json([
             'has_successful_connection' => true,
+            'has_active_connected_service' => true,
             'organization' => [
                 'id' => $organization->id,
                 'name' => $organization->name,
