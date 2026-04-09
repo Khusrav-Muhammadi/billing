@@ -18,7 +18,9 @@ class AuthController extends Controller
 
             return response()->json([
                 'token' => $token->plainTextToken,
-                'user' => $user,
+                'user' => $user->load(['procents' => function ($q) {
+                    $q->latest()->limit(1);
+                }]),
             ], 200);
         }
 
