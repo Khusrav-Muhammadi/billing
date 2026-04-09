@@ -418,12 +418,11 @@ class CommercialFooferController extends Controller
             ->when($search !== '', function (Builder $query) use ($search) {
                 $like = '%' . $search . '%';
                 $query->where(function (Builder $q) use ($like) {
-                    $q->where('name', 'like', $like)
-                        ->orWhere('phone', 'like', $like)
-                        ->orWhere('order_number', 'like', $like);
+                    $q->where('order_number', 'like', $like);
                 });
             })
             ->orderBy('name')
+            ->take(1)
             ->get();
 
         $operationStartDates = $this->getOrganizationOperationStartDates(
