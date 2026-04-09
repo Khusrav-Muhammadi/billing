@@ -48,13 +48,13 @@
                     <th>Клиент</th>
                     <th>Партнер</th>
                     <th>Дата операции</th>
+                    <th>Статус операции</th>
                     <th>Тип операции</th>
                     <th>Тип оплаты</th>
                     <th>Тариф</th>
                     <th>Период</th>
                     <th>Сумма оплаты (в валюте)</th>
                     <th>Сумма оплаты (системная валюта)</th>
-                    <th>Статус операции</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -112,12 +112,6 @@
                         <td>{{ $offer->client_name ?: '-' }}</td>
                         <td>{{ $offer->partner_name ?? '-' }}</td>
                         <td>{{ optional($offer->saved_at)->format('d.m.Y') }}</td>
-                        <td>{{ $operationTypeLabel }}</td>
-                        <td>{{ $paymentTypeLabel }}</td>
-                        <td>{{ optional($offer->tariff)->name ?? '-' }}</td>
-                        <td>{{ $offer->period_months }} мес.</td>
-                        <td>{{ number_format((float) $offer->grand_total, 2, '.', ' ') }} {{ $amountCurrencyCode }}</td>
-                        <td>{{ number_format((float) $offer->payable_total, 2, '.', ' ') }} {{ $systemCurrencyCode }}</td>
                         <td class="offer-status-cell">
                             <span class="badge {{ $operationStatusClass }}">{{ $operationStatusLabel }}</span>
                             <div class="offer-status-actions">
@@ -137,6 +131,13 @@
                                 @endif
                             </div>
                         </td>
+                        <td>{{ $operationTypeLabel }}</td>
+                        <td>{{ $paymentTypeLabel }}</td>
+                        <td>{{ optional($offer->tariff)->name ?? '-' }}</td>
+                        <td>{{ $offer->period_months }} мес.</td>
+                        <td>{{ number_format((float) $offer->grand_total, 2, '.', ' ') }} {{ $amountCurrencyCode }}</td>
+                        <td>{{ number_format((float) $offer->payable_total, 2, '.', ' ') }} {{ $systemCurrencyCode }}</td>
+
                     </tr>
                 @empty
                     <tr>
