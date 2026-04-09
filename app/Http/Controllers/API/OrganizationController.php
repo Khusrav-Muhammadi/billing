@@ -99,11 +99,8 @@ class OrganizationController extends Controller
                 'client.tariffPrice:id,tariff_id',
                 'client.tariffPrice.tariff:id,name,user_count',
             ])
-            ->whereHas('client', function (Builder $clientQuery) use ($request, $authUser): void {
-                $clientQuery->where(function (Builder $builder): void {
-                    $builder->whereHas('transactions')
-                        ->orWhereHas('balances');
-                })->where('partner_id', $authUser->id);
+            ->whereHas('balances')
+            ->orWhereHas('client', function (Builder $clientQuery) use ($request, $authUser): void {
                 $this->applyV2ClientFilters($clientQuery, $request);
             });
 
