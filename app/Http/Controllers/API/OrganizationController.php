@@ -137,12 +137,7 @@ class OrganizationController extends Controller
             'client.tariffPrice.tariff:id,name,user_count',
         ]);
 
-        if (!$this->canAccessOrganization($organization)) {
-            return response()->json([
-                'message' => 'У вас нет доступа к этой организации.',
-            ], 403);
-        }
-
+  
         $connectedServices = ConnectedClientServices::query()
             ->where('client_id', (int) $organization->id)
             ->with([
