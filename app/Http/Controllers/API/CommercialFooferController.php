@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\CommercialOffer;
 use App\Models\ConnectedClientServices;
 use App\Models\Currency;
+use App\Models\CurrencyRate;
 use App\Models\Organization;
 use App\Models\PartnerProcent;
 use App\Models\Tariff;
@@ -658,6 +659,16 @@ class CommercialFooferController extends Controller
         }
 
         $currencyCodes = array_keys($currencies);
+        $templateUsdRates = (array)data_get($template, 'usdRates', [
+            'USD' => 1,
+            'UZS' => 1,
+            'TJS' => 1,
+        ]);
+        $dbUsdRates = $this->buildUsdRatesFromCurrencyRows($currencyRows, $asOfTs);
+        $usdRates = $this->normalizeUsdRates(
+            array_replace($templateUsdRates, $dbUsdRates),
+            $currencyCodes
+        );
 
         $tariffs = Tariff::query()
             ->where('is_tariff', true)
@@ -699,19 +710,21 @@ class CommercialFooferController extends Controller
                 continue;
             }
 
-            $prices = (array)($tariffCurrencyMap[(int)$tariff->id] ?? []);
-            if (empty($prices)) {
-                $prices = $this->pickActivePrices(
-                    $this->filterBasePriceRows($tariff->prices),
-                    $asOfTs
-                );
-            }
-            if (empty($prices) && $tariff->price !== null) {
-                foreach ($currencyCodes as $currencyCode) {
-                    $prices[$currencyCode] = round((float)$tariff->price, 4);
-                }
-            }
-            if (empty($prices)) {
+            $prices = $this->pickActivePrices(
+                $this->filterBasePriceRows($tariff->prices),
+                $asOfTs
+            );
+            $prices = array_replace(
+                $prices,
+                (array)($tariffCurrencyMap[(int)$tariff->id] ?? [])
+            );
+            $prices = $this->normalizeCurrencyPrices(
+                $prices,
+                $currencyCodes,
+                $usdRates,
+                $tariff->price !== null ? round((float)$tariff->price, 4) : null
+            );
+            if (!$this->hasAnyPositivePrice($prices)) {
                 continue;
             }
 
@@ -742,18 +755,15 @@ class CommercialFooferController extends Controller
                 );
             }
 
-            if (empty($extraUserPrices)) {
-                $fromTemplate = (array)data_get($templateTariff, 'extraUserPrice', []);
-                foreach ($currencyCodes as $currencyCode) {
-                    $extraUserPrices[$currencyCode] = (float)($fromTemplate[$currencyCode] ?? 0);
-                }
-            } else {
-                foreach ($currencyCodes as $currencyCode) {
-                    if (!array_key_exists($currencyCode, $extraUserPrices)) {
-                        $extraUserPrices[$currencyCode] = 0.0;
-                    }
-                }
-            }
+            $extraUserPrices = array_replace(
+                (array)data_get($templateTariff, 'extraUserPrice', []),
+                $extraUserPrices
+            );
+            $extraUserPrices = $this->normalizeCurrencyPrices(
+                $extraUserPrices,
+                $currencyCodes,
+                $usdRates
+            );
 
             $includedServices = [];
             $includedQuantities = [];
@@ -799,12 +809,13 @@ class CommercialFooferController extends Controller
                 $this->filterBasePriceRows($service->prices),
                 $asOfTs
             );
-            if (empty($prices) && $service->price !== null) {
-                foreach ($currencyCodes as $currencyCode) {
-                    $prices[$currencyCode] = round((float)$service->price, 4);
-                }
-            }
-            if (empty($prices)) {
+            $prices = $this->normalizeCurrencyPrices(
+                $prices,
+                $currencyCodes,
+                $usdRates,
+                $service->price !== null ? round((float)$service->price, 4) : null
+            );
+            if (!$this->hasAnyPositivePrice($prices)) {
                 continue;
             }
 
@@ -823,11 +834,7 @@ class CommercialFooferController extends Controller
         return [
             'currencies' => $currencies,
             'currenciesById' => $currenciesById,
-            'usdRates' => (array)data_get($template, 'usdRates', [
-                'USD' => 1,
-                'UZS' => 1,
-                'TJS' => 1,
-            ]),
+            'usdRates' => $usdRates,
             'paymentPeriods' => (array)data_get($template, 'paymentPeriods', [
                 ['months' => 6, 'discount' => 0, 'label' => '6 месяцев'],
                 ['months' => 12, 'discount' => 15, 'label' => '12 месяцев (скидка 15%)'],
@@ -1185,6 +1192,253 @@ class CommercialFooferController extends Controller
         }
 
         return $prices;
+    }
+
+    private function buildUsdRatesFromCurrencyRows(iterable $currencyRows, int $asOfTs): array
+    {
+        $rows = collect($currencyRows)
+            ->map(static function ($currency): ?array {
+                $symbol = strtoupper(trim((string)data_get($currency, 'symbol_code', '')));
+                $id = (int)data_get($currency, 'id', 0);
+                if ($symbol === '' || $id <= 0) {
+                    return null;
+                }
+
+                return [
+                    'id' => $id,
+                    'symbol' => $symbol,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        if ($rows->isEmpty()) {
+            return ['USD' => 1.0];
+        }
+
+        $usd = $rows->first(static fn(array $row): bool => $row['symbol'] === 'USD');
+        if (!$usd) {
+            return ['USD' => 1.0];
+        }
+
+        $quotes = $rows->filter(static fn(array $row): bool => $row['symbol'] !== 'USD')->values();
+        $rates = ['USD' => 1.0];
+        if ($quotes->isEmpty()) {
+            return $rates;
+        }
+
+        $quoteIdToSymbol = [];
+        foreach ($quotes as $row) {
+            $quoteIdToSymbol[(int)$row['id']] = (string)$row['symbol'];
+        }
+        $quoteIds = array_keys($quoteIdToSymbol);
+        if (empty($quoteIds)) {
+            return $rates;
+        }
+
+        $asOfDate = date('Y-m-d', $asOfTs);
+
+        $datedRows = CurrencyRate::query()
+            ->where('base_currency_id', (int)$usd['id'])
+            ->whereIn('quote_currency_id', $quoteIds)
+            ->where(function (Builder $query) use ($asOfDate) {
+                $query->whereNull('rate_date')
+                    ->orWhereDate('rate_date', '<=', $asOfDate);
+            })
+            ->orderByDesc('rate_date')
+            ->orderByDesc('id')
+            ->get(['quote_currency_id', 'rate']);
+
+        $usedQuoteIds = [];
+        foreach ($datedRows as $row) {
+            $quoteId = (int)$row->quote_currency_id;
+            if ($quoteId <= 0 || isset($usedQuoteIds[$quoteId])) {
+                continue;
+            }
+
+            $rate = (float)$row->rate;
+            if ($rate <= 0) {
+                continue;
+            }
+
+            $symbol = $quoteIdToSymbol[$quoteId] ?? null;
+            if (!$symbol) {
+                continue;
+            }
+
+            $rates[$symbol] = round($rate, 6);
+            $usedQuoteIds[$quoteId] = true;
+        }
+
+        $missingQuoteIds = array_values(array_filter($quoteIds, static fn(int $id): bool => !isset($usedQuoteIds[$id])));
+        if (!empty($missingQuoteIds)) {
+            $latestRows = CurrencyRate::query()
+                ->where('base_currency_id', (int)$usd['id'])
+                ->whereIn('quote_currency_id', $missingQuoteIds)
+                ->orderByDesc('rate_date')
+                ->orderByDesc('id')
+                ->get(['quote_currency_id', 'rate']);
+
+            $latestUsed = [];
+            foreach ($latestRows as $row) {
+                $quoteId = (int)$row->quote_currency_id;
+                if ($quoteId <= 0 || isset($latestUsed[$quoteId])) {
+                    continue;
+                }
+
+                $rate = (float)$row->rate;
+                if ($rate <= 0) {
+                    continue;
+                }
+
+                $symbol = $quoteIdToSymbol[$quoteId] ?? null;
+                if (!$symbol) {
+                    continue;
+                }
+
+                $rates[$symbol] = round($rate, 6);
+                $latestUsed[$quoteId] = true;
+            }
+        }
+
+        return $rates;
+    }
+
+    private function normalizeUsdRates(array $rates, array $currencyCodes): array
+    {
+        $normalized = ['USD' => 1.0];
+
+        foreach ($rates as $currencyCode => $value) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code === '') {
+                continue;
+            }
+
+            $rate = (float)str_replace(',', '.', (string)$value);
+            if ($rate <= 0) {
+                continue;
+            }
+
+            $normalized[$code] = round($rate, 6);
+        }
+
+        foreach ($currencyCodes as $currencyCode) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code === '') {
+                continue;
+            }
+
+            if ($code === 'USD') {
+                $normalized[$code] = 1.0;
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeCurrencyPrices(
+        array $prices,
+        array $currencyCodes,
+        array $usdRates,
+        ?float $fallbackPrice = null
+    ): array {
+        $normalized = [];
+
+        foreach ($prices as $currencyCode => $rawValue) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code === '' || $code === '__META') {
+                continue;
+            }
+
+            $value = $this->toDecimal($rawValue);
+            if ($value <= 0) {
+                continue;
+            }
+
+            $normalized[$code] = $value;
+        }
+
+        $fallback = $fallbackPrice !== null ? $this->toDecimal($fallbackPrice) : null;
+        $fallback = ($fallback !== null && $fallback > 0) ? $fallback : null;
+
+        $usd = $normalized['USD'] ?? null;
+        if ($usd === null) {
+            foreach ($normalized as $code => $value) {
+                $rate = (float)($usdRates[$code] ?? 0);
+                if ($rate > 0) {
+                    $usd = round($value / $rate, 4);
+                    break;
+                }
+            }
+        }
+        if ($usd === null && $fallback !== null) {
+            $usd = $fallback;
+        }
+
+        $firstKnownPrice = null;
+        foreach ($normalized as $value) {
+            if ($value > 0) {
+                $firstKnownPrice = $value;
+                break;
+            }
+        }
+        if ($firstKnownPrice === null && $fallback !== null) {
+            $firstKnownPrice = $fallback;
+        }
+
+        foreach ($currencyCodes as $currencyCode) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code === '') {
+                continue;
+            }
+
+            if (isset($normalized[$code]) && $normalized[$code] > 0) {
+                continue;
+            }
+
+            $derived = null;
+            if ($code === 'USD' && $usd !== null && $usd > 0) {
+                $derived = $usd;
+            } elseif ($usd !== null && $usd > 0) {
+                $rate = (float)($usdRates[$code] ?? 0);
+                if ($rate > 0) {
+                    $derived = $usd * $rate;
+                }
+            }
+
+            if ($derived === null && $fallback !== null) {
+                if ($code === 'USD') {
+                    $derived = $fallback;
+                } else {
+                    $rate = (float)($usdRates[$code] ?? 0);
+                    $derived = $rate > 0 ? $fallback * $rate : $fallback;
+                }
+            }
+
+            if ($derived === null && $firstKnownPrice !== null) {
+                $derived = $firstKnownPrice;
+            }
+
+            $normalized[$code] = $derived !== null ? round((float)$derived, 4) : 0.0;
+        }
+
+        return $normalized;
+    }
+
+    private function hasAnyPositivePrice(array $prices): bool
+    {
+        foreach ($prices as $currencyCode => $rawValue) {
+            if ((string)$currencyCode === '__META') {
+                continue;
+            }
+
+            $value = $this->toDecimal($rawValue);
+            if ($value > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function filterBasePriceRows(iterable $priceRows): iterable
