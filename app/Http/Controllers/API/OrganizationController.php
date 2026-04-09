@@ -92,7 +92,7 @@ class OrganizationController extends Controller
 
         $organizationsQuery = Organization::query()
             ->with([
-                'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,validate_date,country_id,manager_id,nfr',
+                'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,country_id,manager_id,nfr',
                 'client.country:id,name,currency_id',
                 'client.country.currency:id,name,symbol_code',
                 'client.partner:id,name',
