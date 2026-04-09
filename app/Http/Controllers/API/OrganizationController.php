@@ -89,7 +89,6 @@ class OrganizationController extends Controller
     public function indexV2(Request $request): JsonResponse
     {
         $authUser = auth()->user();
-        $forcedPartnerId = ($authUser && $authUser->role === 'partner') ? (int) $authUser->id : null;
 
         $organizationsQuery = Organization::query()
             ->with([
@@ -100,14 +99,12 @@ class OrganizationController extends Controller
                 'client.tariffPrice:id,tariff_id',
                 'client.tariffPrice.tariff:id,name,user_count',
             ])
-            ->whereHas('client', function (Builder $clientQuery) use ($request, $authUser, $forcedPartnerId): void {
+            ->whereHas('client', function (Builder $clientQuery) use ($request, $authUser): void {
                 $clientQuery->where(function (Builder $builder): void {
                     $builder->whereHas('transactions')
-                        ->orWhereHas('organizations', function (Builder $organizationQuery): void {
-                            $organizationQuery->whereHas('balances');
-                        });
-                });
-                $this->applyV2ClientFilters($clientQuery, $request, $authUser, $forcedPartnerId);
+                        ->orWhereHas('balances');
+                })->where('partner_id', $authUser->id);
+                $this->applyV2ClientFilters($clientQuery, $request);
             });
 
         $search = trim((string) $request->query('search', ''));
@@ -116,37 +113,16 @@ class OrganizationController extends Controller
         }
 
         $organizations = $organizationsQuery
+
             ->orderByDesc('id')
             ->get();
 
         $this->hydrateRealBalances($organizations);
 
-        $tariffs = Tariff::query()
-            ->select(['id', 'name'])
-            ->orderBy('name')
-            ->get()
-            ->values();
 
-        if ($forcedPartnerId !== null) {
-            $partners = User::query()
-                ->select(['id', 'name'])
-                ->where('id', $forcedPartnerId)
-                ->get()
-                ->values();
-        } else {
-            $partners = User::query()
-                ->select(['id', 'name'])
-                ->where('role', 'partner')
-                ->orderBy('name')
-                ->get()
-                ->values();
-        }
 
         return response()->json([
             'organizations' => $organizations,
-            'partners' => $partners,
-            'tariffs' => $tariffs,
-            'forced_partner_id' => $forcedPartnerId,
         ]);
     }
 
@@ -287,22 +263,9 @@ class OrganizationController extends Controller
 
     private function applyV2ClientFilters(
         Builder $query,
-        Request $request,
-        ?User $authUser,
-        ?int $forcedPartnerId
+        Request $request
     ): void {
-        if ($forcedPartnerId !== null && $forcedPartnerId > 0) {
-            $query->where('partner_id', $forcedPartnerId);
-        } else {
-            $partnerId = (int) $request->query('partner', 0);
-            if ($partnerId > 0) {
-                $query->where('partner_id', $partnerId);
-            }
-        }
 
-        if ($authUser && $authUser->role === 'manager') {
-            $query->where('manager_id', (int) $authUser->id);
-        }
 
         $clientType = trim((string) $request->query('clientType', ''));
         if ($clientType === 'Клиенты') {
