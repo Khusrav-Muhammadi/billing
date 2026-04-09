@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\CreateDayClosingDocumentsJob;
 use App\Models\DayClosing;
 use App\Models\DayClosingDetail;
-use App\Services\DayClosings\DayClosingService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,10 +12,6 @@ use Illuminate\Support\Facades\Auth;
 
 class DayClosingController extends Controller
 {
-    public function __construct(private DayClosingService $dayClosingService)
-    {
-    }
-
     public function index()
     {
         $dayClosings = DayClosing::query()
@@ -40,15 +36,15 @@ class DayClosingController extends Controller
             'date_to' => ['required', 'date', 'after_or_equal:date_from'],
         ]);
 
-        $this->dayClosingService->createDocumentsForPeriod(
-            Carbon::parse($validated['date_from']),
-            Carbon::parse($validated['date_to']),
+        CreateDayClosingDocumentsJob::dispatch(
+            Carbon::parse($validated['date_from'])->toDateString(),
+            Carbon::parse($validated['date_to'])->toDateString(),
             (int) Auth::id()
         );
 
         return redirect()
             ->route('day-closing.index')
-            ->with('success', 'Документы закрытия дня успешно созданы.');
+            ->with('success', 'Создание закрытия дня запущено');
     }
 
     public function show(DayClosing $dayClosing)
@@ -83,4 +79,3 @@ class DayClosingController extends Controller
         return view('admin.day_closings.show', compact('dayClosing', 'serviceRows'));
     }
 }
-
