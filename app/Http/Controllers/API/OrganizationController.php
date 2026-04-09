@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 
 class OrganizationController extends Controller
@@ -100,7 +101,7 @@ class OrganizationController extends Controller
                 'client.tariffPrice.tariff:id,name,user_count',
             ])
             ->whereHas('balances')
-            ->orWhereHas('client', function (Builder $clientQuery) use ($request, $authUser): void {
+            ->orWhereHas('client', function (Builder $clientQuery) use ($request): void {
                 $this->applyV2ClientFilters($clientQuery, $request);
             });
 
@@ -110,7 +111,9 @@ class OrganizationController extends Controller
         }
 
         $organizations = $organizationsQuery
-
+            ->whereHas('client', function (Builder $clientQuery) use () {
+                return $clientQuery->where('partner_id', Auth::id());
+            })
             ->orderByDesc('id')
             ->get();
 
