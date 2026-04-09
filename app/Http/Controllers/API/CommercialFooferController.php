@@ -90,9 +90,6 @@ class CommercialFooferController extends Controller
             'organization_id' => $organizationId > 0 ? $organizationId : null,
             'config' => $config,
             'client_prices' => $clientPrices,
-            'clients' => $clients,
-            'organizations' => $clients,
-            'partners' => $this->buildCurrentPartnerRows($request, $asOfTs),
         ]);
     }
 
