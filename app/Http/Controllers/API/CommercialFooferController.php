@@ -8,6 +8,7 @@ use App\Models\CommercialOffer;
 use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\CurrencyRate;
+use App\Models\ExchangeRate;
 use App\Models\Organization;
 use App\Models\PartnerProcent;
 use App\Models\Tariff;
@@ -710,13 +711,16 @@ class CommercialFooferController extends Controller
                 continue;
             }
 
-            $prices = $this->pickActivePrices(
+            $templateTariff = $this->findTemplateTariffData($templateTariffs, (string)$tariff->name);
+
+            $pricesFromRows = $this->pickActivePrices(
                 $this->filterBasePriceRows($tariff->prices),
                 $asOfTs
             );
             $prices = array_replace(
-                $prices,
-                (array)($tariffCurrencyMap[(int)$tariff->id] ?? [])
+                (array)($tariffCurrencyMap[(int)$tariff->id] ?? []),
+                (array)data_get($templateTariff, 'prices', []),
+                $pricesFromRows
             );
             $prices = $this->normalizeCurrencyPrices(
                 $prices,
@@ -727,8 +731,6 @@ class CommercialFooferController extends Controller
             if (!$this->hasAnyPositivePrice($prices)) {
                 continue;
             }
-
-            $templateTariff = $this->findTemplateTariffData($templateTariffs, (string)$tariff->name);
 
             $extraServices = $extraUserServicesByTariffId->get((int)$tariff->id);
             $extraUserTariffId = ($extraServices && $extraServices->isNotEmpty())
@@ -1279,10 +1281,9 @@ class CommercialFooferController extends Controller
                 ->orderByDesc('id')
                 ->get(['quote_currency_id', 'rate']);
 
-            $latestUsed = [];
             foreach ($latestRows as $row) {
                 $quoteId = (int)$row->quote_currency_id;
-                if ($quoteId <= 0 || isset($latestUsed[$quoteId])) {
+                if ($quoteId <= 0 || isset($usedQuoteIds[$quoteId])) {
                     continue;
                 }
 
@@ -1297,7 +1298,35 @@ class CommercialFooferController extends Controller
                 }
 
                 $rates[$symbol] = round($rate, 6);
-                $latestUsed[$quoteId] = true;
+                $usedQuoteIds[$quoteId] = true;
+            }
+        }
+
+        $stillMissingQuoteIds = array_values(array_filter($quoteIds, static fn(int $id): bool => !isset($usedQuoteIds[$id])));
+        if (!empty($stillMissingQuoteIds)) {
+            $fallbackRows = ExchangeRate::query()
+                ->whereIn('currency_id', $stillMissingQuoteIds)
+                ->orderByDesc('id')
+                ->get(['currency_id', 'kurs']);
+
+            foreach ($fallbackRows as $row) {
+                $quoteId = (int)$row->currency_id;
+                if ($quoteId <= 0 || isset($usedQuoteIds[$quoteId])) {
+                    continue;
+                }
+
+                $rate = (float)$row->kurs;
+                if ($rate <= 0) {
+                    continue;
+                }
+
+                $symbol = $quoteIdToSymbol[$quoteId] ?? null;
+                if (!$symbol) {
+                    continue;
+                }
+
+                $rates[$symbol] = round($rate, 6);
+                $usedQuoteIds[$quoteId] = true;
             }
         }
 
@@ -1636,6 +1665,7 @@ class CommercialFooferController extends Controller
     private function buildSelectedServicesFromOffer(CommercialOffer $offer, ?int $selectedTariffId): array
     {
         $selectedServices = [];
+        $includedDefaults = $this->getIncludedServiceDefaultsForTariff($selectedTariffId);
 
         foreach ($offer->items as $item) {
             $tariff = $item->tariff;
@@ -1651,7 +1681,11 @@ class CommercialFooferController extends Controller
             $quantity = max(1, (int)round((float)$item->quantity));
 
             if ((bool)$tariff->can_increase) {
+                $includedChannels = (int)data_get($includedDefaults, $serviceKey . '.included_channels', 0);
                 $current = (int)data_get($selectedServices, $serviceKey . '.channels', 0);
+                if ($current <= 0 && $includedChannels > 0) {
+                    $current = $includedChannels;
+                }
                 $selectedServices[$serviceKey] = [
                     'enabled' => true,
                     'channels' => $current + $quantity,
@@ -1664,7 +1698,58 @@ class CommercialFooferController extends Controller
             }
         }
 
+        foreach ($includedDefaults as $serviceKey => $meta) {
+            $canIncrease = (bool)data_get($meta, 'can_increase', false);
+            if ($canIncrease) {
+                $includedChannels = max(0, (int)data_get($meta, 'included_channels', 0));
+                if ($includedChannels <= 0) {
+                    continue;
+                }
+
+                $currentChannels = (int)data_get($selectedServices, $serviceKey . '.channels', 0);
+                if ($currentChannels < $includedChannels) {
+                    $selectedServices[$serviceKey] = [
+                        'enabled' => true,
+                        'channels' => $includedChannels,
+                    ];
+                }
+                continue;
+            }
+
+            $selectedServices[$serviceKey] = [
+                'enabled' => true,
+                'channels' => 1,
+            ];
+        }
+
         return $this->normalizeSelectedServices($selectedServices);
+    }
+
+    private function getIncludedServiceDefaultsForTariff(?int $selectedTariffId): array
+    {
+        if (!$selectedTariffId) {
+            return [];
+        }
+
+        $tariff = Tariff::query()
+            ->whereKey($selectedTariffId)
+            ->with(['includedServices:id,can_increase'])
+            ->first();
+
+        if (!$tariff) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($tariff->includedServices as $service) {
+            $serviceKey = 'service-' . (int)$service->id;
+            $result[$serviceKey] = [
+                'can_increase' => (bool)$service->can_increase,
+                'included_channels' => max(0, (int)($service->pivot?->quantity ?? 1)),
+            ];
+        }
+
+        return $result;
     }
 
     private function normalizeSelectedServices($services): array
