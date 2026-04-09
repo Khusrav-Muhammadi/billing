@@ -111,7 +111,7 @@ class OrganizationController extends Controller
         }
 
         $organizations = $organizationsQuery
-            ->whereHas('client', function (Builder $clientQuery) use () {
+            ->whereHas('client', function (Builder $clientQuery)  {
                 return $clientQuery->where('partner_id', Auth::id());
             })
             ->orderByDesc('id')
