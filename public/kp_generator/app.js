@@ -168,7 +168,10 @@ class CPGenerator {
             }
         }
         await this.loadOfferDraftIfNeeded();
-        if (this.isConnectedContextMode() && this.state.selectedClientId) {
+        // For existing offers (offer_id) we must render exactly saved values.
+        // Loading live connection context can rewrite included-channel baseline and make
+        // channel counters appear unstable in view/edit mode.
+        if (!this.state.editOfferId && this.isConnectedContextMode() && this.state.selectedClientId) {
             await this.loadConnectionContextForOrganization(this.state.selectedClientId);
             this.applyConnectionExtraServicesContext();
         }
@@ -868,6 +871,18 @@ class CPGenerator {
                     normalized[key] = { enabled, channels };
                 });
                 this.state.selectedServices = normalized;
+            }
+
+            // In view/edit mode for connection-based request types, rely on saved offer state.
+            // We intentionally do not fetch live connection context here (it can shift baselines),
+            // but we still must mark connection requirement as satisfied for this saved offer.
+            if (this.state.editOfferId && this.isConnectedContextMode()) {
+                this.state.extraServicesContext = {
+                    ...this.state.extraServicesContext,
+                    hasSuccessfulConnection: Boolean(this.state.selectedClientId),
+                    connectionCreateUrl: '',
+                    message: '',
+                };
             }
 
             const selectedClient = this.getSelectedClient();

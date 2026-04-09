@@ -2,6 +2,7 @@
 
 namespace App\Services\DayClosings;
 
+use App\Jobs\ActivationJob;
 use App\Models\Client;
 use App\Models\ClientBalance;
 use App\Models\ConnectedClientServices;
@@ -60,6 +61,7 @@ class DayClosingService
 
             $organizationsCount = 0;
             $hasInsufficientBalance = false;
+            $deactivationBatchesByClient = [];
 
             $clients = Client::query()
                 ->where('is_active', true)
@@ -67,7 +69,7 @@ class DayClosingService
                     'organizations:id,client_id,name,has_access',
                     'country:id,currency_id',
                 ])
-                ->select(['id', 'name', 'country_id'])
+                ->select(['id', 'name', 'country_id', 'sub_domain'])
                 ->orderBy('id')
                 ->get();
 
@@ -174,10 +176,41 @@ class DayClosingService
                             $authorId,
                             'insufficient_balance'
                         );
+
+                        $clientId = (int) $client->id;
+                        $subDomain = trim((string) ($client->sub_domain ?? ''));
+                        if ($clientId > 0 && $subDomain !== '') {
+                            if (!isset($deactivationBatchesByClient[$clientId])) {
+                                $deactivationBatchesByClient[$clientId] = [
+                                    'sub_domain' => $subDomain,
+                                    'organization_ids' => [],
+                                ];
+                            }
+
+                            $deactivationBatchesByClient[$clientId]['organization_ids'][] = (int) $organization->id;
+                        }
                     }
 
                     $organizationsCount++;
                 }
+            }
+
+            foreach ($deactivationBatchesByClient as $batch) {
+                $organizationIds = array_values(array_unique(array_map('intval', (array) ($batch['organization_ids'] ?? []))));
+                $subDomain = trim((string) ($batch['sub_domain'] ?? ''));
+
+                if (empty($organizationIds) || $subDomain === '') {
+                    continue;
+                }
+
+                ActivationJob::dispatch(
+                    $organizationIds,
+                    $subDomain,
+                    false,
+                    true,
+                    $authorId,
+                    'insufficient_balance'
+                );
             }
 
             $dayClosing->update([

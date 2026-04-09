@@ -6,8 +6,44 @@
 
 @section('content')
     <div class="card-body">
-        <div class="mb-3">
+        <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
             <a href="{{ route('organization_v2.index') }}" class="btn btn-outline-danger">Назад</a>
+
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle"
+                        type="button"
+                        id="organizationApplicationCreateDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                    Подключение
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="organizationApplicationCreateDropdown">
+                    <li>
+                        <a class="dropdown-item"
+                           href="{{ route('application.create.connection', ['organization_id' => $organization->id]) }}">
+                            Подключение
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           href="{{ route('application.create.connection-extra-services', ['organization_id' => $organization->id]) }}">
+                            Подключение доп услуг
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           href="{{ route('application.create.renewal', ['organization_id' => $organization->id]) }}">
+                            Продление
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item"
+                           href="{{ route('application.create.renewal-no-changes', ['organization_id' => $organization->id]) }}">
+                            Продление без изменений
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
 
         <div class="card mb-4 p-3">

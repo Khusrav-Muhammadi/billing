@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\CommercialOfferRenewalPaidStatusEvent;
 use App\Services\ClientBalances\ClientBalanceRegistryService;
 use App\Services\ClientPaymentRegistries\ClientPaymentRegistryService;
+use App\Services\CommercialOffers\CommercialOfferProvisioningService;
 use App\Services\ConnectedClientServices\ConnectedClientServicesRegistryService;
 use App\Services\DiscountExpenses\DiscountExpensesRegistryService;
 use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
@@ -18,7 +19,8 @@ class CommercialOfferRenewalPaidStatusListener
         private PartnerExpensesRegistryService $partnerExpensesRegistryService,
         private ClientPaymentRegistryService $clientPaymentRegistryService,
         private ClientBalanceRegistryService $clientBalanceRegistryService,
-        private OrganizationConnectionStatusRegistryService $organizationConnectionStatusRegistryService
+        private OrganizationConnectionStatusRegistryService $organizationConnectionStatusRegistryService,
+        private CommercialOfferProvisioningService $commercialOfferProvisioningService
     ) {
     }
 
@@ -30,5 +32,6 @@ class CommercialOfferRenewalPaidStatusListener
         $this->clientPaymentRegistryService->register($event->offer, $event->status);
         $this->clientBalanceRegistryService->register($event->offer, $event->status);
         $this->organizationConnectionStatusRegistryService->registerConnected($event->offer, $event->status);
+        $this->commercialOfferProvisioningService->provisionRenewal($event->offer);
     }
 }
