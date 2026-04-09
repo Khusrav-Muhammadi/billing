@@ -122,11 +122,11 @@ class ClientPaymentController extends Controller
             }
 
             $payment = Payment::create([
-                'name' => $data['name'],
-                'phone' => preg_replace('/\D+/', '', (string) ($data['phone'] ?? '')),
-                'email' => $data['email'],
-                'sum' => $data['sum'],
-                'payment_type' => $data['payment_type']
+                'name' => trim($this->toSafeString($data['name'] ?? '')),
+                'phone' => preg_replace('/\D+/', '', $this->toSafeString($data['phone'] ?? '')),
+                'email' => trim($this->toSafeString($data['email'] ?? '')),
+                'sum' => $this->toDecimal($data['sum'] ?? 0),
+                'payment_type' => trim($this->toSafeString($data['payment_type'] ?? '')),
             ]);
 
             $statusAccountId = null;
@@ -134,11 +134,26 @@ class ClientPaymentController extends Controller
                 $statusAccountId = (int) $partner->account_id;
             }
 
-            foreach ($data['data'] as $datum) {
+            $paymentItems = is_array($data['data'] ?? null) ? $data['data'] : [];
+            if (empty($paymentItems)) {
+                throw new \Exception('Список услуг для оплаты пуст.');
+            }
+
+            foreach ($paymentItems as $datum) {
+                $serviceName = trim($this->toSafeString(data_get($datum, 'name')));
+                $price = $this->toDecimal(data_get($datum, 'price'));
+
+                if ($serviceName === '') {
+                    throw new \Exception('Некорректное название услуги в данных оплаты.');
+                }
+                if ($price <= 0) {
+                    throw new \Exception('Некорректная сумма позиции оплаты.');
+                }
+
                 PaymentItem::create([
                     'payment_id' => $payment->id,
-                    'service_name' => $datum['name'],
-                    'price' => $datum['price'],
+                    'service_name' => $serviceName,
+                    'price' => $price,
                 ]);
             }
 
@@ -192,6 +207,8 @@ class ClientPaymentController extends Controller
 
             Log::error('ClientPaymentController@store failed', [
                 'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'payment_type' => $data['payment_type'] ?? null,
                 'sum' => $data['sum'] ?? null,
                 'commercial_offer_id' => $commercialOfferId,
@@ -294,9 +311,9 @@ class ClientPaymentController extends Controller
 
     private function generateAlifPayLink(Payment $payment)
     {
-        $secretKey = config('payments.alif.token');
-        $url = config('payments.alif.url');
-        $paymentPage = (string) config('payments.alif.payment_page');
+        $secretKey = trim($this->toSafeString(config('payments.alif.token')));
+        $url = trim($this->toSafeString(config('payments.alif.url')));
+        $paymentPage = trim($this->toSafeString(config('payments.alif.payment_page')));
 
         if (!$secretKey || !$url) {
             throw new \Exception('Alif Pay: не настроен token/url в config(payments.alif).');
@@ -351,15 +368,30 @@ class ClientPaymentController extends Controller
             throw new \Exception('Alif Pay: ответ не JSON. Ответ: ' . $response->body());
         }
 
-        $invoiceId = data_get($json, 'id')
-            ?? data_get($json, 'data.id')
-            ?? data_get($json, 'invoice.id')
-            ?? data_get($json, 'invoice_id')
-            ?? data_get($json, 'result.id');
+        $invoiceId = '';
+        foreach ([
+            data_get($json, 'id'),
+            data_get($json, 'data.id'),
+            data_get($json, 'invoice.id'),
+            data_get($json, 'invoice_id'),
+            data_get($json, 'result.id'),
+            data_get($json, 'data.invoice_id'),
+            data_get($json, 'data.invoice.id'),
+            data_get($json, 'result.invoice_id'),
+            data_get($json, 'result.invoice.id'),
+            data_get($json, 'data'),
+            data_get($json, 'invoice'),
+            data_get($json, 'result'),
+        ] as $candidate) {
+            $value = $this->extractInvoiceId($candidate);
+            if ($value !== '') {
+                $invoiceId = $value;
+                break;
+            }
+        }
 
-        $invoiceId = $invoiceId !== null ? trim((string) $invoiceId) : '';
         if ($invoiceId === '') {
-            $providerMessage = trim((string) (data_get($json, 'message') ?? data_get($json, 'error') ?? ''));
+            $providerMessage = trim($this->toSafeString(data_get($json, 'message') ?? data_get($json, 'error') ?? ''));
             $details = $providerMessage !== '' ? $providerMessage : $response->body();
             throw new \Exception('Alif Pay: не пришел invoice id. Ответ: ' . $details);
         }
@@ -446,6 +478,73 @@ class ClientPaymentController extends Controller
         $abs = abs($amountCents);
         $formatted = number_format($abs / 100, 2, '.', '');
         return $amountCents < 0 ? "-{$formatted}" : $formatted;
+    }
+
+    private function toSafeString($value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        if (is_string($value) || is_numeric($value) || is_bool($value)) {
+            return (string) $value;
+        }
+
+        if (is_array($value)) {
+            $json = json_encode($value, JSON_UNESCAPED_UNICODE);
+            return is_string($json) ? $json : '';
+        }
+
+        if (is_object($value) && method_exists($value, '__toString')) {
+            return (string) $value;
+        }
+
+        return '';
+    }
+
+    private function toDecimal($value): float
+    {
+        if (is_array($value)) {
+            return 0.0;
+        }
+
+        $normalized = preg_replace('/\s+/', '', str_replace(',', '.', (string) $value));
+        if ($normalized === '' || !preg_match('/^-?\d+(?:\.\d+)?$/', $normalized)) {
+            return 0.0;
+        }
+
+        return round((float) $normalized, 4);
+    }
+
+    private function extractInvoiceId($value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        if (is_scalar($value)) {
+            return trim((string) $value);
+        }
+
+        if (!is_array($value)) {
+            return '';
+        }
+
+        foreach (['id', 'invoice_id', 'invoiceId', 'uuid', 'payment_id'] as $key) {
+            $candidate = $value[$key] ?? null;
+            if (is_scalar($candidate) && trim((string) $candidate) !== '') {
+                return trim((string) $candidate);
+            }
+        }
+
+        foreach ($value as $nested) {
+            $candidate = $this->extractInvoiceId($nested);
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return '';
     }
 
 }
