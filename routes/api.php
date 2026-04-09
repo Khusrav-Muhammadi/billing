@@ -54,6 +54,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('clients/getHistory/{client}', [\App\Http\Controllers\API\ClientController::class, 'getHistory']);
 
     Route::post('organizations/access/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'access']);
+    Route::get('organizations-v2', [\App\Http\Controllers\API\OrganizationController::class, 'indexV2']);
+    Route::get('organizations-v2/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'showV2']);
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class)->except(['store']);
     Route::post('organizations/{client}', [\App\Http\Controllers\API\OrganizationController::class, 'store']);
     Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack']);
