@@ -145,6 +145,7 @@ class CommercialFooferController extends Controller
                 'latest_status' => (string)($offer->latestOfferStatus?->status ?? $offer->status ?? 'draft'),
                 'payment_type' => (string)($offer->payment?->payment_type ?? ''),
                 'payment_link' => (string)($offer->payment_link ?? ''),
+                'organization' => $this->buildOrganizationSnapshot($offer->organization),
                 'payload' => $this->buildOfferPayload($offer),
             ],
         ]);
@@ -314,6 +315,7 @@ class CommercialFooferController extends Controller
             'offer' => [
                 'id' => $offer->id,
                 'locked' => $offer->locked_at !== null,
+                'organization' => $this->buildOrganizationSnapshot($offer->organization),
                 'payload' => $this->buildOfferPayload($offer),
             ],
         ]);
@@ -1596,11 +1598,13 @@ class CommercialFooferController extends Controller
     private function buildOfferPayload(CommercialOffer $offer): array
     {
         $selectedTariffId = $this->resolveSelectedTariffIdFromItems($offer);
+        $organization = $this->buildOrganizationSnapshot($offer->organization);
 
         return [
             'offer_id' => $offer->id,
             'request_type' => (string)($offer->request_type ?: 'connection'),
             'organization_id' => $offer->organization_id,
+            'organization' => $organization,
             'partner_id' => $offer->partner_id,
             'selected_tariff_key' => $selectedTariffId ? ('tariff-' . (int)$selectedTariffId) : null,
             'selected_tariff_id' => $selectedTariffId,
@@ -1642,6 +1646,21 @@ class CommercialFooferController extends Controller
                 ])
                 ->values()
                 ->all(),
+        ];
+    }
+
+    private function buildOrganizationSnapshot(?Organization $organization): ?array
+    {
+        if (!$organization) {
+            return null;
+        }
+
+        return [
+            'id' => (int)$organization->id,
+            'name' => (string)($organization->name ?? ''),
+            'order_number' => (string)($organization->order_number ?? ''),
+            'phone' => (string)($organization->phone ?? ''),
+            'email' => (string)($organization->email ?? ''),
         ];
     }
 
