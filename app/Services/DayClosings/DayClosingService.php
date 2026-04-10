@@ -12,8 +12,8 @@ use App\Models\DayClosingClientDetails;
 use App\Models\DayClosingDetail;
 use App\Models\OrganizationConnectionStatus;
 use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
-use Carbon\Carbon;
-use Carbon\CarbonPeriod;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\CarbonPeriod;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -141,7 +141,8 @@ class DayClosingService
                     $dailyAccrual = round($dailyAccrual, 4);
                     $balanceBeforeAccrual = $this->calculateBalance(
                         (int) $organization->id,
-                        $currencyId > 0 ? $currencyId : null
+                        $currencyId > 0 ? $currencyId : null,
+                        $dayClosing->date ?: $date->copy()->setTime(23, 30, 0)
                     );
 
                     $canAccrue = $dailyAccrual > 0 && $balanceBeforeAccrual >= $dailyAccrual;
@@ -314,11 +315,14 @@ class DayClosingService
         return $services->values();
     }
 
-    private function calculateBalance(int $organizationId, ?int $currencyId): float
+    private function calculateBalance(int $organizationId, ?int $currencyId, ?Carbon $asOfDateTime = null): float
     {
         $query = ClientBalance::query()->where('organization_id', $organizationId);
         if (!empty($currencyId)) {
             $query->where('currency_id', $currencyId);
+        }
+        if ($asOfDateTime) {
+            $query->where('date', '<=', $asOfDateTime->format('Y-m-d H:i:s'));
         }
 
         $income = (clone $query)->where('type', 'income')->sum('sum');

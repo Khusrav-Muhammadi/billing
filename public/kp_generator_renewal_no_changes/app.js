@@ -3293,6 +3293,51 @@ class CPGenerator {
             });
         }
 
+        const pricingDateInput = document.getElementById('pricingDate');
+        if (pricingDateInput) {
+            pricingDateInput.addEventListener('change', async (e) => {
+                const value = (e.target && e.target.value) ? String(e.target.value) : '';
+                const normalized = this.normalizeDateToYmd(value);
+                if (!normalized) {
+                    pricingDateInput.value = this.state.pricingDate || this.getTodayYmd();
+                    return;
+                }
+
+                if (normalized === this.state.pricingDate) {
+                    return;
+                }
+
+                this.state.pricingDate = normalized;
+                this.setOperationStartDate(normalized, { fallbackToToday: false });
+
+                this.showLoading();
+                try {
+                    await this.loadConfig();
+
+                    if (this.state.selectedClientId) {
+                        const selectedClient = this.getSelectedClient();
+                        if (selectedClient) {
+                            this.state.clientName = selectedClient.name || this.state.clientName || '';
+                            this.setCurrencyFromClient(selectedClient);
+                        }
+                    }
+
+                    if (this.isConnectedContextMode() && this.state.selectedClientId) {
+                        await this.loadConnectionContextForOrganization(this.state.selectedClientId);
+                        this.applyConnectionExtraServicesContext();
+                    }
+                } finally {
+                    this.hideLoading();
+                }
+
+                this.markOfferDirty();
+                this.updateSummary();
+                this.updateSelectedClientOrderNumberUI();
+                this.updateSelectedClientOperationStartDateUI();
+                this.updateConnectionTariffInfo();
+            });
+        }
+
         const clientInput = document.getElementById('clientSelect');
         if (clientInput) {
             clientInput.addEventListener('focus', () => {
