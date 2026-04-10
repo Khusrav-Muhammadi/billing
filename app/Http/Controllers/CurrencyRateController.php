@@ -22,32 +22,34 @@ class CurrencyRateController extends Controller
     public function show(Currency $currency)
     {
         $usdCurrency = $this->getUsdCurrency();
-
-        if ((int) $currency->id === (int) $usdCurrency->id) {
-            return redirect()->route('currency-rate.index')->withErrors(['currency' => 'Для USD курс не настраивается']);
-        }
+        $baseCurrencies = $this->getSupportedBaseCurrencies();
+        $baseCurrencyIds = $baseCurrencies->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $rates = CurrencyRate::query()
-            ->where('base_currency_id', $usdCurrency->id)
+            ->with('baseCurrency:id,name,symbol_code')
+            ->when(!empty($baseCurrencyIds), function ($query) use ($baseCurrencyIds) {
+                $query->whereIn('base_currency_id', $baseCurrencyIds);
+            })
             ->where('quote_currency_id', $currency->id)
             ->orderByDesc('rate_date')
             ->orderByDesc('id')
             ->get();
 
-        return view('admin.currency_rates.show', compact('currency', 'rates'));
+        $defaultBaseCurrencyId = (int) $usdCurrency->id;
+
+        return view('admin.currency_rates.show', compact('currency', 'rates', 'baseCurrencies', 'defaultBaseCurrencyId'));
     }
 
     public function store(Currency $currency, StoreRequest $request)
     {
         $usdCurrency = $this->getUsdCurrency();
         $data = $request->validated();
-
-        if ((int) $currency->id === (int) $usdCurrency->id) {
-            return redirect()->route('currency-rate.index')->withErrors(['currency' => 'Для USD курс не настраивается']);
-        }
+        $baseCurrencyId = isset($data['base_currency_id']) && $data['base_currency_id']
+            ? (int) $data['base_currency_id']
+            : (int) $usdCurrency->id;
 
         CurrencyRate::query()->create([
-            'base_currency_id' => $usdCurrency->id,
+            'base_currency_id' => $baseCurrencyId,
             'quote_currency_id' => $currency->id,
             'rate' => $data['rate'],
             'rate_date' => $data['rate_date'],
@@ -79,5 +81,14 @@ class CurrencyRateController extends Controller
     private function getUsdCurrency(): Currency
     {
         return Currency::query()->where('symbol_code', 'USD')->firstOrFail();
+    }
+
+    private function getSupportedBaseCurrencies()
+    {
+        return Currency::query()
+            ->whereRaw('UPPER(symbol_code) IN (?, ?)', ['USD', 'UZS'])
+            ->orderByRaw("CASE WHEN UPPER(symbol_code) = 'USD' THEN 0 ELSE 1 END")
+            ->orderBy('name')
+            ->get(['id', 'name', 'symbol_code']);
     }
 }

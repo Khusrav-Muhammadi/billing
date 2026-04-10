@@ -28,6 +28,8 @@ class BalanceCommand extends Command
 
         $service = new WithdrawalService();
 
+
+
         foreach ($clients as $client) {
 
             $sum = $service->countSum($client);

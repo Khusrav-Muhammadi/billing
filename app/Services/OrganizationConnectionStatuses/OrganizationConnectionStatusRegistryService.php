@@ -66,17 +66,13 @@ class OrganizationConnectionStatusRegistryService
         }
 
         DB::transaction(function () use ($organizationId, $statusDateTime, $dayClosingId, $authorId, $reason): void {
-            $updated = Organization::query()
+            Organization::query()
                 ->where('id', $organizationId)
                 ->where('has_access', true)
                 ->update([
                     'has_access' => false,
                     'updated_at' => now(),
                 ]);
-
-            if ($updated === 0) {
-                return;
-            }
 
             $exists = OrganizationConnectionStatus::query()
                 ->where('organization_id', $organizationId)
@@ -100,4 +96,3 @@ class OrganizationConnectionStatusRegistryService
         });
     }
 }
-

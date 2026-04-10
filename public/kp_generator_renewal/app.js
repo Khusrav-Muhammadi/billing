@@ -168,6 +168,12 @@ class CPGenerator {
             }
         }
         await this.loadOfferDraftIfNeeded();
+        if (this.state.selectedClientId) {
+            const selectedClient = this.getSelectedClient();
+            if (selectedClient) {
+                this.setCurrencyFromClient(selectedClient);
+            }
+        }
         if (this.isConnectedContextMode() && this.state.selectedClientId) {
             await this.loadConnectionContextForOrganization(this.state.selectedClientId);
             this.applyConnectionExtraServicesContext();
@@ -381,6 +387,7 @@ class CPGenerator {
             this.state.selectedPartnerId = null;
             this.state.partnerName = '';
             this.state.selectedServices = {};
+            this.setCurrencyFromClient(this.getSelectedClient());
             this.updatePayButtonState();
             return;
         }
@@ -401,6 +408,7 @@ class CPGenerator {
                 this.state.partnerName = this.state.extraServicesContext.previousPartnerName;
             }
         }
+        this.setCurrencyFromClient(this.getSelectedClient());
 
         if (!this.state.editOfferId) {
             if (this.isRenewalMode()) {
@@ -668,6 +676,23 @@ class CPGenerator {
         }
     }
 
+    getPartnerCurrencyCode(partner = this.getSelectedPartner()) {
+        if (!partner) {
+            return null;
+        }
+
+        const code = this.normalizeCurrencyCode(partner.currency || '');
+        if (!this.isAllowedPartnerCurrencyCode(code)) {
+            return null;
+        }
+
+        return code;
+    }
+
+    isAllowedPartnerCurrencyCode(code) {
+        return code === 'USD' || code === 'UZS';
+    }
+
     setCurrencyFromClient(client) {
         if (!client) return;
         const currencies = this.config?.currencies || {};
@@ -675,7 +700,7 @@ class CPGenerator {
 
         const codeFromClient = client.currency && currencies[client.currency] ? client.currency : null;
         const codeFromId = client.currency_id && byId[String(client.currency_id)] ? byId[String(client.currency_id)] : null;
-        const code = codeFromClient || codeFromId;
+        const code = this.normalizeCurrencyCode(codeFromClient || codeFromId);
 
         if (code && currencies[code]) {
             this.state.currency = code;
@@ -1445,16 +1470,19 @@ class CPGenerator {
     }
 
     normalizeCurrencyCode(code) {
-        return String(code || '').trim().toUpperCase();
-    }
-
-    shouldConvertToUsd(currencyCode = this.state.currency) {
-        const code = this.normalizeCurrencyCode(currencyCode);
-        return code !== '' && code !== 'USD' && code !== 'UZS';
+        let normalized = String(code || '').trim().toUpperCase();
+        if (normalized === 'SUM' || normalized === 'UZB') {
+            normalized = 'UZS';
+        }
+        return normalized;
     }
 
     getUsdRateForCurrency(currencyCode = this.state.currency) {
         const code = this.normalizeCurrencyCode(currencyCode);
+        if (code === 'USD') {
+            return 1;
+        }
+
         const rates = this.config?.usdRates || {};
         const raw = rates?.[code];
         const rate = Number(raw);
@@ -1467,97 +1495,168 @@ class CPGenerator {
         return Math.round((val + Number.EPSILON) * 10000) / 10000;
     }
 
-    formatUsdAmount(amount) {
+    formatAmountByCurrency(amount, currencyCode) {
+        const code = this.normalizeCurrencyCode(currencyCode) || 'USD';
         const val = Number(amount) || 0;
         const formatted = val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        return `$${formatted}`;
+        if (code === 'USD') {
+            return `$${formatted}`;
+        }
+
+        const symbol = this.config?.currencies?.[code]?.symbol || code;
+        return `${formatted} ${symbol}`;
+    }
+
+    resolvePaymentCurrencyCode() {
+        return this.getPartnerCurrencyCode() || (this.normalizeCurrencyCode(this.state.currency) || 'USD');
+    }
+
+    convertAmountByUsdBridge(amount, sourceCurrency, targetCurrency) {
+        const source = this.normalizeCurrencyCode(sourceCurrency) || 'USD';
+        const target = this.normalizeCurrencyCode(targetCurrency) || 'USD';
+        const originalAmount = this.roundMoney(amount);
+
+        if (source === target) {
+            return {
+                ok: true,
+                amount: originalAmount,
+                sourceRate: 1,
+                targetRate: 1,
+                factor: 1,
+            };
+        }
+
+        const sourceRate = this.getUsdRateForCurrency(source);
+        const targetRate = this.getUsdRateForCurrency(target);
+        if (!sourceRate || !targetRate) {
+            return {
+                ok: false,
+                amount: 0,
+                sourceRate,
+                targetRate,
+                factor: 0,
+            };
+        }
+
+        const usdAmount = source === 'USD' ? originalAmount : this.roundMoney(originalAmount / sourceRate);
+        const converted = target === 'USD' ? usdAmount : this.roundMoney(usdAmount * targetRate);
+        const factor = originalAmount > 0 ? (converted / originalAmount) : 0;
+
+        return {
+            ok: true,
+            amount: this.roundMoney(converted),
+            sourceRate,
+            targetRate,
+            factor,
+        };
     }
 
     getPaymentConversionMeta(totalAmount) {
         const sourceCurrency = this.normalizeCurrencyCode(this.state.currency) || 'USD';
+        const payableCurrency = this.resolvePaymentCurrencyCode();
         const originalAmount = this.roundMoney(totalAmount);
 
-        if (!this.shouldConvertToUsd(sourceCurrency)) {
+        if (sourceCurrency === payableCurrency) {
             return {
                 sourceCurrency,
+                payableCurrency,
                 requiresConversion: false,
-                rate: null,
+                rate: 1,
                 originalAmount,
-                payableCurrency: sourceCurrency,
                 payableAmount: originalAmount,
+                factor: 1,
+                missingRate: false,
             };
         }
 
-        const rate = this.getUsdRateForCurrency(sourceCurrency);
-        const payableAmount = rate ? this.roundMoney(originalAmount / rate) : null;
+        const converted = this.convertAmountByUsdBridge(originalAmount, sourceCurrency, payableCurrency);
+        if (!converted.ok) {
+            return {
+                sourceCurrency,
+                payableCurrency,
+                requiresConversion: true,
+                rate: null,
+                originalAmount,
+                payableAmount: 0,
+                factor: 0,
+                missingRate: true,
+            };
+        }
 
         return {
             sourceCurrency,
+            payableCurrency,
             requiresConversion: true,
-            rate,
+            rate: converted.factor,
             originalAmount,
-            payableCurrency: 'USD',
-            payableAmount,
+            payableAmount: converted.amount,
+            factor: converted.factor,
+            missingRate: false,
         };
     }
 
     toPayableItems(items, conversionMeta) {
         if (!Array.isArray(items)) return [];
 
-        if (!conversionMeta?.requiresConversion) {
-            return items.map((item) => ({
-                ...item,
-                price: this.roundMoney(item.price),
-                unit_price: this.roundMoney(
-                    Number(item.unit_price) > 0
-                        ? item.unit_price
-                        : ((Number(item.price) || 0) / Math.max(1, Number(item.quantity) || 1))
-                ),
-            }));
-        }
+        const sourceCurrency = this.normalizeCurrencyCode(conversionMeta?.sourceCurrency || this.state.currency) || 'USD';
+        const payableCurrency = this.normalizeCurrencyCode(conversionMeta?.payableCurrency || sourceCurrency) || sourceCurrency;
+        const hasRate = !(conversionMeta?.requiresConversion) || !(conversionMeta?.missingRate);
 
-        const rate = Number(conversionMeta.rate) || 0;
-        return items.map((item) => ({
-            ...item,
-            price: this.roundMoney((Number(item.price) || 0) / rate),
-            unit_price: this.roundMoney(
-                (Number(item.unit_price) > 0
+        return items.map((item) => {
+            const sourcePrice = this.roundMoney(item?.price || 0);
+            const sourceUnitPrice = this.roundMoney(
+                Number(item?.unit_price) > 0
                     ? item.unit_price
-                    : ((Number(item.price) || 0) / Math.max(1, Number(item.quantity) || 1))
-                ) / rate
-            ),
-        }));
+                    : (sourcePrice / Math.max(1, Number(item?.quantity) || 1))
+            );
+
+            if (!hasRate) {
+                return {
+                    ...item,
+                    price: 0,
+                    unit_price: 0,
+                };
+            }
+
+            const convertedPrice = this.convertAmountByUsdBridge(sourcePrice, sourceCurrency, payableCurrency);
+            const convertedUnit = this.convertAmountByUsdBridge(sourceUnitPrice, sourceCurrency, payableCurrency);
+
+            return {
+                ...item,
+                price: convertedPrice.ok ? this.roundMoney(convertedPrice.amount) : 0,
+                unit_price: convertedUnit.ok ? this.roundMoney(convertedUnit.amount) : 0,
+            };
+        });
     }
 
     formatPaymentAmountForModal(totalAmount) {
         const meta = this.getPaymentConversionMeta(totalAmount);
-        if (meta.requiresConversion) {
-            if (!meta.rate || meta.payableAmount === null) {
-                return 'нет курса к USD';
-            }
-            return this.formatUsdAmount(meta.payableAmount);
+        const formattedPayable = this.formatAmountByCurrency(meta.payableAmount, meta.payableCurrency);
+        if (!meta.missingRate) {
+            return formattedPayable;
         }
 
-        return this.formatTotalPrice(totalAmount);
+        return `${formattedPayable} (нет курса валют)`;
     }
 
     formatGrandTotalWithUsd(totalAmount) {
         const meta = this.getPaymentConversionMeta(totalAmount);
         const originalFormatted = this.formatTotalPrice(totalAmount);
+        const payableFormatted = this.formatAmountByCurrency(meta.payableAmount, meta.payableCurrency);
 
         if (!meta.requiresConversion) {
-            return originalFormatted;
+            return payableFormatted;
         }
 
-        if (!meta.rate || meta.payableAmount === null) {
-            return `${originalFormatted} (нет курса к USD)`;
+        if (meta.missingRate) {
+            return `${originalFormatted} / ${payableFormatted} (нет курса валют)`;
         }
 
-        return `${originalFormatted} / ${this.formatUsdAmount(meta.payableAmount)}`;
+        return `${originalFormatted} / ${payableFormatted}`;
     }
 
     getPaymentTypeForCard() {
-        const code = this.normalizeCurrencyCode(this.state.currency);
+        const code = this.resolvePaymentCurrencyCode();
         if (code === 'UZS') return 'alif';
         if (code === 'USD' || code === 'TJS') return 'octo';
         // Default to visa-like flow (Octo)
@@ -1698,9 +1797,6 @@ class CPGenerator {
 
         const paymentItems = this.applyPartnerShareToPaymentItems(rawItems);
         const conversionMeta = this.getPaymentConversionMeta(amountToPay);
-        if (conversionMeta.requiresConversion && (!conversionMeta.rate || conversionMeta.rate <= 0)) {
-            throw new Error(`Не найден курс для ${conversionMeta.sourceCurrency}. Добавьте курс в разделе "Курс валюты".`);
-        }
 
         const payableItems = this.toPayableItems(paymentItems, conversionMeta);
         const payableTotal = this.roundMoney(payableItems.reduce((sum, item) => sum + (Number(item.price) || 0), 0));
@@ -1757,9 +1853,11 @@ class CPGenerator {
             status_date: this.state.operationStartDate || null,
             pricing_date: this.state.pricingDate || null,
             currency: this.normalizeCurrencyCode(this.state.currency),
-            payable_currency: conversionMeta.requiresConversion ? 'USD' : this.normalizeCurrencyCode(this.state.currency),
+            payable_currency: this.normalizeCurrencyCode(conversionMeta.payableCurrency),
             card_payment_type: this.getPaymentTypeForCard(),
-            conversion_rate: conversionMeta.requiresConversion ? Number(conversionMeta.rate) : null,
+            conversion_rate: conversionMeta.requiresConversion && !conversionMeta.missingRate
+                ? Number(conversionMeta.rate)
+                : null,
             manager_name: this.state.managerName || '',
             client_name: client?.name || this.state.clientName || '',
             client_phone: client?.phone || '',
@@ -1821,11 +1919,6 @@ class CPGenerator {
 
         const rawSum = items.reduce((s, i) => s + (Number(i.price) || 0), 0);
         const conversionMeta = this.getPaymentConversionMeta(rawSum);
-
-        if (conversionMeta.requiresConversion && (!conversionMeta.rate || conversionMeta.rate <= 0)) {
-            alert(`Не найден курс для ${conversionMeta.sourceCurrency}. Добавьте курс в разделе "Курс валюты".`);
-            return;
-        }
 
         const payableItems = this.toPayableItems(items, conversionMeta);
         const sum = this.roundMoney(payableItems.reduce((s, i) => s + (Number(i.price) || 0), 0));

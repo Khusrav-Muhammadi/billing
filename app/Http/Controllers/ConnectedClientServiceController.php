@@ -143,7 +143,8 @@ class ConnectedClientServiceController extends Controller
         // Partners live in users table (role column) in this project.
         $partners = User::query()
             ->whereRaw('LOWER(role) = ?', ['partner'])
-            ->select('id', 'name', 'email', 'phone', 'payment_methods')
+            ->with('currency:id,symbol_code')
+            ->select('id', 'name', 'email', 'phone', 'payment_methods', 'currency_id')
             ->orderBy('name')
             ->get();
 
@@ -172,6 +173,8 @@ class ConnectedClientServiceController extends Controller
                 'name'  => $p->name,
                 'email' => $p->email ?? '',
                 'phone' => $p->phone ?? '',
+                'currency_id' => $p->currency_id ? (int) $p->currency_id : null,
+                'currency' => $this->resolvePartnerCurrencyCode($p),
                 'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id]['tariff'] ?? 0),
                 'procent_from_pack' => (int) ($partnerPercentsById[(string) $p->id]['pack'] ?? 0),
                 'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
@@ -266,7 +269,8 @@ class ConnectedClientServiceController extends Controller
                         ->orWhere('phone', 'like', $like);
                 });
             })
-            ->select('id', 'name', 'email', 'phone', 'payment_methods')
+            ->with('currency:id,symbol_code')
+            ->select('id', 'name', 'email', 'phone', 'payment_methods', 'currency_id')
             ->orderBy('name')
             ->limit(50)
             ->get();
@@ -279,11 +283,33 @@ class ConnectedClientServiceController extends Controller
                 'name'  => $p->name,
                 'email' => $p->email ?? '',
                 'phone' => $p->phone ?? '',
+                'currency_id' => $p->currency_id ? (int) $p->currency_id : null,
+                'currency' => $this->resolvePartnerCurrencyCode($p),
                 'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id]['tariff'] ?? 0),
                 'procent_from_pack' => (int) ($partnerPercentsById[(string) $p->id]['pack'] ?? 0),
                 'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
             ]),
         ]);
+    }
+
+    private function resolvePartnerCurrencyCode(User $partner): ?string
+    {
+        $raw = $partner->currency?->symbol_code;
+        return $this->normalizePartnerCurrencyCode($raw);
+    }
+
+    private function normalizePartnerCurrencyCode($code): ?string
+    {
+        $normalized = strtoupper(trim((string) $code));
+        if ($normalized === 'SUM' || $normalized === 'UZB') {
+            $normalized = 'UZS';
+        }
+
+        if (!in_array($normalized, ['USD', 'UZS'], true)) {
+            return null;
+        }
+
+        return $normalized;
     }
 
     private function normalizePartnerPaymentMethods($methods): array

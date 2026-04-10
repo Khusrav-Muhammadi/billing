@@ -119,6 +119,23 @@
                 @enderror
             </div>
 
+            @php($defaultPartnerCurrencyId = optional(($partnerCurrencies ?? collect())->first(fn($currency) => strtoupper((string) $currency->symbol_code) === 'USD'))->id)
+            <div class="form-group">
+                <label for="currency_id">Валюта партнера <span class="text-danger">*</span></label>
+                <select class="form-control @error('currency_id') is-invalid @enderror" id="currency_id" name="currency_id" required>
+                    <option value="">Выберите валюту</option>
+                    @foreach(($partnerCurrencies ?? collect()) as $currency)
+                        @php($currencyCode = strtoupper((string) $currency->symbol_code))
+                        <option value="{{ $currency->id }}" {{ (string) old('currency_id', $defaultPartnerCurrencyId) === (string) $currency->id ? 'selected' : '' }}>
+                            {{ $currencyCode === 'UZS' ? 'Сум (UZS)' : 'Доллар (USD)' }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('currency_id')
+                <span class="text-danger d-block">{{ $message }}</span>
+                @enderror
+            </div>
+
             <button type="submit" class="btn btn-primary mr-2"> Сохранить </button>
 
         </form>

@@ -34,6 +34,7 @@ class User extends Authenticatable
         'country_id',
         'payment_methods',
         'account_id',
+        'currency_id',
     ];
 
     /**
@@ -55,6 +56,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'payment_methods' => 'array',
+        'currency_id' => 'integer',
     ];
 
     public function partnerStatus()
@@ -65,6 +67,11 @@ class User extends Authenticatable
     public function account(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'account_id');
+    }
+
+    public function currency(): BelongsTo
+    {
+        return $this->belongsTo(Currency::class, 'currency_id');
     }
 
     public function history(): MorphMany

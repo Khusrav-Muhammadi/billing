@@ -102,6 +102,22 @@
                 @enderror
             </div>
 
+            <div class="form-group">
+                <label for="currency_id">Валюта партнера <span class="text-danger">*</span></label>
+                <select class="form-control @error('currency_id') is-invalid @enderror" id="currency_id" name="currency_id" required>
+                    <option value="">Выберите валюту</option>
+                    @foreach(($partnerCurrencies ?? collect()) as $currency)
+                        @php($currencyCode = strtoupper((string) $currency->symbol_code))
+                        <option value="{{ $currency->id }}" {{ (string) old('currency_id', $partner->currency_id) === (string) $currency->id ? 'selected' : '' }}>
+                            {{ $currencyCode === 'UZS' ? 'Сум (UZS)' : 'Доллар (USD)' }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('currency_id')
+                <span class="text-danger d-block">{{ $message }}</span>
+                @enderror
+            </div>
+
             <button type="submit" class="btn btn-primary mr-2">Изменить</button>
         </form>
     </div>
@@ -133,6 +149,7 @@
                                     @elseif($key === 'status') Статус:
                                     @elseif($key === 'payment_methods') Способы оплаты:
                                     @elseif($key === 'account_id') Счет партнера:
+                                    @elseif($key === 'currency_id') Валюта партнера:
                                     @elseif($key === 'procent_from_tariff') Процент от подписки:
                                     @elseif($key === 'procent_from_pack') Процент от пакетов:
                                     @elseif($key === 'procent_date') Дата процента:

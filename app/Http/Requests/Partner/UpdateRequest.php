@@ -28,6 +28,13 @@ class UpdateRequest extends FormRequest
             'payment_methods' => ['nullable', 'array'],
             'payment_methods.*' => ['string', Rule::in(['card', 'invoice', 'cash'])],
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')],
+            'currency_id' => [
+                'required',
+                'integer',
+                Rule::exists('currencies', 'id')->where(function ($query) {
+                    $query->whereRaw('UPPER(symbol_code) IN (?, ?)', ['USD', 'UZS']);
+                }),
+            ],
         ];
     }
 }

@@ -5,10 +5,12 @@ namespace App\Services\DayClosings;
 use App\Jobs\ActivationJob;
 use App\Models\Client;
 use App\Models\ClientBalance;
+use App\Models\CommercialOffer;
 use App\Models\ConnectedClientServices;
 use App\Models\DayClosing;
 use App\Models\DayClosingClientDetails;
 use App\Models\DayClosingDetail;
+use App\Models\OrganizationConnectionStatus;
 use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -17,6 +19,9 @@ use Illuminate\Support\Facades\DB;
 
 class DayClosingService
 {
+    /** @var array<int, int> */
+    private array $offerPeriodMonthsCache = [];
+
     public function __construct(private OrganizationConnectionStatusRegistryService $organizationConnectionStatusRegistryService)
     {
     }
@@ -64,7 +69,6 @@ class DayClosingService
             $deactivationBatchesByClient = [];
 
             $clients = Client::query()
-                ->where('is_active', true)
                 ->with([
                     'organizations:id,client_id,name,has_access',
                     'country:id,currency_id',
@@ -75,7 +79,12 @@ class DayClosingService
 
             foreach ($clients as $client) {
                 foreach ($client->organizations as $organization) {
-                    if ($organization->has_access !== null && !(bool) $organization->has_access) {
+                    if (!$this->ensureOrganizationHasActiveConnectionOnDate(
+                        (int) $organization->id,
+                        $date,
+                        $dayClosing,
+                        $authorId
+                    )) {
                         continue;
                     }
 
@@ -261,6 +270,10 @@ class DayClosingService
                     ->delete();
             }
 
+            OrganizationConnectionStatus::query()
+                ->whereIn('day_closing_id', $dayClosingIds->all())
+                ->delete();
+
             DayClosingDetail::query()
                 ->whereIn('day_closing_id', $dayClosingIds->all())
                 ->delete();
@@ -312,5 +325,82 @@ class DayClosingService
         $outcome = (clone $query)->where('type', 'outcome')->sum('sum');
 
         return round((float) $income - (float) $outcome, 4);
+    }
+
+    private function ensureOrganizationHasActiveConnectionOnDate(
+        int $organizationId,
+        Carbon $date,
+        DayClosing $dayClosing,
+        int $authorId
+    ): bool {
+        if ($organizationId <= 0) {
+            return false;
+        }
+
+        $asOfDateTime = $date->copy()->endOfDay();
+        $latestStatus = OrganizationConnectionStatus::query()
+            ->where('organization_id', $organizationId)
+            ->where('status_date', '<=', $asOfDateTime->format('Y-m-d H:i:s'))
+            ->orderByDesc('status_date')
+            ->orderByDesc('id')
+            ->first([
+                'id',
+                'status',
+                'status_date',
+                'commercial_offer_id',
+            ]);
+
+        if (!$latestStatus || (string) $latestStatus->status !== 'connected') {
+            return false;
+        }
+
+        $commercialOfferId = (int) ($latestStatus->commercial_offer_id ?? 0);
+        if ($commercialOfferId <= 0) {
+            return true;
+        }
+
+        $periodMonths = $this->resolveOfferPeriodMonths($commercialOfferId);
+
+        if ($periodMonths <= 0) {
+            return true;
+        }
+
+        $expirationDateTime = Carbon::parse((string) $latestStatus->status_date)
+            ->startOfDay()
+            ->addMonthsNoOverflow($periodMonths)
+            ->startOfDay();
+
+        if ($expirationDateTime->greaterThan($asOfDateTime)) {
+            return true;
+        }
+
+        $this->organizationConnectionStatusRegistryService->registerDisconnected(
+            $organizationId,
+            $expirationDateTime,
+            (int) $dayClosing->id,
+            $authorId,
+            'period_expired'
+        );
+
+        return false;
+    }
+
+    private function resolveOfferPeriodMonths(int $commercialOfferId): int
+    {
+        if ($commercialOfferId <= 0) {
+            return 0;
+        }
+
+        if (array_key_exists($commercialOfferId, $this->offerPeriodMonthsCache)) {
+            return (int) $this->offerPeriodMonthsCache[$commercialOfferId];
+        }
+
+        $periodMonths = (int) (CommercialOffer::query()
+            ->where('id', $commercialOfferId)
+            ->value('period_months') ?? 0);
+
+        $this->offerPeriodMonthsCache[$commercialOfferId] = $periodMonths;
+
+        return $periodMonths;
     }
 }

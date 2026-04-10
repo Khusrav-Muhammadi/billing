@@ -26,6 +26,7 @@
                 <thead>
                 <tr>
                     <th>№</th>
+                    <th>Базовая валюта</th>
                     <th>Курс</th>
                     <th>Дата</th>
                     <th>Действие</th>
@@ -35,6 +36,7 @@
                 @foreach($rates as $rate)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
+                        <td>{{ strtoupper((string) optional($rate->baseCurrency)->symbol_code) ?: '-' }}</td>
                         <td>{{ $rate->rate }} {{ $currency->symbol_code }}</td>
                         <td>{{ optional($rate->rate_date)->format('Y-m-d') ?? optional($rate->created_at)->format('Y-m-d') }}</td>
                         <td>
@@ -106,6 +108,20 @@
                         <h5 class="modal-title" id="exampleModalLabel">Добавить курс</h5>
                     </div>
                     <div class="modal-body">
+                        <div class="form-group">
+                            <label>Базовая валюта</label>
+                            <select class="form-control" name="base_currency_id">
+                                @foreach(($baseCurrencies ?? collect()) as $baseCurrency)
+                                    <option
+                                        value="{{ $baseCurrency->id }}"
+                                        {{ (string) old('base_currency_id', $defaultBaseCurrencyId ?? null) === (string) $baseCurrency->id ? 'selected' : '' }}
+                                    >
+                                        {{ strtoupper((string) $baseCurrency->symbol_code) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="text-muted">По умолчанию USD</small>
+                        </div>
                         <div class="form-group">
                             <label>Курс</label>
                             <input type="number" step="0.000001" min="0.000001" class="form-control" name="rate" placeholder="Например: 10.910000" required>

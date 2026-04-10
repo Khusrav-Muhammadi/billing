@@ -40,6 +40,7 @@ class ApplicationController extends Controller
                 'organization:id,name',
                 'partner:id,name,account_id,payment_methods',
                 'payment:id,payment_type',
+                'items:id,commercial_offer_id,total_price,partner_percent',
                 'latestOfferStatus' => function ($query) {
                     $query->select([
                         'commercial_offer_statuses.id',
@@ -148,9 +149,11 @@ class ApplicationController extends Controller
                 $partner = User::query()
                     ->where('id', $partnerId)
                     ->whereRaw('LOWER(role) = ?', ['partner'])
-                    ->select('id', 'name', 'phone', 'email')
+                    ->with('currency:id,symbol_code')
+                    ->select('id', 'name', 'phone', 'email', 'currency_id')
                     ->first();
             }
+            $partnerCurrencyCode = $this->resolvePartnerBillingCurrency($partner);
 
             $selectedTariffKey = (string)(data_get($payload, 'selected_tariff_key') ?? '');
             $selectedTariffId = $this->toNullableInt(data_get($payload, 'selected_tariff_id'));
@@ -179,6 +182,14 @@ class ApplicationController extends Controller
             $pricingDate = $this->toNullableDate(data_get($payload, 'pricing_date'));
             $periodMonths = max(1, (int)data_get($payload, 'period_months', 6));
             $periodDiscountPercent = $this->resolvePeriodDiscountPercent($periodMonths);
+            $offerCurrencyCode = $this->toCurrencyCode(data_get($payload, 'currency', 'USD'));
+            $payableCurrencyCode = $partnerCurrencyCode
+                ?: $this->toCurrencyCode(data_get($payload, 'payable_currency', $offerCurrencyCode));
+            $cardPaymentType = (string) data_get($payload, 'card_payment_type', '');
+            if ($cardPaymentType === '') {
+                $cardPaymentType = $payableCurrencyCode === 'UZS' ? 'alif' : 'octo';
+            }
+            $conversionRate = $this->toNullableDecimal(data_get($payload, 'conversion_rate'));
 
             $partnerPercents = [
                 'tariff' => 0.0,
@@ -210,9 +221,9 @@ class ApplicationController extends Controller
                 'saved_at' => now(),
                 'status_date' => $statusDate,
                 'pricing_date' => $pricingDate,
-                'currency' => $this->toCurrencyCode(data_get($payload, 'currency', 'USD')),
-                'payable_currency' => $this->toCurrencyCode(data_get($payload, 'payable_currency', data_get($payload, 'currency', 'USD'))),
-                'card_payment_type' => (string)data_get($payload, 'card_payment_type', 'octo'),
+                'currency' => $offerCurrencyCode,
+                'payable_currency' => $payableCurrencyCode,
+                'card_payment_type' => $cardPaymentType,
                 'period_months' => $periodMonths,
                 'extra_users' => max(0, (int)data_get($payload, 'extra_users', 0)),
                 'client_name' => $clientName,
@@ -228,7 +239,7 @@ class ApplicationController extends Controller
                 'period_total' => $this->toDecimal(data_get($payload, 'period_total', data_get($payload, 'grand_total', 0))),
                 'grand_total' => $this->toDecimal(data_get($payload, 'grand_total', 0)),
                 'payable_total' => $this->toDecimal(data_get($payload, 'payable_total', data_get($payload, 'grand_total', 0))),
-                'conversion_rate' => $this->toNullableDecimal(data_get($payload, 'conversion_rate')),
+                'conversion_rate' => $conversionRate,
             ]);
 
             $offer->save();
@@ -1057,7 +1068,24 @@ class ApplicationController extends Controller
     private function toCurrencyCode($value): string
     {
         $code = strtoupper(trim((string)$value));
+        if ($code === 'SUM' || $code === 'UZB') {
+            $code = 'UZS';
+        }
         return $code !== '' ? $code : 'USD';
+    }
+
+    private function resolvePartnerBillingCurrency(?User $partner): ?string
+    {
+        if (!$partner) {
+            return null;
+        }
+
+        $code = $this->toCurrencyCode($partner->currency?->symbol_code);
+        if (!in_array($code, ['USD', 'UZS'], true)) {
+            return null;
+        }
+
+        return $code;
     }
 
     private function toNullableDate($value): ?string

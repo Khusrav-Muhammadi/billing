@@ -7,6 +7,7 @@ use App\Enums\PartnerStatusEnum;
 use App\Jobs\SendPartnerDataJob;
 use App\Models\Account;
 use App\Models\ChangeHistory;
+use App\Models\Currency;
 use App\Models\ModelHistory;
 use App\Models\Partner;
 use App\Models\ProcentPartner;
@@ -80,6 +81,7 @@ class PartnerRepository implements PartnerRepositoryInterface
                 'status' => ['previous_value' => null, 'new_value' => $this->statusLabel($user->status)],
                 'payment_methods' => ['previous_value' => null, 'new_value' => $this->paymentMethodsLabel($user->payment_methods)],
                 'account_id' => ['previous_value' => null, 'new_value' => $this->accountLabelById($user->account_id)],
+                'currency_id' => ['previous_value' => null, 'new_value' => $this->currencyLabelById($user->currency_id)],
                 'procent_from_tariff' => ['previous_value' => null, 'new_value' => $tariffPercent],
                 'procent_from_pack' => ['previous_value' => null, 'new_value' => $packPercent],
             ],
@@ -307,6 +309,7 @@ class PartnerRepository implements PartnerRepositoryInterface
             'status' => $partner->status,
             'payment_methods' => $partner->payment_methods,
             'account_id' => $partner->account_id,
+            'currency_id' => $partner->currency_id,
         ];
 
         $partner->update($data);
@@ -345,6 +348,13 @@ class PartnerRepository implements PartnerRepositoryInterface
             $changes['account_id'] = [
                 'previous_value' => $this->accountLabelById($before['account_id'] ?? null),
                 'new_value' => $this->accountLabelById($partner->account_id),
+            ];
+        }
+
+        if ((string) ($before['currency_id'] ?? '') !== (string) ($partner->currency_id ?? '')) {
+            $changes['currency_id'] = [
+                'previous_value' => $this->currencyLabelById($before['currency_id'] ?? null),
+                'new_value' => $this->currencyLabelById($partner->currency_id),
             ];
         }
 
@@ -442,6 +452,28 @@ class PartnerRepository implements PartnerRepositoryInterface
         $currencyCode = strtoupper((string) optional($account->currency)->symbol_code);
 
         return trim($account->name . ($currencyCode !== '' ? ' (' . $currencyCode . ')' : ''));
+    }
+
+    private function currencyLabelById($currencyId): string
+    {
+        if (!$currencyId) {
+            return 'Не выбрана';
+        }
+
+        $currency = Currency::query()->find((int) $currencyId);
+        if (!$currency) {
+            return 'Не выбрана';
+        }
+
+        $code = strtoupper((string) $currency->symbol_code);
+        if ($code === 'UZS') {
+            return 'Сум (UZS)';
+        }
+        if ($code === 'USD') {
+            return 'Доллар (USD)';
+        }
+
+        return trim(((string) $currency->name) . ($code !== '' ? ' (' . $code . ')' : ''));
     }
 
     private function recordHistory(User $model, ModelHistoryStatuses $status, array $changes = [], ?int $userId = null): void

@@ -8,6 +8,7 @@ use App\Http\Requests\Partner\StoreStatusRequest;
 use App\Http\Requests\Partner\UpdateManagerRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Models\Account;
+use App\Models\Currency;
 use App\Models\Partner;
 use App\Models\PartnerProcent;
 use App\Models\PartnerStatus;
@@ -34,7 +35,14 @@ class PartnerController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'currency_id']);
 
-        return view('admin.partners.create', compact('accounts'));
+        $partnerCurrencies = Currency::query()
+            ->select('id', 'name', 'symbol_code')
+            ->get()
+            ->filter(fn ($currency) => in_array(strtoupper((string) $currency->symbol_code), ['USD', 'UZS'], true))
+            ->sortBy(fn ($currency) => strtoupper((string) $currency->symbol_code) === 'USD' ? 1 : 2)
+            ->values();
+
+        return view('admin.partners.create', compact('accounts', 'partnerCurrencies'));
     }
 
     public function store(StoreRequest $request)
@@ -51,6 +59,12 @@ class PartnerController extends Controller
             ->with('currency:id,symbol_code,name')
             ->orderBy('name')
             ->get(['id', 'name', 'currency_id']);
+        $partnerCurrencies = Currency::query()
+            ->select('id', 'name', 'symbol_code')
+            ->get()
+            ->filter(fn ($currency) => in_array(strtoupper((string) $currency->symbol_code), ['USD', 'UZS'], true))
+            ->sortBy(fn ($currency) => strtoupper((string) $currency->symbol_code) === 'USD' ? 1 : 2)
+            ->values();
 
         $managers = $this->repository->getManagers($partner->id);
         $curators = $this->repository->getCurators($partner->id);
@@ -66,7 +80,7 @@ class PartnerController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'accounts', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory'));
+        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'accounts', 'partnerCurrencies', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory'));
     }
 
     public function update(User $partner, UpdateRequest $request)
