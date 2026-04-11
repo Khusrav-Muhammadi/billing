@@ -1501,74 +1501,46 @@ class CommercialFooferController extends Controller
             return $rates;
         }
 
-        $asOfDate = date('Y-m-d', $asOfTs);
+        $currencyIds = $rows
+            ->map(static fn(array $row): int => (int)$row['id'])
+            ->filter(static fn(int $id): bool => $id > 0)
+            ->values()
+            ->all();
 
-        $datedRows = CurrencyRate::query()
-            ->where('base_currency_id', (int)$usd['id'])
-            ->whereIn('quote_currency_id', $quoteIds)
-            ->where(function (Builder $query) use ($asOfDate) {
-                $query->whereNull('rate_date')
-                    ->orWhereDate('rate_date', '<=', $asOfDate);
-            })
-            ->orderByDesc('rate_date')
-            ->orderByDesc('id')
-            ->get(['quote_currency_id', 'rate']);
+        $pairRates = $this->buildCurrencyPairRates($currencyIds, date('Y-m-d', $asOfTs));
+        $graph = [];
+        foreach ($pairRates as $pair => $rate) {
+            [$baseId, $quoteId] = array_map('intval', explode(':', (string)$pair, 2));
+            $rate = (float)$rate;
+            if ($baseId <= 0 || $quoteId <= 0 || $baseId === $quoteId || $rate <= 0) {
+                continue;
+            }
 
+            $graph[$baseId][$quoteId] = $rate;
+            if (!isset($graph[$quoteId][$baseId])) {
+                $graph[$quoteId][$baseId] = 1 / $rate;
+            }
+        }
+
+        $usdId = (int)$usd['id'];
         $usedQuoteIds = [];
-        foreach ($datedRows as $row) {
-            $quoteId = (int)$row->quote_currency_id;
-            if ($quoteId <= 0 || isset($usedQuoteIds[$quoteId])) {
-                continue;
-            }
-
-            $rate = (float)$row->rate;
-            if ($rate <= 0) {
-                continue;
-            }
-
+        foreach ($quoteIds as $quoteId) {
             $symbol = $quoteIdToSymbol[$quoteId] ?? null;
             if (!$symbol) {
                 continue;
             }
 
-            $rates[$symbol] = round($rate, 6);
-            $usedQuoteIds[$quoteId] = true;
+            $derivedRate = $this->findCurrencyRateViaGraph($graph, $usdId, (int)$quoteId);
+            if ($derivedRate !== null && $derivedRate > 0) {
+                $rates[$symbol] = round($derivedRate, 6);
+                $usedQuoteIds[(int)$quoteId] = true;
+            }
         }
 
         $missingQuoteIds = array_values(array_filter($quoteIds, static fn(int $id): bool => !isset($usedQuoteIds[$id])));
         if (!empty($missingQuoteIds)) {
-            $latestRows = CurrencyRate::query()
-                ->where('base_currency_id', (int)$usd['id'])
-                ->whereIn('quote_currency_id', $missingQuoteIds)
-                ->orderByDesc('rate_date')
-                ->orderByDesc('id')
-                ->get(['quote_currency_id', 'rate']);
-
-            foreach ($latestRows as $row) {
-                $quoteId = (int)$row->quote_currency_id;
-                if ($quoteId <= 0 || isset($usedQuoteIds[$quoteId])) {
-                    continue;
-                }
-
-                $rate = (float)$row->rate;
-                if ($rate <= 0) {
-                    continue;
-                }
-
-                $symbol = $quoteIdToSymbol[$quoteId] ?? null;
-                if (!$symbol) {
-                    continue;
-                }
-
-                $rates[$symbol] = round($rate, 6);
-                $usedQuoteIds[$quoteId] = true;
-            }
-        }
-
-        $stillMissingQuoteIds = array_values(array_filter($quoteIds, static fn(int $id): bool => !isset($usedQuoteIds[$id])));
-        if (!empty($stillMissingQuoteIds)) {
             $fallbackRows = ExchangeRate::query()
-                ->whereIn('currency_id', $stillMissingQuoteIds)
+                ->whereIn('currency_id', $missingQuoteIds)
                 ->orderByDesc('id')
                 ->get(['currency_id', 'kurs']);
 
@@ -1594,6 +1566,97 @@ class CommercialFooferController extends Controller
         }
 
         return $rates;
+    }
+
+    private function buildCurrencyPairRates(array $currencyIds, string $asOfDate): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $currencyIds), static fn(int $id): bool => $id > 0));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $rows = CurrencyRate::query()
+            ->whereIn('base_currency_id', $ids)
+            ->whereIn('quote_currency_id', $ids)
+            ->orderByDesc('rate_date')
+            ->orderByDesc('id')
+            ->get(['base_currency_id', 'quote_currency_id', 'rate', 'rate_date']);
+
+        $dated = [];
+        $latest = [];
+        foreach ($rows as $row) {
+            $baseId = (int)$row->base_currency_id;
+            $quoteId = (int)$row->quote_currency_id;
+            $rate = (float)$row->rate;
+            if ($baseId <= 0 || $quoteId <= 0 || $baseId === $quoteId || $rate <= 0) {
+                continue;
+            }
+
+            $pair = $baseId . ':' . $quoteId;
+            if (!isset($latest[$pair])) {
+                $latest[$pair] = $rate;
+            }
+
+            $rateDate = null;
+            if ($row->rate_date instanceof \DateTimeInterface) {
+                $rateDate = $row->rate_date->format('Y-m-d');
+            } else {
+                $rawRateDate = trim((string)$row->rate_date);
+                if ($rawRateDate !== '') {
+                    $ts = strtotime($rawRateDate);
+                    if ($ts !== false) {
+                        $rateDate = date('Y-m-d', $ts);
+                    }
+                }
+            }
+
+            if (!isset($dated[$pair]) && ($rateDate === null || $rateDate <= $asOfDate)) {
+                $dated[$pair] = $rate;
+            }
+        }
+
+        return array_replace($latest, $dated);
+    }
+
+    private function findCurrencyRateViaGraph(array $graph, int $fromCurrencyId, int $toCurrencyId): ?float
+    {
+        if ($fromCurrencyId <= 0 || $toCurrencyId <= 0) {
+            return null;
+        }
+
+        if ($fromCurrencyId === $toCurrencyId) {
+            return 1.0;
+        }
+
+        if (empty($graph[$fromCurrencyId])) {
+            return null;
+        }
+
+        $queue = [[$fromCurrencyId, 1.0]];
+        $visited = [$fromCurrencyId => true];
+
+        while (!empty($queue)) {
+            [$currentId, $currentRate] = array_shift($queue);
+            foreach (($graph[$currentId] ?? []) as $nextId => $edgeRate) {
+                $nextId = (int)$nextId;
+                $edgeRate = (float)$edgeRate;
+                if ($nextId <= 0 || $edgeRate <= 0) {
+                    continue;
+                }
+
+                $nextRate = $currentRate * $edgeRate;
+                if ($nextId === $toCurrencyId) {
+                    return $nextRate;
+                }
+
+                if (!isset($visited[$nextId])) {
+                    $visited[$nextId] = true;
+                    $queue[] = [$nextId, $nextRate];
+                }
+            }
+        }
+
+        return null;
     }
 
     private function normalizeUsdRates(array $rates, array $currencyCodes): array

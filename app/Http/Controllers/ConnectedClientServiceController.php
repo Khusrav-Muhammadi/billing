@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\CurrencyRate;
+use App\Models\ExchangeRate;
 use App\Models\Organization;
 use App\Models\Partner;
 use App\Models\PartnerProcent;
@@ -712,59 +713,58 @@ class ConnectedClientServiceController extends Controller
         }
 
         $quoteIds = array_keys($quoteIdToSymbol);
-        $asOfDate = date('Y-m-d', $asOfTs);
+        $currencyIds = $currencies
+            ->map(fn ($currency) => (int) ($currency->id ?? 0))
+            ->filter(fn (int $id) => $id > 0)
+            ->values()
+            ->all();
 
-        // Preferred: latest rate not newer than selected date.
-        $datedRows = CurrencyRate::query()
-            ->where('base_currency_id', $usdCurrency->id)
-            ->whereIn('quote_currency_id', $quoteIds)
-            ->where(function ($q) use ($asOfDate) {
-                $q->whereNull('rate_date')
-                    ->orWhere('rate_date', '<=', $asOfDate);
-            })
-            ->orderByDesc('rate_date')
-            ->orderByDesc('id')
-            ->get(['quote_currency_id', 'rate']);
+        $pairRates = $this->buildCurrencyPairRates($currencyIds, date('Y-m-d', $asOfTs));
+
+        $graph = [];
+        foreach ($pairRates as $pair => $rate) {
+            [$baseId, $quoteId] = array_map('intval', explode(':', (string) $pair, 2));
+            $rate = (float) $rate;
+            if ($baseId <= 0 || $quoteId <= 0 || $baseId === $quoteId || $rate <= 0) {
+                continue;
+            }
+
+            $graph[$baseId][$quoteId] = $rate;
+            if (!isset($graph[$quoteId][$baseId])) {
+                $graph[$quoteId][$baseId] = 1 / $rate;
+            }
+        }
 
         $usedQuoteIds = [];
-        foreach ($datedRows as $row) {
-            $quoteId = (int) $row->quote_currency_id;
-            if (isset($usedQuoteIds[$quoteId])) {
+        foreach ($quoteIds as $quoteId) {
+            $derivedRate = $this->findCurrencyRateViaGraph($graph, (int) $usdCurrency->id, (int) $quoteId);
+            if ($derivedRate === null || $derivedRate <= 0) {
                 continue;
             }
 
-            $rate = (float) $row->rate;
-            if ($rate <= 0) {
-                continue;
-            }
-
-            $symbolCode = $quoteIdToSymbol[$quoteId] ?? null;
+            $symbolCode = $quoteIdToSymbol[(int) $quoteId] ?? null;
             if (!$symbolCode) {
                 continue;
             }
 
-            $rates[$symbolCode] = $rate;
-            $usedQuoteIds[$quoteId] = true;
+            $rates[$symbolCode] = round($derivedRate, 6);
+            $usedQuoteIds[(int) $quoteId] = true;
         }
 
-        // Fallback: if no historical rate found, use the latest available.
         $missingQuoteIds = array_values(array_filter($quoteIds, fn ($id) => !isset($usedQuoteIds[$id])));
         if (!empty($missingQuoteIds)) {
-            $latestRows = CurrencyRate::query()
-                ->where('base_currency_id', $usdCurrency->id)
-                ->whereIn('quote_currency_id', $missingQuoteIds)
-                ->orderByDesc('rate_date')
+            $fallbackRows = ExchangeRate::query()
+                ->whereIn('currency_id', $missingQuoteIds)
                 ->orderByDesc('id')
-                ->get(['quote_currency_id', 'rate']);
+                ->get(['currency_id', 'kurs']);
 
-            $latestUsed = [];
-            foreach ($latestRows as $row) {
-                $quoteId = (int) $row->quote_currency_id;
-                if (isset($latestUsed[$quoteId])) {
+            foreach ($fallbackRows as $row) {
+                $quoteId = (int) $row->currency_id;
+                if ($quoteId <= 0 || isset($usedQuoteIds[$quoteId])) {
                     continue;
                 }
 
-                $rate = (float) $row->rate;
+                $rate = (float) $row->kurs;
                 if ($rate <= 0) {
                     continue;
                 }
@@ -774,12 +774,104 @@ class ConnectedClientServiceController extends Controller
                     continue;
                 }
 
-                $rates[$symbolCode] = $rate;
-                $latestUsed[$quoteId] = true;
+                $rates[$symbolCode] = round($rate, 6);
+                $usedQuoteIds[$quoteId] = true;
             }
         }
 
         return $rates;
+    }
+
+    private function buildCurrencyPairRates(array $currencyIds, string $asOfDate): array
+    {
+        $ids = array_values(array_filter(array_map('intval', $currencyIds), fn (int $id) => $id > 0));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $rows = CurrencyRate::query()
+            ->whereIn('base_currency_id', $ids)
+            ->whereIn('quote_currency_id', $ids)
+            ->orderByDesc('rate_date')
+            ->orderByDesc('id')
+            ->get(['base_currency_id', 'quote_currency_id', 'rate', 'rate_date']);
+
+        $dated = [];
+        $latest = [];
+
+        foreach ($rows as $row) {
+            $baseId = (int) $row->base_currency_id;
+            $quoteId = (int) $row->quote_currency_id;
+            $rate = (float) $row->rate;
+            if ($baseId <= 0 || $quoteId <= 0 || $baseId === $quoteId || $rate <= 0) {
+                continue;
+            }
+
+            $pair = $baseId . ':' . $quoteId;
+            if (!isset($latest[$pair])) {
+                $latest[$pair] = $rate;
+            }
+
+            $rateDate = null;
+            if ($row->rate_date instanceof \DateTimeInterface) {
+                $rateDate = $row->rate_date->format('Y-m-d');
+            } else {
+                $rawRateDate = trim((string) $row->rate_date);
+                if ($rawRateDate !== '') {
+                    $ts = strtotime($rawRateDate);
+                    if ($ts !== false) {
+                        $rateDate = date('Y-m-d', $ts);
+                    }
+                }
+            }
+
+            if (!isset($dated[$pair]) && ($rateDate === null || $rateDate <= $asOfDate)) {
+                $dated[$pair] = $rate;
+            }
+        }
+
+        return array_replace($latest, $dated);
+    }
+
+    private function findCurrencyRateViaGraph(array $graph, int $fromCurrencyId, int $toCurrencyId): ?float
+    {
+        if ($fromCurrencyId <= 0 || $toCurrencyId <= 0) {
+            return null;
+        }
+
+        if ($fromCurrencyId === $toCurrencyId) {
+            return 1.0;
+        }
+
+        if (empty($graph[$fromCurrencyId])) {
+            return null;
+        }
+
+        $queue = [[$fromCurrencyId, 1.0]];
+        $visited = [$fromCurrencyId => true];
+
+        while (!empty($queue)) {
+            [$currentId, $currentRate] = array_shift($queue);
+            foreach (($graph[$currentId] ?? []) as $nextId => $edgeRate) {
+                $nextId = (int) $nextId;
+                $edgeRate = (float) $edgeRate;
+                if ($nextId <= 0 || $edgeRate <= 0) {
+                    continue;
+                }
+
+                $nextRate = $currentRate * $edgeRate;
+                if ($nextId === $toCurrencyId) {
+                    return $nextRate;
+                }
+
+                if (!isset($visited[$nextId])) {
+                    $visited[$nextId] = true;
+                    $queue[] = [$nextId, $nextRate];
+                }
+            }
+        }
+
+        return null;
     }
 
 // Собираем персональные цены для каждой организации
