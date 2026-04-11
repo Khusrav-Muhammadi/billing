@@ -1153,7 +1153,7 @@ class CommercialFooferController extends Controller
             $extraServices = $extraUserServicesByTariffId->get((int)$tariff->id);
             if ($extraServices) {
                 foreach ($extraServices as $extraService) {
-                    $rows = $this->filterBasePriceRows($extraService->prices)->whereNotNull('organization_id');
+                    $rows = $this->filterBasePriceRows($extraService->prices, false)->whereNotNull('organization_id');
                     foreach ($rows as $priceRow) {
                         $orgId = (int)data_get($priceRow, 'organization_id', 0);
                         if ($orgId <= 0 || !isset($allowed[$orgId])) {
@@ -1194,7 +1194,7 @@ class CommercialFooferController extends Controller
                 }
             }
 
-            $tariffRows = $this->filterBasePriceRows($tariff->prices)->whereNotNull('organization_id');
+            $tariffRows = $this->filterBasePriceRows($tariff->prices, false)->whereNotNull('organization_id');
             foreach ($tariffRows as $priceRow) {
                 $orgId = (int)data_get($priceRow, 'organization_id', 0);
                 if ($orgId <= 0 || !isset($allowed[$orgId])) {
@@ -1233,7 +1233,7 @@ class CommercialFooferController extends Controller
                 );
             }
 
-            $extraRows = $this->filterExtraUserPriceRows($tariff->prices)->whereNotNull('organization_id');
+            $extraRows = $this->filterExtraUserPriceRows($tariff->prices, false)->whereNotNull('organization_id');
             foreach ($extraRows as $priceRow) {
                 $orgId = (int)data_get($priceRow, 'organization_id', 0);
                 if ($orgId <= 0 || !isset($allowed[$orgId])) {
@@ -1275,7 +1275,7 @@ class CommercialFooferController extends Controller
 
         foreach ($services as $service) {
             $serviceKey = 'service-' . (int)$service->id;
-            $serviceRows = $this->filterBasePriceRows($service->prices)->whereNotNull('organization_id');
+            $serviceRows = $this->filterBasePriceRows($service->prices, false)->whereNotNull('organization_id');
 
             foreach ($serviceRows as $priceRow) {
                 $orgId = (int)data_get($priceRow, 'organization_id', 0);
@@ -1733,33 +1733,35 @@ class CommercialFooferController extends Controller
         return false;
     }
 
-    private function filterBasePriceRows(iterable $priceRows): iterable
+    private function filterBasePriceRows(iterable $priceRows, bool $globalOnly = true): iterable
     {
         if ($priceRows instanceof \Illuminate\Support\Collection) {
-            return $priceRows
-                ->whereNull('organization_id')
+            $rows = $priceRows
                 ->filter(static function ($row) {
                     $kind = mb_strtolower(trim((string)data_get($row, 'kind', '')));
 
                     return $kind === '' || $kind === 'base';
                 })
                 ->values();
+
+            return $globalOnly ? $rows->whereNull('organization_id')->values() : $rows;
         }
 
         return $priceRows;
     }
 
-    private function filterExtraUserPriceRows(iterable $priceRows): iterable
+    private function filterExtraUserPriceRows(iterable $priceRows, bool $globalOnly = true): iterable
     {
         if ($priceRows instanceof \Illuminate\Support\Collection) {
-            return $priceRows
-                ->whereNull('organization_id')
+            $rows = $priceRows
                 ->filter(static function ($row) {
                     $kind = mb_strtolower(trim((string)data_get($row, 'kind', '')));
 
                     return $kind === 'extra_user';
                 })
                 ->values();
+
+            return $globalOnly ? $rows->whereNull('organization_id')->values() : $rows;
         }
 
         return $priceRows;
