@@ -100,17 +100,19 @@
 
                         $amountCurrencyCode = strtoupper((string) ($offer->currency ?: 'USD'));
                         $systemCurrencyCode = strtoupper((string) ($offer->payable_currency ?: 'USD'));
-                        $isPartnerPayer = strtolower((string) ($offer->payer_type ?? '')) === 'partner';
                         $partnerNetAmount = (float) $offer->items->sum(function ($item) {
                             $lineTotal = (float) ($item->total_price ?? 0);
                             $partnerPercent = max(0, min(100, (float) ($item->partner_percent ?? 0)));
 
                             return $lineTotal - ($lineTotal * ($partnerPercent / 100));
                         });
-                        $amountInOfferCurrency = $isPartnerPayer
-                            ? ($offer->items->isNotEmpty() ? $partnerNetAmount : (float) $offer->grand_total)
-                            : (float) $offer->grand_total;
-                        $amountInOfferCurrency = max(0, round($amountInOfferCurrency, 4));
+                        $amountInOfferCurrency = $offer->items->isNotEmpty() ? $partnerNetAmount : (float) $offer->grand_total;
+                        $amountInOfferCurrency = max(0, round($amountInOfferCurrency, 2));
+
+                        $ratio = $offer->grand_total > 0 ? ((float) $offer->payable_total / (float) $offer->grand_total) : 1;
+                        $amountInSystemCurrency = $amountInOfferCurrency * $ratio;
+                        $amountInSystemCurrency = max(0, round($amountInSystemCurrency, 2));
+
                         $operationTypeLabel = match ((string) $offer->request_type) {
                             'connection' => 'Подключение',
                             'connection_extra_services' => 'Подключение доп услуг',
@@ -147,7 +149,7 @@
                         <td>{{ optional($offer->tariff)->name ?? '-' }}</td>
                         <td>{{ $offer->period_months }} мес.</td>
                         <td>{{ number_format($amountInOfferCurrency, 2, '.', ' ') }} {{ $amountCurrencyCode }}</td>
-                        <td>{{ number_format((float) $offer->payable_total, 2, '.', ' ') }} {{ $systemCurrencyCode }}</td>
+                        <td>{{ number_format($amountInSystemCurrency, 2, '.', ' ') }} {{ $systemCurrencyCode }}</td>
 
                     </tr>
                 @empty

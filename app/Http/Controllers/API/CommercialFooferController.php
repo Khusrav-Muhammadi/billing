@@ -628,10 +628,17 @@ class CommercialFooferController extends Controller
     private function buildOrganizationsForCurrentUser(Request $request): array
     {
         $search = trim((string)$request->query('search', ''));
+        $organizationId = (int)$request->query('organization_id', 0);
 
         $organizations = Organization::query()
             ->select('id', 'name', 'phone', 'client_id', 'order_number')
             ->with(['client.country.currency'])
+            ->whereHas('client', function (Builder $query) {
+                $this->applyCurrentUserClientScope($query);
+            })
+            ->when($organizationId > 0, function (Builder $query) use ($organizationId) {
+                $query->whereKey($organizationId);
+            })
             ->when($search !== '', function (Builder $query) use ($search) {
                 $like = '%' . $search . '%';
                 $query->where(function (Builder $q) use ($like) {
@@ -639,7 +646,6 @@ class CommercialFooferController extends Controller
                 });
             })
             ->orderBy('name')
-            ->take(1)
             ->get();
 
         $operationStartDates = $this->getOrganizationOperationStartDates(

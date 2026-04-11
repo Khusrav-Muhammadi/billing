@@ -10,10 +10,11 @@ use App\Models\ConnectedClientServices;
 use App\Models\DayClosing;
 use App\Models\DayClosingClientDetails;
 use App\Models\DayClosingDetail;
+use App\Models\Organization;
 use App\Models\OrganizationConnectionStatus;
 use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
+use Carbon\CarbonPeriod;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\CarbonPeriod;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -61,153 +62,159 @@ class DayClosingService
             ]);
 
             $dayClosing->update([
-                'doc_number' => $this->formatDocNumber((int) $dayClosing->id),
+                'doc_number' => $this->formatDocNumber((int)$dayClosing->id),
             ]);
 
             $organizationsCount = 0;
             $hasInsufficientBalance = false;
             $deactivationBatchesByClient = [];
 
-            $clients = Client::query()
-                ->with([
-                    'organizations:id,client_id,name,has_access',
-                    'country:id,currency_id',
-                ])
-                ->select(['id', 'name', 'country_id', 'sub_domain'])
+
+            $asOfDateTime = $date->copy()->endOfDay()->format('Y-m-d H:i:s');
+
+            $organizations = Organization::query()
+                ->with(['client:id,name,country_id,sub_domain', 'client.country:id,currency_id'])
+                ->whereHas('connections') // берем только тех, у кого хоть когда-то были подключения
                 ->orderBy('id')
                 ->get();
 
-            foreach ($clients as $client) {
-                foreach ($client->organizations as $organization) {
-                    if (!$this->ensureOrganizationHasActiveConnectionOnDate(
-                        (int) $organization->id,
-                        $date,
-                        $dayClosing,
-                        $authorId
-                    )) {
-                        continue;
-                    }
+            foreach ($organizations as $organization) {
+                $client = $organization->client;
+                if (!$client) {
+                    continue;
+                }
 
-                    $services = ConnectedClientServices::query()
-                        ->where('client_id', (int) $organization->id)
-                        ->where('status', true)
-                        ->whereDate('date', '<=', $date->toDateString())
-                        ->get([
-                            'id',
-                            'tariff_id',
-                            'service_total_amount',
-                            'payable_currency_id',
-                            'offer_currency_id',
-                        ]);
+                // Просто берем последнюю запись на эту дату
+                $latestConnection = OrganizationConnectionStatus::query()
+                    ->where('organization_id', $organization->id)
+                    ->where('status_date', '<=', $asOfDateTime)
+                    ->orderByDesc('status_date')
+                    ->orderByDesc('updated_at') // на случай если ID старый, но обновлен только что (updateOrCreate)
+                    ->first();
 
-                    if ($services->isEmpty()) {
-                        continue;
-                    }
+                if (!$latestConnection || $latestConnection->status !== 'connected') {
+                    continue;
+                }
 
-                    $currencyId = (int) ($services->first()->offer_currency_id
-                        ?: $services->first()->payable_currency_id
-                        ?: ($client->country?->currency_id ?? 0));
-
-                    $services = $this->filterServicesByCurrency($services, $currencyId);
-                    if ($services->isEmpty()) {
-                        continue;
-                    }
-
-                    $daysInMonth = max(1, $date->daysInMonth);
-                    $dailyAccrual = 0.0;
-
-                    $serviceRows = [];
-                    foreach ($services as $service) {
-                        $monthlySum = round((float) $service->service_total_amount, 4);
-                        if ($monthlySum <= 0) {
-                            continue;
-                        }
-
-                        $dailySum = round($monthlySum / $daysInMonth, 4);
-                        $dailyAccrual += $dailySum;
-
-                        $serviceRows[] = [
-                            'client_id' => (int) $client->id,
-                            'tariff_id' => (int) $service->tariff_id,
-                            'monthly_sum' => $monthlySum,
-                            'daily_sum' => $dailySum,
-                        ];
-                    }
-
-                    if (empty($serviceRows)) {
-                        continue;
-                    }
-
-                    $dailyAccrual = round($dailyAccrual, 4);
-                    $balanceBeforeAccrual = $this->calculateBalance(
-                        (int) $organization->id,
-                        $currencyId > 0 ? $currencyId : null,
-                        $dayClosing->date ?: $date->copy()->setTime(23, 30, 0)
-                    );
-
-                    $canAccrue = $dailyAccrual > 0 && $balanceBeforeAccrual >= $dailyAccrual;
-                    $balanceAfterAccrual = $canAccrue
-                        ? round($balanceBeforeAccrual - $dailyAccrual, 4)
-                        : $balanceBeforeAccrual;
-
-                    $detail = DayClosingDetail::query()->create([
-                        'day_closing_id' => (int) $dayClosing->id,
-                        'organization_id' => (int) $organization->id,
-                        'currency_id' => $currencyId > 0 ? $currencyId : null,
-                        'balance_before_accrual' => $balanceBeforeAccrual,
-                        'balance_after_accrual' => $balanceAfterAccrual,
-                        'status_after_accrual' => $canAccrue,
+                $services = ConnectedClientServices::query()
+                    ->where('client_id', (int)$organization->id)
+                    ->where('status', true)
+                    ->whereDate('date', '<=', $date->toDateString())
+                    ->get([
+                        'id',
+                        'tariff_id',
+                        'service_total_amount',
+                        'payable_currency_id',
+                        'offer_currency_id',
                     ]);
 
-                    foreach ($serviceRows as $row) {
-                        DayClosingClientDetails::query()->create([
-                            'day_closing_details_id' => (int) $detail->id,
-                            'client_id' => $row['client_id'],
-                            'tariff_id' => $row['tariff_id'],
-                            'monthly_sum' => $row['monthly_sum'],
-                            'daily_sum' => $row['daily_sum'],
-                        ]);
-                    }
-
-                    if ($canAccrue) {
-                        ClientBalance::query()->create([
-                            'date' => $date->copy()->setTime(23, 30, 0),
-                            'organization_id' => (int) $organization->id,
-                            'sum' => $dailyAccrual,
-                            'currency_id' => $currencyId > 0 ? $currencyId : null,
-                            'type' => 'outcome',
-                        ]);
-                    } else {
-                        $hasInsufficientBalance = true;
-                        $this->organizationConnectionStatusRegistryService->registerDisconnected(
-                            (int) $organization->id,
-                            $dayClosing->date ?: $date->copy()->setTime(23, 30, 0),
-                            (int) $dayClosing->id,
-                            $authorId,
-                            'insufficient_balance'
-                        );
-
-                        $clientId = (int) $client->id;
-                        $subDomain = trim((string) ($client->sub_domain ?? ''));
-                        if ($clientId > 0 && $subDomain !== '') {
-                            if (!isset($deactivationBatchesByClient[$clientId])) {
-                                $deactivationBatchesByClient[$clientId] = [
-                                    'sub_domain' => $subDomain,
-                                    'organization_ids' => [],
-                                ];
-                            }
-
-                            $deactivationBatchesByClient[$clientId]['organization_ids'][] = (int) $organization->id;
-                        }
-                    }
-
-                    $organizationsCount++;
+                if ($services->isEmpty()) {
+                    continue;
                 }
+
+                $currencyId = (int)($services->first()->offer_currency_id
+                    ?: $services->first()->payable_currency_id
+                        ?: ($client->country?->currency_id ?? 0));
+
+                $services = $this->filterServicesByCurrency($services, $currencyId);
+                if ($services->isEmpty()) {
+                    continue;
+                }
+
+                $daysInMonth = max(1, $date->daysInMonth);
+                $dailyAccrual = 0.0;
+
+                $serviceRows = [];
+                foreach ($services as $service) {
+                    $monthlySum = round((float)$service->service_total_amount, 4);
+                    if ($monthlySum <= 0) {
+                        continue;
+                    }
+
+                    $dailySum = round($monthlySum / $daysInMonth, 4);
+                    $dailyAccrual += $dailySum;
+
+                    $serviceRows[] = [
+                        'client_id' => (int)$client->id,
+                        'tariff_id' => (int)$service->tariff_id,
+                        'monthly_sum' => $monthlySum,
+                        'daily_sum' => $dailySum,
+                    ];
+                }
+
+                if (empty($serviceRows)) {
+                    continue;
+                }
+
+                $dailyAccrual = round($dailyAccrual, 4);
+                $balanceBeforeAccrual = $this->calculateBalance(
+                    (int)$organization->id,
+                    $currencyId > 0 ? $currencyId : null,
+                    $dayClosing->date ?: $date->copy()->setTime(23, 30, 0)
+                );
+
+                $canAccrue = $dailyAccrual > 0 && $balanceBeforeAccrual >= $dailyAccrual;
+                $balanceAfterAccrual = $canAccrue
+                    ? round($balanceBeforeAccrual - $dailyAccrual, 4)
+                    : $balanceBeforeAccrual;
+
+                $detail = DayClosingDetail::query()->create([
+                    'day_closing_id' => (int)$dayClosing->id,
+                    'organization_id' => (int)$organization->id,
+                    'currency_id' => $currencyId > 0 ? $currencyId : null,
+                    'balance_before_accrual' => $balanceBeforeAccrual,
+                    'balance_after_accrual' => $balanceAfterAccrual,
+                    'status_after_accrual' => $canAccrue,
+                ]);
+
+                foreach ($serviceRows as $row) {
+                    DayClosingClientDetails::query()->create([
+                        'day_closing_details_id' => (int)$detail->id,
+                        'client_id' => $row['client_id'],
+                        'tariff_id' => $row['tariff_id'],
+                        'monthly_sum' => $row['monthly_sum'],
+                        'daily_sum' => $row['daily_sum'],
+                    ]);
+                }
+
+                if ($canAccrue) {
+                    ClientBalance::query()->create([
+                        'date' => $date->copy()->setTime(23, 30, 0),
+                        'organization_id' => (int)$organization->id,
+                        'sum' => $dailyAccrual,
+                        'currency_id' => $currencyId > 0 ? $currencyId : null,
+                        'type' => 'outcome',
+                    ]);
+                } else {
+                    $hasInsufficientBalance = true;
+                    $this->organizationConnectionStatusRegistryService->registerDisconnected(
+                        (int)$organization->id,
+                        $dayClosing->date ?: $date->copy()->setTime(23, 30, 0),
+                        (int)$dayClosing->id,
+                        $authorId,
+                        'insufficient_balance'
+                    );
+
+                    $clientId = (int)$client->id;
+                    $subDomain = trim((string)($client->sub_domain ?? ''));
+                    if ($clientId > 0 && $subDomain !== '') {
+                        if (!isset($deactivationBatchesByClient[$clientId])) {
+                            $deactivationBatchesByClient[$clientId] = [
+                                'sub_domain' => $subDomain,
+                                'organization_ids' => [],
+                            ];
+                        }
+
+                        $deactivationBatchesByClient[$clientId]['organization_ids'][] = (int)$organization->id;
+                    }
+                }
+
+                $organizationsCount++;
             }
 
             foreach ($deactivationBatchesByClient as $batch) {
-                $organizationIds = array_values(array_unique(array_map('intval', (array) ($batch['organization_ids'] ?? []))));
-                $subDomain = trim((string) ($batch['sub_domain'] ?? ''));
+                $organizationIds = array_values(array_unique(array_map('intval', (array)($batch['organization_ids'] ?? []))));
+                $subDomain = trim((string)($batch['sub_domain'] ?? ''));
 
                 if (empty($organizationIds) || $subDomain === '') {
                     continue;
@@ -238,27 +245,26 @@ class DayClosingService
             $dayClosings = DayClosing::query()
                 ->whereDate('date', '>=', $dateFrom->toDateString())
                 ->whereDate('date', '<=', $dateTo->toDateString())
-                ->get(['id', 'date']);
+                ->get(['id']);
 
             $dayClosingIds = $dayClosings->pluck('id');
 
-            if ($dayClosingIds->isEmpty()) {
-                return;
+            // 1. Очищаем балансы строго по времени закрытия (23:30), даже если документ был утерян
+            $period = CarbonPeriod::create($dateFrom->copy()->startOfDay(), '1 day', $dateTo->copy()->startOfDay());
+            $outcomeDateTimes = [];
+            foreach ($period as $dt) {
+                $outcomeDateTimes[] = Carbon::parse($dt)->setTime(23, 30, 0)->format('Y-m-d H:i:s');
             }
 
-            // Remove all previous day-closing outcomes for these documents' timestamps.
-            // Without this, repeated reruns leave duplicate balance outcomes.
-            $dayClosingDateTimes = $dayClosings
-                ->map(fn (DayClosing $dayClosing) => $dayClosing->date?->format('Y-m-d H:i:s'))
-                ->filter()
-                ->unique()
-                ->values();
-
-            if ($dayClosingDateTimes->isNotEmpty()) {
+            if (!empty($outcomeDateTimes)) {
                 ClientBalance::query()
                     ->where('type', 'outcome')
-                    ->whereIn('date', $dayClosingDateTimes->all())
+                    ->whereIn('date', $outcomeDateTimes)
                     ->delete();
+            }
+
+            if ($dayClosingIds->isEmpty()) {
+                return;
             }
 
             $detailIds = DayClosingDetail::query()
@@ -269,6 +275,29 @@ class DayClosingService
                 DayClosingClientDetails::query()
                     ->whereIn('day_closing_details_id', $detailIds->all())
                     ->delete();
+            }
+
+            $orgIdsToRestoreAccess = OrganizationConnectionStatus::query()
+                ->whereIn('day_closing_id', $dayClosingIds->all())
+                ->pluck('organization_id')
+                ->unique();
+
+            if ($orgIdsToRestoreAccess->isNotEmpty()) {
+                Organization::query()
+                    ->whereIn('id', $orgIdsToRestoreAccess->all())
+                    ->update(['has_access' => true]);
+
+                $clientIds = Organization::query()
+                    ->whereIn('id', $orgIdsToRestoreAccess->all())
+                    ->pluck('client_id')
+                    ->filter()
+                    ->unique();
+
+                if ($clientIds->isNotEmpty()) {
+                    Client::query()
+                        ->whereIn('id', $clientIds->all())
+                        ->update(['is_active' => true]);
+                }
             }
 
             OrganizationConnectionStatus::query()
@@ -287,7 +316,7 @@ class DayClosingService
 
     private function formatDocNumber(int $id): string
     {
-        return str_pad((string) max(1, $id), 9, '0', STR_PAD_LEFT);
+        return str_pad((string)max(1, $id), 9, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -302,7 +331,7 @@ class DayClosingService
 
         $filtered = $services
             ->filter(function (ConnectedClientServices $service) use ($currencyId): bool {
-                $serviceCurrencyId = (int) ($service->offer_currency_id ?: $service->payable_currency_id ?: 0);
+                $serviceCurrencyId = (int)($service->offer_currency_id ?: $service->payable_currency_id ?: 0);
 
                 return $serviceCurrencyId === 0 || $serviceCurrencyId === $currencyId;
             })
@@ -328,15 +357,16 @@ class DayClosingService
         $income = (clone $query)->where('type', 'income')->sum('sum');
         $outcome = (clone $query)->where('type', 'outcome')->sum('sum');
 
-        return round((float) $income - (float) $outcome, 4);
+        return round((float)$income - (float)$outcome, 4);
     }
 
     private function ensureOrganizationHasActiveConnectionOnDate(
-        int $organizationId,
-        Carbon $date,
+        int        $organizationId,
+        Carbon     $date,
         DayClosing $dayClosing,
-        int $authorId
-    ): bool {
+        int        $authorId
+    ): bool
+    {
         if ($organizationId <= 0) {
             return false;
         }
@@ -354,11 +384,11 @@ class DayClosingService
                 'commercial_offer_id',
             ]);
 
-        if (!$latestStatus || (string) $latestStatus->status !== 'connected') {
+        if (!$latestStatus || (string)$latestStatus->status !== 'connected') {
             return false;
         }
 
-        $commercialOfferId = (int) ($latestStatus->commercial_offer_id ?? 0);
+        $commercialOfferId = (int)($latestStatus->commercial_offer_id ?? 0);
         if ($commercialOfferId <= 0) {
             return true;
         }
@@ -369,7 +399,7 @@ class DayClosingService
             return true;
         }
 
-        $expirationDateTime = Carbon::parse((string) $latestStatus->status_date)
+        $expirationDateTime = Carbon::parse((string)$latestStatus->status_date)
             ->startOfDay()
             ->addMonthsNoOverflow($periodMonths)
             ->startOfDay();
@@ -381,7 +411,7 @@ class DayClosingService
         $this->organizationConnectionStatusRegistryService->registerDisconnected(
             $organizationId,
             $expirationDateTime,
-            (int) $dayClosing->id,
+            (int)$dayClosing->id,
             $authorId,
             'period_expired'
         );
@@ -396,10 +426,10 @@ class DayClosingService
         }
 
         if (array_key_exists($commercialOfferId, $this->offerPeriodMonthsCache)) {
-            return (int) $this->offerPeriodMonthsCache[$commercialOfferId];
+            return (int)$this->offerPeriodMonthsCache[$commercialOfferId];
         }
 
-        $periodMonths = (int) (CommercialOffer::query()
+        $periodMonths = (int)(CommercialOffer::query()
             ->where('id', $commercialOfferId)
             ->value('period_months') ?? 0);
 

@@ -71,4 +71,9 @@ class Organization extends Model
     {
         return $this->hasMany(ClientBalance::class, 'organization_id');
     }
+
+    public function connections()
+    {
+        return $this->hasMany(OrganizationConnectionStatus::class, 'organization_id');
+    }
 }

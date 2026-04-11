@@ -3,13 +3,11 @@
 namespace App\Jobs;
 
 use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Bus;
 
 class CreateDayClosingDocumentsJob implements ShouldQueue
 {
@@ -29,18 +27,12 @@ class CreateDayClosingDocumentsJob implements ShouldQueue
         $from = Carbon::parse($this->dateFrom)->startOfDay();
         $to = Carbon::parse($this->dateTo)->startOfDay();
 
-        $jobs = [];
-        $period = CarbonPeriod::create($from, '1 day', $to);
-
-        foreach ($period as $date) {
-            $jobs[] = new CreateDayClosingDocumentForDateJob(
-                Carbon::parse($date)->toDateString(),
-                $this->authorId
-            );
+        if ($from->greaterThan($to)) {
+            return;
         }
 
-        if (!empty($jobs)) {
-            Bus::chain($jobs)->dispatch();
-        }
+        CreateDayClosingDocumentsCursorJob::dispatch($from->toDateString(), $to->toDateString(), $this->authorId)
+            ->onConnection($this->connection)
+            ->onQueue($this->queue);
     }
 }
