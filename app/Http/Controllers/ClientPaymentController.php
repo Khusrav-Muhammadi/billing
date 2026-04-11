@@ -30,8 +30,15 @@ class ClientPaymentController extends Controller
     public function invoice(Payment $payment)
     {
         $payment->load('paymentItems');
+        $offer = CommercialOffer::query()
+            ->with('organization:id,name,order_number')
+            ->where('payment_id', $payment->id)
+            ->first();
 
-        return view('payments-invoice', compact('payment'));
+        return view('payments-invoice', [
+            'payment' => $payment,
+            'organizationOrderNumber' => (string) ($offer?->organization?->order_number ?? ''),
+        ]);
     }
 
     public function store(ClientPaymentRequest $request)
