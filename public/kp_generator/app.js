@@ -169,6 +169,10 @@ class CPGenerator {
             }
         }
         await this.loadOfferDraftIfNeeded();
+        if (this.state.editOfferId) {
+            // Reload config using saved pricing date to keep rates/partner percents consistent.
+            await this.loadConfig();
+        }
         if (this.state.selectedClientId) {
             const selectedClient = this.getSelectedClient();
             if (selectedClient) {
