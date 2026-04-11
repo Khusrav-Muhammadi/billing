@@ -627,16 +627,13 @@ class CommercialFooferController extends Controller
 
     private function buildOrganizationsForCurrentUser(Request $request): array
     {
-        $search = trim((string)$request->query('search', ''));
+        $search = trim((string)$request->query('order_number', $request->query('search', '')));
         $organizationId = (int)$request->query('organization_id', 0);
 
         $organizations = Organization::query()
             ->select('id', 'name', 'phone', 'client_id', 'order_number')
             ->with(['client.country.currency'])
-            ->whereHas('client', function (Builder $query) {
-                $this->applyCurrentUserClientScope($query);
-            })
-            ->when($organizationId > 0, function (Builder $query) use ($organizationId) {
+                        ->when($organizationId > 0, function (Builder $query) use ($organizationId) {
                 $query->whereKey($organizationId);
             })
             ->when($search !== '', function (Builder $query) use ($search) {
@@ -670,6 +667,50 @@ class CommercialFooferController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    private function applyCurrentUserOrganizationScope(Builder $query): void
+    {
+        $user = Auth::user();
+        if (!$user) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        $userId = (int)$user->id;
+        $role = mb_strtolower(trim((string)($user->role ?? '')));
+
+        if ($role === 'partner') {
+            $query->where(function (Builder $orgScope) use ($userId) {
+                $orgScope
+                    ->whereHas('client', function (Builder $clientQuery) use ($userId) {
+                        $clientQuery->where('partner_id', $userId);
+                    })
+                    ->orWhereExists(function ($subQuery) use ($userId) {
+                        $subQuery->selectRaw('1')
+                            ->from('commercial_offers')
+                            ->whereColumn('commercial_offers.organization_id', 'organizations.id')
+                            ->where('commercial_offers.partner_id', $userId);
+                    })
+                    ->orWhereExists(function ($subQuery) use ($userId) {
+                        $subQuery->selectRaw('1')
+                            ->from('connected_client_services')
+                            ->whereColumn('connected_client_services.client_id', 'organizations.id')
+                            ->where('connected_client_services.partner_id', $userId);
+                    });
+            });
+
+            return;
+        }
+
+        if ($role === 'manager') {
+            $query->whereHas('client', function (Builder $clientQuery) use ($userId) {
+                $clientQuery->where('manager_id', $userId);
+            });
+            return;
+        }
+
+        $query->whereRaw('1 = 0');
     }
 
     private function getOrganizationOperationStartDates(array $organizationIds): array
