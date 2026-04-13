@@ -192,6 +192,7 @@
                                         <th>Счет</th>
                                         <th>№ платежки</th>
                                         <th>Автор</th>
+                                        <th>Изменить</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -221,6 +222,14 @@
                                             <td>{{ $accountLabel }}</td>
                                             <td>{{ $statusRow->payment_order_number ?: '-' }}</td>
                                             <td>{{ $statusRow->author?->name ?? '-' }}</td>
+                                            <td>
+                                                <button type="button" 
+                                                        class="btn btn-link p-0 m-0" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#offerStatusEditModal{{ $statusRow->id }}">
+                                                    <i class="mdi mdi-pencil-box-outline text-primary" style="font-size: 30px"></i>
+                                                </button>
+                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
@@ -300,6 +309,78 @@
                     </div>
                 </div>
             @endif
+
+            @foreach($offer->offerStatuses as $statusRow)
+                @php
+                    $rawPaymentTypeEdit = (string) $statusRow->payment_method;
+                    $canManageOfferStatusEdit = in_array($rawPaymentTypeEdit, ['invoice', 'cash'], true) || in_array($paymentTypeCode, ['invoice', 'cash'], true);
+                @endphp
+                @if($canManageOfferStatusEdit)
+                    <div class="modal fade" id="offerStatusEditModal{{ $statusRow->id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Изменить статус подключения #{{ $offer->id }}</h5>
+                                    <button type="button" class="modal-x-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Закрыть">×</button>
+                                </div>
+                                <form method="POST" action="{{ route('application.status.update', $statusRow->id) }}">
+                                    @csrf
+                                    <input type="hidden" name="payment_method" value="{{ $rawPaymentTypeEdit }}">
+
+                                    <div class="modal-body">
+                                        <div class="form-group mb-3">
+                                            <label>Статус</label>
+                                            <select class="form-control" name="status" required>
+                                                <option value="pending" {{ $statusRow->status === 'pending' ? 'selected' : '' }}>В ожидании</option>
+                                                <option value="paid" {{ $statusRow->status === 'paid' ? 'selected' : '' }}>Оплачено</option>
+                                                <option value="canceled" {{ $statusRow->status === 'canceled' ? 'selected' : '' }}>Отменено</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group mb-3">
+                                            <label>Дата</label>
+                                            <input type="date" class="form-control" name="status_date" value="{{ optional($statusRow->status_date)->toDateString() }}" required>
+                                        </div>
+
+                                        @if($rawPaymentTypeEdit === 'invoice')
+                                            <div class="form-group mb-3">
+                                                <label>Номер платежки</label>
+                                                <input type="text"
+                                                       class="form-control"
+                                                       name="payment_order_number"
+                                                       value="{{ $statusRow->payment_order_number }}"
+                                                       placeholder="Введите номер платежки"
+                                                       required>
+                                            </div>
+
+                                            <div class="form-group mb-0">
+                                                <label>Счет</label>
+                                                <select class="form-control" name="account_id" required>
+                                                    <option value="">Выберите счет</option>
+                                                    @foreach($accounts as $account)
+                                                        @php
+                                                            $accountCurrencyCode = strtoupper((string) optional($account->currency)->symbol_code);
+                                                        @endphp
+                                                        <option value="{{ $account->id }}" {{ (string) $statusRow->account_id === (string) $account->id ? 'selected' : '' }}>
+                                                            {{ $account->name }}{{ $accountCurrencyCode !== '' ? ' (' . $accountCurrencyCode . ')' : '' }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+
         @endforeach
 
         <div class="mt-2">

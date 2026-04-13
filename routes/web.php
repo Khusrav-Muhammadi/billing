@@ -128,6 +128,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [ApplicationController::class, 'index'])->name('application.index');
         Route::post('/store', [ApplicationController::class, 'store'])->name('application.store');
         Route::post('/{offer}/statuses', [ApplicationController::class, 'storeOfferStatus'])->name('application.status.store');
+        Route::post('/status/{status}/edit', [ApplicationController::class, 'editOfferStatus'])->name('application.status.update');
         Route::post('/kp/store', [ApplicationController::class, 'storeCommercialOffer'])->name('application.kp.store');
         Route::post('/kp/client/store', [ApplicationController::class, 'storeCommercialOfferClient'])->name('application.kp.client.store');
         Route::get('/kp/connection-context/{organization}', [ApplicationController::class, 'getConnectionContext'])->name('application.kp.connection-context');

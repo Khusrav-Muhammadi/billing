@@ -10,6 +10,7 @@ use App\Models\Account;
 use App\Models\Client;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferItem;
+use App\Models\CommercialOfferStatus;
 use App\Models\ConnectedClientServices;
 use App\Models\Organization;
 use App\Models\PartnerProcent;
@@ -185,7 +186,7 @@ class ApplicationController extends Controller
             $offerCurrencyCode = $this->toCurrencyCode(data_get($payload, 'currency', 'USD'));
             $payableCurrencyCode = $partnerCurrencyCode
                 ?: $this->toCurrencyCode(data_get($payload, 'payable_currency', $offerCurrencyCode));
-            $cardPaymentType = (string) data_get($payload, 'card_payment_type', '');
+            $cardPaymentType = (string)data_get($payload, 'card_payment_type', '');
             if ($cardPaymentType === '') {
                 $cardPaymentType = $payableCurrencyCode === 'UZS' ? 'alif' : 'octo';
             }
@@ -487,6 +488,89 @@ class ApplicationController extends Controller
             ->route('application.index')
             ->with('success', 'Статус подключения сохранен.');
     }
+
+    public function editOfferStatus(Request $request, CommercialOfferStatus $status): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:pending,paid,canceled'],
+            'status_date' => ['required', 'date'],
+            'payment_method' => ['required', 'in:card,invoice,cash'],
+            'account_id' => ['nullable', 'integer', 'exists:accounts,id', 'required_if:payment_method,invoice'],
+            'payment_order_number' => ['nullable', 'string', 'max:100', 'required_if:payment_method,invoice'],
+        ]);
+
+        $accountId = isset($validated['account_id']) ? (int)$validated['account_id'] : null;
+        if ($validated['payment_method'] !== 'invoice') {
+            $accountId = null;
+        }
+
+        $paymentOrderNumber = isset($validated['payment_order_number'])
+            ? trim((string)$validated['payment_order_number'])
+            : null;
+
+        if ($validated['payment_method'] !== 'invoice' || $paymentOrderNumber === '') {
+            $paymentOrderNumber = null;
+        }
+
+        $offer = $status->offer;
+        
+        if ((string)$status->status === 'paid') {
+            $oldDate = \App\Support\RegistryDateTimeResolver::resolve($offer, $status);
+            
+            \App\Models\ClientPaymentRegistry::query()->where('commercial_offer_id', $offer->id)->delete();
+            \App\Models\ConnectedClientServices::query()->where('commercial_offer_id', $offer->id)->delete();
+            \App\Models\OrganizationConnectionStatus::query()->where('commercial_offer_id', $offer->id)->delete();
+            
+            \App\Models\ClientBalance::query()
+                ->where('organization_id', $offer->organization_id)
+                ->where('type', 'income')
+                ->where('date', $oldDate)
+                ->delete();
+                
+            \App\Models\PartnerExpense::query()
+                ->where('client_id', $offer->organization_id)
+                ->where('date', $oldDate)
+                ->delete();
+                
+            \App\Models\DiscountExpense::query()
+                ->where('client_id', $offer->organization_id)
+                ->where('date', $oldDate)
+                ->delete();
+        }
+
+        $status->update([
+            'status' => $validated['status'],
+            'status_date' => $validated['status_date'],
+            'payment_method' => $validated['payment_method'],
+            'account_id' => $accountId,
+            'payment_order_number' => $paymentOrderNumber,
+            'author_id' => \Illuminate\Support\Facades\Auth::id(),
+        ]);
+        
+        $offer->update(['status' => $validated['status']]);
+
+        if ((string)$validated['status'] === 'paid') {
+            $freshOffer = $offer->fresh();
+            $this->syncClientPartnerFromPaidOffer($freshOffer);
+            $freshStatus = $status->fresh();
+            $requestType = $this->normalizeRequestType((string)($freshOffer?->request_type ?: 'connection'));
+
+            if ($requestType === 'connection_extra_services') {
+                \App\Events\CommercialOfferExtraServicesPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } elseif ($requestType == 'renewal') {
+                \App\Events\CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } elseif ($requestType == 'renewal_no_changes') {
+                \App\Events\CommercialOfferRenewalNoChangePaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } else {
+                \App\Events\CommercialOfferPaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            }
+        }
+
+        return redirect()
+            ->route('application.index')
+            ->with('success', 'Статус подключения сохранен.');
+    }
+
 
     private function syncClientPartnerFromPaidOffer(?CommercialOffer $offer): void
     {

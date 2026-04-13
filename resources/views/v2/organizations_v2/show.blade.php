@@ -75,7 +75,7 @@
                 </div>
                 <div class="col-md-3 mb-2">
                     <strong>Статус:</strong>
-                    @if($organization->client?->is_active)
+                    @if(optional($organization->connections()->latest('status_date')->latest('id')->first())->status === 'connected')
                         <span class="text-success">Активный</span>
                     @else
                         <span class="text-danger">Неактивный</span>
