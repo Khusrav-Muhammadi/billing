@@ -74,7 +74,7 @@ class DayClosingService
 
             $organizations = Organization::query()
                 ->with(['client:id,name,country_id,sub_domain', 'client.country:id,currency_id'])
-                ->whereHas('connections') // берем только тех, у кого хоть когда-то были подключения
+                ->whereHas('connections')
                 ->orderBy('id')
                 ->get();
 
@@ -84,7 +84,6 @@ class DayClosingService
                     continue;
                 }
 
-                // Просто берем последнюю запись на эту дату
                 $latestConnection = OrganizationConnectionStatus::query()
                     ->where('organization_id', $organization->id)
                     ->where('status_date', '<=', $asOfDateTime)
@@ -98,8 +97,9 @@ class DayClosingService
 
                 $services = ConnectedClientServices::query()
                     ->where('client_id', (int)$organization->id)
-                    ->where('status', true)
+                    
                     ->whereDate('date', '<=', $date->toDateString())
+                    ->whereDate('deactivated_at', '>=', $date->toDateString())
                     ->get([
                         'id',
                         'tariff_id',
