@@ -81,7 +81,7 @@
             </table>
 
             <div class="invoice-total">
-                <div><strong>Итого:</strong> {{ $totalFormatted }} Без налога (НДС): —</div>
+             <!--   <div><strong>Итого:</strong> {{ $totalFormatted }} Без налога (НДС): —</div> -->
                 <div><strong>Всего к оплате:</strong> {{ $totalFormatted }} ({{ $currencyLabel }})</div>
             </div>
 
