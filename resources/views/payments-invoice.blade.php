@@ -91,7 +91,7 @@
                 <div><strong>Условия:</strong></div>
                 <ul class="invoice-list">
                     <li>Оплата данного счета означает согласие с условиями поставки товара.</li>
-                    <li>При оплате указывать ID организации: {{ $organizationOrderNumber !== '' ? $organizationOrderNumber : '—' }}.</li>
+                    <li>В назначении платежа обязательно указывать ID организации: {{ $organizationOrderNumber !== '' ? $organizationOrderNumber : '—' }}.</li>
                 </ul>
             </div>
 
