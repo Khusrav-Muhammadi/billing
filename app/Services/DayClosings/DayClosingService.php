@@ -97,9 +97,11 @@ class DayClosingService
 
                 $services = ConnectedClientServices::query()
                     ->where('client_id', (int)$organization->id)
-                    
                     ->whereDate('date', '<=', $date->toDateString())
-                    ->whereDate('deactivated_at', '>=', $date->toDateString())
+                    ->where(function ($q) use ($date) {
+                        $q->whereNull('deactivated_at')
+                            ->orWhereDate('deactivated_at', '>=', $date->toDateString());
+                    })
                     ->get([
                         'id',
                         'tariff_id',
