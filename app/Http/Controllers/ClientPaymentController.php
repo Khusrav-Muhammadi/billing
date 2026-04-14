@@ -37,6 +37,7 @@ class ClientPaymentController extends Controller
 
         return view('payments-invoice', [
             'payment' => $payment,
+            'offer' => $offer,
             'organizationOrderNumber' => (string) ($offer?->organization?->order_number ?? ''),
         ]);
     }

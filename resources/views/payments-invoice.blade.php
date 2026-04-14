@@ -36,6 +36,20 @@
                 </ul>
             </div>
 
+            @if($offer->parner_id == 11)
+                <div class="invoice-block invoice-divider">
+                    <div>
+                        <strong>Покупатель:</strong>
+                        "{{ $payment->client_name }}"
+                        @if($payment->client_name)
+                            {{ $payment->client_name }}
+                        @endif
+                        @if($payment->client_name)
+                            {{ $payment->client_name }}
+                        @endif
+                    </div>
+                </div>
+            @else
             <div class="invoice-block invoice-divider">
                 <div>
                     <strong>Покупатель:</strong>
@@ -48,7 +62,7 @@
                     @endif
                 </div>
             </div>
-
+            @endif
             <table class="invoice-table">
                 <thead>
                 <tr>
@@ -90,7 +104,7 @@
             <div class="invoice-block">
                 <div><strong>Условия:</strong></div>
                 <ul class="invoice-list">
-                    <li>Оплата данного счета означает согласие с условиями поставки товара.</li>
+                    <li>Оплата данного счета означает согласие с условиями поставки услуги.</li>
                     <li>В назначении платежа обязательно указать ID организации: {{ $organizationOrderNumber !== '' ? $organizationOrderNumber : '—' }}.</li>
                 </ul>
             </div>
