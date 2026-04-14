@@ -35,11 +35,11 @@
                     <li>Расчетный счет: 2020800080715938001</li>
                 </ul>
             </div>
-
+            @dump($offer)
             @if($offer->parner_id == 11)
                 <div class="invoice-block invoice-divider">
                     <div>
-                        <strong>Покуп1атель:</strong>
+                        <strong>Покупатель:</strong>
                         "{{ $offer->client_name }}"
                         @if($offer->client_name)
                             {{ $offer->client_name }}
