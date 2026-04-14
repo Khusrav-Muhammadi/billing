@@ -39,13 +39,13 @@
             @if($offer->parner_id == 11)
                 <div class="invoice-block invoice-divider">
                     <div>
-                        <strong>Покупатель:</strong>
-                        "{{ $payment->client_name }}"
-                        @if($payment->client_name)
-                            {{ $payment->client_name }}
+                        <strong>Покуп1атель:</strong>
+                        "{{ $offer->client_name }}"
+                        @if($offer->client_name)
+                            {{ $offer->client_name }}
                         @endif
-                        @if($payment->client_name)
-                            {{ $payment->client_name }}
+                        @if($offer->client_name)
+                            {{ $offer->client_name }}
                         @endif
                     </div>
                 </div>
