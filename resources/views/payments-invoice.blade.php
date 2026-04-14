@@ -40,11 +40,11 @@
                     <div>
                         <strong>Покупатель:</strong>
                         "{{ $offer->client_name }}"
-                        @if($offer->client_name)
-                            {{ $offer->client_name }}
+                        @if($offer->client_phone)
+                            {{ $offer->client_phone }}
                         @endif
-                        @if($offer->client_name)
-                            {{ $offer->client_name }}
+                        @if($offer->client_email)
+                            {{ $offer->client_email }}
                         @endif
                     </div>
                 </div>
