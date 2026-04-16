@@ -791,7 +791,7 @@
         </div>
 
         <div class="validity-line">
-            Предложение действительно до: <span> {{now()->addDays(14)->format('dd.mm.yyyy')}}</span>
+            Предложение действительно до: <span> {{now()->addDays(14)->format('d.m.yy')}}</span>
         </div>
     </div>
 </div>
