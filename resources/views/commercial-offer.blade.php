@@ -1,6 +1,6 @@
 @php
     function formatPrice($number) {
-        return number_format((float) $number, 4, ',', ' ');
+        return number_format((float) $number, 2, ',', ' ');
     }
 @endphp
 <!DOCTYPE html>
@@ -791,7 +791,7 @@
         </div>
 
         <div class="validity-line">
-            Предложение действительно до: <span> 31.03.2026</span>
+            Предложение действительно до: <span> {{now()->addDays(14)->format('dd.mm.yyyy')}}</span>
         </div>
     </div>
 </div>
