@@ -100,18 +100,36 @@
 
                         $amountCurrencyCode = strtoupper((string) ($offer->currency ?: 'USD'));
                         $systemCurrencyCode = strtoupper((string) ($offer->payable_currency ?: 'USD'));
-                        $partnerNetAmount = (float) $offer->items->sum(function ($item) {
-                            $lineTotal = (float) ($item->total_price ?? 0);
-                            $partnerPercent = max(0, min(100, (float) ($item->partner_percent ?? 0)));
+                        $isPartnerPayer = (string) ($offer->payer_type ?? '') === 'partner';
 
-                            return $lineTotal - ($lineTotal * ($partnerPercent / 100));
-                        });
-                        $amountInOfferCurrency = $offer->items->isNotEmpty() ? $partnerNetAmount : (float) $offer->grand_total;
+                        $amountInOfferCurrency = (float) ($offer->items->isNotEmpty()
+                            ? $offer->items->sum(function ($item) use ($isPartnerPayer) {
+                                $lineTotal = (float) ($item->total_price ?? 0);
+                                if (!$isPartnerPayer) {
+                                    return $lineTotal;
+                                }
+
+                                $partnerPercent = max(0, min(100, (float) ($item->partner_percent ?? 0)));
+                                return $lineTotal - ($lineTotal * ($partnerPercent / 100));
+                            })
+                            : (float) $offer->grand_total);
                         $amountInOfferCurrency = max(0, round($amountInOfferCurrency, 2));
 
-                        $ratio = $offer->grand_total > 0 ? ((float) $offer->payable_total / (float) $offer->grand_total) : 1;
-                        $amountInSystemCurrency = $amountInOfferCurrency * $ratio;
+                        $amountInSystemCurrency = (float) ($offer->payable_total ?? 0);
+                        if ($amountInSystemCurrency <= 0 && $systemCurrencyCode === $amountCurrencyCode) {
+                            $amountInSystemCurrency = $amountInOfferCurrency;
+                        }
                         $amountInSystemCurrency = max(0, round($amountInSystemCurrency, 2));
+
+                        $formatMoney = static function (float $amount, string $currencyCode): string {
+                            $code = strtoupper(trim($currencyCode));
+                            $formatted = number_format($amount, 2, ',', ' ');
+                            return match ($code) {
+                                'USD' => '$' . $formatted,
+                                'EUR' => '€' . $formatted,
+                                default => $formatted . ' ' . ($code !== '' ? $code : '—'),
+                            };
+                        };
 
                         $operationTypeLabel = match ((string) $offer->request_type) {
                             'connection' => 'Подключение',
@@ -148,8 +166,8 @@
                         <td>{{ $paymentTypeLabel }}</td>
                         <td>{{ optional($offer->tariff)->name ?? '-' }}</td>
                         <td>{{ $offer->period_months }} мес.</td>
-                        <td>{{ number_format($amountInOfferCurrency, 2, '.', ' ') }} {{ $amountCurrencyCode }}</td>
-                        <td>{{ number_format($amountInSystemCurrency, 2, '.', ' ') }} {{ $systemCurrencyCode }}</td>
+                        <td>{{ $formatMoney($amountInOfferCurrency, $amountCurrencyCode) }}</td>
+                        <td>{{ $formatMoney($amountInSystemCurrency, $systemCurrencyCode) }}</td>
 
                     </tr>
                 @empty
