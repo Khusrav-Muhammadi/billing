@@ -100,26 +100,27 @@ class OrganizationController extends Controller
                 'client.tariffPrice:id,tariff_id',
                 'client.tariffPrice.tariff:id,name,user_count',
             ])
-            ->whereHas('balances')
-            ->orWhereHas('client', function (Builder $clientQuery) use ($request): void {
-                $this->applyV2ClientFilters($clientQuery, $request);
+            ->where(function ($query) use ($request) {
+                $query->whereHas('balances')
+                    ->orWhereHas('client', function (Builder $clientQuery) use ($request) {
+                        $this->applyV2ClientFilters($clientQuery, $request);
+                    });
+            })
+            ->whereHas('client', function (Builder $clientQuery) {
+                $clientQuery->where('partner_id', Auth::id());
             });
 
+        // Поиск
         $search = trim((string) $request->query('search', ''));
         if ($search !== '') {
             $this->applyV2OrganizationSearch($organizationsQuery, $search);
         }
 
         $organizations = $organizationsQuery
-            ->whereHas('client', function (Builder $clientQuery)  {
-                return $clientQuery->where('partner_id', Auth::id());
-            })
             ->orderByDesc('id')
             ->get();
 
         $this->hydrateRealBalances($organizations);
-
-
 
         return response()->json([
             'organizations' => $organizations,
