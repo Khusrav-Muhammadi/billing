@@ -19,6 +19,7 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\TariffController;
 use App\Http\Controllers\V2\OrganizationV2Controller;
 use App\Http\Controllers\V2\SubdomainController;
+use App\Http\Controllers\PaymentVerificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,16 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('auth.login');
+});
+
+Route::prefix('payment/verification')->group(function () {
+    Route::get('{provider}/{payment}', [PaymentVerificationController::class, 'show'])
+        ->middleware('signed')
+        ->name('payment.verification.show');
+
+    Route::post('{provider}/{payment}/go', [PaymentVerificationController::class, 'go'])
+        ->middleware('signed')
+        ->name('payment.verification.go');
 });
 
 // Preview page for PDF generation (accessed by Browsershot)

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 class ClientPaymentController extends Controller
 {
@@ -193,17 +194,41 @@ class ClientPaymentController extends Controller
             if ($data['payment_type'] == 'alif') {
                 $checkoutUrl = $this->generateAlifPayLink($payment);
                 $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
+
+                if ($commercialOffer) {
+                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), [
+                        'provider' => 'alif',
+                        'payment' => $payment->id,
+                    ]);
+
+                    return $request->expectsJson()
+                        ? response()->json(['redirect_url' => $verificationUrl])
+                        : redirect()->to($verificationUrl);
+                }
+
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $checkoutUrl])
-                    : redirect($checkoutUrl);
+                    : redirect()->to($checkoutUrl);
             }
 
             if ($data['payment_type'] == 'octo') {
                 $checkoutUrl = $this->generateOctobankPayLink($payment);
                 $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
+
+                if ($commercialOffer) {
+                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), [
+                        'provider' => 'octo',
+                        'payment' => $payment->id,
+                    ]);
+
+                    return $request->expectsJson()
+                        ? response()->json(['redirect_url' => $verificationUrl])
+                        : redirect()->to($verificationUrl);
+                }
+
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $checkoutUrl])
-                    : redirect($checkoutUrl);
+                    : redirect()->to($checkoutUrl);
             }
 
             return $request->expectsJson()
