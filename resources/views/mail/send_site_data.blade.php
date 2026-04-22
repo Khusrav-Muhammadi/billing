@@ -59,11 +59,14 @@
             <p><strong>Ссылка:</strong> <a href="https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}">https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}</a></p>
             <p><strong>Логин:</strong> admin</p>
             <p><strong>Пароль:</strong> {{ $password }}</p>
+            @if($client->organizations()?->first()?->order_number)
+            <p><strong>ID:</strong> {{ $client->organizations()->first()->order_number }}</p>
+            @endif
         </div>
 
-        @if($client->partner)
-            <p>Если у вас возникнут вопросы или потребуется помощь, вы можете обратиться к нашему региональному партнёру — {{ $client->partner->name }}.</p>
-        @endif
+{{--        @if($client->partner)--}}
+{{--            <p>Если у вас возникнут вопросы или потребуется помощь, вы можете обратиться к нашему региональному партнёру — {{ $client->partner->name }}.</p>--}}
+{{--        @endif--}}
 
         <p>С <strong>shamCRM</strong> ваш бизнес работает быстрее, а контроль становится проще. Мы рядом, чтобы вы сосредоточились на главном — развитии!</p>
     </div>
