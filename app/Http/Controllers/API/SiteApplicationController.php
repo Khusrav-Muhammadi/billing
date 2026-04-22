@@ -80,7 +80,7 @@ class SiteApplicationController extends Controller
                 $client->email,
                 $client->name,
                 $client->country?->name,
-                $client->partner?->name
+                $client->partner?->id
             );
 
         } elseif ($validated['request_type'] === 'individual') {
