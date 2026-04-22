@@ -19,6 +19,8 @@ class ClientPaymentRequest extends FormRequest
             'organization_id' => ['required', 'integer', 'exists:organizations,id'],
             'partner_id' => ['nullable', 'integer', 'exists:users,id'],
             'commercial_offer_id' => ['nullable', 'integer', 'exists:commercial_offers,id'],
+            // Backward-compatible alias used by partners API payloads.
+            'offer_id' => ['nullable', 'integer', 'exists:commercial_offers,id'],
             'name' => ['required'],
             'phone' => [''],
             'email' => [''],

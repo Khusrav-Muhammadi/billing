@@ -47,7 +47,9 @@ class ClientPaymentController extends Controller
     {
         $data = $request->validated();
         $commercialOffer = null;
-        $commercialOfferId = isset($data['commercial_offer_id']) ? (int) $data['commercial_offer_id'] : null;
+        $commercialOfferId = isset($data['commercial_offer_id'])
+            ? (int) $data['commercial_offer_id']
+            : (isset($data['offer_id']) ? (int) $data['offer_id'] : null);
 
         try {
             if ($commercialOfferId) {

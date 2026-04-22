@@ -30,6 +30,7 @@
                     <th>Статус</th>
                     <th>Способы оплаты</th>
                     <th>Адрес</th>
+                    <th>Ссылка</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -46,6 +47,9 @@
                             'cash' => 'Наличка',
                         ];
                     @endphp
+                    @php
+                        $partnerLink = 'https://shamcrm.com?partner_id=' . (string) $partner->id;
+                    @endphp
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $partner->name }}</td>
@@ -58,6 +62,9 @@
                             @endforeach
                         </td>
                         <td>{{ $partner->address }}</td>
+                        <td class="text-break" style="max-width: 260px;">
+                            <a href="{{ $partnerLink }}" target="_blank" rel="noopener">{{ $partnerLink }}</a>
+                        </td>
                         <td>
 
                             <a href="{{ route('partner.edit', $partner->id) }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
