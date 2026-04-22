@@ -103,7 +103,9 @@
             <div class="invoice-block">
                 <div><strong>Условия:</strong></div>
                 <ul class="invoice-list">
-                    <li>Оплата данного счета означает согласие с условиями поставки услуги.</li>
+                    <li>Оплата данного счёта означает согласие с условиями предоставления услуг. Подтверждаю, что клиент ознакомлен с услугами SHAMCRM и
+                        <a href="https://shamcrm.com/agreement" style="color: blue">условиями оферты</a>.
+                        При отказе от услуги денежные средства не возвращаются.</li>
                     <li>В назначении платежа обязательно указать ID организации: {{ $organizationOrderNumber !== '' ? $organizationOrderNumber : '—' }}.</li>
                 </ul>
             </div>
