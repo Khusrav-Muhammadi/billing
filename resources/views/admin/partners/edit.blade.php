@@ -118,6 +118,14 @@
                 @enderror
             </div>
 
+            <div class="form-group">
+                <label for="sham_link">Ссылка партнера <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('sham_link') is-invalid @enderror" name="sham_link" value="{{ $partner->sham_link }}" required>
+                @error('sham_link')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+            </div>
+
             <button type="submit" class="btn btn-primary mr-2">Изменить</button>
         </form>
     </div>

@@ -35,6 +35,7 @@ class UpdateRequest extends FormRequest
                     $query->whereRaw('UPPER(symbol_code) IN (?, ?)', ['USD', 'UZS']);
                 }),
             ],
+            'sham_link' => ['nullable']
         ];
     }
 }

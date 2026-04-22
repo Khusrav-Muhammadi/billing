@@ -35,6 +35,7 @@ class User extends Authenticatable
         'payment_methods',
         'account_id',
         'currency_id',
+        'sham_link'
     ];
 
     /**
