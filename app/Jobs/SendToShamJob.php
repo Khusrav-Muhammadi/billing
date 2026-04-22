@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Client;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,45 +24,28 @@ class SendToShamJob implements ShouldQueue
         public string $email,
         public string $name,
         public ?string $region = null,
-        public ?string $partner = null
+        public ?int $partnerId = null
     ) {}
 
     public function handle(): void
     {
-        if ($this->region == 'Узбекистан')
-        {
-            $response = Http::withHeaders([
-                'Accept' => 'application/json',
-            ])->post('https://sham-back.shamcrm.com/api/messengerSettings/site/webhook', [
-                'phone' => $this->phone,
-                'tarif' => "VIP",
-                'email' => $this->email,
-                'name_company' => $this->name,
-                'region' => $this->region ?? '',
-                'partner' => $this->partner ?? '',
-            ]);
+        $partner = User::find($this->partnerId);
 
-            if (!$response->successful()) {
-                Log::error('Ошибка при отправке в Sham API', [
-                    'phone' => $this->phone,
-                    'response' => $response->body(),
-                ]);
+        $defaultLink = $this->region === 'Узбекистан'
+            ? 'https://sham-back.shamcrm.com'
+            : 'https://fingroupcrm-back.shamcrm.com';
 
-                throw new \Exception('Ошибка при отправке в Sham API');
-            }
-
-            return;
-        }
+        $shamLink = $partner?->sham_link ?? $defaultLink;
 
         $response = Http::withHeaders([
             'Accept' => 'application/json',
-        ])->post('https://fingroupcrm-back.shamcrm.com/api/messengerSettings/site/webhook', [
+        ])->post($shamLink . '/api/messengerSettings/site/webhook', [
             'phone' => $this->phone,
-            'tarif' => "VIP",
+            'tarif' => 'VIP',
             'email' => $this->email,
             'name_company' => $this->name,
             'region' => $this->region ?? '',
-            'partner' => $this->partner ?? '',
+            'partner' => $partner?->name ?? '',
         ]);
 
         if (!$response->successful()) {
