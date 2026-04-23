@@ -6,6 +6,7 @@ use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
 use App\Services\ClientBalances\ClientBalanceRegistryService;
 use App\Services\ClientPaymentRegistries\ClientPaymentRegistryService;
 use App\Services\CommercialOffers\CommercialOfferProvisioningService;
+use App\Services\ConnectedClientServices\ConnectedClientServicesExtraServiceRegistryService;
 use App\Services\ConnectedClientServices\ConnectedClientServicesRegistryService;
 use App\Services\DiscountExpenses\DiscountExpensesRegistryService;
 use App\Services\PartnerExpenses\PartnerExpensesRegistryService;
@@ -13,7 +14,7 @@ use App\Services\PartnerExpenses\PartnerExpensesRegistryService;
 class CommercialOfferExtraServicesPaidStatusListener
 {
     public function __construct(
-        private ConnectedClientServicesRegistryService $connectedClientServicesRegistryService,
+        private ConnectedClientServicesExtraServiceRegistryService $connectedClientServicesRegistryService,
         private DiscountExpensesRegistryService $discountExpensesRegistryService,
         private PartnerExpensesRegistryService $partnerExpensesRegistryService,
         private ClientPaymentRegistryService $clientPaymentRegistryService,
