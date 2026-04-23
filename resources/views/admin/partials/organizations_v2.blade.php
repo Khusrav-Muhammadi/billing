@@ -5,6 +5,7 @@
         <th>ID</th>
         <th>Имя</th>
         <th>Телефон</th>
+        <th>Страна</th>
         <th>Дата создания</th>
         <th>Почта</th>
         <th>Тариф</th>
@@ -27,6 +28,7 @@
             <td>{{ $organization->order_number ?? '-' }}</td>
             <td>{{ $organization->name }}</td>
             <td>{{ $organization->phone }}</td>
+            <td>{{ $organization->client?->country?->name }}</td>
             <td>{{ optional($organization->created_at)->format('d.m.Y H:i') }}</td>
             <td>{{ $organization->client?->email }}</td>
             <td>{{ $organization->client?->tariffPrice?->tariff->name }}</td>
