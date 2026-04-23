@@ -10,7 +10,7 @@ use App\Support\RegistryDateTimeResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-class ConnectedClientServicesRegistryService
+class ConnectedClientServicesExtraServiceRegistryService
 {
     public function register(CommercialOffer $offer, CommercialOfferStatus $status): void
     {
@@ -33,24 +33,7 @@ class ConnectedClientServicesRegistryService
         $hasDeactivatedAtColumn = Schema::hasColumn('connected_client_services', 'deactivated_at');
 
         DB::transaction(function () use ($offer, $status, $statusDateTime, $hasDeactivatedAtColumn) {
-            $deactivateUpdate = [
-                'status' => false,
-                'updated_at' => now(),
-            ];
-            if ($hasDeactivatedAtColumn) {
-                $deactivateUpdate['deactivated_at'] = $statusDateTime;
-            }
 
-            ConnectedClientServices::query()
-                ->where('commercial_offer_id', $offer->id)
-                ->where('status', true)
-                ->update($deactivateUpdate);
-
-            ConnectedClientServices::query()
-                ->where('client_id', (int)$offer->organization_id)
-                ->where('status', true)
-                ->where('commercial_offer_id', '!=', (int)$offer->id)
-                ->update($deactivateUpdate);
 
             foreach ($offer->items as $item) {
 
