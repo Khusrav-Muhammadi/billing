@@ -13,8 +13,6 @@ class ChangeOrderNumber extends Command
     public function handle(): void
     {
         $organizations = Organization::query()
-            ->whereNull('order_number')
-            ->orWhere('order_number', '')
             ->get();
 
         $this->info("Found {$organizations->count()} organizations to update.");
