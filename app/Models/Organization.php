@@ -29,14 +29,11 @@ class Organization extends Model
             }
 
             DB::transaction(function () use ($organization): void {
-                $currentMax = (int) (self::query()
-                    ->whereNotNull('order_number')
-                    ->where('order_number', '!=', '')
-                    ->lockForUpdate()
-                    ->max('order_number') ?? 0);
+                $timestamp = now()->format('YmdHis');
+                $random = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
 
                 $organization->forceFill([
-                    'order_number' => self::formatOrderNumber($currentMax + 1),
+                    'order_number' => $timestamp . $random,
                 ])->saveQuietly();
             });
         });

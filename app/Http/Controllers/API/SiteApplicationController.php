@@ -3,21 +3,14 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\EmailExistingClientInfoJob;
 use App\Jobs\NewErrorMessageJob;
 use App\Jobs\NewSiteRequestJob;
-use App\Jobs\SendDemoWelcomeEmailJob;
 use App\Jobs\SendToShamJob;
 use App\Jobs\SubDomainJob;
 use App\Models\Client;
 use App\Models\Country;
 use App\Models\SiteApplications;
-use App\Models\Tariff;
-use App\Models\Transaction;
 use App\Models\User;
-use App\Repositories\ClientRepository;
-use App\Repositories\Contracts\ClientRepositoryInterface;
-use App\Repositories\OrganizationRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
