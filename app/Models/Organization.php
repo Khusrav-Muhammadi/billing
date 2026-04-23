@@ -29,7 +29,7 @@ class Organization extends Model
             }
 
             DB::transaction(function () use ($organization): void {
-                $timestamp = now()->format('YmdHis');
+                $timestamp = now()->timestamp;
                 $random = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
 
                 $organization->forceFill([
