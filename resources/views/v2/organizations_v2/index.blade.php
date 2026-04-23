@@ -32,6 +32,14 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <select name="country" class="form-control">
+                    <option value="">Страна</option>
+                    @foreach($countries as $country)
+                        <option value="{{ $country->id }}">{{ $country->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
                 <select name="partner" class="form-control">
                     <option value="">Партнер</option>
                     @foreach($partners as $partner)
