@@ -21,7 +21,7 @@ class ChangeOrderNumber extends Command
         $bar->start();
 
         foreach ($organizations as $organization) {
-            $timestamp = $organization->created_at->format('YmdHis');
+            $timestamp = $organization->created_at->timestamp;
             $random = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
 
             $organization->forceFill([
