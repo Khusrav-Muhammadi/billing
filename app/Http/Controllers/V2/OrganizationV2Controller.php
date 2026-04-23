@@ -10,6 +10,7 @@ use App\Http\Requests\Organization\UpdateRequest;
 use App\Models\Client;
 use App\Models\ClientBalance;
 use App\Models\ConnectedClientServices;
+use App\Models\Country;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\OrganizationConnectionStatus;
@@ -32,12 +33,13 @@ class OrganizationV2Controller extends Controller
 
         $partners = User::query()->where('role', 'partner')->get();
         $tariffs = Tariff::all();
+        $countries = Country::all();
 
         if ($request->ajax()) {
             return view('admin.partials.organizations_v2', compact('organizations'))->render();
         }
 
-        return view('v2.organizations_v2.index', compact('organizations', 'partners', 'tariffs'));
+        return view('v2.organizations_v2.index', compact('organizations', 'partners', 'tariffs', 'countries'));
     }
 
     public function demo(Request $request)
