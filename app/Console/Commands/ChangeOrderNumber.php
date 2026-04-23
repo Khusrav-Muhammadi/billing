@@ -7,11 +7,8 @@ use Illuminate\Console\Command;
 
 class ChangeOrderNumber extends Command
 {
-    protected $signature = 'organizations:backfill-order-number
-                            {--rewrite : Полностью пересчитать order_number с 000000001}
-                            {--chunk=500 : Размер чанка для обработки}';
-
-    protected $description = 'Заполняет organizations.order_number в формате 000000001 с инкрементом';
+    protected $signature = 'organizations:update-order-numbers';
+    protected $description = 'Update order_number for existing organizations';
 
     public function handle(): void
     {
