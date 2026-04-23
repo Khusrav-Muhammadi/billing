@@ -76,6 +76,7 @@ class CreateOrganizationJob implements ShouldQueue
                 data:    [
                     'client'   => $this->client,
                     'password' => $this->password,
+                    'id' => $this->organization->order_number
                 ]
             );
 
