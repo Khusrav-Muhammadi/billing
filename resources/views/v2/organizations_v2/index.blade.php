@@ -32,7 +32,7 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <select name="tariff" class="form-control">
+                <select name="country" class="form-control">
                     <option value="">Страна</option>
                     @foreach($countries as $country)
                         <option value="{{ $country->id }}">{{ $country->name }}</option>
