@@ -52,39 +52,60 @@
             box-shadow: 0 20px 45px rgba(41, 168, 235, 0.25);
         }
 
-        .copy-row {
+        /* Поле с кнопкой внутри */
+        .field-wrap {
+            position: relative;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 10px;
         }
 
-        .copy-value {
+        .field-value {
             flex: 1;
-            min-width: 0;
+            background: rgba(255,255,255,0.55);
+            border: 1px solid rgba(124,131,255,0.25);
+            border-radius: 12px;
+            padding: 10px 110px 10px 14px; /* правый отступ под кнопку */
+            font-size: 15px;
+            font-weight: 500;
+            color: #1B1F3B;
+            font-family: 'Inter', system-ui, sans-serif;
+            letter-spacing: 0.2px;
+            word-break: break-all;
+            box-sizing: border-box;
+            min-height: 42px;
+            line-height: 1.4;
+        }
+
+        .field-value a {
+            color: #7C83FF;
+            text-decoration: none;
         }
 
         .copy-btn {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 7px 14px;
-            border-radius: 10px;
+            padding: 6px 12px;
+            border-radius: 8px;
             border: 1.5px solid rgba(124, 131, 255, 0.35);
-            background: rgba(124, 131, 255, 0.08);
+            background: rgba(255,255,255,0.85);
             color: #7C83FF;
             font-size: 13px;
             font-weight: 600;
             font-family: 'Inter', system-ui, sans-serif;
             cursor: pointer;
             white-space: nowrap;
-            transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
-            flex-shrink: 0;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
             outline: none;
+            flex-shrink: 0;
         }
 
         .copy-btn:hover {
-            background: rgba(124, 131, 255, 0.18);
+            background: rgba(124, 131, 255, 0.12);
             border-color: #7C83FF;
         }
 
@@ -172,16 +193,15 @@
 
                             <!-- Ссылка -->
                             <tr>
-                                <td style="padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
-                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">🔗 Ссылка</span>
-                                    <div class="copy-row">
-                                        <span class="copy-value">
-                                            <a href="https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}"
-                                               style="color: #7C83FF; font-size: 15px; word-break: break-all; text-decoration: none;">
+                                <td style="padding: 0 0 18px; border-bottom: 1px solid rgba(0,0,0,0.08);">
+                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">🔗 Ссылка</span>
+                                    <div class="field-wrap">
+                                        <div class="field-value">
+                                            <a href="https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}">
                                                 https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}
                                             </a>
-                                        </span>
-                                        <button class="copy-btn" onclick="copyText('https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}', this)">
+                                        </div>
+                                        <button class="copy-btn" onclick="copyText('https://{{ $client->sub_domain }}.{{ env(\'APP_DOMAIN\') }}', this)">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -194,10 +214,10 @@
 
                             <!-- Логин -->
                             <tr>
-                                <td style="padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
-                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">👤 Логин</span>
-                                    <div class="copy-row">
-                                        <span class="copy-value" style="font-size: 15.5px; font-weight: 500; color: #1B1F3B;">admin</span>
+                                <td style="padding: 18px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
+                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">👤 Логин</span>
+                                    <div class="field-wrap">
+                                        <div class="field-value">admin</div>
                                         <button class="copy-btn" onclick="copyText('admin', this)">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -211,10 +231,10 @@
 
                             <!-- Пароль -->
                             <tr>
-                                <td style="padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
-                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">🔑 Пароль</span>
-                                    <div class="copy-row">
-                                        <span class="copy-value" style="font-size: 15.5px; font-weight: 500; color: #1B1F3B; letter-spacing: 1px;">{{ $password }}</span>
+                                <td style="padding: 18px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
+                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">🔑 Пароль</span>
+                                    <div class="field-wrap">
+                                        <div class="field-value" style="letter-spacing: 1px;">{{ $password }}</div>
                                         <button class="copy-btn" onclick="copyText('{{ $password }}', this)">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -228,10 +248,10 @@
 
                             <!-- ID -->
                             <tr>
-                                <td style="padding: 14px 0;">
-                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">🪪 ID</span>
-                                    <div class="copy-row">
-                                        <span class="copy-value" style="font-size: 15.5px; font-weight: 500; color: #1B1F3B;">{{ $id }}</span>
+                                <td style="padding: 18px 0 0;">
+                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">🪪 ID</span>
+                                    <div class="field-wrap">
+                                        <div class="field-value">{{ $id }}</div>
                                         <button class="copy-btn" onclick="copyText('{{ $id }}', this)">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
