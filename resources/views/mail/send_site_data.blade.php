@@ -52,7 +52,6 @@
             box-shadow: 0 20px 45px rgba(41, 168, 235, 0.25);
         }
 
-        /* Поле с кнопкой внутри */
         .field-wrap {
             position: relative;
             display: flex;
@@ -64,7 +63,7 @@
             background: rgba(255,255,255,0.55);
             border: 1px solid rgba(124,131,255,0.25);
             border-radius: 12px;
-            padding: 10px 110px 10px 14px; /* правый отступ под кнопку */
+            padding: 10px 110px 10px 14px;
             font-size: 15px;
             font-weight: 500;
             color: #1B1F3B;
@@ -122,7 +121,6 @@
             flex-shrink: 0;
         }
 
-        /* Toast */
         #toast {
             position: fixed;
             bottom: 28px;
@@ -149,6 +147,10 @@
     </style>
 </head>
 <body>
+
+@php
+    $siteUrl = 'https://' . $client->sub_domain . '.' . env('APP_DOMAIN');
+@endphp
 
 <div id="toast">✅ Скопировано!</div>
 
@@ -197,11 +199,9 @@
                                     <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">🔗 Ссылка</span>
                                     <div class="field-wrap">
                                         <div class="field-value">
-                                            <a href="https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}">
-                                                https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}
-                                            </a>
+                                            <a href="{{ $siteUrl }}">{{ $siteUrl }}</a>
                                         </div>
-                                        <button class="copy-btn" onclick="copyText('https://{{ $client->sub_domain }}.{{ env(\'APP_DOMAIN\') }}', this)">
+                                        <button class="copy-btn" onclick="copyText('{{ $siteUrl }}', this)">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
