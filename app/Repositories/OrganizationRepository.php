@@ -52,14 +52,6 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         return (float) ($price?->sum ?? 0);
     }
 
-    private function extractClientFilters(array $data): array
-    {
-        $clientFilters = $data;
-        unset($clientFilters['search']);
-
-        return $clientFilters;
-    }
-
     private function applyOrganizationSearch(Builder $query, ?string $search): void
     {
         $search = trim((string) $search);
@@ -93,37 +85,82 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         });
     }
 
-    private function organizationsQuery(array $clientIds, array $data): Builder
+    private function applyOrganizationFilters(Builder $query, array $data): void
     {
-        $query = Organization::query()
-            ->with(['client.tariffPrice.tariff', 'client.partner', 'client.country.currency'])
-            ->whereIn('client_id', $clientIds);
+        if (isset($data['clientType']) && $data['clientType'] !== '') {
+            $type = $data['clientType'];
+            $query->whereHas('client', function (Builder $q) use ($type) {
+                if ($type === 'Клиенты') {
+                    $q->where('nfr', false);
+                } elseif ($type === 'Партнеры') {
+                    $q->where('nfr', true);
+                }
+            });
+        }
 
-        $this->applyOrganizationSearch($query, $data['search'] ?? null);
+        if (isset($data['status']) && $data['status'] !== '') {
+            $status = (bool) $data['status'];
+            if ($status) {
+                $query->whereHas('latestConnection', function (Builder $q) {
+                    $q->where('status', 'connected');
+                });
+            } else {
+                $query->where(function (Builder $q) {
+                    $q->doesntHave('latestConnection')
+                      ->orWhereHas('latestConnection', function (Builder $q2) {
+                          $q2->where('status', '!=', 'connected');
+                      });
+                });
+            }
+        }
 
-        return $query->orderBy('id');
+        if (!empty($data['tariff'])) {
+            $tariffId = $data['tariff'];
+            $query->whereHas('connectedServices', function (Builder $q) use ($tariffId) {
+                $q->where('tariff_id', $tariffId);
+            });
+        }
+
+        if (!empty($data['country'])) {
+            $countryId = $data['country'];
+            $query->whereHas('client', function (Builder $q) use ($countryId) {
+                $q->where('country_id', $countryId);
+            });
+        }
+
+        if (!empty($data['partner'])) {
+            $partnerId = $data['partner'];
+            $query->whereHas('client', function (Builder $q) use ($partnerId) {
+                $q->where('partner_id', $partnerId);
+            });
+        }
     }
 
     public function index(array $data)
     {
-        $query = Client::query()->where(function (Builder $builder) {
-            $builder->whereHas('transactions')->orWhereHas('organizations', function ($query) {
-                return $query->whereHas('balances');
-            });
-        });
+        $query = Organization::query()
+            ->whereHas('connections')
+            ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection']);
 
-        $clientIds = $query->filter($this->extractClientFilters($data))->pluck('id')->toArray();
+        $this->applyOrganizationSearch($query, $data['search'] ?? null);
+        $this->applyOrganizationFilters($query, $data);
 
-        return $this->organizationsQuery($clientIds, $data)->get();
+        return $query->orderBy('id')->get();
     }
 
     public function demo(array $data)
     {
-        $query = Client::query()->doesntHave('transactions')->where('nfr', false);
+        $query = Organization::query()
+            ->whereHas('connections')
+            ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection'])
+            ->whereHas('client', function (Builder $clientQuery) {
+                $clientQuery->where('is_demo', true)->where('nfr', false);
+            });
 
-        $clientIds = $query->filter($this->extractClientFilters($data))->pluck('id')->toArray();
+        $this->applyOrganizationSearch($query, $data['search'] ?? null);
+        $this->applyOrganizationFilters($query, $data);
 
-        return $this->organizationsQuery($clientIds, $data)->get();
+        return $query->orderBy('id')->get();
     }
 
     public function store(Client $client, array $data)

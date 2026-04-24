@@ -30,16 +30,13 @@ class ConnectedClientServicesRegistryService
         }
 
         $statusDateTime = RegistryDateTimeResolver::resolve($offer, $status);
-        $hasDeactivatedAtColumn = Schema::hasColumn('connected_client_services', 'deactivated_at');
 
-        DB::transaction(function () use ($offer, $status, $statusDateTime, $hasDeactivatedAtColumn) {
+        DB::transaction(function () use ($offer, $status, $statusDateTime) {
             $deactivateUpdate = [
                 'status' => false,
                 'updated_at' => now(),
             ];
-            if ($hasDeactivatedAtColumn) {
-                $deactivateUpdate['deactivated_at'] = $statusDateTime;
-            }
+            $deactivateUpdate['deactivated_at'] = $statusDateTime;
 
             ConnectedClientServices::query()
                 ->where('commercial_offer_id', $offer->id)
@@ -62,7 +59,6 @@ class ConnectedClientServicesRegistryService
                     continue;
                 }
 
-                // Store monthly list totals (before period discounts) in registry to support day-closing daily accrual.
                 $discountPercent = round(max(0, (float)$item->discount_percent), 4);
                 $periodGrossTotal = round($this->reversePercent($periodNetTotal, $discountPercent), 4);
                 $monthlyTotal = round($periodGrossTotal / $months, 4);
@@ -73,8 +69,7 @@ class ConnectedClientServicesRegistryService
                 $offerCurrencyId = CurrencyResolver::idFromCode($offerCurrencyCode);
                 $payableCurrencyId = CurrencyResolver::idFromCode($payableCurrencyCode);
 
-                // `payable_amount` stores monthly total in payable currency (for reporting/controls),
-                // not per-unit price.
+
                 $payableAmount = $monthlyTotal;
                 if ($payableCurrencyCode !== $offerCurrencyCode) {
                     $rate = (float)($offer->conversion_rate ?? 0);
@@ -83,7 +78,7 @@ class ConnectedClientServicesRegistryService
                     }
                 }
 
-                ConnectedClientServices::query()->create([
+                $payload = [
                     'client_id' => $offer->organization_id,
                     'partner_id' => $offer->partner_id,
                     'tariff_id' => $item->tariff_id ?: $offer->tariff_id,
@@ -95,7 +90,9 @@ class ConnectedClientServicesRegistryService
                     'offer_currency_id' => $offerCurrencyId,
                     'payable_currency_id' => $payableCurrencyId,
                     'payable_amount' => $payableAmount,
-                ]);
+                    'quantity' => max(1, (int)round($quantity)),
+                ];
+                ConnectedClientServices::query()->create($payload);
             }
         });
     }

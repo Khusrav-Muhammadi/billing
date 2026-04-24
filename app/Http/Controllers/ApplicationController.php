@@ -21,6 +21,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
@@ -513,25 +514,25 @@ class ApplicationController extends Controller
         }
 
         $offer = $status->offer;
-        
+
         if ((string)$status->status === 'paid') {
             $oldDate = \App\Support\RegistryDateTimeResolver::resolve($offer, $status);
-            
+
             \App\Models\ClientPaymentRegistry::query()->where('commercial_offer_id', $offer->id)->delete();
             \App\Models\ConnectedClientServices::query()->where('commercial_offer_id', $offer->id)->delete();
             \App\Models\OrganizationConnectionStatus::query()->where('commercial_offer_id', $offer->id)->delete();
-            
+
             \App\Models\ClientBalance::query()
                 ->where('organization_id', $offer->organization_id)
                 ->where('type', 'income')
                 ->where('date', $oldDate)
                 ->delete();
-                
+
             \App\Models\PartnerExpense::query()
                 ->where('client_id', $offer->organization_id)
                 ->where('date', $oldDate)
                 ->delete();
-                
+
             \App\Models\DiscountExpense::query()
                 ->where('client_id', $offer->organization_id)
                 ->where('date', $oldDate)
@@ -546,7 +547,7 @@ class ApplicationController extends Controller
             'payment_order_number' => $paymentOrderNumber,
             'author_id' => \Illuminate\Support\Facades\Auth::id(),
         ]);
-        
+
         $offer->update(['status' => $validated['status']]);
 
         if ((string)$validated['status'] === 'paid') {
@@ -678,20 +679,23 @@ class ApplicationController extends Controller
 
     public function getConnectionContext(Organization $organization): JsonResponse
     {
+        $columns = [
+            'id',
+            'partner_id',
+            'tariff_id',
+            'commercial_offer_id',
+            'date',
+            'quantity'
+        ];
+
+
         $rows = ConnectedClientServices::query()
             ->where('client_id', $organization->id)
             ->where('status', true)
             ->whereNotNull('date')
-            ->whereDate('date', '<=', now()->toDateString())
             ->orderByDesc('date')
             ->orderByDesc('id')
-            ->get([
-                'id',
-                'partner_id',
-                'tariff_id',
-                'commercial_offer_id',
-                'date',
-            ]);
+            ->get($columns);
 
         if ($rows->isEmpty()) {
             return response()->json([
@@ -747,17 +751,14 @@ class ApplicationController extends Controller
         }
 
         $selectedTariffId = (int)$connectionRow->tariff_id;
-        $quantitiesByOfferTariff = $this->buildConnectedServiceQuantitiesMap($rows);
         $selectedServices = $this->buildSelectedServicesFromConnectedRows(
             $selectedTariffId,
             $rows,
-            $tariffsById->all(),
-            $quantitiesByOfferTariff
+            $tariffsById->all()
         );
         $extraUsers = $this->resolveExtraUsersFromConnectedRows(
             $rows,
-            $tariffsById->all(),
-            $quantitiesByOfferTariff
+            $tariffsById->all()
         );
 
         $partnerId = (int)($organization->client?->partner_id ?? 0);
@@ -792,76 +793,24 @@ class ApplicationController extends Controller
         ]);
     }
 
-    private function buildConnectedServiceQuantitiesMap($rows): array
+    private function resolveConnectedRowQuantity($row): int
     {
-        $offerIds = collect($rows)
-            ->pluck('commercial_offer_id')
-            ->filter()
-            ->map(fn($value) => (int)$value)
-            ->unique()
-            ->values()
-            ->all();
-
-        if (empty($offerIds)) {
-            return [];
+        $qty = $row->quantity ?? null;
+        if ($qty === null) {
+            return 1;
         }
 
-        $items = CommercialOfferItem::query()
-            ->whereIn('commercial_offer_id', $offerIds)
-            ->get(['commercial_offer_id', 'tariff_id', 'quantity']);
-
-        $map = [];
-        foreach ($items as $item) {
-            $offerId = (int)$item->commercial_offer_id;
-            $tariffId = (int)$item->tariff_id;
-            $key = $offerId . ':' . $tariffId;
-            $map[$key] = ($map[$key] ?? 0.0) + (float)$item->quantity;
-        }
-
-        return $map;
-    }
-
-    private function resolveConnectedRowQuantity($row, array $quantitiesByOfferTariff): int
-    {
-        $offerId = (int)($row->commercial_offer_id ?? 0);
-        $tariffId = (int)($row->tariff_id ?? 0);
-
-        if ($offerId > 0 && $tariffId > 0) {
-            $key = $offerId . ':' . $tariffId;
-            if (array_key_exists($key, $quantitiesByOfferTariff)) {
-                return max(0, (int)round((float)$quantitiesByOfferTariff[$key]));
-            }
-        }
-
-        return 1;
+        return max(1, (int)round((float)$qty));
     }
 
     private function buildSelectedServicesFromConnectedRows(
         ?int  $selectedTariffId,
               $rows,
-        array $tariffsById,
-        array $quantitiesByOfferTariff
+        array $tariffsById
     ): array
     {
         $selectedServices = [];
         $processedCountableKeys = [];
-
-        if ($selectedTariffId) {
-            $selectedTariff = Tariff::query()
-                ->with('includedServices:id,can_increase')
-                ->find($selectedTariffId);
-
-            if ($selectedTariff) {
-                foreach ($selectedTariff->includedServices as $includedService) {
-                    $serviceKey = 'service-' . (int)$includedService->id;
-                    $includedChannels = max(0, (int)($includedService->pivot?->quantity ?? 1));
-                    $selectedServices[$serviceKey] = [
-                        'enabled' => true,
-                        'channels' => $includedChannels,
-                    ];
-                }
-            }
-        }
 
         foreach ($rows as $row) {
             $tariff = $tariffsById[(int)$row->tariff_id] ?? null;
@@ -874,7 +823,7 @@ class ApplicationController extends Controller
             }
 
             $serviceKey = 'service-' . (int)$tariff->id;
-            $quantity = $this->resolveConnectedRowQuantity($row, $quantitiesByOfferTariff);
+            $quantity = $this->resolveConnectedRowQuantity($row);
             if ($quantity <= 0) {
                 $quantity = 1;
             }
@@ -904,7 +853,7 @@ class ApplicationController extends Controller
         return $this->normalizeSelectedServices($selectedServices);
     }
 
-    private function resolveExtraUsersFromConnectedRows($rows, array $tariffsById, array $quantitiesByOfferTariff): int
+    private function resolveExtraUsersFromConnectedRows($rows, array $tariffsById): int
     {
         $extraUsers = 0;
         $processedCountableKeys = [];
@@ -921,7 +870,7 @@ class ApplicationController extends Controller
             }
             $processedCountableKeys[$countableKey] = true;
 
-            $extraUsers += $this->resolveConnectedRowQuantity($row, $quantitiesByOfferTariff);
+            $extraUsers += $this->resolveConnectedRowQuantity($row);
         }
 
         return max(0, (int)$extraUsers);

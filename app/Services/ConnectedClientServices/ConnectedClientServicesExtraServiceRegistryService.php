@@ -31,8 +31,9 @@ class ConnectedClientServicesExtraServiceRegistryService
 
         $statusDateTime = RegistryDateTimeResolver::resolve($offer, $status);
         $hasDeactivatedAtColumn = Schema::hasColumn('connected_client_services', 'deactivated_at');
+        $hasQuantityColumn = Schema::hasColumn('connected_client_services', 'quantity');
 
-        DB::transaction(function () use ($offer, $status, $statusDateTime, $hasDeactivatedAtColumn) {
+        DB::transaction(function () use ($offer, $status, $statusDateTime, $hasDeactivatedAtColumn, $hasQuantityColumn) {
 
 
             foreach ($offer->items as $item) {
@@ -66,7 +67,7 @@ class ConnectedClientServicesExtraServiceRegistryService
                     }
                 }
 
-                ConnectedClientServices::query()->create([
+                $payload = [
                     'client_id' => $offer->organization_id,
                     'partner_id' => $offer->partner_id,
                     'tariff_id' => $item->tariff_id ?: $offer->tariff_id,
@@ -78,7 +79,12 @@ class ConnectedClientServicesExtraServiceRegistryService
                     'offer_currency_id' => $offerCurrencyId,
                     'payable_currency_id' => $payableCurrencyId,
                     'payable_amount' => $payableAmount,
-                ]);
+                ];
+                if ($hasQuantityColumn) {
+                    $payload['quantity'] = max(1, (int)round($quantity));
+                }
+
+                ConnectedClientServices::query()->create($payload);
             }
         });
     }

@@ -14,6 +14,7 @@ class ConnectedClientServices extends Model
         'client_id',
         'partner_id',
         'tariff_id',
+        'quantity',
         'commercial_offer_id',
         'account_id',
         'service_total_amount',
@@ -33,6 +34,7 @@ class ConnectedClientServices extends Model
         'payable_amount' => 'decimal:4',
         'offer_currency_id' => 'integer',
         'payable_currency_id' => 'integer',
+        'quantity' => 'integer',
     ];
 
     public function tariff(): BelongsTo

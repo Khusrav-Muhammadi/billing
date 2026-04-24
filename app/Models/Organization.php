@@ -73,4 +73,43 @@ class Organization extends Model
     {
         return $this->hasMany(OrganizationConnectionStatus::class, 'organization_id');
     }
+
+    public function connectedServices()
+    {
+        return $this->hasMany(ConnectedClientServices::class, 'client_id', 'id');
+    }
+
+    public function latestConnection()
+    {
+        return $this->hasOne(OrganizationConnectionStatus::class, 'organization_id')->latestOfMany('status_date');
+    }
+
+    public function getAppTariffAttribute()
+    {
+        $service = $this->connectedServices->first(function ($service) {
+            return $service->tariff && $service->tariff->is_tariff;
+        });
+
+        return $service ? $service->tariff : null;
+    }
+
+    public function getTotalUserCountAttribute()
+    {
+        $count = 0;
+
+        $mainTariff = $this->appTariff;
+        if ($mainTariff) {
+            $count += $mainTariff->user_count;
+        }
+
+        $extraUsers = $this->connectedServices->filter(function ($service) {
+            return $service->tariff && $service->tariff->is_extra_user;
+        });
+
+        foreach ($extraUsers as $extra) {
+            $count += ($extra->quantity ?? 1) * ($extra->tariff->user_count ?? 1);
+        }
+
+        return $count;
+    }
 }

@@ -45,7 +45,7 @@ class SendToShamJob implements ShouldQueue
             'email' => $this->email,
             'name_company' => $this->name,
             'region' => $this->region ?? '',
-            'partner' => $partner?->name ?? '',
+            'partner' => $partner?->name ?? ''  ,
         ]);
 
         if (!$response->successful()) {

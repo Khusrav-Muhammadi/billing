@@ -31,8 +31,8 @@
             <td>{{ $organization->client?->country?->name }}</td>
             <td>{{ optional($organization->created_at)->format('d.m.Y H:i') }}</td>
             <td>{{ $organization->client?->email }}</td>
-            <td>{{ $organization->client?->tariffPrice?->tariff->name }}</td>
-            <td>{{ $organization->client?->tariffPrice?->tariff?->user_count ?? '-' }}</td>
+            <td>{{ $organization->appTariff?->name ?? '-' }}</td>
+            <td>{{ $organization->total_user_count }}</td>
             <td>
                 {{ number_format((float) ($organization->real_balance ?? 0), 2, '.', ' ') }}
                 {{ $organization->client?->country?->currency?->symbol_code ?? '' }}
@@ -40,7 +40,7 @@
             <td>{{ $organization->client?->validate_date }}</td>
             <td>{{ $organization->client?->last_activity }}</td>
             <td class="text-center">
-                @if($organization->client?->is_active)
+                @if(optional($organization->latestConnection)->status === 'connected')
                     <p style="color: #00bb00">Активный</p>
                 @else
                     <p style="color: red">Неактивный</p>

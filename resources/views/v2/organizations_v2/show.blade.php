@@ -102,6 +102,7 @@
                     <tr>
                         <th>№</th>
                         <th>Услуга</th>
+                        <th>Количество</th>
                         <th>Валюта услуги</th>
                         <th>Дата подключения</th>
                         <th>Дата отключения</th>
@@ -114,6 +115,7 @@
                         <tr>
                             <td>{{ $loop->iteration }}</td>
                             <td>{{ $service->tariff?->name ?? ('Услуга #' . $service->tariff_id) }}</td>
+                            <td>{{ $service->quantity ?? 1 }}</td>
                             <td>
                                 {{ $service->offerCurrency?->symbol_code ?? $service->offerCurrency?->name ?? ($service->offer_currency_id ? ('ID: ' . $service->offer_currency_id) : '-') }}
                             </td>

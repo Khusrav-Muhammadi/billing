@@ -460,12 +460,15 @@ class CPGenerator {
             if (service.hasChannels) {
                 if (isIncluded) {
                     const effectiveIncludedChannels = this.getIncludedChannels(this.state.selectedTariff, serviceKey);
-                    nextSelectedServices[serviceKey] = { enabled: true, channels: effectiveIncludedChannels };
+                    const baselineChannels = Math.max(previousChannels, effectiveIncludedChannels);
+                    nextSelectedServices[serviceKey] = { enabled: true, channels: baselineChannels };
                     return;
                 }
 
                 if (previousChannels > 0 || previouslyEnabled) {
-                    nextSelectedServices[serviceKey] = { enabled: true, channels: 0 };
+                    // Keep current total channels so the UI reflects what's already connected.
+                    // Payment calculation in connection-extra-services mode will charge only for increases.
+                    nextSelectedServices[serviceKey] = { enabled: true, channels: previousChannels };
                     return;
                 }
 
@@ -511,7 +514,9 @@ class CPGenerator {
                 const baseIncludedChannels = isIncluded
                     ? Math.max(0, this.getTariffIncludedChannelsBase(this.state.selectedTariff, serviceKey))
                     : 0;
-                const channels = Math.max(previousChannels, baseIncludedChannels);
+                const channels = isIncluded
+                    ? baseIncludedChannels + previousChannels
+                    : previousChannels;
                 nextSelectedServices[serviceKey] = {
                     enabled: previousEnabled || isIncluded || channels > 0,
                     channels,
@@ -1751,15 +1756,41 @@ class CPGenerator {
 
             if (isIncluded && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(tariffKey, key);
-                const additionalChannels = Math.max(0, channels - includedChannels);
+                let baselineChannels = includedChannels;
+                if (this.isConnectionExtraServicesMode()) {
+                    const previousState = this.getPreviousServiceState(key);
+                    const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                    baselineChannels = Math.max(baselineChannels, previousChannels);
+                }
+                const additionalChannels = Math.max(0, channels - baselineChannels);
                 if (additionalChannels <= 0) return;
                 monthlyPrice = basePrice * additionalChannels;
                 displayChannels = additionalChannels;
             } else if (isIncluded) {
                 return;
             } else {
-                if (service.hasChannels && channels <= 0) return;
-                monthlyPrice = basePrice * channels;
+                if (service.hasChannels) {
+                    if (channels <= 0) return;
+
+                    // For already-connected countable services in connection-extra-services mode,
+                    // charge only for increases above previous channels.
+                    if (this.isConnectionExtraServicesMode()) {
+                        const previousState = this.getPreviousServiceState(key);
+                        const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                        if (previousChannels > 0) {
+                            const additionalChannels = Math.max(0, channels - previousChannels);
+                            if (additionalChannels <= 0) return;
+                            monthlyPrice = basePrice * additionalChannels;
+                            displayChannels = additionalChannels;
+                        } else {
+                            monthlyPrice = basePrice * channels;
+                        }
+                    } else {
+                        monthlyPrice = basePrice * channels;
+                    }
+                } else {
+                    monthlyPrice = basePrice;
+                }
             }
 
             let name = service.name || key;
@@ -2387,8 +2418,7 @@ class CPGenerator {
 
         const previousState = this.getPreviousServiceState(serviceKey);
         const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
-        const previousAdditional = Math.max(0, previousChannels - baseIncluded);
-        return baseIncluded + previousAdditional;
+        return baseIncluded + previousChannels;
     }
 
     getServiceChannelsCount(serviceState) {
@@ -2559,15 +2589,13 @@ class CPGenerator {
                 ? Math.max(0, this.getTariffIncludedChannelsBase(this.state.selectedTariff, key))
                 : 0;
             const storedChannels = this.getServiceChannelsCount(this.state.selectedServices[key]);
-            const channels = isIncluded
-                ? Math.max(storedChannels, includedChannels)
-                : storedChannels;
-            const showAdditionalOnlyCounter = (isConnectionExtraServices || this.isConnectionMode())
+            const channels = isIncluded ? Math.max(storedChannels, includedChannels) : storedChannels;
+            // In connection mode we show *additional* channels for included services.
+            // In connection-extra-services mode we show total channels so previous purchases are visible.
+            const showAdditionalOnlyCounter = this.isConnectionMode()
                 && isIncluded
                 && service.hasChannels;
-            const counterChannels = showAdditionalOnlyCounter
-                ? Math.max(0, channels - includedChannels)
-                : channels;
+            const counterChannels = showAdditionalOnlyCounter ? Math.max(0, channels - includedChannels) : channels;
             const isNonCountablePurchasedEarlier = isConnectionExtraServices
                 && !service.hasChannels
                 && !isIncluded
@@ -2579,6 +2607,24 @@ class CPGenerator {
             const shouldDisableToggle = isConnectionExtraServices
                 && (isIncluded || isNonCountablePurchasedEarlier || isCountablePurchasedEarlier);
             const unitPrice = this.getPriceByCurrency(this.getServicePricesMap(key));
+            const minChannels = (() => {
+                if (!service.hasChannels) {
+                    return 0;
+                }
+                if (!this.isConnectionExtraServicesMode()) {
+                    return 0;
+                }
+                if (isIncluded) {
+                    // Do not allow decreasing below already connected total (includes previous purchases).
+                    return Math.max(0, previousChannels, includedChannels);
+                }
+                if (isCountablePurchasedEarlier) {
+                    // Do not allow decreasing below already purchased channels.
+                    return Math.max(0, previousChannels);
+                }
+                return 0;
+            })();
+            const channelsLabel = showAdditionalOnlyCounter ? 'Новых каналов:' : 'Каналов:';
 
             const card = document.createElement('div');
             card.className = `service-card${isSelected ? ' selected' : ''}${isIncluded ? ' included' : ''}`;
@@ -2603,10 +2649,9 @@ class CPGenerator {
                 </div>
                 ${service.hasChannels ? `
                     <div class="service-channels">
-                        <span class="channels-label">${(showAdditionalOnlyCounter || (isConnectionExtraServices && isCountablePurchasedEarlier)) ? 'Новых каналов:' : 'Каналов:'}</span>
+                        <span class="channels-label">${channelsLabel}</span>
                         <div class="channels-control">
                             ${(() => {
-                                const minChannels = 0;
                                 return `<button class="qty-btn minus" data-service="${key}" data-action="decrease" ${counterChannels <= minChannels ? 'disabled' : ''}>−</button>
                             <input type="number" class="qty-input" value="${counterChannels}" min="${minChannels}" data-service="${key}">
                             <button class="qty-btn plus" data-service="${key}" data-action="increase">+</button>`;
@@ -2671,16 +2716,20 @@ class CPGenerator {
                     : null;
                 const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
                 const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 0;
-                const useAdditionalOnlyCounter = (this.isConnectionExtraServicesMode() || this.isConnectionMode()) && isIncluded;
+                const useAdditionalOnlyCounter = this.isConnectionMode() && isIncluded;
+                const previousState = this.getPreviousServiceState(serviceKey);
+                const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                const minChannels = this.isConnectionExtraServicesMode()
+                    ? (isIncluded ? Math.max(0, previousChannels, includedChannels) : (previousChannels > 0 ? previousChannels : 0))
+                    : 0;
 
                 if (!this.state.selectedServices[serviceKey]) {
                     this.state.selectedServices[serviceKey] = {
                         enabled: false,
-                        channels: useAdditionalOnlyCounter ? includedChannels : 0,
+                        channels: isIncluded ? Math.max(includedChannels, previousChannels) : 0,
                     };
                 }
 
-                const minChannels = 0;
                 const currentTotalChannels = this.getServiceChannelsCount(this.state.selectedServices[serviceKey]);
                 let currentCounterChannels = useAdditionalOnlyCounter
                     ? Math.max(0, currentTotalChannels - includedChannels)
@@ -2713,8 +2762,12 @@ class CPGenerator {
                     : null;
                 const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
                 const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 0;
-                const useAdditionalOnlyCounter = (this.isConnectionExtraServicesMode() || this.isConnectionMode()) && isIncluded;
-                const minChannels = 0;
+                const useAdditionalOnlyCounter = this.isConnectionMode() && isIncluded;
+                const previousState = this.getPreviousServiceState(serviceKey);
+                const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                const minChannels = this.isConnectionExtraServicesMode()
+                    ? (isIncluded ? Math.max(0, previousChannels, includedChannels) : (previousChannels > 0 ? previousChannels : 0))
+                    : 0;
                 const value = Math.max(minChannels, parseInt(e.target.value) || minChannels);
                 const totalChannels = useAdditionalOnlyCounter ? includedChannels + value : value;
 
@@ -3001,7 +3054,13 @@ class CPGenerator {
             // For included services with channels, only charge for additional channels
             if (isIncluded && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                const additionalChannels = channels - includedChannels;
+                let baselineChannels = includedChannels;
+                if (this.isConnectionExtraServicesMode()) {
+                    const previousState = this.getPreviousServiceState(key);
+                    const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                    baselineChannels = Math.max(baselineChannels, previousChannels);
+                }
+                const additionalChannels = channels - baselineChannels;
                 if (additionalChannels > 0) {
                     qty = additionalChannels;
                 } else {
@@ -3009,8 +3068,23 @@ class CPGenerator {
                 }
             } else if (isIncluded) {
                 return; // Included service without channels - no charge
-            } else if (service.hasChannels && channels <= 0) {
-                return;
+            } else if (service.hasChannels) {
+                if (this.isConnectionExtraServicesMode()) {
+                    const previousState = this.getPreviousServiceState(key);
+                    const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                    if (previousChannels > 0) {
+                        const additionalChannels = channels - previousChannels;
+                        if (additionalChannels > 0) {
+                            qty = additionalChannels;
+                        } else {
+                            return;
+                        }
+                    } else if (channels <= 0) {
+                        return;
+                    }
+                } else if (channels <= 0) {
+                    return;
+                }
             }
 
             rows.push({
@@ -3129,7 +3203,17 @@ class CPGenerator {
                 if (!isIncluded) {
                     if (service.hasChannels) {
                         const channels = this.getServiceChannelsCount(serviceState);
-                        if (channels > 0) {
+                        if (this.isConnectionExtraServicesMode()) {
+                            const previousState = this.getPreviousServiceState(key);
+                            const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                            if (previousChannels > 0) {
+                                if (channels > previousChannels) {
+                                    hasAdditionalServices = true;
+                                }
+                            } else if (channels > 0) {
+                                hasAdditionalServices = true;
+                            }
+                        } else if (channels > 0) {
                             hasAdditionalServices = true;
                         }
                     } else {
@@ -3860,7 +3944,14 @@ class CPGenerator {
             if (isIncluded) {
                 if (service.hasChannels) {
                     const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                    const additionalChannels = this.getServiceChannelsCount(serviceState) - includedChannels;
+                    const channels = this.getServiceChannelsCount(serviceState);
+                    let baselineChannels = includedChannels;
+                    if (this.isConnectionExtraServicesMode()) {
+                        const previousState = this.getPreviousServiceState(key);
+                        const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                        baselineChannels = Math.max(baselineChannels, previousChannels);
+                    }
+                    const additionalChannels = Math.max(0, channels - baselineChannels);
                     if (additionalChannels > 0) {
                         const price = this.getPriceByCurrency(this.getServicePricesMap(key)) * additionalChannels;
                         packages.push({
@@ -3957,7 +4048,13 @@ class CPGenerator {
                 if (service.hasChannels) {
                     const channels = this.getServiceChannelsCount(serviceState);
                     const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                    const additionalChannels = Math.max(0, channels - includedChannels);
+                    let baselineChannels = includedChannels;
+                    if (this.isConnectionExtraServicesMode()) {
+                        const previousState = this.getPreviousServiceState(key);
+                        const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                        baselineChannels = Math.max(baselineChannels, previousChannels);
+                    }
+                    const additionalChannels = Math.max(0, channels - baselineChannels);
                     if (additionalChannels > 0) {
                         const totalPrice = this.getPriceByCurrency(this.getServicePricesMap(key)) * additionalChannels;
                         services.push({
@@ -3977,7 +4074,23 @@ class CPGenerator {
             }
             let totalPrice = basePrice * channels;
             let name = service.name;
-            if (channels > 1) name = `${service.name} (×${channels})`;
+
+            if (service.hasChannels && this.isConnectionExtraServicesMode()) {
+                const previousState = this.getPreviousServiceState(key);
+                const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                if (previousChannels > 0) {
+                    const additionalChannels = channels - previousChannels;
+                    if (additionalChannels <= 0) {
+                        return;
+                    }
+                    totalPrice = basePrice * additionalChannels;
+                    name = `${service.name} (доп. ×${additionalChannels})`;
+                } else if (channels > 1) {
+                    name = `${service.name} (×${channels})`;
+                }
+            } else if (channels > 1) {
+                name = `${service.name} (×${channels})`;
+            }
 
             services.push({
                 name,
@@ -4030,7 +4143,13 @@ class CPGenerator {
             // For included services with channels, only charge for additional channels
             if (isIncluded && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                const additionalChannels = Math.max(0, channels - includedChannels); // Channels beyond included are paid
+                let baselineChannels = includedChannels;
+                if (this.isConnectionExtraServicesMode()) {
+                    const previousState = this.getPreviousServiceState(key);
+                    const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                    baselineChannels = Math.max(baselineChannels, previousChannels);
+                }
+                const additionalChannels = Math.max(0, channels - baselineChannels); // Channels beyond baseline are paid
                 if (additionalChannels > 0) {
                     totalPrice = basePrice * additionalChannels;
                 } else {
@@ -4039,7 +4158,25 @@ class CPGenerator {
             } else if (isIncluded) {
                 return; // Included service without channels - no charge
             } else {
-                totalPrice = basePrice * channels;
+                if (service.hasChannels) {
+                    if (this.isConnectionExtraServicesMode()) {
+                        const previousState = this.getPreviousServiceState(key);
+                        const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                        if (previousChannels > 0) {
+                            const additionalChannels = Math.max(0, channels - previousChannels);
+                            if (additionalChannels <= 0) {
+                                return;
+                            }
+                            totalPrice = basePrice * additionalChannels;
+                        } else {
+                            totalPrice = basePrice * channels;
+                        }
+                    } else {
+                        totalPrice = basePrice * channels;
+                    }
+                } else {
+                    totalPrice = basePrice;
+                }
             }
 
             monthlyPacks += totalPrice;
@@ -4101,7 +4238,13 @@ class CPGenerator {
             // For included services with channels, only charge for additional channels
             if (isIncluded && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
-                const additionalChannels = Math.max(0, channels - includedChannels);
+                let baselineChannels = includedChannels;
+                if (this.isConnectionExtraServicesMode()) {
+                    const previousState = this.getPreviousServiceState(key);
+                    const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                    baselineChannels = Math.max(baselineChannels, previousChannels);
+                }
+                const additionalChannels = Math.max(0, channels - baselineChannels);
                 if (additionalChannels > 0) {
                     totalPrice = basePrice * additionalChannels;
                 } else {
@@ -4110,7 +4253,25 @@ class CPGenerator {
             } else if (isIncluded) {
                 return;
             } else {
-                totalPrice = basePrice * channels;
+                if (service.hasChannels) {
+                    if (this.isConnectionExtraServicesMode()) {
+                        const previousState = this.getPreviousServiceState(key);
+                        const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                        if (previousChannels > 0) {
+                            const additionalChannels = Math.max(0, channels - previousChannels);
+                            if (additionalChannels <= 0) {
+                                return;
+                            }
+                            totalPrice = basePrice * additionalChannels;
+                        } else {
+                            totalPrice = basePrice * channels;
+                        }
+                    } else {
+                        totalPrice = basePrice * channels;
+                    }
+                } else {
+                    totalPrice = basePrice;
+                }
             }
 
             monthlyPacks += totalPrice;
