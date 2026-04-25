@@ -2413,17 +2413,8 @@ class CPGenerator {
         return 0;
     }
 
-    // Get included channels count for a service in a tariff.
-    // In connection_extra_services mode this includes channels that were purchased before.
     getIncludedChannels(tariffKey, serviceKey) {
-        const baseIncluded = this.getTariffIncludedChannelsBase(tariffKey, serviceKey);
-        if (!this.isConnectionExtraServicesMode() || !this.state.extraServicesContext?.hasSuccessfulConnection) {
-            return baseIncluded;
-        }
-
-        const previousState = this.getPreviousServiceState(serviceKey);
-        const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
-        return baseIncluded + previousChannels;
+        return this.getTariffIncludedChannelsBase(tariffKey, serviceKey);
     }
 
     getServiceChannelsCount(serviceState) {
@@ -2594,7 +2585,7 @@ class CPGenerator {
                 ? Math.max(0, this.getTariffIncludedChannelsBase(this.state.selectedTariff, key))
                 : 0;
             const storedChannels = this.getServiceChannelsCount(this.state.selectedServices[key]);
-            const channels = isIncluded ? Math.max(storedChannels, includedChannels) : storedChannels;
+            const channels = (isIncluded && !isConnectionExtraServices) ? Math.max(storedChannels, includedChannels) : storedChannels;
             // In connection mode we show *additional* channels for included services.
             // In connection-extra-services mode we show total channels so previous purchases are visible.
             const showAdditionalOnlyCounter = this.isConnectionMode()
@@ -2613,21 +2604,9 @@ class CPGenerator {
                 && (isIncluded || isNonCountablePurchasedEarlier || isCountablePurchasedEarlier);
             const unitPrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             const minChannels = (() => {
-                if (!service.hasChannels) {
-                    return 0;
-                }
-                if (!this.isConnectionExtraServicesMode()) {
-                    return 0;
-                }
-                if (isIncluded) {
-                    // Do not allow decreasing below already connected total (includes previous purchases).
-                    return Math.max(0, previousChannels, includedChannels);
-                }
-                if (isCountablePurchasedEarlier) {
-                    // Do not allow decreasing below already purchased channels.
-                    return Math.max(0, previousChannels);
-                }
-                return 0;
+                if (!service.hasChannels) return 0;
+                if (!isConnectionExtraServices) return 0;
+                return Math.max(0, previousChannels);
             })();
             const channelsLabel = showAdditionalOnlyCounter ? 'Новых каналов:' : 'Каналов:';
 
@@ -2646,7 +2625,7 @@ class CPGenerator {
                     </div>
                     <label class="service-toggle">
                         <input type="checkbox"
-                            ${(isSelected || (isIncluded && !this.isRenewalMode())) ? 'checked' : ''}
+                            ${(isSelected || (isIncluded && !this.isRenewalMode() && !isConnectionExtraServices)) ? 'checked' : ''}
                             ${shouldDisableToggle ? 'disabled' : ''}
                             data-service="${key}">
                         <span class="toggle-slider"></span>
@@ -2690,12 +2669,17 @@ class CPGenerator {
                     if (!isEnabled) {
                         this.state.selectedServices[serviceKey].channels = 0;
                     } else if (this.getServiceChannelsCount(this.state.selectedServices[serviceKey]) <= 0) {
-                        const selectedTariff = this.state.selectedTariff
-                            ? this.config?.tariffs?.[this.state.selectedTariff]
-                            : null;
-                        const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
-                        const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 0;
-                        const minChannels = Math.max(1, includedChannels);
+                        let minChannels = 1;
+                        if (!this.isConnectionExtraServicesMode()) {
+                            const selectedTariff = this.state.selectedTariff ? this.config?.tariffs?.[this.state.selectedTariff] : null;
+                            const isIncluded = selectedTariff?.includedServices?.includes(serviceKey);
+                            const includedChannels = isIncluded ? this.getIncludedChannels(this.state.selectedTariff, serviceKey) : 0;
+                            minChannels = Math.max(1, includedChannels);
+                        } else {
+                            const previousState = this.getPreviousServiceState(serviceKey);
+                            const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+                            minChannels = Math.max(1, previousChannels);
+                        }
                         this.state.selectedServices[serviceKey].channels = minChannels;
                     }
                 } else if (isEnabled) {
@@ -2724,14 +2708,12 @@ class CPGenerator {
                 const useAdditionalOnlyCounter = this.isConnectionMode() && isIncluded;
                 const previousState = this.getPreviousServiceState(serviceKey);
                 const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
-                const minChannels = this.isConnectionExtraServicesMode()
-                    ? (isIncluded ? Math.max(0, previousChannels, includedChannels) : (previousChannels > 0 ? previousChannels : 0))
-                    : 0;
+                const minChannels = this.isConnectionExtraServicesMode() ? Math.max(0, previousChannels) : 0;
 
                 if (!this.state.selectedServices[serviceKey]) {
                     this.state.selectedServices[serviceKey] = {
                         enabled: false,
-                        channels: isIncluded ? Math.max(includedChannels, previousChannels) : 0,
+                        channels: (isIncluded && !this.isConnectionExtraServicesMode()) ? Math.max(includedChannels, previousChannels) : previousChannels,
                     };
                 }
 
@@ -2770,9 +2752,7 @@ class CPGenerator {
                 const useAdditionalOnlyCounter = this.isConnectionMode() && isIncluded;
                 const previousState = this.getPreviousServiceState(serviceKey);
                 const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
-                const minChannels = this.isConnectionExtraServicesMode()
-                    ? (isIncluded ? Math.max(0, previousChannels, includedChannels) : (previousChannels > 0 ? previousChannels : 0))
-                    : 0;
+                const minChannels = this.isConnectionExtraServicesMode() ? Math.max(0, previousChannels) : 0;
                 const value = Math.max(minChannels, parseInt(e.target.value) || minChannels);
                 const totalChannels = useAdditionalOnlyCounter ? includedChannels + value : value;
 

@@ -126,6 +126,18 @@
                 @enderror
             </div>
 
+            <div class="form-group">
+                <label class="d-block" for="has_implementation">Наличие внедрения</label>
+                <input type="hidden" name="has_implementation" value="0">
+                <label class="mb-0">
+                    <input type="checkbox" id="has_implementation" name="has_implementation" value="1" {{ old('has_implementation', $partner->has_implementation) ? 'checked' : '' }}>
+                    Да
+                </label>
+                @error('has_implementation')
+                <span class="text-danger d-block">{{ $message }}</span>
+                @enderror
+            </div>
+
             <button type="submit" class="btn btn-primary mr-2">Изменить</button>
         </form>
     </div>
@@ -158,6 +170,7 @@
                                     @elseif($key === 'payment_methods') Способы оплаты:
                                     @elseif($key === 'account_id') Счет партнера:
                                     @elseif($key === 'currency_id') Валюта партнера:
+                                    @elseif($key === 'has_implementation') Наличие внедрения:
                                     @elseif($key === 'procent_from_tariff') Процент от подписки:
                                     @elseif($key === 'procent_from_pack') Процент от пакетов:
                                     @elseif($key === 'procent_date') Дата процента:

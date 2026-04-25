@@ -35,7 +35,8 @@ class User extends Authenticatable
         'payment_methods',
         'account_id',
         'currency_id',
-        'sham_link'
+        'sham_link',
+        'has_implementation',
     ];
 
     /**
@@ -58,6 +59,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'payment_methods' => 'array',
         'currency_id' => 'integer',
+        'has_implementation' => 'boolean',
     ];
 
     public function partnerStatus()

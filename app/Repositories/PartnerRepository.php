@@ -310,6 +310,7 @@ class PartnerRepository implements PartnerRepositoryInterface
             'payment_methods' => $partner->payment_methods,
             'account_id' => $partner->account_id,
             'currency_id' => $partner->currency_id,
+            'has_implementation' => (bool) $partner->has_implementation,
         ];
 
         $partner->update($data);
@@ -355,6 +356,13 @@ class PartnerRepository implements PartnerRepositoryInterface
             $changes['currency_id'] = [
                 'previous_value' => $this->currencyLabelById($before['currency_id'] ?? null),
                 'new_value' => $this->currencyLabelById($partner->currency_id),
+            ];
+        }
+
+        if ((bool) $before['has_implementation'] !== (bool) $partner->has_implementation) {
+            $changes['has_implementation'] = [
+                'previous_value' => $before['has_implementation'] ? 'Да' : 'Нет',
+                'new_value' => $partner->has_implementation ? 'Да' : 'Нет',
             ];
         }
 

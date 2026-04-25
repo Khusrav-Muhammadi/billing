@@ -26,9 +26,14 @@ class ClientFilter extends ModelFilter
 
     public function status($status): self
     {
-        return $this->where('is_active', (bool)$status);
-    }
+        $value = (bool) $status ? 'connected' : 'disconnected';
 
+        return $this->whereHas('organization', function ($query) use ($value) {
+            $query->whereHas('latestConnection', function ($q) use ($value) {
+                $q->where('status', $value);
+            });
+        });
+    }
     public function partner($partner): self
     {
         return $this->where('partner_id', $partner);
