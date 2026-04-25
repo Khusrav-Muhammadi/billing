@@ -11,11 +11,7 @@ use App\Services\DiscountExpenses\DiscountExpensesRegistryService;
 use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
 use App\Services\PartnerExpenses\PartnerExpensesRegistryService;
 
-class
-
-
-
-  цCommercialOfferPaidStatusListener
+class CommercialOfferPaidStatusListener
 {
     public function __construct(
         private ConnectedClientServicesRegistryService $connectedClientServicesRegistryService,
