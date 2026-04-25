@@ -144,7 +144,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/kp/client/store', [ApplicationController::class, 'storeCommercialOfferClient'])->name('application.kp.client.store');
         Route::get('/kp/connection-context/{organization}', [ApplicationController::class, 'getConnectionContext'])->name('application.kp.connection-context');
         Route::get('/kp/{offer}', [ApplicationController::class, 'getCommercialOfferState'])->name('application.kp.show');
-        Route::get('/show/{offer}', [ApplicationController::class, 'showCommercialOffer'])->name('application.show');
+        Route::get('/connection/show/{offer}', [ApplicationController::class, 'showConnection'])->name('application.connection.show');
+        Route::get('/extra_services/show/{offer}', [ApplicationController::class, 'showConnectionExtraServices'])->name('application.connection_extra_services.show');
+        Route::get('/renewal/show/{offer}', [ApplicationController::class, 'showRenewal'])->name('application.renewal.show');
+        Route::get('/renewal_no_changes/show/{offer}', [ApplicationController::class, 'showRenewalNoChanges'])->name('application.renewal_no_changes.show');
         Route::get('/create', [ApplicationController::class, 'create'])->name('application.create');
         Route::get('/create/connection', [ApplicationController::class, 'createConnection'])->name('application.create.connection');
         Route::get('/create/connection-extra-services', [ApplicationController::class, 'createConnectionExtraServices'])->name('application.create.connection-extra-services');

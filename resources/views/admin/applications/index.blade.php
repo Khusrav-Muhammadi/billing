@@ -139,7 +139,7 @@
                             default => (string) ($offer->request_type ?: '—'),
                         };
                     @endphp
-                    <tr class="offer-row" data-href="{{ route('application.show', $offer) }}" style="cursor: pointer;">
+                    <tr class="offer-row" data-href="{{ route(\App\Http\Controllers\ApplicationController::getRouteNameForOfferType($offer->request_type), $offer) }}" style="cursor: pointer;">
                         <td>{{ $offer->client_name ?: '-' }}</td>
                         <td>{{ $offer->partner_name ?? '-' }}</td>
                         <td>{{ optional($offer->saved_at)->format('d.m.Y') }}</td>
