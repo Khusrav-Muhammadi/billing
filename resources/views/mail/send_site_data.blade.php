@@ -161,42 +161,40 @@
             <!-- ШАПКА -->
             <table width="100%" cellpadding="0" cellspacing="0" border="0"
                    style="background: linear-gradient(135deg, #1B1F3B 0%, #2A2F5C 45%, #7C83FF 100%);
-                    border-radius: 32px 32px 0 0; padding: 52px 40px 38px;">
+                    border-radius: 32px 32px 0 0; padding: 36px 32px 28px;">
                 <tr>
                     <td style="text-align: center;">
-                        <span style="font-size: 38px; font-weight: 700; color: #ffffff; letter-spacing: -1.4px;">
-                            sham<span style="color: #ffffff;">CRM</span>
-                        </span>
+                        <img src="https://fingroupcrm-back.shamcrm.com/storage/TaskFiles/RUV5XQqT6oC0NI9VQeSQCksbwYv4EFqYyIpZ4Uke.png" alt="">
                     </td>
                 </tr>
             </table>
 
             <!-- Основной контент -->
             <table width="100%" cellpadding="0" cellspacing="0" border="0" class="liquid-glass"
-                   style="padding: 52px 42px 46px; border-radius: 0 0 32px 32px;">
+                   style="padding: 36px 32px 32px; border-radius: 0 0 32px 32px;">
                 <tr>
                     <td>
-                        <h1 style="margin: 0 0 12px; font-size: 28px; font-weight: 700; color: #1B1F3B;">
+                        <h1 style="margin: 0 0 10px; font-size: 28px; font-weight: 700; color: #1B1F3B;">
                             Здравствуйте, {{ $client->name }}! 👋
                         </h1>
 
-                        <p style="margin: 0 0 32px; font-size: 16.5px; color: #333; line-height: 1.75;">
+                        <p style="margin: 0 0 20px; font-size: 16.5px; color: #333; line-height: 1.75;">
                             Рады приветствовать вас в системе shamCRM!<br>
                             Мы уверены, что наш сервис поможет вам автоматизировать процессы, ускорить продажи и вывести ваш бизнес на новый уровень.
                         </p>
 
                         <!-- Блок данных для входа -->
-                        <p style="margin: 0 0 14px; font-size: 15.5px; font-weight: 600; color: #1B1F3B;">
+                        <p style="margin: 0 0 10px; font-size: 15.5px; font-weight: 600; color: #1B1F3B;">
                             Ваши данные для входа:
                         </p>
 
                         <table width="100%" cellpadding="0" cellspacing="0" border="0" class="liquid-glass"
-                               style="border-radius: 20px; padding: 28px; margin-bottom: 36px;">
+                               style="border-radius: 20px; padding: 20px; margin-bottom: 20px;">
 
                             <!-- Ссылка -->
                             <tr>
-                                <td style="padding: 0 0 18px; border-bottom: 1px solid rgba(0,0,0,0.08);">
-                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">🔗 Ссылка</span>
+                                <td style="padding: 0 0 12px; border-bottom: 1px solid rgba(0,0,0,0.08);">
+                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">🔗 Ссылка</span>
                                     <div class="field-wrap">
                                         <div class="field-value">
                                             <a href="{{ $siteUrl }}">{{ $siteUrl }}</a>
@@ -214,8 +212,8 @@
 
                             <!-- Логин -->
                             <tr>
-                                <td style="padding: 18px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
-                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">👤 Логин</span>
+                                <td style="padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
+                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">👤 Логин</span>
                                     <div class="field-wrap">
                                         <div class="field-value">admin</div>
                                         <button class="copy-btn" onclick="copyText('admin', this)">
@@ -231,8 +229,8 @@
 
                             <!-- Пароль -->
                             <tr>
-                                <td style="padding: 18px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
-                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">🔑 Пароль</span>
+                                <td style="padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.08);">
+                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">🔑 Пароль</span>
                                     <div class="field-wrap">
                                         <div class="field-value" style="letter-spacing: 1px;">{{ $password }}</div>
                                         <button class="copy-btn" onclick="copyText('{{ $password }}', this)">
@@ -248,8 +246,8 @@
 
                             <!-- ID -->
                             <tr>
-                                <td style="padding: 18px 0 0;">
-                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 8px;">🪪 ID</span>
+                                <td style="padding: 12px 0 0;">
+                                    <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">🪪 ID</span>
                                     <div class="field-wrap">
                                         <div class="field-value">{{ $id }}</div>
                                         <button class="copy-btn" onclick="copyText('{{ $id }}', this)">
@@ -268,17 +266,17 @@
                         <!-- Telegram баннер -->
                         <table width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                                <td class="telegram-banner" style="border-radius: 18px; padding: 20px 24px;">
+                                <td class="telegram-banner" style="border-radius: 18px; padding: 16px 20px;">
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
                                         <span style="font-size: 32px;">💬</span>
                                         <div>
-                                            <div style="color: #ffffff; font-weight: 600; font-size: 16.5px;">Telegram-канал shamCRM</div>
+                                            <div style="color: #1B1F3B ; font-weight: 600; font-size: 16.5px;">Telegram-канал shamCRM</div>
                                             <div style="color: #29A8EB; font-size: 14.5px;">Анонсы, кейсы, обновления и закрытые материалы shamCRM</div>
                                         </div>
                                     </div>
                                     <a href="https://t.me/brand_shamCRM"
-                                       style="display: block; margin-top: 18px; background: #29A8EB; color: white; text-align: center; padding: 13px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px;">
-                                        Подписаться на канал
+                                       style="display: block; margin-top: 14px; background: #29A8EB; color: white; text-align: center; padding: 13px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px;">
+                                        Перейти на канал
                                     </a>
                                 </td>
                             </tr>
@@ -289,10 +287,29 @@
             </table>
 
             <!-- Финальная строка -->
-            <p style="text-align: center; color: #555; font-size: 15px; line-height: 1.7; margin: 24px 0 0;">
+            <p style="text-align: center; color: #555; font-size: 15px; line-height: 1.7; margin: 18px 0 12px;">
                 С shamCRM ваш бизнес работает быстрее, а контроль становится проще.<br>
                 Мы рядом, чтобы вы сосредоточились на главном — <strong>развитии</strong>.
             </p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="text-align: center;">
+                <tr>
+                    <td style="padding: 4px 0;">
+                        <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: #555;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C83FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            <a href="https://www.shamcrm.com" style="color: #555; text-decoration: none;">www.shamcrm.com</a>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 4px 0;">
+                        <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: #555;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C83FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.37 2 2 0 0 1 3.58 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            +998 555 888 100
+                        </span>
+                    </td>
+                </tr>
+            </table>
 
         </td>
     </tr>

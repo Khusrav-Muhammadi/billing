@@ -46,4 +46,9 @@ class ConnectedClientServices extends Model
     {
         return $this->belongsTo(Currency::class, 'offer_currency_id');
     }
+
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class, 'client_id');
+    }
 }
