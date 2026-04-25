@@ -164,9 +164,7 @@
                     border-radius: 32px 32px 0 0; padding: 36px 32px 28px;">
                 <tr>
                     <td style="text-align: center;">
-                        <span style="font-size: 38px; font-weight: 700; color: #ffffff; letter-spacing: -1.4px;">
-                            sham<span style="color: #ffffff;">CRM</span>
-                        </span>
+                        <img src="https://fingroupcrm-back.shamcrm.com/storage/TaskFiles/RUV5XQqT6oC0NI9VQeSQCksbwYv4EFqYyIpZ4Uke.png" alt="">
                     </td>
                 </tr>
             </table>
@@ -272,13 +270,13 @@
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
                                         <span style="font-size: 32px;">💬</span>
                                         <div>
-                                            <div style="color: #ffffff; font-weight: 600; font-size: 16.5px;">Telegram-канал shamCRM</div>
+                                            <div style="color: #1B1F3B ; font-weight: 600; font-size: 16.5px;">Telegram-канал shamCRM</div>
                                             <div style="color: #29A8EB; font-size: 14.5px;">Анонсы, кейсы, обновления и закрытые материалы shamCRM</div>
                                         </div>
                                     </div>
                                     <a href="https://t.me/brand_shamCRM"
                                        style="display: block; margin-top: 14px; background: #29A8EB; color: white; text-align: center; padding: 13px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px;">
-                                        Подписаться на канал
+                                        Перейти на канал
                                     </a>
                                 </td>
                             </tr>
