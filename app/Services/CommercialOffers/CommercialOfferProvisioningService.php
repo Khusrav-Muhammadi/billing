@@ -8,6 +8,7 @@ use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\CommercialOffer;
 use App\Models\Organization;
+use App\Models\OrganizationConnectionStatus;
 use App\Models\OrganizationPack;
 use App\Models\Pack;
 use App\Models\Tariff;
@@ -85,12 +86,15 @@ class CommercialOfferProvisioningService
 
     private function dispatchTariffUpdate(CommercialOffer $offer, Client $client): void
     {
+        $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
+        if (!$organizationConnectionStatus) return;
         $tariffId = (int) ($offer->tariff_id ?? 0);
         if ($tariffId <= 0) {
             return;
         }
 
         UpdateTariffJob::dispatch($client, $tariffId, (string) $client->sub_domain);
+//        AddPackJob::dispatch();
     }
 
     private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization, Client $client): void

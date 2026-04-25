@@ -21,6 +21,7 @@ class Tariff extends Model
         'sale',
         'end_date',
         'can_increase',
+        'type'
     ];
 
     protected $casts = [
