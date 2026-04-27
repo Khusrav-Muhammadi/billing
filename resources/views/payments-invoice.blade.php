@@ -100,6 +100,7 @@
 
             <div class="invoice-divider"></div>
 
+            @if($offer->partner_id && $offer->partner_id != 11)
             <div class="invoice-block">
                 <div><strong>Условия:</strong></div>
                 <ul class="invoice-list">
@@ -109,6 +110,17 @@
                     <li>В назначении платежа обязательно указать ID организации: {{ $organizationOrderNumber !== '' ? $organizationOrderNumber : '—' }}.</li>
                 </ul>
             </div>
+            @else
+                <div class="invoice-block">
+                    <div><strong>Условия:</strong></div>
+                    <ul class="invoice-list">
+                        <li>Оплата данного счёта означает согласие с условиями предоставления услуг и подтверждаю, что ознакомлен (а) с услугами SHAMCRM и    <a href="https://shamcrm.com/agreement" style="color: blue">условиями оферты</a>.</li>
+                        <li>В назначении платежа обязательно указать ID организации: {{ $organizationOrderNumber !== '' ? $organizationOrderNumber : '—' }}.</li>
+                    </ul>
+                </div>
+            @endif
+
+
 
             <div class="invoice-sign">
                 <div>Руководитель: _____________ / Ахмедов М.Р.</div>

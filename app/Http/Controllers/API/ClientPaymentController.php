@@ -37,6 +37,7 @@ class ClientPaymentController extends Controller
                 'service_name' => $item->service_name,
                 'price' => $item->price,
             ])->values(),
+            'offer' => $offer
         ]);
     }
 }
