@@ -583,9 +583,8 @@ class CommercialFooferController extends Controller
                 $query->whereKey($organizationId);
             })
             ->when($search !== '', function (Builder $query) use ($search) {
-                $like = '%' . $search . '%';
-                $query->where(function (Builder $q) use ($like) {
-                    $q->where('order_number', 'like', $like);
+                $query->where(function (Builder $q) use ($search) {
+                    $q->where('order_number', $search);
                 });
             })
             ->orderBy('name')

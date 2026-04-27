@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('organizations/access/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'access']);
     Route::get('organizations-v2', [\App\Http\Controllers\API\OrganizationController::class, 'indexV2']);
+    Route::get('organizations-demo-v2', [\App\Http\Controllers\API\OrganizationController::class, 'demo']);
     Route::get('organizations-v2/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'showV2']);
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class)->except(['store']);
     Route::post('organizations/{client}', [\App\Http\Controllers\API\OrganizationController::class, 'store']);

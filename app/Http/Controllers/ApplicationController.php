@@ -312,7 +312,7 @@ class ApplicationController extends Controller
         });
 
         return redirect()
-            ->route('application.show', $offer)
+            ->route(self::getRouteNameForOfferType($offer->request_type), $offer)
             ->with('success', 'КП успешно сохранено.');
     }
 
@@ -395,7 +395,17 @@ class ApplicationController extends Controller
         return $this->storeCommercialOffer($request);
     }
 
-    public function showCommercialOffer(CommercialOffer $offer)
+    public static function getRouteNameForOfferType(?string $requestType): string
+    {
+        return match ((string)$requestType) {
+            'connection_extra_services' => 'application.connection_extra_services.show',
+            'renewal' => 'application.renewal.show',
+            'renewal_no_changes' => 'application.renewal_no_changes.show',
+            default => 'application.connection.show',
+        };
+    }
+
+    private function loadOfferViewData(CommercialOffer $offer): array
     {
         $offer->load([
             'items:id,commercial_offer_id,tariff_id,quantity,unit_price,months,total_price',
@@ -421,7 +431,27 @@ class ApplicationController extends Controller
         $allowedMethods = $this->normalizeAllowedPaymentMethods($offer->partner?->payment_methods);
         $cardPaymentType = $offer->card_payment_type ?: ($offer->payable_currency === 'UZS' ? 'alif' : 'octo');
 
-        return view('admin.applications.show', compact('offer', 'allowedMethods', 'cardPaymentType'));
+        return compact('offer', 'allowedMethods', 'cardPaymentType');
+    }
+
+    public function showConnection(CommercialOffer $offer)
+    {
+        return view('admin.applications.show-connection', $this->loadOfferViewData($offer));
+    }
+
+    public function showConnectionExtraServices(CommercialOffer $offer)
+    {
+        return view('admin.applications.show-extra-services', $this->loadOfferViewData($offer));
+    }
+
+    public function showRenewal(CommercialOffer $offer)
+    {
+        return view('admin.applications.show-renewal', $this->loadOfferViewData($offer));
+    }
+
+    public function showRenewalNoChanges(CommercialOffer $offer)
+    {
+        return view('admin.applications.show-renewal-no-changes', $this->loadOfferViewData($offer));
     }
 
     public function storeOfferStatus(Request $request, CommercialOffer $offer): RedirectResponse
@@ -603,7 +633,7 @@ class ApplicationController extends Controller
 
         if ($offer->locked_at) {
             return redirect()
-                ->route('application.show', $offer)
+                ->route(self::getRouteNameForOfferType($offer->request_type), $offer)
                 ->withErrors(['error' => 'Это КП уже заблокировано после генерации ссылки оплаты.']);
         }
 
@@ -954,7 +984,7 @@ class ApplicationController extends Controller
     {
         $selectedServices = [];
 
-        if ($selectedTariffId) {
+        if ($selectedTariffId && $offer->request_type !== 'connection_extra_services') {
             $selectedTariff = Tariff::query()
                 ->with('includedServices:id,can_increase')
                 ->find($selectedTariffId);

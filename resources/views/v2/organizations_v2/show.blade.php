@@ -188,7 +188,7 @@
                             </td>
                             <td>
                                 @if($row->commercial_offer_id)
-                                    <a href="{{ route('application.show', $row->commercial_offer_id) }}" target="_blank" class="text-primary">
+                                    <a href="{{ route(\App\Http\Controllers\ApplicationController::getRouteNameForOfferType($row->commercialOffer->request_type ?? 'connection'), $row->commercial_offer_id) }}" target="_blank" class="text-primary">
                                         КП #{{ $row->commercial_offer_id }}
                                     </a>
                                 @elseif($row->day_closing_id)

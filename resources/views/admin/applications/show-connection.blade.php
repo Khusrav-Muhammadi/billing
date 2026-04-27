@@ -9,27 +9,15 @@
         @php
             $isPaidOffer = (string) ($offer->latestOfferStatus?->status ?? '') === 'paid'
                 || (string) ($offer->status ?? '') === 'paid';
-            $requestType = (string) ($offer->request_type ?? 'connection');
-            $requestTypeLabels = [
-                'connection' => 'Подключение',
-                'connection_extra_services' => 'Подключение доп услуг',
-                'renewal' => 'Продление',
-                'renewal_no_changes' => 'Продление без изменений',
-            ];
-            $requestTypeLabel = $requestTypeLabels[$requestType] ?? 'Подключение';
-            $generatorPath = match ($requestType) {
-                'connection_extra_services' => 'kp_generator_extra/index.html',
-                'renewal' => 'kp_generator_renewal/index.html',
-                'renewal_no_changes' => 'kp_generator_renewal_no_changes/index.html',
-                default => 'kp_generator/index.html',
-            };
+            $requestTypeLabel = 'Подключение';
+            $generatorPath = 'kp_generator/index.html';
             $generatorFile = public_path($generatorPath);
             $query = [
                 'csrf_token' => csrf_token(),
                 'v' => @filemtime($generatorFile) ?: time(),
                 'offer_id' => $offer->id,
                 'is_paid' => $isPaidOffer ? 1 : 0,
-                'request_type' => $requestType,
+                'request_type' => 'connection',
             ];
             if ($offer->locked_at) {
                 $query['locked'] = 1;

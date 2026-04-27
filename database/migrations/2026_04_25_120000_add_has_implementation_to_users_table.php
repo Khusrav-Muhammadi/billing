@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('users') || Schema::hasColumn('users', 'has_implementation')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
-            $table->string('sham_link')->nullable();
+            $table->boolean('has_implementation')->default(false);
         });
     }
 
@@ -21,8 +25,13 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('users') || !Schema::hasColumn('users', 'has_implementation')) {
+            return;
+        }
+
         Schema::table('users', function (Blueprint $table) {
-            //
+            $table->dropColumn('has_implementation');
         });
     }
 };
+

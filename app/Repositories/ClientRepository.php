@@ -264,7 +264,6 @@ class ClientRepository implements ClientRepositoryInterface
 
             $currency = $client->country?->currency;
 
-            // Keep `balance` numeric (model cast is `decimal:*`); expose formatted values separately.
             $client->balance = (string) $balance;
 
             $client->total_users = $totalUsersFromOrganizations + $totalUsersFromPacks;

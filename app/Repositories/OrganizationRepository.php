@@ -151,7 +151,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     public function demo(array $data)
     {
         $query = Organization::query()
-            ->whereHas('connections')
+            ->whereDoesntHave('connections')
             ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection'])
             ->whereHas('client', function (Builder $clientQuery) {
                 $clientQuery->where('is_demo', true)->where('nfr', false);
