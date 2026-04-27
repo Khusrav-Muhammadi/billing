@@ -3,6 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\CommercialOffer;
+use App\Models\ConnectedClientServices;
+use App\Models\Organization;
 use App\Models\Tariff;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -18,7 +20,7 @@ class AddPackJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public CommercialOffer $offer, public string $sub_domain, public Tariff $tariff)
+    public function __construct(public Organization $organization, public string $sub_domain)
     {
         //
     }
@@ -31,38 +33,48 @@ class AddPackJob implements ShouldQueue
         $domain = env('APP_DOMAIN');
         $url = 'https://' . $this->sub_domain . '-back.' . $domain . '/api/organization/add-pack';
 
-        $data = [
-            'type' => $this->tariff->type,
-            'b_organization_id' => $this->offer->organization_id,
-        ];
+        $connectedClients = ConnectedClientServices::with(['tariff', 'organization.client'])
+            ->whereIn('client_id', $this->organization->id)
+            ->where('tariff_id', '>', 4)
+            ->where('status', 1)
+            ->get();
 
-        if ($this->tariff->type == 'user') {
-            $data['amount'] = 1;
+        foreach ($connectedClients as  $connectedClient) {
+            $tariff = $connectedClient->tariff;
+            $data = [
+                'type' => $tariff->type,
+                'b_organization_id' => $this->organization->id,
+            ];
+
+            if ($tariff->type == 'user') {
+                $data['amount'] = $connectedClient->quantity;
+            }
+
+            if ($tariff->type == 'add_sales_funnel') {
+                $data['amount'] = $connectedClient->quantity;
+            }
+
+            if ($tariff->type == 'add_channel') {
+                $data['amount'] = $connectedClient->quantity;
+            }
+
+            if ($tariff->type == 'add_insta_channel') {
+                $data['amount'] = $connectedClient->quantity;
+            }
+
+            if ($tariff->type == 'add_mini_app_b2b') {
+                $data['amount'] = $connectedClient->quantity;
+            }
+
+            if ($tariff->type == 'add_mini_app_b2c') {
+                $data['amount'] = $connectedClient->quantity;
+            }
+
+            Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $data);
+
         }
-
-        if ($this->tariff->type == 'add_sales_funnel') {
-            $data['amount'] = 1;
-        }
-
-        if ($this->tariff->type == 'add_channel') {
-            $data['amount'] = 1;
-        }
-
-        if ($this->tariff->type == 'add_insta_channel') {
-            $data['amount'] = 1;
-        }
-
-        if ($this->tariff->type == 'add_mini_app_b2b') {
-            $data['amount'] = 1;
-        }
-
-        if ($this->tariff->type == 'add_mini_app_b2c') {
-            $data['amount'] = 1;
-        }
-
-        Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $data);
 
     }
 }
