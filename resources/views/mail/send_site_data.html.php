@@ -164,7 +164,7 @@
                     border-radius: 32px 32px 0 0; padding: 36px 32px 28px;">
                 <tr>
                     <td style="text-align: center;">
-                        <img src="https://fingroupcrm-back.shamcrm.com/storage/TaskFiles/RUV5XQqT6oC0NI9VQeSQCksbwYv4EFqYyIpZ4Uke.png" alt="" width="80" height="80">
+                        <img src="https://fingroupcrm-back.shamcrm.com/storage/TaskFiles/RUV5XQqT6oC0NI9VQeSQCksbwYv4EFqYyIpZ4Uke.png" alt="" width="50" height="50">
                     </td>
                 </tr>
             </table>

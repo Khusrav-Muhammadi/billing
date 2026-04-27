@@ -84,7 +84,7 @@ class CommercialOfferProvisioningService
         );
     }
 
-    private function dispatchTariffUpdate(CommercialOffer $offer, Client $client): void
+    private function dispatchTariffUpdate(CommercialOffer $offer, Organization $organization): void
     {
         $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
         if (!$organizationConnectionStatus) return;
@@ -93,8 +93,10 @@ class CommercialOfferProvisioningService
             return;
         }
 
-        UpdateTariffJob::dispatch($client, $tariffId, (string) $client->sub_domain);
-//        AddPackJob::dispatch();
+        $client = $organization->client;
+
+        UpdateTariffJob::dispatch($organization, $tariffId, (string) $client->sub_domain);
+//        AddPackJob::dispatch($organization, (string) $client->sub_domain);
     }
 
     private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization, Client $client): void
