@@ -96,7 +96,7 @@ class CommercialOfferProvisioningService
         $client = $organization->client;
 
         UpdateTariffJob::dispatch($organization, $tariffId, (string)$client->sub_domain);
-        AddPackJob::dispatch($organization, (string)$client->sub_domain);
+//        AddPackJob::dispatch($organization, (string)$client->sub_domain);
     }
 
     private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization): void
