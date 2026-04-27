@@ -28,7 +28,9 @@ use Illuminate\Support\Facades\Schema;
 
 class OrganizationController extends Controller
 {
-    public function __construct(public OrganizationRepositoryInterface $repository) { }
+    public function __construct(public OrganizationRepositoryInterface $repository)
+    {
+    }
 
     public function store(Client $client, StoreRequest $request): JsonResponse
     {
@@ -40,35 +42,35 @@ class OrganizationController extends Controller
             ], 400);
         }
 
-        return response()->json(['success'=> true]);
+        return response()->json(['success' => true]);
     }
 
     public function show(Organization $organization)
     {
         $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->with('tariff')->get();
 
-        return response()->json(['success'=> true, 'packs' => $packs, 'organization' => $organization->load('packs.pack', 'businessType')]);
+        return response()->json(['success' => true, 'packs' => $packs, 'organization' => $organization->load('packs.pack', 'businessType')]);
     }
 
     public function update(Organization $organization, \App\Http\Requests\Organization\UpdateRequest $request)
     {
         $this->repository->update($organization, $request->validated());
 
-        return response()->json(['success'=> true]);
+        return response()->json(['success' => true]);
     }
 
     public function destroy(Organization $organization)
     {
         $this->repository->destroy($organization);
 
-        return response()->json(['success'=> true]);
+        return response()->json(['success' => true]);
     }
 
     public function access(Organization $organization)
     {
         $this->repository->access($organization, []);
 
-        return response()->json(['success'=> true]);
+        return response()->json(['success' => true]);
     }
 
     public function addPack(int $id, AddPackRequest $request)
@@ -76,7 +78,7 @@ class OrganizationController extends Controller
         $organization = Organization::find($id);
         $this->repository->addPack($organization, $request->validated());
 
-        return response()->json(['success'=> true]);
+        return response()->json(['success' => true]);
 
     }
 
@@ -84,7 +86,7 @@ class OrganizationController extends Controller
     {
         OrganizationPack::where('id', $id)->delete();
 
-        return response()->json(['success'=> true]);
+        return response()->json(['success' => true]);
     }
 
     public function indexV2(Request $request): JsonResponse
@@ -111,7 +113,7 @@ class OrganizationController extends Controller
                 $clientQuery->where('partner_id', Auth::id());
             });
 
-        $search = trim((string) $request->query('search', ''));
+        $search = trim((string)$request->query('search', ''));
         if ($search !== '') {
             $this->applyV2OrganizationSearch($organizationsQuery, $search);
         }
@@ -126,6 +128,7 @@ class OrganizationController extends Controller
             'organizations' => $organizations,
         ]);
     }
+
     public function demo(Request $request): JsonResponse
     {
         $authUser = auth()->user();
@@ -153,7 +156,7 @@ class OrganizationController extends Controller
                 $clientQuery->where('nfr', false);
             });
 
-        $search = trim((string) $request->query('search', ''));
+        $search = trim((string)$request->query('search', ''));
         if ($search !== '') {
             $this->applyV2OrganizationSearch($organizationsQuery, $search);
         }
@@ -183,7 +186,7 @@ class OrganizationController extends Controller
 
 
         $connectedServices = ConnectedClientServices::query()
-            ->where('client_id', (int) $organization->id)
+            ->where('client_id', (int)$organization->id)
             ->with([
                 'tariff:id,name',
                 'offerCurrency:id,name,symbol_code',
@@ -191,22 +194,20 @@ class OrganizationController extends Controller
             ->orderBy('date')
             ->get();
 
-        $connectionStatusHistory = collect();
-        if (Schema::hasTable('organization_connection_statuses')) {
-            $connectionStatusHistory = OrganizationConnectionStatus::query()
-                ->where('organization_id', (int) $organization->id)
-                ->with([
-                    'author:id,name',
-                    'commercialOffer:id,request_type',
-                    'dayClosing:id,doc_number,date',
-                ])
-                ->orderByDesc('status_date')
-                ->orderByDesc('id')
-                ->get();
-        }
+        $connectionStatusHistory = OrganizationConnectionStatus::query()
+            ->where('organization_id', (int)$organization->id)
+            ->with([
+                'author:id,name',
+                'commercialOffer:id,request_type',
+                'dayClosing:id,doc_number,date',
+            ])
+            ->orderByDesc('status_date')
+            ->orderByDesc('id')
+            ->get();
 
         $balanceOperations = ClientBalance::query()
-            ->where('organization_id', (int) $organization->id)
+            ->where('organization_id', (int)$organization->id)
+            ->where('type', 'income')
             ->with('currency:id,name,symbol_code')
             ->orderByDesc('date')
             ->orderByDesc('id')
@@ -250,7 +251,7 @@ class OrganizationController extends Controller
             }
         }
 
-        $days = $client->is_demo ? 14 : ($organization->balance + $saleTariffPrice) / round($sum,7);
+        $days = $client->is_demo ? 14 : ($organization->balance + $saleTariffPrice) / round($sum, 7);
 
         $startDate = $client->is_demo ? $client->created_at : $transaction->created_at;
 
@@ -267,7 +268,7 @@ class OrganizationController extends Controller
             'id' => $tariffPrice->id,
             'country' => $client->country,
             'is_demo' => $client->is_demo,
-            'days_left' => (int) $days
+            'days_left' => (int)$days
         ];
     }
 
@@ -303,10 +304,11 @@ class OrganizationController extends Controller
     private function applyV2ClientFilters(
         Builder $query,
         Request $request
-    ): void {
+    ): void
+    {
 
 
-        $clientType = trim((string) $request->query('clientType', ''));
+        $clientType = trim((string)$request->query('clientType', ''));
         if ($clientType === 'Клиенты') {
             $query->where('nfr', false);
         } elseif ($clientType === 'Партнеры') {
@@ -315,10 +317,10 @@ class OrganizationController extends Controller
 
         $statusRaw = $request->query('status');
         if ($statusRaw !== null && $statusRaw !== '') {
-            $query->where('is_active', (bool) $statusRaw);
+            $query->where('is_active', (bool)$statusRaw);
         }
 
-        $tariffId = (int) $request->query('tariff', 0);
+        $tariffId = (int)$request->query('tariff', 0);
         if ($tariffId > 0) {
             $query->where('tariff_id', $tariffId);
         }
@@ -346,7 +348,7 @@ class OrganizationController extends Controller
             if ($digits !== '') {
                 $builder->orWhere('order_number', 'like', '%' . $digits . '%');
                 if (strlen($digits) < 9) {
-                    $builder->orWhere('order_number', 'like', '%' . Organization::formatOrderNumber((int) $digits) . '%');
+                    $builder->orWhere('order_number', 'like', '%' . Organization::formatOrderNumber((int)$digits) . '%');
                 }
             }
         });
@@ -360,11 +362,11 @@ class OrganizationController extends Controller
         }
 
         if ($authUser->role === 'partner') {
-            return (int) ($organization->client?->partner_id ?? 0) === (int) $authUser->id;
+            return (int)($organization->client?->partner_id ?? 0) === (int)$authUser->id;
         }
 
         if ($authUser->role === 'manager') {
-            return (int) ($organization->client?->manager_id ?? 0) === (int) $authUser->id;
+            return (int)($organization->client?->manager_id ?? 0) === (int)$authUser->id;
         }
 
         return true;
@@ -376,7 +378,7 @@ class OrganizationController extends Controller
             return;
         }
 
-        $organizationIds = $organizations->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $organizationIds = $organizations->pluck('id')->map(fn($id) => (int)$id)->all();
 
         $balanceByOrganization = ClientBalance::query()
             ->selectRaw("
@@ -391,8 +393,8 @@ class OrganizationController extends Controller
             ->groupBy('organization_id');
 
         foreach ($organizations as $organization) {
-            $rows = $balanceByOrganization->get((int) $organization->id, collect());
-            $targetCurrencyId = (int) ($organization->client?->country?->currency_id ?? 0);
+            $rows = $balanceByOrganization->get((int)$organization->id, collect());
+            $targetCurrencyId = (int)($organization->client?->country?->currency_id ?? 0);
 
             if ($targetCurrencyId > 0) {
                 $sameCurrencyRows = $rows->where('currency_id', $targetCurrencyId)->values();
@@ -401,8 +403,8 @@ class OrganizationController extends Controller
                 }
             }
 
-            $income = (float) $rows->sum('total_income');
-            $outcome = (float) $rows->sum('total_outcome');
+            $income = (float)$rows->sum('total_income');
+            $outcome = (float)$rows->sum('total_outcome');
 
             $organization->setAttribute('real_balance', round($income - $outcome, 4));
         }
@@ -410,7 +412,7 @@ class OrganizationController extends Controller
 
     private function calculateRealBalance(Organization $organization, Collection $operations): float
     {
-        $targetCurrencyId = (int) ($organization->client?->country?->currency_id ?? 0);
+        $targetCurrencyId = (int)($organization->client?->country?->currency_id ?? 0);
 
         $rows = $operations;
         if ($targetCurrencyId > 0) {
@@ -420,8 +422,8 @@ class OrganizationController extends Controller
             }
         }
 
-        $income = (float) $rows->where('type', 'income')->sum('sum');
-        $outcome = (float) $rows->where('type', 'outcome')->sum('sum');
+        $income = (float)$rows->where('type', 'income')->sum('sum');
+        $outcome = (float)$rows->where('type', 'outcome')->sum('sum');
 
         return round($income - $outcome, 4);
     }
