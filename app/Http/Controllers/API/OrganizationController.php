@@ -146,8 +146,11 @@ class OrganizationController extends Controller
                     });
             })
             ->whereDoesntHave('connections')
-            ->whereHas('client', function (Builder $clientQuery) {
-                $clientQuery->where('partner_id', Auth::id());
+            ->whereHas('client', function (Builder $clientQuery) use ($authUser) {
+                if ($authUser->id !== 11) {
+                    $clientQuery->where('partner_id', Auth::id());
+                }
+                $clientQuery->where('nfr', false);
             });
 
         $search = trim((string) $request->query('search', ''));
