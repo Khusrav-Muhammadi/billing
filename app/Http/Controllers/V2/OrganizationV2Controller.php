@@ -49,12 +49,13 @@ class OrganizationV2Controller extends Controller
 
         $partners = User::query()->where('role', 'partner')->get();
         $tariffs = Tariff::all();
+        $countries = Country::all();
 
         if ($request->ajax()) {
             return view('admin.partials.organizations_v2', compact('organizations'))->render();
         }
 
-        return view('v2.organizations_v2.demo', compact('organizations', 'partners', 'tariffs'));
+        return view('v2.organizations_v2.demo', compact('organizations', 'partners', 'tariffs', 'countries'));
     }
 
     public function store(Client $client, StoreRequest $request): RedirectResponse
