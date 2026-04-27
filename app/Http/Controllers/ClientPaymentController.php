@@ -85,6 +85,7 @@ class ClientPaymentController extends Controller
             }
 
             $partner = null;
+            $useClientContactData = false;
             if ($partnerId) {
                 $partner = User::query()
                     ->where('id', $partnerId)
@@ -95,6 +96,8 @@ class ClientPaymentController extends Controller
                 if (!$partner) {
                     throw new \Exception('Партнёр не найден.');
                 }
+
+                $useClientContactData = (int) $partner->id === 11;
             }
 
             if ($organizationId) {
@@ -110,10 +113,17 @@ class ClientPaymentController extends Controller
                     throw new \Exception('Организация платежа не совпадает с сохраненным КП.');
                 }
 
-                if ($partner) {
+                if ($partner && !$useClientContactData) {
                     $data['name'] = (string) ($partner->name ?? ($data['name'] ?? ''));
                     $data['phone'] = (string) ($partner->phone ?? ($data['phone'] ?? ''));
                     $data['email'] = (string) ($partner->email ?? ($data['email'] ?? ''));
+                } elseif ($useClientContactData) {
+                    $data['name'] = (string) (
+                        $organization->client?->name
+                        ?: ($organization->client?->contact_person ?: ($organization->name ?? ($data['name'] ?? '')))
+                    );
+                    $data['phone'] = (string) ($organization->client?->phone ?: ($organization->phone ?: ($data['phone'] ?? '')));
+                    $data['email'] = (string) ($organization->client?->email ?: ($organization->email ?: ($data['email'] ?? '')));
                 } else {
                     $data['name'] = (string) ($organization->name ?? $data['name']);
                     $data['phone'] = (string) ($organization->phone ?: ($organization->client?->phone ?: ($data['phone'] ?? '')));
@@ -122,13 +132,13 @@ class ClientPaymentController extends Controller
             }
 
             if (!isset($data['email']) || trim((string) $data['email']) === '') {
-                if ($partner) {
+                if ($partner && !$useClientContactData) {
                     throw new \Exception('У выбранного партнёра не указан email для оплаты.');
                 }
                 throw new \Exception('Не указана почта (email) для оплаты. Укажи email у организации или клиента.');
             }
 
-            if ($partner && (!isset($data['phone']) || trim((string) $data['phone']) === '')) {
+            if ($partner && !$useClientContactData && (!isset($data['phone']) || trim((string) $data['phone']) === '')) {
                 throw new \Exception('У выбранного партнёра не указан номер телефона для оплаты.');
             }
 
