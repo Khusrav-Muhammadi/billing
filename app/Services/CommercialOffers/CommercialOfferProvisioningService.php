@@ -62,7 +62,7 @@ class CommercialOfferProvisioningService
 
         $organization = $offer->organization;
         $client = $organization?->client;
-        $subDomain = trim((string) ($client?->sub_domain ?? ''));
+        $subDomain = trim((string)($client?->sub_domain ?? ''));
 
         if (!$organization || !$client || $subDomain === '') {
             return null;
@@ -77,8 +77,8 @@ class CommercialOfferProvisioningService
     private function dispatchActivation(Organization $organization, Client $client): void
     {
         ActivationJob::dispatch(
-            [(int) $organization->id],
-            (string) $client->sub_domain,
+            [(int)$organization->id],
+            (string)$client->sub_domain,
             true,
             false
         );
@@ -88,49 +88,30 @@ class CommercialOfferProvisioningService
     {
         $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
         if (!$organizationConnectionStatus) return;
-        $tariffId = (int) ($offer->tariff_id ?? 0);
+        $tariffId = (int)($offer->tariff_id ?? 0);
         if ($tariffId <= 0) {
             return;
         }
 
         $client = $organization->client;
 
-        UpdateTariffJob::dispatch($organization, $tariffId, (string) $client->sub_domain);
-//        AddPackJob::dispatch($organization, (string) $client->sub_domain);
+        UpdateTariffJob::dispatch($organization, $tariffId, (string)$client->sub_domain);
+//        AddPackJob::dispatch($organization, (string)$client->sub_domain);
     }
 
-    private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization, Client $client): void
+    private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization): void
     {
-        $effectiveDate = $offer->status_date?->toDateString() ?: now()->toDateString();
-
-        foreach ($offer->items as $item) {
-            $tariff = $item->tariff;
-            if (!$this->isPackLikeTariff($tariff)) {
-                continue;
-            }
-
-            $pack = Pack::query()
-                ->where('tariff_id', (int) $item->tariff_id)
-                ->orderByDesc('id')
-                ->first(['id']);
-
-            if (!$pack) {
-                continue;
-            }
-
-            $amount = max(1, (int) round((float) $item->quantity));
-
-            $organizationPack = OrganizationPack::query()->firstOrCreate([
-                'organization_id' => (int) $organization->id,
-                'pack_id' => (int) $pack->id,
-                'date' => $effectiveDate,
-                'amount' => $amount,
-            ]);
-
-            if ($organizationPack->wasRecentlyCreated) {
-                AddPackJob::dispatch($organizationPack, (string) $client->sub_domain);
-            }
+        $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
+        if (!$organizationConnectionStatus) return;
+        $tariffId = (int)($offer->tariff_id ?? 0);
+        if ($tariffId <= 0) {
+            return;
         }
+
+        $client = $organization->client;
+
+        AddPackJob::dispatch($organization, (string)$client->sub_domain);
+
     }
 
     private function isPackLikeTariff(?Tariff $tariff): bool
@@ -139,11 +120,11 @@ class CommercialOfferProvisioningService
             return false;
         }
 
-        if ((bool) $tariff->is_extra_user) {
+        if ((bool)$tariff->is_extra_user) {
             return true;
         }
 
-        return !(bool) $tariff->is_tariff;
+        return !(bool)$tariff->is_tariff;
     }
 }
 

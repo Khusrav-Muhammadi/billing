@@ -20,12 +20,6 @@
             100% { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        @keyframes copyPop {
-            0%   { transform: scale(1); }
-            40%  { transform: scale(0.88); }
-            70%  { transform: scale(1.12); }
-            100% { transform: scale(1); }
-        }
 
         .liquid-glass {
             background: rgba(255, 255, 255, 0.18);
@@ -112,7 +106,6 @@
             background: rgba(52, 199, 89, 0.13);
             border-color: #34C759;
             color: #34C759;
-            animation: copyPop 0.35s ease;
         }
 
         .copy-btn svg {
@@ -164,7 +157,7 @@
                     border-radius: 32px 32px 0 0; padding: 36px 32px 28px;">
                 <tr>
                     <td style="text-align: center;">
-                        <img src="https://fingroupcrm-back.shamcrm.com/storage/TaskFiles/RUV5XQqT6oC0NI9VQeSQCksbwYv4EFqYyIpZ4Uke.png" alt="" width="80" height="80">
+                        <img src="https://fingroupcrm-back.shamcrm.com/storage/TaskFiles/RUV5XQqT6oC0NI9VQeSQCksbwYv4EFqYyIpZ4Uke.png" alt="" width="90" height="80">
                     </td>
                 </tr>
             </table>
@@ -319,8 +312,9 @@
     let toastTimer;
 
     function copyText(text, btn) {
-        navigator.clipboard.writeText(text).then(() => {
-            const original = btn.innerHTML;
+        const original = btn.innerHTML;
+
+        function onSuccess() {
             btn.classList.add('copied');
             btn.innerHTML = `
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
@@ -337,16 +331,29 @@
             clearTimeout(toastTimer);
             toast.classList.add('show');
             toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
-        }).catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text)
+                .then(onSuccess)
+                .catch(() => fallbackCopy(text, onSuccess));
+        } else {
+            fallbackCopy(text, onSuccess);
+        }
+    }
+
+    function fallbackCopy(text, callback) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
             document.execCommand('copy');
-            document.body.removeChild(ta);
-        });
+            if (callback) callback();
+        } catch (e) {}
+        document.body.removeChild(ta);
     }
 </script>
 
