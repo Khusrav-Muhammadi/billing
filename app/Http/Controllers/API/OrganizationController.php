@@ -91,39 +91,8 @@ class OrganizationController extends Controller
 
     public function indexV2(Request $request): JsonResponse
     {
-        $authUser = auth()->user();
-
-        $organizationsQuery = Organization::query()
-            ->with([
-                'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,country_id,manager_id,nfr',
-                'client.country:id,name,currency_id',
-                'client.country.currency:id,name,symbol_code',
-                'client.partner:id,name',
-                'client.tariffPrice:id,tariff_id',
-                'client.tariffPrice.tariff:id,name,user_count',
-            ])
-            ->where(function ($query) use ($request) {
-                $query->whereHas('balances')
-                    ->orWhereHas('client', function (Builder $clientQuery) use ($request) {
-                        $this->applyV2ClientFilters($clientQuery, $request);
-                    });
-            })
-            ->whereHas('connections')
-            ->whereHas('client', function (Builder $clientQuery) {
-                $clientQuery->where('partner_id', Auth::id());
-            });
-
-        $search = trim((string)$request->query('search', ''));
-        if ($search !== '') {
-            $this->applyV2OrganizationSearch($organizationsQuery, $search);
-        }
-
-        $organizations = $organizationsQuery
-            ->orderByDesc('id')
-            ->get();
-
+        $organizations = $this->repository->index($request->all());
         $this->hydrateRealBalances($organizations);
-
         return response()->json([
             'organizations' => $organizations,
         ]);

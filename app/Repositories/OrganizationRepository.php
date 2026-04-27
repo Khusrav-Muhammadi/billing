@@ -138,7 +138,13 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     public function index(array $data)
     {
+        $user = auth()->user();
         $query = Organization::query()
+            ->when($user->role != 'admin', function ($q) use ($user) {
+                $q->whereHas('client', function (Builder $q) use ($user) {
+                    return $q->where('partner_id', $user->id);
+                });
+            })
             ->whereHas('connections')
             ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection']);
 
@@ -154,11 +160,29 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             ->whereDoesntHave('connections')
             ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection'])
             ->whereHas('client', function (Builder $clientQuery) {
-                $clientQuery->where('is_demo', true)->where('nfr', false);
+                $clientQuery->where('nfr', false);
             });
 
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
-        $this->applyOrganizationFilters($query, $data);
+        // "status" filter for demo page means demo-active (within 14 days) / demo-inactive (expired),
+        // not the connection status used on the main organizations page.
+        $filters = $data;
+        unset($filters['status']);
+        $this->applyOrganizationFilters($query, $filters);
+
+        if (isset($data['status']) && $data['status'] !== '') {
+            $isActiveDemo = (bool) $data['status'];
+            $cutoff = Carbon::now()->subDays(14);
+
+            $query->whereHas('client', function (Builder $clientQuery) use ($isActiveDemo, $cutoff) {
+                if ($isActiveDemo) {
+                    $clientQuery->where('created_at', '>', $cutoff);
+                    return;
+                }
+
+                $clientQuery->where('created_at', '<=', $cutoff);
+            });
+        }
 
         return $query->orderBy('id')->get();
     }
