@@ -4,6 +4,7 @@ namespace App\Services\CommercialOffers;
 
 use App\Jobs\ActivationJob;
 use App\Jobs\AddPackJob;
+use App\Jobs\ConnectionJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
 use App\Models\CommercialOffer;
@@ -12,6 +13,7 @@ use App\Models\OrganizationConnectionStatus;
 use App\Models\OrganizationPack;
 use App\Models\Pack;
 use App\Models\Tariff;
+use Illuminate\Support\Facades\Log;
 
 class CommercialOfferProvisioningService
 {
@@ -23,7 +25,7 @@ class CommercialOfferProvisioningService
         }
 
         $this->dispatchActivation($context['organization'], $context['client']);
-        $this->dispatchTariffUpdate($offer, $context['client']);
+        $this->dispatchTariff($offer, $offer->organization);
         $this->dispatchPackUpdates($offer, $context['organization'], $context['client']);
     }
 
@@ -44,8 +46,7 @@ class CommercialOfferProvisioningService
             return;
         }
 
-        $this->dispatchTariffUpdate($offer, $context['client']);
-        $this->dispatchPackUpdates($offer, $context['organization'], $context['client']);
+        $this->dispatchTariffUpdate($offer, $offer->organization);
     }
 
     /**
@@ -84,6 +85,20 @@ class CommercialOfferProvisioningService
         );
     }
 
+    private function dispatchTariff(CommercialOffer $offer, Organization $organization): void
+    {
+        $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
+        if (!$organizationConnectionStatus) return;
+        $tariffId = (int)($offer->tariff_id ?? 0);
+        if ($tariffId <= 0) {
+            return;
+        }
+
+        $client = $organization->client;
+
+        ConnectionJob::dispatch($organization, $tariffId, (string)$client->sub_domain);
+    }
+
     private function dispatchTariffUpdate(CommercialOffer $offer, Organization $organization): void
     {
         $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
@@ -96,18 +111,11 @@ class CommercialOfferProvisioningService
         $client = $organization->client;
 
         UpdateTariffJob::dispatch($organization, $tariffId, (string)$client->sub_domain);
-//        AddPackJob::dispatch($organization, (string)$client->sub_domain);
+        AddPackJob::dispatch($organization, (string)$client->sub_domain);
     }
 
     private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization): void
     {
-        $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
-        if (!$organizationConnectionStatus) return;
-        $tariffId = (int)($offer->tariff_id ?? 0);
-        if ($tariffId <= 0) {
-            return;
-        }
-
         $client = $organization->client;
 
         AddPackJob::dispatch($organization, (string)$client->sub_domain);

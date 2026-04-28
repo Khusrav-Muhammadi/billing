@@ -13,14 +13,14 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 
-class UpdateTariffJob implements ShouldQueue
+class TariffExtensionJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(public Organization $organization, public int $tariff_id, public string $domain)
+    public function __construct(public Organization $organization)
     {
         //
     }
@@ -30,17 +30,15 @@ class UpdateTariffJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $client = $this->organization->client;
         $domain = env('APP_DOMAIN');
-        $url = "https://{$this->domain}-back.{$domain}/api/organization/update-tariff";
-
-        $tariff = TariffCurrency::query()->where('tariff_id', $this->tariff_id)->with('tariff')->first();
+        $url = "https://{$client->sub_domain}-back.{$domain}/api/organization/tariff-extension";
 
         Http::withHeaders([
             'Accept' => 'application/json',
         ])->post($url, [
+            'has_access' => true,
             'b_organization_id' => $this->organization->id,
-            'tariff_id' => $this->tariff_id,
-            'user_count' => $tariff?->tariff?->user_count
         ]);
     }
 }

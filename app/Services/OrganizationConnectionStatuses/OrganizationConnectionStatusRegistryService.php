@@ -2,6 +2,7 @@
 
 namespace App\Services\OrganizationConnectionStatuses;
 
+use App\Jobs\TariffExtensionJob;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Models\Organization;
@@ -14,16 +15,16 @@ class OrganizationConnectionStatusRegistryService
 {
     public function registerConnected(CommercialOffer $offer, CommercialOfferStatus $status): void
     {
-        if ((string) $status->status !== 'paid') {
+        if ((string)$status->status !== 'paid') {
             return;
         }
 
-        $requestType = (string) ($offer->request_type ?: 'connection');
+        $requestType = (string)($offer->request_type ?: 'connection');
         if (!in_array($requestType, ['connection', 'renewal', 'renewal_no_changes'], true)) {
             return;
         }
 
-        $organizationId = (int) ($offer->organization_id ?? 0);
+        $organizationId = (int)($offer->organization_id ?? 0);
         if ($organizationId <= 0) {
             return;
         }
@@ -31,36 +32,39 @@ class OrganizationConnectionStatusRegistryService
         $statusDateTime = RegistryDateTimeResolver::resolve($offer, $status);
 
         DB::transaction(function () use ($organizationId, $offer, $status, $statusDateTime, $requestType): void {
-            Organization::query()
-                ->where('id', $organizationId)
-                ->update([
+            $organization = Organization::find($organizationId);
+
+            $organization->update([
                     'has_access' => true,
                     'updated_at' => now(),
                 ]);
 
             OrganizationConnectionStatus::query()->updateOrCreate(
                 [
-                    'commercial_offer_id' => (int) $offer->id,
+                    'commercial_offer_id' => (int)$offer->id,
                 ],
                 [
                     'organization_id' => $organizationId,
                     'status' => 'connected',
                     'status_date' => $statusDateTime,
                     'day_closing_id' => null,
-                    'author_id' => $status->author_id ? (int) $status->author_id : null,
+                    'author_id' => $status->author_id ? (int)$status->author_id : null,
                     'reason' => $requestType,
                 ]
             );
+
+            TariffExtensionJob::dispatch($organization);
         });
     }
 
     public function registerDisconnected(
-        int $organizationId,
-        Carbon $statusDateTime,
-        ?int $dayClosingId = null,
-        ?int $authorId = null,
+        int     $organizationId,
+        Carbon  $statusDateTime,
+        ?int    $dayClosingId = null,
+        ?int    $authorId = null,
         ?string $reason = null
-    ): void {
+    ): void
+    {
         if ($organizationId <= 0) {
             return;
         }
