@@ -34,7 +34,7 @@ class AddPackJob implements ShouldQueue
         $url = 'https://' . $this->sub_domain . '-back.' . $domain . '/api/organization/add-pack';
 
         $connectedClients = ConnectedClientServices::with(['tariff', 'organization.client'])
-            ->whereIn('client_id', $this->organization->id)
+            ->where('client_id', $this->organization->id)
             ->where('tariff_id', '>', 4)
             ->where('status', 1)
             ->get();
@@ -46,7 +46,7 @@ class AddPackJob implements ShouldQueue
                 'b_organization_id' => $this->organization->id,
             ];
 
-            if ($tariff->type == 'user') {
+            if ($tariff->type == 'add_user') {
                 $data['amount'] = $connectedClient->quantity;
             }
 
