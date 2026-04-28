@@ -77,10 +77,14 @@
                     @php
                         $price = (float) ($item->price ?? 0);
                         $priceFormatted = number_format($price, 2, ',', ' ');
+                        $serviceName = (string) ($item->service_name ?? '');
+                        if (str_starts_with($serviceName, 'Внедрение и обучение')) {
+                            $serviceName = preg_replace('/\s*\(скидка\s*[\d.,]+\s*%\)\s*/u', '', $serviceName) ?: $serviceName;
+                        }
                     @endphp
                     <tr>
                         <td>{{ $index + 1 }}</td>
-                        <td>{{ $item->service_name }}</td>
+                        <td>{{ $serviceName }}</td>
                         <td>1</td>
                         <td>{{ $priceFormatted }}</td>
                         <td>{{ $priceFormatted }}</td>

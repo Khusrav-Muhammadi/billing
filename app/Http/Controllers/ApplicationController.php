@@ -244,6 +244,13 @@ class ApplicationController extends Controller
                 'conversion_rate' => $conversionRate,
             ]);
 
+            if (Schema::hasColumn('commercial_offers', 'snapshot')) {
+                $offer->snapshot = $this->mergeSnapshotImplementation(
+                    $this->normalizeOfferSnapshotValue($offer->snapshot),
+                    data_get($payload, 'implementation')
+                );
+            }
+
             $offer->save();
 
             $rows = data_get($payload, 'items', []);
@@ -921,6 +928,7 @@ class ApplicationController extends Controller
     {
         $requestType = $this->normalizeRequestType((string)($offer->request_type ?: 'connection'));
         $selectedTariffId = $offer->tariff_id ?: $this->resolveSelectedTariffIdFromItems($offer);
+        $snapshot = $this->normalizeOfferSnapshotValue($offer->snapshot);
 
         return [
             'offer_id' => $offer->id,
@@ -944,6 +952,16 @@ class ApplicationController extends Controller
             'partner_name' => (string)($offer->partner_name ?? ''),
             'partner_phone' => (string)($offer->partner_phone ?? ''),
             'partner_email' => (string)($offer->partner_email ?? ''),
+            'implementation' => $this->normalizeImplementationPayload(
+                is_array($snapshot) ? data_get($snapshot, 'implementation') : null
+            ) ?? [
+                'enabled' => false,
+                'price' => 0,
+                'discount_percent' => 0,
+                'discount_percent_base' => 0,
+                'discount_percent_12_extra' => 0,
+                'extra_services' => [],
+            ],
             'monthly_total' => (float)$offer->monthly_total,
             'period_total' => (float)$offer->period_total,
             'grand_total' => (float)$offer->grand_total,
@@ -962,6 +980,92 @@ class ApplicationController extends Controller
                 ])
                 ->values()
                 ->all(),
+        ];
+    }
+
+    private function mergeSnapshotImplementation(?array $snapshot, $implementation): ?array
+    {
+        $normalized = $this->normalizeImplementationPayload($implementation);
+        if ($normalized === null) {
+            return $snapshot;
+        }
+
+        $base = is_array($snapshot) ? $snapshot : [];
+        $base['implementation'] = $normalized;
+        return $base;
+    }
+
+    private function normalizeOfferSnapshotValue($snapshot): ?array
+    {
+        if (is_array($snapshot)) {
+            return $snapshot;
+        }
+
+        if (is_string($snapshot)) {
+            $decoded = json_decode($snapshot, true);
+            return is_array($decoded) ? $decoded : null;
+        }
+
+        return null;
+    }
+
+    private function normalizeImplementationPayload($implementation): ?array
+    {
+        if (!is_array($implementation)) {
+            return null;
+        }
+
+        $enabled = (bool)data_get($implementation, 'enabled', false);
+        $price = (float)max(0, $this->toDecimal(data_get($implementation, 'price', 0)));
+        $discountTotalRaw = data_get($implementation, 'discount_percent');
+        $hasTotal = is_numeric($discountTotalRaw);
+        $discountTotal = (int)max(0, min(100, floor((float)($discountTotalRaw ?? 0))));
+
+        $discountBaseRaw = data_get($implementation, 'discount_percent_base');
+        $discountBase = is_numeric($discountBaseRaw)
+            ? (int)max(0, min(100, floor((float)$discountBaseRaw)))
+            : ($hasTotal ? $discountTotal : 0);
+
+        $discount12ExtraRaw = data_get($implementation, 'discount_percent_12_extra');
+        $discount12Extra = is_numeric($discount12ExtraRaw)
+            ? (int)max(0, min(100, floor((float)$discount12ExtraRaw)))
+            : 0;
+
+        if (!$hasTotal) {
+            $discountTotal = (int)max(0, min(100, $discountBase + $discount12Extra));
+        }
+
+        $extrasRaw = data_get($implementation, 'extra_services', []);
+        $extrasRaw = is_array($extrasRaw) ? $extrasRaw : [];
+        $extras = [];
+        foreach ($extrasRaw as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $name = trim((string)data_get($row, 'name', ''));
+            $extraPrice = (float)max(0, $this->toDecimal(data_get($row, 'price', 0)));
+            if ($name === '' && $extraPrice <= 0) {
+                continue;
+            }
+
+            $extras[] = [
+                'name' => $name,
+                'price' => $extraPrice,
+            ];
+
+            if (count($extras) >= 20) {
+                break;
+            }
+        }
+
+        return [
+            'enabled' => $enabled,
+            'price' => $price,
+            'discount_percent' => $discountTotal,
+            'discount_percent_base' => $discountBase,
+            'discount_percent_12_extra' => $discount12Extra,
+            'extra_services' => $extras,
         ];
     }
 

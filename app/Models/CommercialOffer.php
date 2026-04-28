@@ -54,6 +54,9 @@ class CommercialOffer extends Model
         'grand_total' => 'decimal:4',
         'payable_total' => 'decimal:4',
         'conversion_rate' => 'decimal:6',
+        'selected_services' => 'array',
+        'allowed_payment_methods' => 'array',
+        'snapshot' => 'array',
     ];
 
     public function items()

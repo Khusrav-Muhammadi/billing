@@ -58,7 +58,6 @@ class CommercialOfferStatusController extends Controller
             'payment_order_number' => ['nullable', 'string', 'max:100', 'required_if:payment_method,invoice'],
         ]);
 
-        // Only allow manual status confirmation for invoice/cash.
         if (!in_array((string) $validated['payment_method'], ['invoice', 'cash'], true)) {
             return response()->json([
                 'message' => 'Для этого способа оплаты статус меняется автоматически.',
