@@ -37,6 +37,7 @@ class User extends Authenticatable
         'currency_id',
         'sham_link',
         'has_implementation',
+        'implementation_required',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable
         'payment_methods' => 'array',
         'currency_id' => 'integer',
         'has_implementation' => 'boolean',
+        'implementation_required' => 'boolean',
     ];
 
     public function partnerStatus()

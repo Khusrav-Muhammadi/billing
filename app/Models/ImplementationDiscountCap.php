@@ -12,6 +12,7 @@ class ImplementationDiscountCap extends Model
     protected $fillable = [
         'tariff_id',
         'period_type',
+        'currency_code',
         'max_percent',
         'is_active',
     ];

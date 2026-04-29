@@ -18,6 +18,7 @@
                 <thead>
                 <tr>
                     <th>№</th>
+                    <th>Валюта</th>
                     <th>Тип</th>
                     <th>Потолок (%)</th>
                     <th>Активный</th>
@@ -28,6 +29,7 @@
                 @foreach($caps as $cap)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
+                        <td>{{ $cap->currency_code ? strtoupper($cap->currency_code) : 'Все' }}</td>
                         <td>{{ $cap->period_type === 'months_12' ? '12 месяцев' : 'Стандартная' }}</td>
                         <td>{{ $cap->max_percent }}</td>
                         <td>{{ $cap->is_active ? 'Да' : 'Нет' }}</td>
@@ -51,6 +53,19 @@
                                         <h5 class="modal-title">Изменение скидки</h5>
                                     </div>
                                     <div class="modal-body">
+                                        @if(\Illuminate\Support\Facades\Schema::hasColumn('implementation_discount_caps', 'currency_code'))
+                                            <div class="form-group mb-2">
+                                                <label>Валюта</label>
+                                                <select name="currency_code" class="form-control">
+                                                    @foreach(($currencies ?? []) as $currency)
+                                                        <option value="{{ $currency }}" {{ strtoupper((string) $cap->currency_code) === $currency ? 'selected' : '' }}>
+                                                            {{ $currency }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        @endif
+
                                         <div class="form-group mb-2">
                                             <label>Тип</label>
                                             <select name="period_type" class="form-control">
@@ -115,6 +130,17 @@
                         <h5 class="modal-title">Создание / обновление потолка</h5>
                     </div>
                     <div class="modal-body">
+                        @if(\Illuminate\Support\Facades\Schema::hasColumn('implementation_discount_caps', 'currency_code'))
+                            <div class="form-group mb-2">
+                                <label>Валюта</label>
+                                <select name="currency_code" class="form-control">
+                                    @foreach(($currencies ?? []) as $currency)
+                                        <option value="{{ $currency }}">{{ $currency }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+
                         <div class="form-group mb-2">
                             <label>Тип</label>
                             <select name="period_type" class="form-control">

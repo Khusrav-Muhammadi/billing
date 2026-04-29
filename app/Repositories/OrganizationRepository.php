@@ -21,13 +21,13 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 {
     private function getTariffMonthlyPriceFromPriceList(Client $client, Carbon $asOf): float
     {
-        $currencyId = (int) ($client->country?->currency_id ?? 0);
+        $currencyId = (int)($client->country?->currency_id ?? 0);
         if ($currencyId <= 0) return 0.0;
 
         // Client::tariff_id points to TariffCurrency in some flows, so prefer the base tariff id from tariffPrice.
-        $baseTariffId = (int) ($client->tariffPrice?->tariff_id ?? 0);
+        $baseTariffId = (int)($client->tariffPrice?->tariff_id ?? 0);
         if ($baseTariffId <= 0) {
-            $baseTariffId = (int) ($client->tariff_id ?? 0);
+            $baseTariffId = (int)($client->tariff_id ?? 0);
         }
         if ($baseTariffId <= 0) return 0.0;
 
@@ -49,12 +49,12 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             ->orderByDesc('id')
             ->first();
 
-        return (float) ($price?->sum ?? 0);
+        return (float)($price?->sum ?? 0);
     }
 
     private function applyOrganizationSearch(Builder $query, ?string $search): void
     {
-        $search = trim((string) $search);
+        $search = trim((string)$search);
         if ($search === '') {
             return;
         }
@@ -79,7 +79,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
                 $builder->orWhere('order_number', 'like', '%' . $digits . '%');
 
                 if (strlen($digits) < 9) {
-                    $builder->orWhere('order_number', 'like', '%' . Organization::formatOrderNumber((int) $digits) . '%');
+                    $builder->orWhere('order_number', 'like', '%' . Organization::formatOrderNumber((int)$digits) . '%');
                 }
             }
         });
@@ -99,7 +99,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         }
 
         if (isset($data['status']) && $data['status'] !== '') {
-            $status = (bool) $data['status'];
+            $status = (bool)$data['status'];
             if ($status) {
                 $query->whereHas('latestConnection', function (Builder $q) {
                     $q->where('status', 'connected');
@@ -107,9 +107,9 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             } else {
                 $query->where(function (Builder $q) {
                     $q->doesntHave('latestConnection')
-                      ->orWhereHas('latestConnection', function (Builder $q2) {
-                          $q2->where('status', '!=', 'connected');
-                      });
+                        ->orWhereHas('latestConnection', function (Builder $q2) {
+                            $q2->where('status', '!=', 'connected');
+                        });
                 });
             }
         }
@@ -154,6 +154,58 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         return $query->orderBy('id')->get();
     }
 
+    public function active(array $data)
+    {
+        $user = auth()->user();
+        $query = Organization::query()
+            ->when($user->role != 'admin', function ($q) use ($user) {
+                $q->whereHas('client', function (Builder $q) use ($user) {
+                    return $q->where('partner_id', $user->id);
+                });
+            })->whereHas('latestConnection', function ($q) {
+                    $q->where('status', 'connected');
+                })
+            ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection']);
+
+        $this->applyOrganizationSearch($query, $data['search'] ?? null);
+        $this->applyOrganizationFilters($query, $data);
+
+        return $query->orderBy('id')->get();
+    }
+
+    public function inActive(array $data)
+    {
+        $user = auth()->user();
+        $query = Organization::query()
+            ->when($user->role != 'admin', function ($q) use ($user) {
+                $q->whereHas('client', function (Builder $q) use ($user) {
+                    return $q->where('partner_id', $user->id);
+                });
+            })
+            ->whereHas('latestConnection', function ($q) {
+                $q->where('status', 'disconnected');
+            })
+            ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection']);
+
+        $this->applyOrganizationSearch($query, $data['search'] ?? null);
+        $this->applyOrganizationFilters($query, $data);
+
+        return $query->orderBy('id')->get();
+    }
+
+    public function nfr(array $data)
+    {
+        $query = Organization::query()->whereHas('client', function (Builder $q)  {
+                    return $q->where('nfr', true);
+                })
+            ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection']);
+
+        $this->applyOrganizationSearch($query, $data['search'] ?? null);
+        $this->applyOrganizationFilters($query, $data);
+
+        return $query->orderBy('id')->get();
+    }
+
     public function demo(array $data)
     {
         $query = Organization::query()
@@ -171,7 +223,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $this->applyOrganizationFilters($query, $filters);
 
         if (isset($data['status']) && $data['status'] !== '') {
-            $isActiveDemo = (bool) $data['status'];
+            $isActiveDemo = (bool)$data['status'];
             $cutoff = Carbon::now()->subDays(14);
 
             $query->whereHas('client', function (Builder $clientQuery) use ($isActiveDemo, $cutoff) {
@@ -204,15 +256,15 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
                 $monthlyTariffPrice = $this->getTariffMonthlyPriceFromPriceList($client, Carbon::now());
                 if ($monthlyTariffPrice <= 0 && $client->tariffPrice) {
-                    $monthlyTariffPrice = (float) $client->tariffPrice->tariff_price;
+                    $monthlyTariffPrice = (float)$client->tariffPrice->tariff_price;
                 }
 
                 $sum = $monthlyTariffPrice / $daysInMonth;
 
                 if (!$client->is_demo) {
                     $client->loadMissing(['country.currency.latestExchangeRate', 'tariff', 'tariffPrice', 'sale']);
-                    $currencyCode = (string) ($client->country?->currency?->symbol_code ?: 'USD');
-                    $exchangeRate = (float) ($client->country?->currency?->latestExchangeRate?->kurs ?? 1);
+                    $currencyCode = (string)($client->country?->currency?->symbol_code ?: 'USD');
+                    $exchangeRate = (float)($client->country?->currency?->latestExchangeRate?->kurs ?? 1);
                     if ($exchangeRate <= 0) {
                         $exchangeRate = 1;
                     }

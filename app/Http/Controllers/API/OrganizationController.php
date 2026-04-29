@@ -97,7 +97,31 @@ class OrganizationController extends Controller
             'organizations' => $organizations,
         ]);
     }
+    public function active(Request $request): JsonResponse
+    {
+        $organizations = $this->repository->active($request->all());
+        $this->hydrateRealBalances($organizations);
+        return response()->json([
+            'organizations' => $organizations,
+        ]);
+    }
 
+    public function inActive(Request $request): JsonResponse
+    {
+        $organizations = $this->repository->inActive($request->all());
+        $this->hydrateRealBalances($organizations);
+        return response()->json([
+            'organizations' => $organizations,
+        ]);
+    }
+    public function nfr(Request $request): JsonResponse
+    {
+        $organizations = $this->repository->nfr($request->all());
+        $this->hydrateRealBalances($organizations);
+        return response()->json([
+            'organizations' => $organizations,
+        ]);
+    }
     public function demo(Request $request): JsonResponse
     {
         $authUser = auth()->user();

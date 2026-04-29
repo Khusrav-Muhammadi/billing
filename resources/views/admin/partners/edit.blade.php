@@ -126,19 +126,55 @@
                 @enderror
             </div>
 
-            <div class="form-group">
-                <label class="d-block" for="has_implementation">Наличие внедрения</label>
-                <input type="hidden" name="has_implementation" value="0">
-                <label class="mb-0">
-                    <input type="checkbox" id="has_implementation" name="has_implementation" value="1" {{ old('has_implementation', $partner->has_implementation) ? 'checked' : '' }}>
-                    Да
-                </label>
-                @error('has_implementation')
-                <span class="text-danger d-block">{{ $message }}</span>
-                @enderror
-            </div>
+	            <div class="form-group">
+	                <label class="d-block" for="has_implementation">Наличие внедрения</label>
+	                <input type="hidden" name="has_implementation" value="0">
+	                <label class="mb-0">
+	                    <input type="checkbox" id="has_implementation" name="has_implementation" value="1" {{ old('has_implementation', $partner->has_implementation) ? 'checked' : '' }}>
+	                    Да
+	                </label>
+	                @error('has_implementation')
+	                <span class="text-danger d-block">{{ $message }}</span>
+	                @enderror
+	            </div>
 
-            <button type="submit" class="btn btn-primary mr-2">Изменить</button>
+	            <div class="form-group" id="implementationRequiredWrap" style="display:none;">
+	                <label class="d-block" for="implementation_required">Внедрение обязательно</label>
+	                <input type="hidden" name="implementation_required" value="0">
+	                <label class="mb-0">
+	                    <input type="checkbox"
+	                           id="implementation_required"
+	                           name="implementation_required"
+	                           value="1"
+	                           {{ old('implementation_required', $partner->implementation_required) ? 'checked' : '' }}>
+	                    Да
+	                </label>
+	                @error('implementation_required')
+	                <span class="text-danger d-block">{{ $message }}</span>
+	                @enderror
+	            </div>
+
+	            <script>
+	                (function () {
+	                    const hasImpl = document.getElementById('has_implementation');
+	                    const wrap = document.getElementById('implementationRequiredWrap');
+	                    const requiredInput = document.getElementById('implementation_required');
+	                    if (!hasImpl || !wrap) return;
+
+	                    const sync = () => {
+	                        const enabled = Boolean(hasImpl.checked);
+	                        wrap.style.display = enabled ? '' : 'none';
+	                        if (!enabled && requiredInput) {
+	                            requiredInput.checked = false;
+	                        }
+	                    };
+
+	                    hasImpl.addEventListener('change', sync);
+	                    sync();
+	                })();
+	            </script>
+
+            <button type="submit" class="btn btn-primary mr-2">Сохранить</button>
         </form>
     </div>
 
@@ -169,10 +205,11 @@
                                     @elseif($key === 'status') Статус:
                                     @elseif($key === 'payment_methods') Способы оплаты:
                                     @elseif($key === 'account_id') Счет партнера:
-                                    @elseif($key === 'currency_id') Валюта партнера:
-                                    @elseif($key === 'has_implementation') Наличие внедрения:
-                                    @elseif($key === 'procent_from_tariff') Процент от подписки:
-                                    @elseif($key === 'procent_from_pack') Процент от пакетов:
+	                                    @elseif($key === 'currency_id') Валюта партнера:
+	                                    @elseif($key === 'has_implementation') Наличие внедрения:
+	                                    @elseif($key === 'implementation_required') Внедрение обязательно:
+	                                    @elseif($key === 'procent_from_tariff') Процент от подписки:
+	                                    @elseif($key === 'procent_from_pack') Процент от пакетов:
                                     @elseif($key === 'procent_date') Дата процента:
                                     @elseif($key === 'status_date') Дата статуса:
                                     @else {{ $key }}:

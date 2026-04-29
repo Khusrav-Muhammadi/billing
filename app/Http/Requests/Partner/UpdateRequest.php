@@ -37,6 +37,7 @@ class UpdateRequest extends FormRequest
             ],
             'sham_link' => ['nullable'],
             'has_implementation' => ['nullable', 'boolean'],
+            'implementation_required' => ['nullable', 'boolean'],
         ];
     }
 }

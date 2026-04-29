@@ -324,10 +324,16 @@ class CPGenerator {
 
         const caps = this.config?.implementation?.discount_caps || {};
         const byType = caps?.by_type || {};
+        const byCurrency = caps?.by_currency || {};
         const defaults = caps?.default || {};
-        const rawCap = Object.prototype.hasOwnProperty.call(byType, 'standard')
-            ? byType.standard
-            : defaults.standard;
+        const currencyCode = this.normalizeCurrencyCode(this.state.currency);
+        const currencyCaps = currencyCode && Object.prototype.hasOwnProperty.call(byCurrency, currencyCode)
+            ? byCurrency[currencyCode]
+            : null;
+
+        const rawCap = currencyCaps && Object.prototype.hasOwnProperty.call(currencyCaps, 'standard')
+            ? currencyCaps.standard
+            : (Object.prototype.hasOwnProperty.call(byType, 'standard') ? byType.standard : defaults.standard);
         const cap = Math.max(0, Math.min(100, Number(rawCap) || 0));
 
         return Math.min(val, cap);
@@ -336,10 +342,16 @@ class CPGenerator {
     getImplementationDiscount12ExtraCapPercent() {
         const caps = this.config?.implementation?.discount_caps || {};
         const byType = caps?.by_type || {};
+        const byCurrency = caps?.by_currency || {};
         const defaults = caps?.default || {};
-        const rawCap = Object.prototype.hasOwnProperty.call(byType, 'months_12')
-            ? byType.months_12
-            : defaults.months_12;
+        const currencyCode = this.normalizeCurrencyCode(this.state.currency);
+        const currencyCaps = currencyCode && Object.prototype.hasOwnProperty.call(byCurrency, currencyCode)
+            ? byCurrency[currencyCode]
+            : null;
+
+        const rawCap = currencyCaps && Object.prototype.hasOwnProperty.call(currencyCaps, 'months_12')
+            ? currencyCaps.months_12
+            : (Object.prototype.hasOwnProperty.call(byType, 'months_12') ? byType.months_12 : defaults.months_12);
         const cap = Number(rawCap) || 0;
         return Math.max(0, Math.min(100, cap));
     }
@@ -1254,11 +1266,15 @@ class CPGenerator {
             return;
         }
 
+        const requiredByPartner = this.isImplementationRequiredByPartner();
+        if (requiredByPartner && !this.state.isLocked) {
+            this.state.implementationEnabled = true;
+        }
         const enabled = Boolean(this.state.implementationEnabled);
         const enabledInput = document.getElementById('implementationEnabled');
         if (enabledInput) {
             enabledInput.checked = enabled;
-            enabledInput.disabled = this.state.isLocked;
+            enabledInput.disabled = this.state.isLocked || requiredByPartner;
         }
 
         const fields = document.getElementById('implementationFields');
@@ -1552,6 +1568,31 @@ class CPGenerator {
     getSelectedPartner() {
         if (!this.state.selectedPartnerId) return null;
         return this.partners.find((p) => String(p.id) === String(this.state.selectedPartnerId)) || null;
+    }
+
+    isImplementationRequiredByPartner(partner = this.getSelectedPartner()) {
+        return Boolean(partner?.has_implementation) && Boolean(partner?.implementation_required);
+    }
+
+    applyPartnerImplementationDefaults(partner = this.getSelectedPartner()) {
+        if (this.state.isLocked || this.state.editOfferId) {
+            return;
+        }
+
+        const hasImplementation = Boolean(partner?.has_implementation);
+        const required = Boolean(partner?.implementation_required);
+
+        if (!hasImplementation) {
+            this.state.implementationEnabled = false;
+            this.state.implementationDiscountPercent = 0;
+            this.state.implementationDiscountPercent12 = 0;
+            this.state.customOneTimePayments = [];
+            return;
+        }
+
+        if (required) {
+            this.state.implementationEnabled = true;
+        }
     }
 
     getPaymentPayer(client = this.getSelectedClient()) {
@@ -2557,6 +2598,7 @@ class CPGenerator {
             } else {
                 this.state.selectedPartnerId = item.id;
                 this.state.partnerName = item.name || 'Партнер';
+                this.applyPartnerImplementationDefaults(item);
                 // Partner percent affects all prices, so rerender totals/cards.
                 this.renderTariffs();
                 this.renderServices();
@@ -3833,6 +3875,14 @@ class CPGenerator {
             implementationEnabledInput.addEventListener('change', (e) => {
                 if (this.state.isLocked) {
                     e.target.checked = Boolean(this.state.implementationEnabled);
+                    return;
+                }
+
+                if (this.isImplementationRequiredByPartner()) {
+                    e.target.checked = true;
+                    this.state.implementationEnabled = true;
+                    this.renderImplementationSection();
+                    this.updateSummary();
                     return;
                 }
 

@@ -19,6 +19,7 @@ use App\Repositories\Contracts\PartnerRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 class PartnerRepository implements PartnerRepositoryInterface
 {
@@ -301,6 +302,8 @@ class PartnerRepository implements PartnerRepositoryInterface
             $data['status'] = $this->normalizePartnerStatus($data['status']);
         }
 
+        $supportsImplementationRequired = Schema::hasColumn('users', 'implementation_required');
+
         $before = [
             'name' => $partner->name,
             'email' => $partner->email,
@@ -311,7 +314,19 @@ class PartnerRepository implements PartnerRepositoryInterface
             'account_id' => $partner->account_id,
             'currency_id' => $partner->currency_id,
             'has_implementation' => (bool) $partner->has_implementation,
+            'implementation_required' => $supportsImplementationRequired
+                ? (bool) $partner->implementation_required
+                : false,
         ];
+
+        if (!$supportsImplementationRequired) {
+            unset($data['implementation_required']);
+        } else {
+            $hasImplementation = (bool) ($data['has_implementation'] ?? $partner->has_implementation);
+            if (!$hasImplementation) {
+                $data['implementation_required'] = false;
+            }
+        }
 
         $partner->update($data);
 
@@ -363,6 +378,13 @@ class PartnerRepository implements PartnerRepositoryInterface
             $changes['has_implementation'] = [
                 'previous_value' => $before['has_implementation'] ? 'Да' : 'Нет',
                 'new_value' => $partner->has_implementation ? 'Да' : 'Нет',
+            ];
+        }
+
+        if ($supportsImplementationRequired && (bool) $before['implementation_required'] !== (bool) $partner->implementation_required) {
+            $changes['implementation_required'] = [
+                'previous_value' => $before['implementation_required'] ? 'Да' : 'Нет',
+                'new_value' => $partner->implementation_required ? 'Да' : 'Нет',
             ];
         }
 
