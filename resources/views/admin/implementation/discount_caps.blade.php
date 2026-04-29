@@ -29,7 +29,7 @@
                 @foreach($caps as $cap)
                     <tr>
                         <td>{{ $loop->iteration }}</td>
-                        <td>{{ $cap->currency_code ? strtoupper($cap->currency_code) : 'Все' }}</td>
+                        <td>{{ $cap->currency_code ? strtoupper($cap->currency_code) : '—' }}</td>
                         <td>{{ $cap->period_type === 'months_12' ? '12 месяцев' : 'Стандартная' }}</td>
                         <td>{{ $cap->max_percent }}</td>
                         <td>{{ $cap->is_active ? 'Да' : 'Нет' }}</td>
@@ -56,13 +56,17 @@
                                         @if(\Illuminate\Support\Facades\Schema::hasColumn('implementation_discount_caps', 'currency_code'))
                                             <div class="form-group mb-2">
                                                 <label>Валюта</label>
-                                                <select name="currency_code" class="form-control">
-                                                    @foreach(($currencies ?? []) as $currency)
-                                                        <option value="{{ $currency }}" {{ strtoupper((string) $cap->currency_code) === $currency ? 'selected' : '' }}>
-                                                            {{ $currency }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
+                                                @if(!empty($currencies))
+                                                    <select name="currency_code" class="form-control" required>
+                                                        @foreach(($currencies ?? []) as $currency)
+                                                            <option value="{{ $currency }}" {{ strtoupper((string) $cap->currency_code) === $currency ? 'selected' : '' }}>
+                                                                {{ $currency }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                @else
+                                                    <input type="text" class="form-control" name="currency_code" value="{{ strtoupper((string) $cap->currency_code) }}" placeholder="UZS" required>
+                                                @endif
                                             </div>
                                         @endif
 
@@ -133,11 +137,15 @@
                         @if(\Illuminate\Support\Facades\Schema::hasColumn('implementation_discount_caps', 'currency_code'))
                             <div class="form-group mb-2">
                                 <label>Валюта</label>
-                                <select name="currency_code" class="form-control">
-                                    @foreach(($currencies ?? []) as $currency)
-                                        <option value="{{ $currency }}">{{ $currency }}</option>
-                                    @endforeach
-                                </select>
+                                @if(!empty($currencies))
+                                    <select name="currency_code" class="form-control" required>
+                                        @foreach(($currencies ?? []) as $currency)
+                                            <option value="{{ $currency }}">{{ $currency }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <input type="text" class="form-control" name="currency_code" placeholder="UZS" required>
+                                @endif
                             </div>
                         @endif
 
