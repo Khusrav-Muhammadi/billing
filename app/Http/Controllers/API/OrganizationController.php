@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 
@@ -365,13 +366,23 @@ class OrganizationController extends Controller
         return true;
     }
 
-    private function hydrateRealBalances(Collection $organizations): void
+    /**
+     * Adds computed `real_balance` attribute for every organization item.
+     *
+     * Repository methods may return either Eloquent Collection (indexV2, demo)
+     * or LengthAwarePaginator (active/inActive/nfr). Support both to keep APIs stable.
+     */
+    private function hydrateRealBalances(Collection|LengthAwarePaginator $organizations): void
     {
-        if ($organizations->isEmpty()) {
+        $items = $organizations instanceof LengthAwarePaginator
+            ? $organizations->getCollection()
+            : $organizations;
+
+        if ($items->isEmpty()) {
             return;
         }
 
-        $organizationIds = $organizations->pluck('id')->map(fn($id) => (int)$id)->all();
+        $organizationIds = $items->pluck('id')->map(fn($id) => (int)$id)->all();
 
         $balanceByOrganization = ClientBalance::query()
             ->selectRaw("
@@ -385,7 +396,7 @@ class OrganizationController extends Controller
             ->get()
             ->groupBy('organization_id');
 
-        foreach ($organizations as $organization) {
+        foreach ($items as $organization) {
             $rows = $balanceByOrganization->get((int)$organization->id, collect());
             $targetCurrencyId = (int)($organization->client?->country?->currency_id ?? 0);
 
@@ -400,6 +411,10 @@ class OrganizationController extends Controller
             $outcome = (float)$rows->sum('total_outcome');
 
             $organization->setAttribute('real_balance', round($income - $outcome, 4));
+        }
+
+        if ($organizations instanceof LengthAwarePaginator) {
+            $organizations->setCollection($items);
         }
     }
 
