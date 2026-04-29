@@ -21,14 +21,17 @@ return new class extends Migration
         }
 
         Schema::table('implementation_discount_caps', function (Blueprint $table) use ($hasTariff) {
-            // Old unique (legacy): (tariff_id, period_type)
+            // MySQL may rely on the existing unique index (tariff_id, period_type)
+            // for the foreign key on tariff_id. Ensure there is a separate index first.
             try {
-                $table->dropUnique('impl_discount_caps_tariff_period_unique');
+                if ($hasTariff) {
+                    $table->index(['tariff_id'], 'impl_discount_caps_tariff_idx');
+                }
             } catch (\Throwable $e) {
                 // ignore
             }
 
-            // New unique: (tariff_id, period_type, currency_code) or (period_type, currency_code)
+            // Prefer creating the new unique first: it will also satisfy the FK index requirement.
             try {
                 if ($hasTariff) {
                     $table->unique(
@@ -41,6 +44,13 @@ return new class extends Migration
                         'impl_discount_caps_period_currency_unique'
                     );
                 }
+            } catch (\Throwable $e) {
+                // ignore
+            }
+
+            // Old unique (legacy): (tariff_id, period_type)
+            try {
+                $table->dropUnique('impl_discount_caps_tariff_period_unique');
             } catch (\Throwable $e) {
                 // ignore
             }
@@ -80,7 +90,14 @@ return new class extends Migration
             } catch (\Throwable $e) {
                 // ignore
             }
+
+            try {
+                if ($hasTariff) {
+                    $table->dropIndex('impl_discount_caps_tariff_idx');
+                }
+            } catch (\Throwable $e) {
+                // ignore
+            }
         });
     }
 };
-
