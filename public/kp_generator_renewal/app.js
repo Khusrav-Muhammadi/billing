@@ -471,7 +471,18 @@ class CPGenerator {
 
         const tariffKey = String(this.state.extraServicesContext?.selectedTariffKey || '');
         if (tariffKey && this.config?.tariffs?.[tariffKey]) {
-            this.state.selectedTariff = tariffKey;
+            if (this.isConnectionExtraServicesMode()) {
+                // For extra services we always work within the already purchased connection tariff.
+                this.state.selectedTariff = tariffKey;
+            } else if (this.isRenewalMode()) {
+                // For renewal we still need the *current* connection tariff for UI context,
+                // but must not override the saved/new tariff when opening an existing offer.
+                if (!this.state.editOfferId) {
+                    this.state.selectedTariff = tariffKey;
+                }
+            } else {
+                this.state.selectedTariff = tariffKey;
+            }
         }
 
         const previousPartnerId = this.state.extraServicesContext?.previousPartnerId;
@@ -628,7 +639,10 @@ class CPGenerator {
         }
 
         const hasConnection = Boolean(this.state.extraServicesContext?.hasSuccessfulConnection);
-        const tariff = this.state.selectedTariff ? this.config?.tariffs?.[this.state.selectedTariff] : null;
+        const currentTariffKey = this.isRenewalMode()
+            ? String(this.state.extraServicesContext?.selectedTariffKey || '')
+            : String(this.state.selectedTariff || '');
+        const tariff = currentTariffKey ? this.config?.tariffs?.[currentTariffKey] : null;
         if (!hasConnection || !tariff) {
             wrap.hidden = true;
             nameEl.textContent = '—';
