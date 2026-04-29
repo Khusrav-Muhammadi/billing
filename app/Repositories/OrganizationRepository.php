@@ -170,7 +170,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
         $this->applyOrganizationFilters($query, $data);
 
-        return $query->orderBy('id')->get();
+        return $query->orderBy('id')->paginate(50);
     }
 
     public function inActive(array $data)
@@ -190,7 +190,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
         $this->applyOrganizationFilters($query, $data);
 
-        return $query->orderBy('id')->get();
+        return $query->orderBy('id')->paginate(50);
     }
 
     public function nfr(array $data)
@@ -203,7 +203,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
         $this->applyOrganizationFilters($query, $data);
 
-        return $query->orderBy('id')->get();
+        return $query->orderBy('id')->paginate(50);
     }
 
     public function demo(array $data)
