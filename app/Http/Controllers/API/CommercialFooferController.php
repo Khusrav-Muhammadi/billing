@@ -869,7 +869,7 @@ class CommercialFooferController extends Controller
                 'UZS' => ['symbol' => 'UZS', 'name' => 'Сум'],
                 'TJS' => ['symbol' => 'TJS', 'name' => 'Сомони'],
             ]);
-        }
+        }   
 
         if (empty($currenciesById)) {
             $currenciesById = [
@@ -952,17 +952,13 @@ class CommercialFooferController extends Controller
                 continue;
             }
 
-            $implementationPrices = array_replace(
-                (array)data_get($templateTariff, 'suggestedImplementationPrice', []),
-                $this->pickActivePrices(
-                    $this->filterImplementationPriceRows($tariff->prices),
-                    $asOfTs
-                )
+            $implementationPrices = $this->pickActivePrices(
+                $this->filterImplementationPriceRows($tariff->prices),
+                $asOfTs
             );
-            $implementationPrices = $this->normalizeCurrencyPrices(
+            $implementationPrices = $this->normalizeExplicitCurrencyPrices(
                 $implementationPrices,
-                $currencyCodes,
-                $usdRates
+                $currencyCodes
             );
 
             $extraServices = $extraUserServicesByTariffId->get((int)$tariff->id);
@@ -1816,6 +1812,36 @@ class CommercialFooferController extends Controller
             }
 
             $normalized[$code] = $derived !== null ? round((float)$derived, 4) : 0.0;
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeExplicitCurrencyPrices(array $prices, array $currencyCodes): array
+    {
+        $normalized = [];
+
+        foreach ($prices as $currencyCode => $rawValue) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code === '' || $code === '__META') {
+                continue;
+            }
+
+            $value = $this->toDecimal($rawValue);
+            if ($value > 0) {
+                $normalized[$code] = $value;
+            }
+        }
+
+        foreach ($currencyCodes as $currencyCode) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code === '') {
+                continue;
+            }
+
+            if (!isset($normalized[$code])) {
+                $normalized[$code] = 0.0;
+            }
         }
 
         return $normalized;
