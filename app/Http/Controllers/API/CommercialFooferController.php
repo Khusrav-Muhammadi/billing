@@ -869,7 +869,7 @@ class CommercialFooferController extends Controller
                 'UZS' => ['symbol' => 'UZS', 'name' => 'Сум'],
                 'TJS' => ['symbol' => 'TJS', 'name' => 'Сомони'],
             ]);
-        }   
+        }
 
         if (empty($currenciesById)) {
             $currenciesById = [

@@ -289,14 +289,6 @@ class CPGenerator {
             return true;
         }
 
-        // View/edit fallback: if КП already has внедрение data saved, show section even if partner flag changed.
-        if (this.state.editOfferId) {
-            const hasExtras = Array.isArray(this.state.customOneTimePayments) && this.state.customOneTimePayments.some((p) => (Number(p?.price) || 0) > 0 || String(p?.name || '').trim() !== '');
-            const hasDiscount = (Number(this.state.implementationDiscountPercent) || 0) > 0 || (Number(this.state.implementationDiscountPercent12) || 0) > 0;
-            const hasPrice = (Number(this.state.implementationPrice) || 0) > 0;
-            return Boolean(this.state.implementationEnabled || hasExtras || hasDiscount || hasPrice);
-        }
-
         return false;
     }
 

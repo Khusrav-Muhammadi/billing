@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\CommercialOfferController;
 use App\Http\Controllers\API\CommercialFooferController;
+use App\Http\Controllers\API\ImplementationCatalogController;
 use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\API\SiteApplicationController;
 use App\Http\Controllers\ProfileController;
@@ -28,6 +29,7 @@ Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
 Route::get('partners/email/verify', [SiteApplicationController::class, 'verifyPartnerEmail']);
 Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
 Route::get('createInvoice', [\App\Http\Controllers\ClientController::class, 'createInvoice']);
+Route::get('implementation-catalog', [ImplementationCatalogController::class, 'index']);
 Route::middleware('auth.basic')->group(function () {
 });
 
