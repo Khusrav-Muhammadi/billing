@@ -20,7 +20,7 @@ class TariffExtensionJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public Organization $organization)
+    public function __construct(public Organization $organization, public ?bool $has_access = true)
     {
         //
     }
@@ -37,7 +37,7 @@ class TariffExtensionJob implements ShouldQueue
         Http::withHeaders([
             'Accept' => 'application/json',
         ])->post($url, [
-            'has_access' => true,
+            'has_access' => $this->has_access,
             'b_organization_id' => $this->organization->id,
         ]);
     }

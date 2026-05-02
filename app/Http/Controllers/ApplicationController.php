@@ -34,8 +34,10 @@ class ApplicationController extends Controller
         'renewal_no_changes' => 'Продление',
     ];
 
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string)$request->query('search', ''));
+
         $offers = CommercialOffer::query()
             ->with([
                 'tariff:id,name',
@@ -60,15 +62,24 @@ class ApplicationController extends Controller
                 'offerStatuses.account:id,name,currency_id',
                 'offerStatuses.account.currency:id,symbol_code,name',
             ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('client_name', 'like', "%{$search}%")
+                        ->orWhereHas('organization', function ($query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         $accounts = Account::query()
             ->with('currency:id,symbol_code,name')
             ->orderBy('name')
             ->get(['id', 'name', 'currency_id']);
 
-        return view('admin.applications.index', compact('offers', 'accounts'));
+        return view('admin.applications.index', compact('offers', 'accounts', 'search'));
     }
 
     public function create(Request $request)

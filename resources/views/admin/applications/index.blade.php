@@ -41,6 +41,27 @@
                 </li>
             </ul>
         </div>
+
+        <form method="GET" action="{{ route('application.index') }}" class="mb-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5 col-lg-4">
+                    <input type="text"
+                           class="form-control"
+                           name="search"
+                           value="{{ $search }}"
+                           placeholder="Поиск по клиенту">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Поиск</button>
+                </div>
+                @if($search !== '')
+                    <div class="col-auto">
+                        <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Сбросить</a>
+                    </div>
+                @endif
+            </div>
+        </form>
+
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
@@ -172,7 +193,9 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center">Пока нет сохраненных КП</td>
+                        <td colspan="10" class="text-center">
+                            {{ $search !== '' ? 'По этому клиенту КП не найдены' : 'Пока нет сохраненных КП' }}
+                        </td>
                     </tr>
                 @endforelse
                 </tbody>
