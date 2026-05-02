@@ -39,7 +39,7 @@ class ControlDemoCommand extends Command
 
         foreach ($organizations as $organization) {
             if ($organization->created_at->diffInDays(now()) > 14) {
-                $organization->client->update(['is_active' => false]);
+                $organization->client?->update(['is_active' => false]);
                 TariffExtensionJob::dispatch($organization, false);
 
             }
