@@ -19,6 +19,7 @@ class ControlDemoCommand extends Command
      */
     protected $signature = 'app:control-demo-command';
 
+    //
     /**
      * The console command description.
      *
