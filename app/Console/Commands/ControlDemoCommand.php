@@ -38,7 +38,7 @@ class ControlDemoCommand extends Command
                     ['is_active', true],
                     ['is_demo', true],
                 ]);
-            });
+            })->get();
 
         foreach ($organizations as $organization) {
             if ($organization->created_at->diffInDays(Carbon::now()) > 14) {
