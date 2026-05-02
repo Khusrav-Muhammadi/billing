@@ -33,20 +33,15 @@ class ControlDemoCommand extends Command
     {
 
         $organizations = Organization::query()
-            ->whereHas('client', function ($query) {
-                return $query->where([
-                    ['is_active', true],
-                    ['is_demo', true],
-                ]);
-            })->get();
+            ->whereDoesntHave('connections')
+            ->get();
 
         foreach ($organizations as $organization) {
-            if ($organization->created_at->diffInDays(Carbon::now()) > 14) {
-                if (!ConnectedClientServices::query()->where('client_id', $organization->id)->exists()) {
-                    TariffExtensionJob::dispatch($organization, false);
-                }
+            if ($organization->created_at->diffInDays(now()) > 14) {
+                $organization->client->update(['is_active' => false]);
+                TariffExtensionJob::dispatch($organization, false);
+
             }
         }
-
     }
 }
