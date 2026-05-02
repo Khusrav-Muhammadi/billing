@@ -42,7 +42,7 @@ class ControlDemoCommand extends Command
 
         foreach ($organizations as $organization) {
             if ($organization->created_at->diffInDays(Carbon::now()) > 14) {
-                if (!ConnectedClientServices::query()->where('organization_id', $organization->id)->exists()) {
+                if (!ConnectedClientServices::query()->where('client_id', $organization->id)->exists()) {
                     TariffExtensionJob::dispatch($organization, false);
                 }
             }
