@@ -138,6 +138,196 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         }
     }
 
+    private function sortDirection(array $data): string
+    {
+        return strtolower((string)($data['direction'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+    }
+
+    private function applyOrganizationSorting(Builder $query, array $data, bool $isDemo = false): void
+    {
+        $sort = (string)($data['sort'] ?? '');
+        $direction = $this->sortDirection($data);
+
+        match ($sort) {
+            'order_number' => $query->orderBy('organizations.order_number', $direction),
+            'name' => $query->orderBy('organizations.name', $direction),
+            'phone' => $query->orderBy('organizations.phone', $direction),
+            'created_at' => $query->orderBy('organizations.created_at', $direction),
+            'email' => $query->orderBy($this->clientColumnSubquery('clients.email'), $direction),
+            'country' => $query->orderBy($this->clientColumnSubquery('countries.name', true), $direction),
+            'tariff' => $query->orderBy($this->tariffNameSubquery(), $direction),
+            'users_count' => $query->orderBy($this->usersCountSubquery(), $direction),
+            'balance' => $query->orderBy($this->balanceSubquery(), $direction),
+            'valid_until' => $isDemo
+                ? $query->orderBy($this->clientCreatedAtSubquery(), $direction)
+                : $this->applyCalculatedValiditySorting($query, $direction),
+            'last_activity' => $query->orderBy($this->clientColumnSubquery('clients.last_activity'), $direction),
+            'status' => $isDemo
+                ? $query->orderBy($this->demoStatusSubquery(), $direction)
+                : $query->orderBy($this->connectedStatusSubquery(), $direction),
+            'partner' => $query->orderBy($this->clientColumnSubquery('partners.name', true, true), $direction),
+            'sub_domain' => $query->orderBy($this->clientColumnSubquery('clients.sub_domain'), $direction),
+            default => $query->orderBy('organizations.id'),
+        };
+
+        if ($sort !== '' && $sort !== 'valid_until') {
+            $query->orderBy('organizations.id');
+        }
+    }
+
+    private function clientColumnSubquery(string $column, bool $joinCountry = false, bool $joinPartner = false)
+    {
+        $query = DB::table('clients')
+            ->whereColumn('clients.id', 'organizations.client_id')
+            ->limit(1);
+
+        if ($joinCountry) {
+            $query->leftJoin('countries', 'countries.id', '=', 'clients.country_id');
+        }
+
+        if ($joinPartner) {
+            $query->leftJoin('users as partners', 'partners.id', '=', 'clients.partner_id');
+        }
+
+        return $query->select($column);
+    }
+
+    private function clientCreatedAtSubquery()
+    {
+        return $this->clientColumnSubquery('clients.created_at');
+    }
+
+    private function tariffNameSubquery()
+    {
+        return DB::table('connected_client_services')
+            ->join('tariffs', 'tariffs.id', '=', 'connected_client_services.tariff_id')
+            ->whereColumn('connected_client_services.client_id', 'organizations.id')
+            ->where('tariffs.is_tariff', true)
+            ->orderBy('connected_client_services.id')
+            ->limit(1)
+            ->select('tariffs.name');
+    }
+
+    private function usersCountSubquery()
+    {
+        return DB::table('connected_client_services')
+            ->join('tariffs', 'tariffs.id', '=', 'connected_client_services.tariff_id')
+            ->whereColumn('connected_client_services.client_id', 'organizations.id')
+            ->selectRaw("
+                COALESCE(SUM(
+                    CASE
+                        WHEN tariffs.is_tariff = 1 THEN tariffs.user_count
+                        WHEN tariffs.is_extra_user = 1 THEN COALESCE(connected_client_services.quantity, 1) * COALESCE(tariffs.user_count, 1)
+                        ELSE 0
+                    END
+                ), 0)
+            ");
+    }
+
+    private function balanceSubquery()
+    {
+        $clientCurrencySubquery = "
+            SELECT countries.currency_id
+            FROM clients
+            LEFT JOIN countries ON countries.id = clients.country_id
+            WHERE clients.id = organizations.client_id
+            LIMIT 1
+        ";
+
+        return DB::table('client_balances')
+            ->whereColumn('client_balances.organization_id', 'organizations.id')
+            ->whereRaw("
+                (
+                    client_balances.currency_id = ($clientCurrencySubquery)
+                    OR NOT EXISTS (
+                        SELECT 1
+                        FROM client_balances AS same_currency_balances
+                        WHERE same_currency_balances.organization_id = organizations.id
+                          AND same_currency_balances.currency_id = ($clientCurrencySubquery)
+                    )
+                )
+            ")
+            ->selectRaw("
+                COALESCE(SUM(
+                    CASE
+                        WHEN client_balances.type = 'income' THEN client_balances.sum
+                        WHEN client_balances.type = 'outcome' THEN -client_balances.sum
+                        ELSE 0
+                    END
+                ), 0)
+            ");
+    }
+
+    private function connectedStatusSubquery()
+    {
+        return DB::table('organization_connection_statuses')
+            ->whereColumn('organization_connection_statuses.organization_id', 'organizations.id')
+            ->orderByDesc('organization_connection_statuses.status_date')
+            ->orderByDesc('organization_connection_statuses.updated_at')
+            ->limit(1)
+            ->selectRaw("CASE WHEN organization_connection_statuses.status = 'connected' THEN 1 ELSE 0 END");
+    }
+
+    private function demoStatusSubquery()
+    {
+        $cutoff = now()->subDays(14)->format('Y-m-d H:i:s');
+
+        return DB::table('clients')
+            ->whereColumn('clients.id', 'organizations.client_id')
+            ->limit(1)
+            ->selectRaw("CASE WHEN clients.created_at > '{$cutoff}' THEN 1 ELSE 0 END");
+    }
+
+    private function applyCalculatedValiditySorting(Builder $query, string $direction): void
+    {
+        $validityService = app(OrganizationValidityService::class);
+
+        $ids = (clone $query)
+            ->with(['client.country'])
+            ->get()
+            ->map(function (Organization $organization) use ($validityService): array {
+                $validUntil = $validityService->calculateValidUntil($organization);
+
+                return [
+                    'id' => (int)$organization->id,
+                    'timestamp' => $validUntil?->timestamp,
+                ];
+            })
+            ->sort(function (array $left, array $right) use ($direction): int {
+                if ($left['timestamp'] === null && $right['timestamp'] === null) {
+                    return $left['id'] <=> $right['id'];
+                }
+
+                if ($left['timestamp'] === null) {
+                    return 1;
+                }
+
+                if ($right['timestamp'] === null) {
+                    return -1;
+                }
+
+                $leftValue = $left['timestamp'];
+                $rightValue = $right['timestamp'];
+
+                if ($leftValue === $rightValue) {
+                    return $left['id'] <=> $right['id'];
+                }
+
+                return $direction === 'desc'
+                    ? $rightValue <=> $leftValue
+                    : $leftValue <=> $rightValue;
+            })
+            ->pluck('id')
+            ->all();
+
+        if (empty($ids)) {
+            $query->orderBy('organizations.id');
+            return;
+        }
+
+        $query->orderByRaw('FIELD(organizations.id, ' . implode(',', $ids) . ')');
+    }
+
     public function index(array $data)
     {
         $user = auth()->user();
@@ -154,7 +344,9 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $this->applyOrganizationFilters($query, $data);
         $this->applyValidityUntilFilter($query, $data['valid_until_to'] ?? null);
 
-        return $query->orderBy('id')->paginate(50)->withQueryString();
+        $this->applyOrganizationSorting($query, $data);
+
+        return $query->paginate(50)->withQueryString();
     }
 
     private function applyValidityUntilFilter(Builder $query, ?string $validUntilTo): void
@@ -292,7 +484,9 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             });
         }
 
-        return $query->orderBy('id')->paginate(50)->withQueryString();
+        $this->applyOrganizationSorting($query, $data, true);
+
+        return $query->paginate(50)->withQueryString();
     }
 
     public function store(Client $client, array $data)

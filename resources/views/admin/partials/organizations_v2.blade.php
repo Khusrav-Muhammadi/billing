@@ -1,21 +1,39 @@
 <table class="table table-hover">
     <thead>
+    @php
+        $sort = request('sort');
+        $direction = strtolower((string) request('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+        $sortLink = function (string $key) use ($sort, $direction) {
+            return request()->fullUrlWithQuery([
+                'sort' => $key,
+                'direction' => $sort === $key && $direction === 'asc' ? 'desc' : 'asc',
+                'page' => null,
+            ]);
+        };
+        $sortIcon = function (string $key) use ($sort, $direction) {
+            if ($sort !== $key) {
+                return '↕';
+            }
+
+            return $direction === 'asc' ? '↑' : '↓';
+        };
+    @endphp
     <tr>
         <th>#</th>
-        <th>ID</th>
-        <th>Имя</th>
-        <th>Телефон</th>
-        <th>Страна</th>
-        <th>Дата создания</th>
-        <th>Почта</th>
-        <th>Тариф</th>
-        <th>Кол-во пользователей</th>
-        <th>Баланс</th>
-        <th>Срок действие</th>
-        <th>Последняя активность</th>
-        <th>Статус</th>
-        <th>Партнер</th>
-        <th>Поддомен</th>
+        <th><a href="{{ $sortLink('order_number') }}" class="text-dark text-decoration-none">ID {{ $sortIcon('order_number') }}</a></th>
+        <th><a href="{{ $sortLink('name') }}" class="text-dark text-decoration-none">Имя {{ $sortIcon('name') }}</a></th>
+        <th><a href="{{ $sortLink('phone') }}" class="text-dark text-decoration-none">Телефон {{ $sortIcon('phone') }}</a></th>
+        <th><a href="{{ $sortLink('country') }}" class="text-dark text-decoration-none">Страна {{ $sortIcon('country') }}</a></th>
+        <th><a href="{{ $sortLink('created_at') }}" class="text-dark text-decoration-none">Дата создания {{ $sortIcon('created_at') }}</a></th>
+        <th><a href="{{ $sortLink('email') }}" class="text-dark text-decoration-none">Почта {{ $sortIcon('email') }}</a></th>
+        <th><a href="{{ $sortLink('tariff') }}" class="text-dark text-decoration-none">Тариф {{ $sortIcon('tariff') }}</a></th>
+        <th><a href="{{ $sortLink('users_count') }}" class="text-dark text-decoration-none">Кол-во пользователей {{ $sortIcon('users_count') }}</a></th>
+        <th><a href="{{ $sortLink('balance') }}" class="text-dark text-decoration-none">Баланс {{ $sortIcon('balance') }}</a></th>
+        <th><a href="{{ $sortLink('valid_until') }}" class="text-dark text-decoration-none">Срок действие {{ $sortIcon('valid_until') }}</a></th>
+        <th><a href="{{ $sortLink('last_activity') }}" class="text-dark text-decoration-none">Последняя активность {{ $sortIcon('last_activity') }}</a></th>
+        <th><a href="{{ $sortLink('status') }}" class="text-dark text-decoration-none">Статус {{ $sortIcon('status') }}</a></th>
+        <th><a href="{{ $sortLink('partner') }}" class="text-dark text-decoration-none">Партнер {{ $sortIcon('partner') }}</a></th>
+        <th><a href="{{ $sortLink('sub_domain') }}" class="text-dark text-decoration-none">Поддомен {{ $sortIcon('sub_domain') }}</a></th>
         <th>Действие</th>
     </tr>
     </thead>
