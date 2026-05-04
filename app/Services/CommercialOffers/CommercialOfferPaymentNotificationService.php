@@ -99,23 +99,24 @@ class CommercialOfferPaymentNotificationService
 
     private function connectedServices(CommercialOffer $offer): array
     {
-        $items = $offer->items;
+        $items = $offer->items()
+            ->with('tariff:id,name,is_tariff,is_extra_user')
+            ->orderBy('id')
+            ->get();
+
         if ($items->isNotEmpty()) {
             $currency = strtoupper((string)($offer->currency ?: $offer->payable_currency ?: ''));
 
             return $items
-                ->sortBy('id')
                 ->map(function ($item) use ($currency): array {
                     $amount = (float)($item->total_price ?? 0);
                     $months = max(1, (int)($item->months ?? 1));
                     $quantity = max(1, (float)($item->quantity ?? 1));
-                    $isTariff = (bool)($item->tariff?->is_tariff ?? false);
 
                     return [
                         'name' => (string)($item->tariff?->name ?? 'Услуга'),
-                        'quantity' => $isTariff && $months > 1
-                            ? $months . ' мес.'
-                            : $this->formatQuantity($quantity),
+                        'quantity' => $this->formatQuantity($quantity),
+                        'months' => (string)$months,
                         'amount' => $amount,
                         'currency' => $currency,
                         'formatted_amount' => $this->formatMoney($amount, $currency),
@@ -140,6 +141,7 @@ class CommercialOfferPaymentNotificationService
                 return [
                     'name' => (string)($service->tariff?->name ?? 'Услуга'),
                     'quantity' => $this->formatQuantity(max(1, (float)($service->quantity ?? 1))),
+                    'months' => '-',
                     'amount' => $amount,
                     'currency' => $currency,
                     'formatted_amount' => $this->formatMoney($amount, $currency),

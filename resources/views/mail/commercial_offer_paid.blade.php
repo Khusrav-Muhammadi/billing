@@ -36,6 +36,7 @@
                 <tr>
                     <th>Услуга</th>
                     <th class="right">Кол-во</th>
+                    <th class="right">Месяц</th>
                     <th class="right">Сумма</th>
                 </tr>
                 </thead>
@@ -44,6 +45,7 @@
                     <tr>
                         <td>{{ $service['name'] }}</td>
                         <td class="right">{{ $service['quantity'] }}</td>
+                        <td class="right">{{ $service['months'] ?? '-' }}</td>
                         <td class="right">{{ $service['formatted_amount'] }}</td>
                     </tr>
                 @endforeach
