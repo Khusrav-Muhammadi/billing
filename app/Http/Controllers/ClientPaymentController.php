@@ -333,10 +333,11 @@ class ClientPaymentController extends Controller
                 $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
 
                 if ($commercialOffer) {
-                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), [
+                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), array_filter([
                         'provider' => 'alif',
                         'payment' => $payment->id,
-                    ]);
+                        'return_url' => $this->trustedReturnUrl($request),
+                    ]));
 
                     return $request->expectsJson()
                         ? response()->json(['redirect_url' => $verificationUrl])
@@ -353,10 +354,11 @@ class ClientPaymentController extends Controller
                 $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
 
                 if ($commercialOffer) {
-                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), [
+                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), array_filter([
                         'provider' => 'octo',
                         'payment' => $payment->id,
-                    ]);
+                        'return_url' => $this->trustedReturnUrl($request),
+                    ]));
 
                     return $request->expectsJson()
                         ? response()->json(['redirect_url' => $verificationUrl])
@@ -623,6 +625,27 @@ class ClientPaymentController extends Controller
     private function paymentReturnUrl(Payment $payment): string
     {
         return route('client-payment.online.success', ['payment' => $payment->id]);
+    }
+
+    private function trustedReturnUrl(Request $request): ?string
+    {
+        $url = trim((string)$request->input('return_url', ''));
+        if ($url === '') {
+            return null;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) {
+            return null;
+        }
+
+        $allowedHosts = array_filter([
+            parse_url((string)config('app.url'), PHP_URL_HOST),
+            parse_url((string)config('partners.url'), PHP_URL_HOST),
+            'partners.shamcrm.com',
+        ]);
+
+        return in_array($host, $allowedHosts, true) ? $url : null;
     }
 
     private function handleOnlinePaymentWebhook(

@@ -37,10 +37,11 @@ class PaymentVerificationController extends Controller
 
         $expiresTs = (int) $request->query('expires', 0);
         $expiresAt = $expiresTs > 0 ? Carbon::createFromTimestamp($expiresTs) : now()->addDays(7);
-        $goUrl = URL::temporarySignedRoute('payment.verification.go', $expiresAt, [
+        $goUrl = URL::temporarySignedRoute('payment.verification.go', $expiresAt, array_filter([
             'provider' => $provider,
             'payment' => $payment->id,
-        ]);
+            'return_url' => $this->trustedReturnUrlFromRequest($request),
+        ]));
 
         return view('public.payment-verification', [
             'provider' => $provider,
@@ -82,10 +83,11 @@ class PaymentVerificationController extends Controller
         if (!$consent) {
             $expiresTs = (int) $request->query('expires', 0);
             $expiresAt = $expiresTs > 0 ? Carbon::createFromTimestamp($expiresTs) : now()->addDays(7);
-            $showUrl = URL::temporarySignedRoute('payment.verification.show', $expiresAt, [
+            $showUrl = URL::temporarySignedRoute('payment.verification.show', $expiresAt, array_filter([
                 'provider' => $provider,
                 'payment' => $payment->id,
-            ]);
+                'return_url' => $this->trustedReturnUrlFromRequest($request),
+            ]));
 
             $message = $offer?->partner_id
                 ? 'Подтвердите, что вы ознакомили клиента с условиями перед оплатой.'
@@ -150,7 +152,7 @@ class PaymentVerificationController extends Controller
         }
 
         return redirect()
-            ->to($this->signedShowUrl($provider, $payment, $request))
+            ->to($this->afterSendRedirectUrl($provider, $payment, $request))
             ->with('payment_link_sent', 'Ссылка на оплату отправлена клиенту' . ($offer?->partner_id ? ' и партнёру.' : '.'));
     }
 
@@ -184,9 +186,36 @@ class PaymentVerificationController extends Controller
         $expiresTs = (int) $request->query('expires', 0);
         $expiresAt = $expiresTs > 0 ? Carbon::createFromTimestamp($expiresTs) : now()->addDays(7);
 
-        return URL::temporarySignedRoute('payment.verification.show', $expiresAt, [
+        return URL::temporarySignedRoute('payment.verification.show', $expiresAt, array_filter([
             'provider' => $provider,
             'payment' => $payment->id,
+            'return_url' => $this->trustedReturnUrlFromRequest($request),
+        ]));
+    }
+
+    private function afterSendRedirectUrl(string $provider, Payment $payment, Request $request): string
+    {
+        return $this->trustedReturnUrlFromRequest($request) ?: $this->signedShowUrl($provider, $payment, $request);
+    }
+
+    private function trustedReturnUrlFromRequest(Request $request): ?string
+    {
+        $url = trim((string)$request->query('return_url', ''));
+        if ($url === '') {
+            return null;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) {
+            return null;
+        }
+
+        $allowedHosts = array_filter([
+            parse_url((string)config('app.url'), PHP_URL_HOST),
+            parse_url((string)config('partners.url'), PHP_URL_HOST),
+            'partners.shamcrm.com',
         ]);
+
+        return in_array($host, $allowedHosts, true) ? $url : null;
     }
 }
