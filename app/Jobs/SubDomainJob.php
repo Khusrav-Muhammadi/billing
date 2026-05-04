@@ -36,9 +36,39 @@ class SubDomainJob implements ShouldQueue
            'country' => $this->client->country_id == 2 ? 'uz' : 'tj'
        ];
 
-       $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $payload);
+       try {
+           $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $payload);
+       } catch (\Throwable $e) {
+           $organizations = $this->client->organizations;
+           if ($organizations->isEmpty()) {
+               app(IntegrationActionLogService::class)->logApiResponse(
+                   organizationId: null,
+                   clientId: (int)$this->client->id,
+                   action: 'create_subdomain',
+                   method: 'POST',
+                   url: $url,
+                   payload: $payload,
+                   error: $e->getMessage()
+               );
+               return;
+           }
+
+           foreach ($organizations as $organization) {
+               app(IntegrationActionLogService::class)->logApiResponse(
+                   organizationId: (int)$organization->id,
+                   clientId: (int)$this->client->id,
+                   action: 'create_subdomain',
+                   method: 'POST',
+                   url: $url,
+                   payload: $payload,
+                   error: $e->getMessage()
+               );
+           }
+
+           return;
+       }
 
         $organizations = $this->client->organizations;
         if ($organizations->isEmpty()) {

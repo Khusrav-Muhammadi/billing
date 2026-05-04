@@ -56,9 +56,23 @@ class CreateOrganizationJob implements ShouldQueue
             'channels_count' => $tariff->channels_count ?? 3,
         ];
 
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $payload);
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $payload);
+        } catch (\Throwable $e) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$this->organization->id,
+                clientId: (int)$this->client->id,
+                action: 'create_organization',
+                method: 'POST',
+                url: $url,
+                payload: $payload,
+                error: $e->getMessage()
+            );
+
+            return;
+        }
 
         app(IntegrationActionLogService::class)->logApiResponse(
             organizationId: (int)$this->organization->id,

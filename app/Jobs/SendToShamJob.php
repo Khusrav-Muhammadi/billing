@@ -48,16 +48,35 @@ class SendToShamJob implements ShouldQueue
             'partner' => $partner?->name ?? '',
         ];
 
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $payload);
-
         $client = Client::query()
             ->where('email', $this->email)
             ->orWhere('phone', $this->phone)
             ->with('organizations:id,client_id')
             ->first();
         $organization = $client?->organizations?->first();
+
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $payload);
+        } catch (\Throwable $e) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: $organization?->id ? (int)$organization->id : null,
+                clientId: $client?->id ? (int)$client->id : null,
+                action: 'send_to_sham',
+                method: 'POST',
+                url: $url,
+                payload: $payload,
+                error: $e->getMessage()
+            );
+
+            Log::error('Ошибка при отправке в Sham API', [
+                'phone' => $this->phone,
+                'error' => $e->getMessage(),
+            ]);
+
+            return;
+        }
 
         app(IntegrationActionLogService::class)->logApiResponse(
             organizationId: $organization?->id ? (int)$organization->id : null,

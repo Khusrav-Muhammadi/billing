@@ -38,9 +38,23 @@ class DisableDemoJob implements ShouldQueue
                 'b_organization_id' => $organization->id,
             ];
 
-            $response = Http::withHeaders([
-                'Accept' => 'application/json',
-            ])->post($url, $payload);
+            try {
+                $response = Http::withHeaders([
+                    'Accept' => 'application/json',
+                ])->post($url, $payload);
+            } catch (\Throwable $e) {
+                app(IntegrationActionLogService::class)->logApiResponse(
+                    organizationId: (int)$organization->id,
+                    clientId: (int)$this->client->id,
+                    action: 'disable_demo',
+                    method: 'POST',
+                    url: $url,
+                    payload: $payload,
+                    error: $e->getMessage()
+                );
+
+                continue;
+            }
 
             app(IntegrationActionLogService::class)->logApiResponse(
                 organizationId: (int)$organization->id,

@@ -37,9 +37,23 @@ class TariffExtensionJob implements ShouldQueue
             'b_organization_id' => $this->organization->id,
         ];
 
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $payload);
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $payload);
+        } catch (\Throwable $e) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$this->organization->id,
+                clientId: (int)($client->id ?? 0),
+                action: 'tariff_extension',
+                method: 'POST',
+                url: $url,
+                payload: $payload,
+                error: $e->getMessage()
+            );
+
+            return;
+        }
 
         app(IntegrationActionLogService::class)->logApiResponse(
             organizationId: (int)$this->organization->id,

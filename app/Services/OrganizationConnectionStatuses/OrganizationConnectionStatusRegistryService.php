@@ -53,7 +53,7 @@ class OrganizationConnectionStatusRegistryService
                 ]
             );
 
-            TariffExtensionJob::dispatch($organization);
+            TariffExtensionJob::dispatchSync($organization);
         });
     }
 

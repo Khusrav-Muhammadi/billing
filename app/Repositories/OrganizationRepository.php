@@ -605,9 +605,23 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             $data['user_count'] = $organizationPack->amount;
         }
 
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $data);
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $data);
+        } catch (\Throwable $e) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$organization->id,
+                clientId: (int)($organization->client_id ?? 0),
+                action: 'add_pack',
+                method: 'POST',
+                url: $url,
+                payload: $data,
+                error: $e->getMessage()
+            );
+
+            return false;
+        }
 
         app(IntegrationActionLogService::class)->logApiResponse(
             organizationId: (int)$organization->id,

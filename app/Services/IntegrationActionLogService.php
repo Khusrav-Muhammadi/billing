@@ -28,7 +28,7 @@ class IntegrationActionLogService
             'method' => strtoupper($method),
             'url' => $url,
             'status_code' => $response?->status(),
-            'successful' => $response?->successful(),
+            'successful' => $response?->successful() ?? ($error === null ? null : false),
             'payload' => $this->safeArray($payload),
             'response' => $this->responseBody($response),
             'error' => $error,

@@ -72,9 +72,24 @@ class AddPackJob implements ShouldQueue
                 $data['channel'] = $quantity;
             }
 
-            $response = Http::withHeaders([
-                'Accept' => 'application/json',
-            ])->post($url, $data);
+            try {
+                $response = Http::withHeaders([
+                    'Accept' => 'application/json',
+                ])->post($url, $data);
+            } catch (\Throwable $e) {
+                app(IntegrationActionLogService::class)->logApiResponse(
+                    organizationId: (int)$this->organization->id,
+                    clientId: (int)($this->organization->client_id ?? 0),
+                    action: 'add_pack',
+                    method: 'POST',
+                    url: $url,
+                    payload: $data,
+                    error: $e->getMessage(),
+                    commercialOfferId: $connectedClient->commercial_offer_id ? (int)$connectedClient->commercial_offer_id : null
+                );
+
+                continue;
+            }
 
             app(IntegrationActionLogService::class)->logApiResponse(
                 organizationId: (int)$this->organization->id,

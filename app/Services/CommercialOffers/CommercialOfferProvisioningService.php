@@ -84,7 +84,7 @@ class CommercialOfferProvisioningService
 
         $client = $organization->client;
 
-        ConnectionJob::dispatch($organization, $tariffId, (string)$client->sub_domain);
+        ConnectionJob::dispatchSync($organization, $tariffId, (string)$client->sub_domain);
     }
 
     private function dispatchTariffUpdate(CommercialOffer $offer, Organization $organization): void
@@ -98,15 +98,15 @@ class CommercialOfferProvisioningService
 
         $client = $organization->client;
 
-        UpdateTariffJob::dispatch($organization, $tariffId, (string)$client->sub_domain);
-        AddPackJob::dispatch($organization, (string)$client->sub_domain, (int)$offer->id);
+        UpdateTariffJob::dispatchSync($organization, $tariffId, (string)$client->sub_domain);
+        AddPackJob::dispatchSync($organization, (string)$client->sub_domain, (int)$offer->id);
     }
 
     private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization): void
     {
         $client = $organization->client;
 
-        AddPackJob::dispatch($organization, (string)$client->sub_domain, (int)$offer->id);
+        AddPackJob::dispatchSync($organization, (string)$client->sub_domain, (int)$offer->id);
 
     }
 

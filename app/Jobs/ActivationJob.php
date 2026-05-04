@@ -38,9 +38,25 @@ class ActivationJob implements ShouldQueue
             'has_access' => $this->activation
         ];
 
-        $res = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $data);
+        try {
+            $res = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $data);
+        } catch (\Throwable $e) {
+            foreach (Organization::query()->whereIn('id', $this->organizationIds)->get(['id', 'client_id']) as $organization) {
+                app(IntegrationActionLogService::class)->logApiResponse(
+                    organizationId: (int)$organization->id,
+                    clientId: (int)$organization->client_id,
+                    action: $this->activation ? 'activation' : 'deactivation',
+                    method: 'POST',
+                    url: $url,
+                    payload: $data,
+                    error: $e->getMessage()
+                );
+            }
+
+            return;
+        }
 
         foreach (Organization::query()->whereIn('id', $this->organizationIds)->get(['id', 'client_id']) as $organization) {
             app(IntegrationActionLogService::class)->logApiResponse(
