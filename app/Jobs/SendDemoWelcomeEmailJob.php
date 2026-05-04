@@ -14,6 +14,7 @@ use App\Models\Partner;
 use App\Models\PartnerRequest;
 use App\Models\Tariff;
 use App\Models\User;
+use App\Services\IntegrationActionLogService;
 use App\Services\WithdrawalService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -33,6 +34,31 @@ class SendDemoWelcomeEmailJob implements ShouldQueue
 
     public function handle(): void
     {
-        Mail::to($this->client->email)->send(new DemoWelcomeMail($this->client));
+        $successful = true;
+        $error = null;
+
+        try {
+            Mail::to($this->client->email)->send(new DemoWelcomeMail($this->client));
+        } catch (\Throwable $e) {
+            $successful = false;
+            $error = $e->getMessage();
+            throw $e;
+        } finally {
+            $organization = $this->client->organizations()->first();
+            app(IntegrationActionLogService::class)->logEmail(
+                organizationId: $organization?->id ? (int)$organization->id : null,
+                clientId: (int)$this->client->id,
+                action: 'demo_welcome_email',
+                recipient: (string)$this->client->email,
+                subject: 'Добро пожаловать в shamCRM',
+                payload: [
+                    'client_id' => $this->client->id,
+                    'client_name' => $this->client->name,
+                    'sub_domain' => $this->client->sub_domain,
+                ],
+                successful: $successful,
+                error: $error
+            );
+        }
     }
 }

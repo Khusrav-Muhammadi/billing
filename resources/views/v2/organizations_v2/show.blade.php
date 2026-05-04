@@ -255,6 +255,169 @@
                 </table>
             </div>
         </div>
+
+        <div class="card mt-4 p-3">
+            <h4 class="card-title mb-3">API запросы и почты</h4>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Дата</th>
+                        <th>Тип</th>
+                        <th>Действие</th>
+                        <th>Куда</th>
+                        <th>Статус</th>
+                        <th>Детали</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @forelse(($integrationLogs ?? collect()) as $log)
+                        @php
+                            $typeLabel = $log->type === 'email' ? 'Почта' : 'API';
+                            $actionLabel = [
+                                'create_subdomain' => 'Создание поддомена',
+                                'send_to_sham' => 'Заявка в Sham API',
+                                'demo_welcome_email' => 'Демо-письмо',
+                                'create_organization' => 'Создание организации',
+                                'site_access_email' => 'Письмо с доступом',
+                                'demo_expired_followup_3' => 'Демо: письмо через 3 дня',
+                                'demo_expired_followup_6' => 'Демо: письмо через 6 дней',
+                                'demo_expired_followup_14' => 'Демо: письмо через 14 дней',
+                                'demo_expired_followup_18' => 'Демо: письмо через 18 дней',
+                                'commercial_offer_paid_email' => 'Письмо после оплаты',
+                                'low_balance_email' => 'Уведомление о балансе',
+                                'update_tariff' => 'Изменение тарифа',
+                                'connection_update_tariff' => 'Подключение тарифа',
+                                'add_pack' => 'Добавление доп. услуг',
+                                'activation' => 'Активация',
+                                'deactivation' => 'Отключение',
+                                'tariff_extension' => 'Продление доступа',
+                                'disable_demo' => 'Отключение демо',
+                            ][$log->action] ?? ($log->action ?: '-');
+                            $target = $log->type === 'email'
+                                ? ($log->recipient ?: '-')
+                                : trim(($log->method ? $log->method . ' ' : '') . ($log->url ?: '-'));
+                            $emailHtml = $log->type === 'email'
+                                ? (data_get($log->payload, 'email_body.html') ?: data_get($log->payload, 'request_body.html'))
+                                : null;
+                            $emailText = $log->type === 'email'
+                                ? (data_get($log->payload, 'email_body.text') ?: data_get($log->payload, 'request_body.text'))
+                                : null;
+                            $payloadJson = json_encode($log->payload ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                            $responseJson = json_encode($log->response ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                            $canRetry = $log->successful === false || ($log->status_code && !in_array((int) $log->status_code, [200, 201], true));
+                        @endphp
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ optional($log->occurred_at)->format('d.m.Y H:i:s') ?: '-' }}</td>
+                            <td>{{ $typeLabel }}</td>
+                            <td>{{ $actionLabel }}</td>
+                            <td style="max-width:360px; word-break:break-word;">{{ $target }}</td>
+                            <td>
+                                @if($log->successful === true)
+                                    <span class="badge badge-success">Успешно</span>
+                                @elseif($log->successful === false)
+                                    <span class="badge badge-danger">Ошибка</span>
+                                @else
+                                    <span class="badge badge-secondary">—</span>
+                                @endif
+                                @if($log->status_code)
+                                    <span class="text-muted">({{ $log->status_code }})</span>
+                                @endif
+                            </td>
+                            <td>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#integrationLogModal{{ $log->id }}">
+                                    Просмотр
+                                </button>
+                                @if($canRetry)
+                                    <form action="{{ route('organization_v2.integration-log.retry', $log) }}"
+                                          method="POST"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Повторить этот запрос с тем же телом?')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            Повторить
+                                        </button>
+                                    </form>
+                                @endif
+                            </td>
+                        </tr>
+
+                        <div class="modal fade" id="integrationLogModal{{ $log->id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-xl">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">{{ $typeLabel }} — {{ $actionLabel }}</h5>
+                                        <button type="button" class="modal-x-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Закрыть">×</button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <strong>Дата:</strong> {{ optional($log->occurred_at)->format('d.m.Y H:i:s') ?: '-' }}<br>
+                                            <strong>Куда:</strong> {{ $target }}<br>
+                                            @if($log->subject)
+                                                <strong>Тема:</strong> {{ $log->subject }}<br>
+                                            @endif
+                                            @if($log->error)
+                                                <strong class="text-danger">Ошибка:</strong> {{ $log->error }}
+                                            @endif
+                                        </div>
+
+                                        @if($log->type === 'email' && $emailHtml)
+                                            <h6>Превью письма</h6>
+                                            <iframe
+                                                title="Превью письма"
+                                                sandbox=""
+                                                srcdoc="{{ $emailHtml }}"
+                                                style="width:100%; min-height:520px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; margin-bottom:16px;"></iframe>
+
+                                            <h6>HTML body письма</h6>
+                                            <pre style="white-space:pre-wrap; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:6px; padding:12px; max-height:420px; overflow:auto;">{{ $emailHtml }}</pre>
+
+                                            @if($emailText)
+                                                <h6>Text body письма</h6>
+                                                <pre style="white-space:pre-wrap; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:6px; padding:12px; max-height:240px; overflow:auto;">{{ $emailText }}</pre>
+                                            @endif
+
+                                            <h6>JSON данные / запрос к Resend</h6>
+                                        @else
+                                            <h6>Тело запроса / данные письма</h6>
+                                        @endif
+
+                                        <pre style="white-space:pre-wrap; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:6px; padding:12px; max-height:360px; overflow:auto;">{{ $payloadJson ?: '{}' }}</pre>
+
+                                        @if($log->type === 'api')
+                                            <h6>Ответ</h6>
+                                            <pre style="white-space:pre-wrap; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:6px; padding:12px; max-height:360px; overflow:auto;">{{ $responseJson ?: '{}' }}</pre>
+                                        @endif
+                                    </div>
+                                    @if($canRetry)
+                                        <div class="modal-footer">
+                                            <form action="{{ route('organization_v2.integration-log.retry', $log) }}"
+                                                  method="POST"
+                                                  onsubmit="return confirm('Повторить этот запрос с тем же телом?')">
+                                                @csrf
+                                                <button type="submit" class="btn btn-danger">
+                                                    Повторить
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="text-center">API запросы и письма пока не логировались</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 @endsection
 

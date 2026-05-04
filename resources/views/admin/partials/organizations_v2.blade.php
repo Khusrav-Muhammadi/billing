@@ -21,10 +21,15 @@
     </thead>
     <tbody>
     @foreach($organizations as $organization)
+        @php
+            $isDemoRowActive = $organization->client?->is_demo
+                && $organization->client?->created_at
+                && $organization->client->created_at->greaterThan(now()->subDays(14));
+        @endphp
         <tr class="organization-row"
             data-href="{{ route('organization_v2.show', $organization->id) }}"
             style="cursor: pointer;">
-            <td>{{ $loop->iteration }}</td>
+            <td>{{ method_exists($organizations, 'firstItem') ? (($organizations->firstItem() ?? 1) + $loop->index) : $loop->iteration }}</td>
             <td>{{ $organization->order_number ?? '-' }}</td>
             <td>{{ $organization->name }}</td>
             <td>{{ $organization->phone }}</td>
@@ -37,10 +42,18 @@
                 {{ number_format((float) ($organization->real_balance ?? 0), 2, '.', ' ') }}
                 {{ $organization->client?->country?->currency?->symbol_code ?? '' }}
             </td>
-            <td>{{ $organization->client?->validate_date }}</td>
+            <td>
+                @if($organization->calculated_valid_until instanceof \Carbon\CarbonInterface)
+                    {{ $organization->calculated_valid_until->format('d.m.Y') }}
+                @elseif($organization->client?->validate_date instanceof \Carbon\CarbonInterface)
+                    {{ $organization->client->validate_date->format('d.m.Y') }}
+                @else
+                    {{ $organization->client?->validate_date }}
+                @endif
+            </td>
             <td>{{ $organization->client?->last_activity }}</td>
             <td class="text-center">
-                @if(optional($organization->latestConnection)->status === 'connected')
+                @if(($isDemoList ?? false) ? $isDemoRowActive : optional($organization->latestConnection)->status === 'connected')
                     <p style="color: #00bb00">Активный</p>
                 @else
                     <p style="color: red">Неактивный</p>
@@ -77,3 +90,8 @@
     @endforeach
     </tbody>
 </table>
+@if(method_exists($organizations, 'links'))
+    <div class="mt-3">
+        {{ $organizations->links() }}
+    </div>
+@endif

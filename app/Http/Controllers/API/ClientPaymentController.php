@@ -12,7 +12,7 @@ class ClientPaymentController extends Controller
     {
         $payment->load('paymentItems');
         $offer = CommercialOffer::query()
-            ->with('organization:id,name,order_number')
+            ->with('organization:id,name,legal_name,INN,email,phone,order_number')
             ->where('payment_id', $payment->id)
             ->first();
 
@@ -29,6 +29,10 @@ class ClientPaymentController extends Controller
                     ? [
                         'id' => $offer->organization->id,
                         'name' => $offer->organization->name,
+                        'legal_name' => $offer->organization->legal_name,
+                        'INN' => $offer->organization->INN,
+                        'email' => $offer->organization->email,
+                        'phone' => $offer->organization->phone,
                         'order_number' => $offer->organization->order_number,
                     ]
                     : null,

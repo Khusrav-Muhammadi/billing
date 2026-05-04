@@ -11,15 +11,19 @@ use App\Models\Client;
 use App\Models\ClientBalance;
 use App\Models\ConnectedClientServices;
 use App\Models\Country;
+use App\Models\IntegrationActionLog;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\OrganizationConnectionStatus;
 use App\Models\Tariff;
 use App\Models\User;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Services\Organizations\OrganizationValidityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 
 class OrganizationV2Controller extends Controller
@@ -30,6 +34,7 @@ class OrganizationV2Controller extends Controller
     {
         $organizations = $this->repository->index($request->all());
         $this->hydrateRealBalances($organizations);
+        app(OrganizationValidityService::class)->hydrate($organizations);
 
         $partners = User::query()->where('role', 'partner')->get();
         $tariffs = Tariff::all();
@@ -46,16 +51,19 @@ class OrganizationV2Controller extends Controller
     {
         $organizations = $this->repository->demo($request->all());
         $this->hydrateRealBalances($organizations);
+        $this->hydrateDemoValidateDates($organizations);
 
         $partners = User::query()->where('role', 'partner')->get();
-        $tariffs = Tariff::all();
         $countries = Country::all();
 
         if ($request->ajax()) {
-            return view('admin.partials.organizations_v2', compact('organizations'))->render();
+            return view('admin.partials.organizations_v2', [
+                'organizations' => $organizations,
+                'isDemoList' => true,
+            ])->render();
         }
 
-        return view('v2.organizations_v2.demo', compact('organizations', 'partners', 'tariffs', 'countries'));
+        return view('v2.organizations_v2.demo', compact('organizations', 'partners', 'countries'));
     }
 
     public function store(Client $client, StoreRequest $request): RedirectResponse
@@ -112,12 +120,26 @@ class OrganizationV2Controller extends Controller
 
         $realBalance = $this->calculateRealBalance($organization, $balanceOperations);
 
+        $integrationLogs = IntegrationActionLog::query()
+            ->where(function ($query) use ($organization): void {
+                $query->where('organization_id', (int)$organization->id);
+
+                if ($organization->client_id) {
+                    $query->orWhere('client_id', (int)$organization->client_id);
+                }
+            })
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
         return view('v2.organizations_v2.show', compact(
             'organization',
             'connectedServices',
             'connectionStatusHistory',
             'balanceOperations',
-            'realBalance'
+            'realBalance',
+            'integrationLogs'
         ));
     }
 
@@ -156,13 +178,45 @@ class OrganizationV2Controller extends Controller
         return redirect()->back();
     }
 
-    private function hydrateRealBalances(Collection $organizations): void
+    public function retryIntegrationLog(IntegrationActionLog $log): RedirectResponse
     {
-        if ($organizations->isEmpty()) {
+        if (!in_array($log->type, ['api', 'email'], true)) {
+            return redirect()->back()->with('error', 'Этот тип лога нельзя повторить');
+        }
+
+        if (!$this->shouldRetryIntegrationLog($log)) {
+            return redirect()->back()->with('error', 'Повтор доступен только для неуспешных запросов');
+        }
+
+        try {
+            $response = $log->type === 'email'
+                ? $this->retryEmailLog($log)
+                : $this->retryApiLog($log);
+
+            $successful = in_array($response->status(), [200, 201], true);
+            $this->storeRetriedIntegrationLog($log, $response, $successful);
+
+            return redirect()
+                ->back()
+                ->with($successful ? 'success' : 'error', $successful ? 'Запрос повторно отправлен' : 'Запрос повторно отправлен, но сервер вернул ошибку');
+        } catch (\Throwable $e) {
+            $this->storeFailedRetryLog($log, $e->getMessage());
+
+            return redirect()->back()->with('error', 'Не удалось повторить запрос: ' . $e->getMessage());
+        }
+    }
+
+    private function hydrateRealBalances(Collection|LengthAwarePaginator $organizations): void
+    {
+        $items = $organizations instanceof LengthAwarePaginator
+            ? $organizations->getCollection()
+            : $organizations;
+
+        if ($items->isEmpty()) {
             return;
         }
 
-        $organizationIds = $organizations->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $organizationIds = $items->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         $balanceByOrganization = ClientBalance::query()
             ->selectRaw("
@@ -176,7 +230,7 @@ class OrganizationV2Controller extends Controller
             ->get()
             ->groupBy('organization_id');
 
-        foreach ($organizations as $organization) {
+        foreach ($items as $organization) {
             $rows = $balanceByOrganization->get((int) $organization->id, collect());
             $targetCurrencyId = (int) ($organization->client?->country?->currency_id ?? 0);
 
@@ -191,6 +245,24 @@ class OrganizationV2Controller extends Controller
             $outcome = (float) $rows->sum('total_outcome');
 
             $organization->setAttribute('real_balance', round($income - $outcome, 4));
+        }
+    }
+
+    private function hydrateDemoValidateDates(Collection|LengthAwarePaginator $organizations): void
+    {
+        $items = $organizations instanceof LengthAwarePaginator
+            ? $organizations->getCollection()
+            : $organizations;
+
+        foreach ($items as $organization) {
+            if (!$organization->client || !$organization->client->is_demo) {
+                continue;
+            }
+
+            $organization->client->setAttribute(
+                'validate_date',
+                optional($organization->client->created_at)->copy()?->addWeeks(2)
+            );
         }
     }
 
@@ -210,6 +282,106 @@ class OrganizationV2Controller extends Controller
         $outcome = (float) $rows->where('type', 'outcome')->sum('sum');
 
         return round($income - $outcome, 4);
+    }
+
+    private function shouldRetryIntegrationLog(IntegrationActionLog $log): bool
+    {
+        if ($log->successful === false) {
+            return true;
+        }
+
+        if ($log->status_code !== null) {
+            return !in_array((int)$log->status_code, [200, 201], true);
+        }
+
+        return false;
+    }
+
+    private function retryApiLog(IntegrationActionLog $log): \Illuminate\Http\Client\Response
+    {
+        $method = strtoupper((string)($log->method ?: 'POST'));
+        $url = trim((string)$log->url);
+
+        if ($url === '') {
+            throw new \RuntimeException('URL запроса не найден');
+        }
+
+        $payload = is_array($log->payload) ? $log->payload : [];
+
+        return Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->send($method, $url, [
+            'json' => $payload,
+        ]);
+    }
+
+    private function retryEmailLog(IntegrationActionLog $log): \Illuminate\Http\Client\Response
+    {
+        $payload = data_get($log->payload, 'request_body');
+        if (!is_array($payload)) {
+            throw new \RuntimeException('Тело письма для повторной отправки не найдено');
+        }
+
+        return Http::withHeaders([
+            'Authorization' => 'Bearer ' . config('services.resend.api-key'),
+            'Content-Type' => 'application/json',
+        ])->post('https://api.resend.com/emails', $payload);
+    }
+
+    private function storeRetriedIntegrationLog(
+        IntegrationActionLog $sourceLog,
+        \Illuminate\Http\Client\Response $response,
+        bool $successful
+    ): void {
+        IntegrationActionLog::query()->create([
+            'organization_id' => $sourceLog->organization_id,
+            'client_id' => $sourceLog->client_id,
+            'commercial_offer_id' => $sourceLog->commercial_offer_id,
+            'type' => $sourceLog->type,
+            'action' => $sourceLog->action,
+            'method' => $sourceLog->type === 'email' ? 'POST' : $sourceLog->method,
+            'url' => $sourceLog->type === 'email' ? 'https://api.resend.com/emails' : $sourceLog->url,
+            'recipient' => $sourceLog->recipient,
+            'subject' => $sourceLog->subject,
+            'status_code' => $response->status(),
+            'successful' => $successful,
+            'payload' => $sourceLog->payload,
+            'response' => $this->integrationResponseBody($response),
+            'error' => $successful ? null : 'Retry returned HTTP ' . $response->status(),
+            'occurred_at' => now(),
+        ]);
+    }
+
+    private function storeFailedRetryLog(IntegrationActionLog $sourceLog, string $error): void
+    {
+        IntegrationActionLog::query()->create([
+            'organization_id' => $sourceLog->organization_id,
+            'client_id' => $sourceLog->client_id,
+            'commercial_offer_id' => $sourceLog->commercial_offer_id,
+            'type' => $sourceLog->type,
+            'action' => $sourceLog->action,
+            'method' => $sourceLog->type === 'email' ? 'POST' : $sourceLog->method,
+            'url' => $sourceLog->type === 'email' ? 'https://api.resend.com/emails' : $sourceLog->url,
+            'recipient' => $sourceLog->recipient,
+            'subject' => $sourceLog->subject,
+            'successful' => false,
+            'payload' => $sourceLog->payload,
+            'error' => $error,
+            'occurred_at' => now(),
+        ]);
+    }
+
+    private function integrationResponseBody(\Illuminate\Http\Client\Response $response): array
+    {
+        try {
+            $json = $response->json();
+            if (is_array($json)) {
+                return $json;
+            }
+        } catch (\Throwable) {
+        }
+
+        return ['body' => mb_substr((string)$response->body(), 0, 5000)];
     }
 
 }

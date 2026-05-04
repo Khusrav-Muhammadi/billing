@@ -11,6 +11,8 @@ use App\Models\OrganizationPack;
 use App\Models\Price;
 use App\Models\Transaction;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Services\IntegrationActionLogService;
+use App\Services\Organizations\OrganizationValidityService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -150,8 +152,39 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
         $this->applyOrganizationFilters($query, $data);
+        $this->applyValidityUntilFilter($query, $data['valid_until_to'] ?? null);
 
-        return $query->orderBy('id')->get();
+        return $query->orderBy('id')->paginate(50)->withQueryString();
+    }
+
+    private function applyValidityUntilFilter(Builder $query, ?string $validUntilTo): void
+    {
+        $validUntilTo = trim((string)$validUntilTo);
+        if ($validUntilTo === '') {
+            return;
+        }
+
+        $targetDate = Carbon::parse($validUntilTo)->endOfDay();
+        $validityService = app(OrganizationValidityService::class);
+
+        $ids = (clone $query)
+            ->with(['client.country'])
+            ->get()
+            ->filter(function (Organization $organization) use ($validityService, $targetDate): bool {
+                $validUntil = $validityService->calculateValidUntil($organization);
+
+                return $validUntil !== null && $validUntil->lessThanOrEqualTo($targetDate);
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int)$id)
+            ->all();
+
+        if (empty($ids)) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        $query->whereIn('id', $ids);
     }
 
     public function active(array $data)
@@ -216,11 +249,20 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             });
 
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
-        // "status" filter for demo page means demo-active (within 14 days) / demo-inactive (expired),
-        // not the connection status used on the main organizations page.
-        $filters = $data;
-        unset($filters['status']);
-        $this->applyOrganizationFilters($query, $filters);
+
+        if (!empty($data['country'])) {
+            $countryId = (int)$data['country'];
+            $query->whereHas('client', function (Builder $q) use ($countryId) {
+                $q->where('country_id', $countryId);
+            });
+        }
+
+        if (!empty($data['partner'])) {
+            $partnerId = (int)$data['partner'];
+            $query->whereHas('client', function (Builder $q) use ($partnerId) {
+                $q->where('partner_id', $partnerId);
+            });
+        }
 
         if (isset($data['status']) && $data['status'] !== '') {
             $isActiveDemo = (bool)$data['status'];
@@ -236,7 +278,21 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             });
         }
 
-        return $query->orderBy('id')->get();
+        if (!empty($data['date_from'])) {
+            $createdFrom = Carbon::parse($data['date_from'])->subWeeks(2)->startOfDay();
+            $query->whereHas('client', function (Builder $clientQuery) use ($createdFrom) {
+                $clientQuery->where('created_at', '>=', $createdFrom);
+            });
+        }
+
+        if (!empty($data['date_to'])) {
+            $createdTo = Carbon::parse($data['date_to'])->subWeeks(2)->endOfDay();
+            $query->whereHas('client', function (Builder $clientQuery) use ($createdTo) {
+                $clientQuery->where('created_at', '<=', $createdTo);
+            });
+        }
+
+        return $query->orderBy('id')->paginate(50)->withQueryString();
     }
 
     public function store(Client $client, array $data)
@@ -341,7 +397,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     public function addPackInSham(OrganizationPack $organizationPack, string $sub_domain)
     {
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = 'https://' . $sub_domain . '-back.' . $domain . '/api/organization/add-pack';
 
         $organization = $organizationPack->organization()->first();
@@ -358,6 +414,16 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $response = Http::withHeaders([
             'Accept' => 'application/json',
         ])->post($url, $data);
+
+        app(IntegrationActionLogService::class)->logApiResponse(
+            organizationId: (int)$organization->id,
+            clientId: (int)($organization->client_id ?? 0),
+            action: 'add_pack',
+            method: 'POST',
+            url: $url,
+            payload: $data,
+            response: $response
+        );
 
         return $response->successful();
     }

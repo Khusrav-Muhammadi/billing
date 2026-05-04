@@ -22,6 +22,7 @@ class CPGenerator {
             selectedServices: {},
             implementationPrice: 0,
             implementationEnabled: false,
+            hasSavedImplementation: false,
             implementationDiscountPercent: 0,
             implementationDiscountPercent12: 0,
             onlineStorePrice: 0,
@@ -281,6 +282,10 @@ class CPGenerator {
     }
 
     shouldShowImplementationSection() {
+        if (this.state.editOfferId) {
+            return Boolean(this.state.hasSavedImplementation);
+        }
+
         const partner = this.getSelectedPartner();
         if (Boolean(partner?.has_implementation)) {
             return true;
@@ -291,6 +296,23 @@ class CPGenerator {
 
     isImplementationEnabled() {
         return this.shouldShowImplementationSection() && Boolean(this.state.implementationEnabled);
+    }
+
+    getImplementationDiscountCapPercent() {
+        const caps = this.config?.implementation?.discount_caps || {};
+        const byType = caps?.by_type || {};
+        const byCurrency = caps?.by_currency || {};
+        const defaults = caps?.default || {};
+        const currencyCode = this.normalizeCurrencyCode(this.state.currency);
+        const currencyCaps = currencyCode && Object.prototype.hasOwnProperty.call(byCurrency, currencyCode)
+            ? byCurrency[currencyCode]
+            : null;
+
+        const rawCap = currencyCaps && Object.prototype.hasOwnProperty.call(currencyCaps, 'standard')
+            ? currencyCaps.standard
+            : (Object.prototype.hasOwnProperty.call(byType, 'standard') ? byType.standard : defaults.standard);
+        const cap = Number(rawCap) || 0;
+        return Math.max(0, Math.min(100, cap));
     }
 
     getImplementationDiscountPercent() {
@@ -1006,6 +1028,11 @@ class CPGenerator {
                     name: String(extra?.name || '').trim(),
                     price: Math.max(0, Number(extra?.price) || 0),
                 }));
+                this.state.hasSavedImplementation = Boolean(payload.implementation.enabled)
+                    || this.state.implementationPrice > 0
+                    || this.state.implementationDiscountPercent > 0
+                    || this.state.implementationDiscountPercent12 > 0
+                    || this.state.customOneTimePayments.some((extra) => extra.name !== '' || extra.price > 0);
             }
 
             // In view/edit mode for connection-based request types, rely on saved offer state.
@@ -1258,13 +1285,7 @@ class CPGenerator {
 
         const discountInput = document.getElementById('implementationDiscountPercent');
         if (discountInput) {
-            const caps = this.config?.implementation?.discount_caps || {};
-            const byType = caps?.by_type || {};
-            const defaults = caps?.default || {};
-            const rawCap = Object.prototype.hasOwnProperty.call(byType, 'standard')
-                ? byType.standard
-                : defaults.standard;
-            const cap = Math.max(0, Math.min(100, Number(rawCap) || 0));
+            const cap = this.getImplementationDiscountCapPercent();
             const current = this.getImplementationDiscountPercent();
             discountInput.value = String(current);
             discountInput.max = String(cap);
@@ -1273,13 +1294,7 @@ class CPGenerator {
 
         const discountHint = document.getElementById('implementationDiscountHint');
         if (discountHint) {
-            const caps = this.config?.implementation?.discount_caps || {};
-            const byType = caps?.by_type || {};
-            const defaults = caps?.default || {};
-            const rawCap = Object.prototype.hasOwnProperty.call(byType, 'standard')
-                ? byType.standard
-                : defaults.standard;
-            const cap = Math.max(0, Math.min(100, Number(rawCap) || 0));
+            const cap = this.getImplementationDiscountCapPercent();
             discountHint.textContent = `Потолок скидки (Стандартная): ${cap}%.`;
         }
 
@@ -1545,7 +1560,7 @@ class CPGenerator {
     }
 
     isImplementationRequiredByPartner(partner = this.getSelectedPartner()) {
-        return Boolean(partner?.has_implementation) && Boolean(partner?.implementation_required);
+        return false;
     }
 
     applyPartnerImplementationDefaults(partner = this.getSelectedPartner()) {
@@ -1554,7 +1569,7 @@ class CPGenerator {
         }
 
         const hasImplementation = Boolean(partner?.has_implementation);
-        const required = Boolean(partner?.implementation_required);
+        const required = false;
 
         if (!hasImplementation) {
             this.state.implementationEnabled = false;

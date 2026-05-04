@@ -163,7 +163,7 @@
                     <tr class="offer-row" data-href="{{ route(\App\Http\Controllers\ApplicationController::getRouteNameForOfferType($offer->request_type), $offer) }}" style="cursor: pointer;">
                         <td>{{ $offer->client_name ?: '-' }}</td>
                         <td>{{ $offer->partner_name ?? '-' }}</td>
-                        <td>{{ optional($offer->saved_at)->format('d.m.Y') }}</td>
+                        <td>{{ optional($offer->status_date)->format('d.m.Y') }}</td>
                         <td class="offer-status-cell">
                             <span class="badge {{ $operationStatusClass }}">{{ $operationStatusLabel }}</span>
                             <div class="offer-status-actions">
@@ -264,9 +264,9 @@
                                             <td>{{ $statusRow->payment_order_number ?: '-' }}</td>
                                             <td>{{ $statusRow->author?->name ?? '-' }}</td>
                                             <td>
-                                                <button type="button" 
-                                                        class="btn btn-link p-0 m-0" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button"
+                                                        class="btn btn-link p-0 m-0"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#offerStatusEditModal{{ $statusRow->id }}">
                                                     <i class="mdi mdi-pencil-box-outline text-primary" style="font-size: 30px"></i>
                                                 </button>

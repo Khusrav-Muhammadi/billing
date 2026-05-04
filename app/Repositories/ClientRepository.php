@@ -151,18 +151,13 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function update(Client $client, array $data)
     {
-        $currencyId = (int) ($client->country?->currency_id ?? 0);
-        $tariffCurrency = null;
-        if ((int) $client->country_id === 2 && $currencyId > 0) {
-            $tariffCurrency = TariffCurrency::query()
-                ->where('tariff_id', $data['tariff_id'])
-                ->where('currency_id', $currencyId)
-                ->first();
+        $tariffId = (int)$data['tariff_id'];
+
+        if ((int)$client->tariff_id !== $tariffId) {
+            foreach ($client->organizations()->get() as $organization) {
+                UpdateTariffJob::dispatch($organization, $tariffId, $client->sub_domain);
+            }
         }
-
-        $tariff_id = $tariffCurrency?->id ?: $data['tariff_id'];
-
-        if ($client->tariff_id != $tariff_id) UpdateTariffJob::dispatch($client, $tariff_id, $client->sub_domain);
 
         if (isset($data['is_demo']) && $data['is_demo'] == 'on') $data['is_demo'] = true;
         else $data['is_demo'] = false;

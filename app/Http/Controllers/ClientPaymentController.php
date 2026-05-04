@@ -32,7 +32,7 @@ class ClientPaymentController extends Controller
     {
         $payment->load('paymentItems');
         $offer = CommercialOffer::query()
-            ->with('organization:id,name,order_number')
+            ->with('organization:id,name,legal_name,INN,email,phone,order_number')
             ->where('payment_id', $payment->id)
             ->first();
 
@@ -41,6 +41,46 @@ class ClientPaymentController extends Controller
             'offer' => $offer,
             'organizationOrderNumber' => (string) ($offer?->organization?->order_number ?? ''),
         ]);
+    }
+
+    public function updateInvoiceCustomer(Payment $payment, Request $request)
+    {
+        $data = $request->validate([
+            'field' => ['required', 'string', 'in:legal_name,INN,email,phone'],
+            'value' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $offer = CommercialOffer::query()
+            ->with('organization:id,name,legal_name,INN,email,phone,order_number')
+            ->where('payment_id', $payment->id)
+            ->firstOrFail();
+
+        $organization = $offer->organization;
+        abort_if(!$organization, 404, 'Организация не найдена');
+
+        $field = $data['field'];
+        $value = trim((string) ($data['value'] ?? ''));
+
+        $organization->forceFill([
+            $field => $value !== '' ? $value : null,
+        ])->save();
+
+        $organization->refresh();
+
+        return response()->json([
+            'success' => true,
+            'customer' => $this->invoiceCustomerData($organization),
+        ]);
+    }
+
+    private function invoiceCustomerData(Organization $organization): array
+    {
+        return [
+            'legal_name' => (string) ($organization->legal_name ?: $organization->name ?: ''),
+            'INN' => (string) ($organization->INN ?? ''),
+            'email' => (string) ($organization->email ?? ''),
+            'phone' => (string) ($organization->phone ?? ''),
+        ];
     }
 
     public function store(ClientPaymentRequest $request)

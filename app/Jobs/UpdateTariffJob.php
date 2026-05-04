@@ -2,10 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Tariff;
-use App\Models\TariffCurrency;
+use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,17 +29,32 @@ class UpdateTariffJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = "https://{$this->domain}-back.{$domain}/api/organization/update-tariff";
 
-        $tariff = TariffCurrency::query()->where('tariff_id', $this->tariff_id)->with('tariff')->first();
+        $tariff = Tariff::query()
+            ->whereKey($this->tariff_id)
+            ->where('is_tariff', true)
+            ->firstOrFail();
 
-        Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, [
+        $payload = [
             'b_organization_id' => $this->organization->id,
-            'tariff_id' => $this->tariff_id,
-            'user_count' => $tariff?->tariff?->user_count
-        ]);
+            'tariff_id' => $tariff->id,
+            'user_count' => $tariff->user_count
+        ];
+
+        $response = Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->post($url, $payload);
+
+        app(IntegrationActionLogService::class)->logApiResponse(
+            organizationId: (int)$this->organization->id,
+            clientId: (int)($this->organization->client_id ?? 0),
+            action: 'update_tariff',
+            method: 'POST',
+            url: $url,
+            payload: $payload,
+            response: $response
+        );
     }
 }

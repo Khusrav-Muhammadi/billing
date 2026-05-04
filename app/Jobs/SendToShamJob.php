@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Client;
 use App\Models\User;
+use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,16 +38,36 @@ class SendToShamJob implements ShouldQueue
 
         $shamLink = $partner?->sham_link ?? $defaultLink;
 
-        $response = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($shamLink . '/api/messengerSettings/site/webhook', [
+        $url = $shamLink . '/api/messengerSettings/site/webhook';
+        $payload = [
             'phone' => $this->phone,
             'tarif' => 'VIP',
             'email' => $this->email,
             'name_company' => $this->name,
             'region' => $this->region ?? '',
-            'partner' => $partner?->name ?? ''  ,
-        ]);
+            'partner' => $partner?->name ?? '',
+        ];
+
+        $response = Http::withHeaders([
+            'Accept' => 'application/json',
+        ])->post($url, $payload);
+
+        $client = Client::query()
+            ->where('email', $this->email)
+            ->orWhere('phone', $this->phone)
+            ->with('organizations:id,client_id')
+            ->first();
+        $organization = $client?->organizations?->first();
+
+        app(IntegrationActionLogService::class)->logApiResponse(
+            organizationId: $organization?->id ? (int)$organization->id : null,
+            clientId: $client?->id ? (int)$client->id : null,
+            action: 'send_to_sham',
+            method: 'POST',
+            url: $url,
+            payload: $payload,
+            response: $response
+        );
 
         if (!$response->successful()) {
             Log::error('Ошибка при отправке в Sham API', [

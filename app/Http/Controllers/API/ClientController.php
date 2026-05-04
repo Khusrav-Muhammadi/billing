@@ -281,6 +281,13 @@ class ClientController extends Controller
         ]);
     }
 
+    public function getTariffs()
+    {
+        return response()->json([
+            'result' => Tariff::query()->where('is_tariff', true)->paginate(100),
+        ]);
+    }
+
     public function getBusinessTypes()
     {
         return response()->json([

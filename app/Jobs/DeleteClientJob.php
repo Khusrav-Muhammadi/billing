@@ -2,9 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\Organization;
-use App\Models\OrganizationPack;
-use App\Models\Tariff;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,7 +27,7 @@ class DeleteClientJob implements ShouldQueue
     public function handle(): void
     {
 
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = 'https://' . $domain . '/api/tenant/delete';
 
         $data = [

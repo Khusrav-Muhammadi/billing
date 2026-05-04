@@ -108,6 +108,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [\App\Http\Controllers\ClientPaymentController::class, 'index'])->name('client-payment.index');
         Route::post('/', [\App\Http\Controllers\ClientPaymentController::class, 'store'])->name('client-payment.create');
         Route::get('/invoice/{payment}', [\App\Http\Controllers\ClientPaymentController::class, 'invoice'])->name('client-payment.invoice');
+        Route::patch('/invoice/{payment}/customer', [\App\Http\Controllers\ClientPaymentController::class, 'updateInvoiceCustomer'])->name('client-payment.invoice.customer.update');
     });
 
     Route::group(['prefix' => 'organization'], function () {
@@ -129,6 +130,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/store', fn () => redirect()->route('client.create'));
         Route::post('/store/', [OrganizationV2Controller::class, 'store'])->name('organization_v2.store');
         Route::get('show/{organization}', [OrganizationV2Controller::class, 'show'])->name('organization_v2.show');
+        Route::post('integration-log/{log}/retry', [OrganizationV2Controller::class, 'retryIntegrationLog'])->name('organization_v2.integration-log.retry');
         Route::get('edit/{organization}', [OrganizationV2Controller::class, 'edit'])->name('organization_v2.edit');
         Route::patch('update/{organization}', [OrganizationV2Controller::class, 'update'])->name('organization_v2.update');
         Route::delete('/{organization}', [OrganizationV2Controller::class, 'destroy'])->name('organization_v2.destroy');

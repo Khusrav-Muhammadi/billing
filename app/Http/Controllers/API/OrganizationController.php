@@ -17,6 +17,7 @@ use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Services\Organizations\OrganizationValidityService;
 use App\Services\Sale\SaleService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -94,6 +95,7 @@ class OrganizationController extends Controller
     {
         $organizations = $this->repository->index($request->all());
         $this->hydrateRealBalances($organizations);
+        app(OrganizationValidityService::class)->hydrate($organizations);
         return response()->json([
             'organizations' => $organizations,
         ]);
@@ -129,7 +131,7 @@ class OrganizationController extends Controller
 
         $organizationsQuery = Organization::query()
             ->with([
-                'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,country_id,manager_id,nfr',
+                'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,tariff_id,country_id,manager_id,nfr,created_at',
                 'client.country:id,name,currency_id',
                 'client.country.currency:id,name,symbol_code',
                 'client.partner:id,name',
@@ -150,6 +152,47 @@ class OrganizationController extends Controller
                 $clientQuery->where('nfr', false);
             });
 
+        if ($request->filled('country')) {
+            $countryId = (int)$request->query('country');
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($countryId): void {
+                $clientQuery->where('country_id', $countryId);
+            });
+        }
+
+        if ($request->filled('partner')) {
+            $partnerId = (int)$request->query('partner');
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($partnerId): void {
+                $clientQuery->where('partner_id', $partnerId);
+            });
+        }
+
+        if ($request->query('status') !== null && $request->query('status') !== '') {
+            $isActiveDemo = (bool)$request->query('status');
+            $cutoff = now()->subDays(14);
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($isActiveDemo, $cutoff): void {
+                if ($isActiveDemo) {
+                    $clientQuery->where('created_at', '>', $cutoff);
+                    return;
+                }
+
+                $clientQuery->where('created_at', '<=', $cutoff);
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $createdFrom = Carbon::parse((string)$request->query('date_from'))->subWeeks(2)->startOfDay();
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($createdFrom): void {
+                $clientQuery->where('created_at', '>=', $createdFrom);
+            });
+        }
+
+        if ($request->filled('date_to')) {
+            $createdTo = Carbon::parse((string)$request->query('date_to'))->subWeeks(2)->endOfDay();
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($createdTo): void {
+                $clientQuery->where('created_at', '<=', $createdTo);
+            });
+        }
+
         $search = trim((string)$request->query('search', ''));
         if ($search !== '') {
             $this->applyV2OrganizationSearch($organizationsQuery, $search);
@@ -157,9 +200,11 @@ class OrganizationController extends Controller
 
         $organizations = $organizationsQuery
             ->orderByDesc('id')
-            ->get();
+            ->paginate(50)
+            ->withQueryString();
 
         $this->hydrateRealBalances($organizations);
+        $this->hydrateDemoValidateDates($organizations);
 
         return response()->json([
             'organizations' => $organizations,
@@ -411,6 +456,28 @@ class OrganizationController extends Controller
             $outcome = (float)$rows->sum('total_outcome');
 
             $organization->setAttribute('real_balance', round($income - $outcome, 4));
+        }
+
+        if ($organizations instanceof LengthAwarePaginator) {
+            $organizations->setCollection($items);
+        }
+    }
+
+    private function hydrateDemoValidateDates(Collection|LengthAwarePaginator $organizations): void
+    {
+        $items = $organizations instanceof LengthAwarePaginator
+            ? $organizations->getCollection()
+            : $organizations;
+
+        foreach ($items as $organization) {
+            if (!$organization->client || !$organization->client->is_demo) {
+                continue;
+            }
+
+            $organization->client->setAttribute(
+                'validate_date',
+                optional($organization->client->created_at)->copy()?->addWeeks(2)
+            );
         }
 
         if ($organizations instanceof LengthAwarePaginator) {

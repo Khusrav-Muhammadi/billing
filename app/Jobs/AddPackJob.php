@@ -2,10 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Models\CommercialOffer;
 use App\Models\ConnectedClientServices;
 use App\Models\Organization;
-use App\Models\Tariff;
+use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,7 +29,7 @@ class AddPackJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = 'https://' . $this->sub_domain . '-back.' . $domain . '/api/organization/add-pack';
 
         $connectedClients = ConnectedClientServices::with(['tariff', 'organization.client'])
@@ -70,9 +69,20 @@ class AddPackJob implements ShouldQueue
                 $data['amount'] = $connectedClient->quantity;
             }
 
-            Http::withHeaders([
+            $response = Http::withHeaders([
                 'Accept' => 'application/json',
             ])->post($url, $data);
+
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$this->organization->id,
+                clientId: (int)($this->organization->client_id ?? 0),
+                action: 'add_pack',
+                method: 'POST',
+                url: $url,
+                payload: $data,
+                response: $response,
+                commercialOfferId: $connectedClient->commercial_offer_id ? (int)$connectedClient->commercial_offer_id : null
+            );
 
         }
 

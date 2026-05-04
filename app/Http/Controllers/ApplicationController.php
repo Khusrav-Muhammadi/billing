@@ -16,6 +16,7 @@ use App\Models\Organization;
 use App\Models\PartnerProcent;
 use App\Models\Tariff;
 use App\Models\User;
+use App\Support\RegistryDateTimeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,11 +64,8 @@ class ApplicationController extends Controller
                 'offerStatuses.account.currency:id,symbol_code,name',
             ])
             ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('client_name', 'like', "%{$search}%")
-                        ->orWhereHas('organization', function ($query) use ($search) {
-                            $query->where('name', 'like', "%{$search}%");
-                        });
+                $query->whereHas('organization', function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")->orWhere('order_number','like', "%{$search}%");
                 });
             })
             ->orderByDesc('id')
@@ -596,7 +594,17 @@ class ApplicationController extends Controller
             'author_id' => \Illuminate\Support\Facades\Auth::id(),
         ]);
 
-        $offer->update(['status' => $validated['status']]);
+        $offerUpdate = ['status' => $validated['status']];
+        $shouldSyncRegistryDates = (string)$validated['status'] !== 'canceled';
+        if ((string)$validated['status'] !== 'canceled') {
+            $offerUpdate['status_date'] = $validated['status_date'];
+        }
+
+        $offer->update($offerUpdate);
+
+        if ($shouldSyncRegistryDates) {
+            $this->syncOfferRegistryDates($offer->fresh(), $status->fresh());
+        }
 
         if ((string)$validated['status'] === 'paid') {
             $freshOffer = $offer->fresh();
@@ -618,6 +626,56 @@ class ApplicationController extends Controller
         return redirect()
             ->route('application.index')
             ->with('success', 'Статус подключения сохранен.');
+    }
+
+    private function syncOfferRegistryDates(?CommercialOffer $offer, ?CommercialOfferStatus $status): void
+    {
+        if (!$offer || !$status) {
+            return;
+        }
+
+        $registryDateTime = RegistryDateTimeResolver::resolve($offer, $status);
+
+        $this->updateRegistryDateByOfferId('client_payment_registries', ['date', 'offer_date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('connected_client_services', ['date', 'offer_date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('discount_expenses', ['date', 'offer_date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('partner_expenses', ['date', 'offer_date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('client_balances', ['date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('implementation_currency_registries', ['date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('organization_connection_statuses', ['status_date'], $offer->id, $registryDateTime);
+    }
+
+    private function updateRegistryDateByOfferId(string $table, array $dateColumns, int $offerId, $dateTime): void
+    {
+        if (!Schema::hasTable($table)) {
+            return;
+        }
+
+        $offerIdColumn = collect(['commercial_offer_id', 'offer_id'])
+            ->first(fn(string $column): bool => Schema::hasColumn($table, $column));
+
+        if (!$offerIdColumn) {
+            return;
+        }
+
+        $payload = [];
+        foreach ($dateColumns as $dateColumn) {
+            if (Schema::hasColumn($table, $dateColumn)) {
+                $payload[$dateColumn] = $dateTime;
+            }
+        }
+
+        if (empty($payload)) {
+            return;
+        }
+
+        if (Schema::hasColumn($table, 'updated_at')) {
+            $payload['updated_at'] = now();
+        }
+
+        DB::table($table)
+            ->where($offerIdColumn, $offerId)
+            ->update($payload);
     }
 
 
@@ -964,15 +1022,15 @@ class ApplicationController extends Controller
             'partner_phone' => (string)($offer->partner_phone ?? ''),
             'partner_email' => (string)($offer->partner_email ?? ''),
             'implementation' => $this->normalizeImplementationPayload(
-                is_array($snapshot) ? data_get($snapshot, 'implementation') : null
-            ) ?? [
-                'enabled' => false,
-                'price' => 0,
-                'discount_percent' => 0,
-                'discount_percent_base' => 0,
-                'discount_percent_12_extra' => 0,
-                'extra_services' => [],
-            ],
+                    is_array($snapshot) ? data_get($snapshot, 'implementation') : null
+                ) ?? [
+                    'enabled' => false,
+                    'price' => 0,
+                    'discount_percent' => 0,
+                    'discount_percent_base' => 0,
+                    'discount_percent_12_extra' => 0,
+                    'extra_services' => [],
+                ],
             'monthly_total' => (float)$offer->monthly_total,
             'period_total' => (float)$offer->period_total,
             'grand_total' => (float)$offer->grand_total,

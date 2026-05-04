@@ -22,6 +22,7 @@ class CPGenerator {
             selectedServices: {},
             implementationPrice: 0,
             implementationEnabled: false,
+            hasSavedImplementation: false,
             implementationDiscountPercent: 0,
             implementationDiscountPercent12: 0,
             onlineStorePrice: 0,
@@ -281,6 +282,10 @@ class CPGenerator {
     }
 
     shouldShowImplementationSection() {
+        if (this.state.editOfferId) {
+            return Boolean(this.state.hasSavedImplementation);
+        }
+
         if (!this.isConnectionMode()) {
             return false;
         }
@@ -299,14 +304,17 @@ class CPGenerator {
     getImplementationDiscountCapPercent() {
         const caps = this.config?.implementation?.discount_caps || {};
         const byType = caps?.by_type || {};
+        const byCurrency = caps?.by_currency || {};
         const defaults = caps?.default || {};
+        const currencyCode = this.normalizeCurrencyCode(this.state.currency);
+        const currencyCaps = currencyCode && Object.prototype.hasOwnProperty.call(byCurrency, currencyCode)
+            ? byCurrency[currencyCode]
+            : null;
 
-        const periodType = this.state.periodMonths === 12 ? 'months_12' : 'standard';
-        const raw = Object.prototype.hasOwnProperty.call(byType, periodType)
-            ? byType[periodType]
-            : defaults[periodType];
-
-        const cap = Number(raw) || 0;
+        const rawCap = currencyCaps && Object.prototype.hasOwnProperty.call(currencyCaps, 'standard')
+            ? currencyCaps.standard
+            : (Object.prototype.hasOwnProperty.call(byType, 'standard') ? byType.standard : defaults.standard);
+        const cap = Number(rawCap) || 0;
         return Math.max(0, Math.min(100, cap));
     }
 
@@ -1024,6 +1032,11 @@ class CPGenerator {
                     name: String(extra?.name || '').trim(),
                     price: Math.max(0, Number(extra?.price) || 0),
                 }));
+                this.state.hasSavedImplementation = Boolean(payload.implementation.enabled)
+                    || this.state.implementationPrice > 0
+                    || this.state.implementationDiscountPercent > 0
+                    || this.state.implementationDiscountPercent12 > 0
+                    || this.state.customOneTimePayments.some((extra) => extra.name !== '' || extra.price > 0);
             }
 
             // In view/edit mode for connection-based request types, rely on saved offer state.
@@ -1276,13 +1289,7 @@ class CPGenerator {
 
         const discountInput = document.getElementById('implementationDiscountPercent');
         if (discountInput) {
-            const caps = this.config?.implementation?.discount_caps || {};
-            const byType = caps?.by_type || {};
-            const defaults = caps?.default || {};
-            const rawCap = Object.prototype.hasOwnProperty.call(byType, 'standard')
-                ? byType.standard
-                : defaults.standard;
-            const cap = Math.max(0, Math.min(100, Number(rawCap) || 0));
+            const cap = this.getImplementationDiscountCapPercent();
             const current = this.getImplementationDiscountPercent();
             discountInput.value = String(current);
             discountInput.max = String(cap);
@@ -1291,13 +1298,7 @@ class CPGenerator {
 
         const discountHint = document.getElementById('implementationDiscountHint');
         if (discountHint) {
-            const caps = this.config?.implementation?.discount_caps || {};
-            const byType = caps?.by_type || {};
-            const defaults = caps?.default || {};
-            const rawCap = Object.prototype.hasOwnProperty.call(byType, 'standard')
-                ? byType.standard
-                : defaults.standard;
-            const cap = Math.max(0, Math.min(100, Number(rawCap) || 0));
+            const cap = this.getImplementationDiscountCapPercent();
             discountHint.textContent = `Потолок скидки (Стандартная): ${cap}%.`;
         }
 
