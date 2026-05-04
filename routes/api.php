@@ -121,6 +121,10 @@ Route::post('organization/legal-info/{organization}', [\App\Http\Controllers\API
 Route::post('add-organization', [\App\Http\Controllers\API\OrganizationController::class, 'addOrganization']);
 
 Route::post('payment/alif/webhook/change-tariff', [\App\Http\Controllers\API\ClientController::class, 'webhookChangeTariff']);
+Route::post('client-payment/webhook/alif', [\App\Http\Controllers\ClientPaymentController::class, 'alifWebhook'])
+    ->name('client-payment.webhook.alif');
+Route::post('client-payment/webhook/octo', [\App\Http\Controllers\ClientPaymentController::class, 'octoWebhook'])
+    ->name('client-payment.webhook.octo');
 
 Route::get('tariff-difference', [\App\Http\Controllers\API\ClientController::class, 'countDifference']);
 Route::get('tariff', [\App\Http\Controllers\TariffController::class, 'getTariffByCurrency']);

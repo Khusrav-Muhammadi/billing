@@ -50,6 +50,9 @@ Route::prefix('payment/verification')->group(function () {
         ->name('payment.verification.go');
 });
 
+Route::get('payment/success/{payment}', [\App\Http\Controllers\ClientPaymentController::class, 'onlinePaymentSuccess'])
+    ->name('client-payment.online.success');
+
 // Preview page for PDF generation (accessed by Browsershot)
 Route::get('/commercial-offer-preview', [\App\Http\Controllers\API\CommercialOfferController::class, 'previewPage']);
 
