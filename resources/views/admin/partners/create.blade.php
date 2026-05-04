@@ -49,6 +49,21 @@
             </div>
 
             <div class="form-group">
+                <label for="country_id">Страна <span class="text-danger">*</span></label>
+                <select class="form-control @error('country_id') is-invalid @enderror" id="country_id" name="country_id" required>
+                    <option value="">Выберите страну</option>
+                    @foreach(($countries ?? collect()) as $country)
+                        <option value="{{ $country->id }}" {{ (string) old('country_id') === (string) $country->id ? 'selected' : '' }}>
+                            {{ $country->name }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('country_id')
+                <span class="text-danger d-block">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
                 <label for="procent_from_tariff">Процент подписки <span class="text-danger">*</span></label>
                 <input type="number"
                        class="form-control @error('procent_from_tariff') is-invalid @enderror"

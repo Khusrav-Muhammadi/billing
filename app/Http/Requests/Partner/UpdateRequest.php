@@ -25,6 +25,7 @@ class UpdateRequest extends FormRequest
             'address' => ['nullable', 'string'],
             'partner_status_id' => ['nullable', Rule::exists('partner_statuses', 'id')],
             'partner_id' => ['nullable'],
+            'country_id' => ['required', 'integer', Rule::exists('countries', 'id')],
             'payment_methods' => ['nullable', 'array'],
             'payment_methods.*' => ['string', Rule::in(['card', 'invoice', 'cash'])],
             'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')],

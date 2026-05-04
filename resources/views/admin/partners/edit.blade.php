@@ -61,6 +61,21 @@
                 @enderror
             </div>
 
+            <div class="form-group">
+                <label for="country_id">Страна <span class="text-danger">*</span></label>
+                <select class="form-control @error('country_id') is-invalid @enderror" id="country_id" name="country_id" required>
+                    <option value="">Выберите страну</option>
+                    @foreach(($countries ?? collect()) as $country)
+                        <option value="{{ $country->id }}" {{ (string) old('country_id', $partner->country_id) === (string) $country->id ? 'selected' : '' }}>
+                            {{ $country->name }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('country_id')
+                <span class="text-danger d-block">{{ $message }}</span>
+                @enderror
+            </div>
+
             @php($paymentMethods = old('payment_methods', $partner->payment_methods ?? ['card', 'invoice']))
             <div class="form-group">
                 <label>Способы оплаты <span class="text-danger">*</span></label>
@@ -205,6 +220,7 @@
                                     @elseif($key === 'status') Статус:
                                     @elseif($key === 'payment_methods') Способы оплаты:
                                     @elseif($key === 'account_id') Счет партнера:
+                                    @elseif($key === 'country_id') Страна:
 	                                    @elseif($key === 'currency_id') Валюта партнера:
 	                                    @elseif($key === 'has_implementation') Наличие внедрения:
 	                                    @elseif($key === 'implementation_required') Внедрение обязательно:

@@ -7,6 +7,7 @@ use App\Enums\PartnerStatusEnum;
 use App\Jobs\SendPartnerDataJob;
 use App\Models\Account;
 use App\Models\ChangeHistory;
+use App\Models\Country;
 use App\Models\Currency;
 use App\Models\ModelHistory;
 use App\Models\Partner;
@@ -83,6 +84,7 @@ class PartnerRepository implements PartnerRepositoryInterface
                 'payment_methods' => ['previous_value' => null, 'new_value' => $this->paymentMethodsLabel($user->payment_methods)],
                 'account_id' => ['previous_value' => null, 'new_value' => $this->accountLabelById($user->account_id)],
                 'currency_id' => ['previous_value' => null, 'new_value' => $this->currencyLabelById($user->currency_id)],
+                'country_id' => ['previous_value' => null, 'new_value' => $this->countryLabelById($user->country_id)],
                 'procent_from_tariff' => ['previous_value' => null, 'new_value' => $tariffPercent],
                 'procent_from_pack' => ['previous_value' => null, 'new_value' => $packPercent],
             ],
@@ -313,6 +315,7 @@ class PartnerRepository implements PartnerRepositoryInterface
             'payment_methods' => $partner->payment_methods,
             'account_id' => $partner->account_id,
             'currency_id' => $partner->currency_id,
+            'country_id' => $partner->country_id,
             'has_implementation' => (bool) $partner->has_implementation,
             'implementation_required' => $supportsImplementationRequired
                 ? (bool) $partner->implementation_required
@@ -371,6 +374,13 @@ class PartnerRepository implements PartnerRepositoryInterface
             $changes['currency_id'] = [
                 'previous_value' => $this->currencyLabelById($before['currency_id'] ?? null),
                 'new_value' => $this->currencyLabelById($partner->currency_id),
+            ];
+        }
+
+        if ((string) ($before['country_id'] ?? '') !== (string) ($partner->country_id ?? '')) {
+            $changes['country_id'] = [
+                'previous_value' => $this->countryLabelById($before['country_id'] ?? null),
+                'new_value' => $this->countryLabelById($partner->country_id),
             ];
         }
 
@@ -504,6 +514,15 @@ class PartnerRepository implements PartnerRepositoryInterface
         }
 
         return trim(((string) $currency->name) . ($code !== '' ? ' (' . $code . ')' : ''));
+    }
+
+    private function countryLabelById($countryId): string
+    {
+        if (!$countryId) {
+            return 'Не выбрана';
+        }
+
+        return Country::query()->find((int) $countryId)?->name ?? 'Не выбрана';
     }
 
     private function recordHistory(User $model, ModelHistoryStatuses $status, array $changes = [], ?int $userId = null): void

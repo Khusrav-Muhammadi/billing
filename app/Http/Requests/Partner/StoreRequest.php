@@ -26,6 +26,7 @@ class StoreRequest extends FormRequest
             'status' => ['nullable', 'string', Rule::in(PartnerStatusEnum::values())],
             'phone' => ['required', 'unique:users,phone'],
             'partner_id' => ['nullable'],
+            'country_id' => ['required', 'integer', Rule::exists('countries', 'id')],
             'procent_from_tariff' => ['required', 'integer', 'min:0', 'max:100'],
             'procent_from_pack' => ['required', 'integer', 'min:0', 'max:100'],
             'payment_methods' => ['nullable', 'array'],
