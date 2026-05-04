@@ -27,6 +27,7 @@ class CommercialOfferPaymentNotificationService
             $offer->loadMissing([
                 'organization:id,name,email,client_id',
                 'organization.client:id,name,email',
+                'items.tariff:id,name,is_tariff,is_extra_user',
             ]);
 
             $email = $this->resolveClientEmail($offer);
@@ -98,6 +99,32 @@ class CommercialOfferPaymentNotificationService
 
     private function connectedServices(CommercialOffer $offer): array
     {
+        $items = $offer->items;
+        if ($items->isNotEmpty()) {
+            $currency = strtoupper((string)($offer->currency ?: $offer->payable_currency ?: ''));
+
+            return $items
+                ->sortBy('id')
+                ->map(function ($item) use ($currency): array {
+                    $amount = (float)($item->total_price ?? 0);
+                    $months = max(1, (int)($item->months ?? 1));
+                    $quantity = max(1, (float)($item->quantity ?? 1));
+                    $isTariff = (bool)($item->tariff?->is_tariff ?? false);
+
+                    return [
+                        'name' => (string)($item->tariff?->name ?? 'Услуга'),
+                        'quantity' => $isTariff && $months > 1
+                            ? $months . ' мес.'
+                            : $this->formatQuantity($quantity),
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'formatted_amount' => $this->formatMoney($amount, $currency),
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
         return ConnectedClientServices::query()
             ->where('commercial_offer_id', (int)$offer->id)
             ->with([
@@ -112,7 +139,7 @@ class CommercialOfferPaymentNotificationService
 
                 return [
                     'name' => (string)($service->tariff?->name ?? 'Услуга'),
-                    'quantity' => max(1, (int)($service->quantity ?? 1)),
+                    'quantity' => $this->formatQuantity(max(1, (float)($service->quantity ?? 1))),
                     'amount' => $amount,
                     'currency' => $currency,
                     'formatted_amount' => $this->formatMoney($amount, $currency),
@@ -120,6 +147,15 @@ class CommercialOfferPaymentNotificationService
             })
             ->values()
             ->all();
+    }
+
+    private function formatQuantity(float $quantity): string
+    {
+        if (floor($quantity) === $quantity) {
+            return (string)(int)$quantity;
+        }
+
+        return rtrim(rtrim(number_format($quantity, 2, '.', ''), '0'), '.');
     }
 
     private function implementation(CommercialOffer $offer): ?array
