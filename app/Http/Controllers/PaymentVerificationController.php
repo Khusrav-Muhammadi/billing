@@ -195,7 +195,7 @@ class PaymentVerificationController extends Controller
 
     private function afterSendRedirectUrl(string $provider, Payment $payment, Request $request): string
     {
-        return $this->trustedReturnUrlFromRequest($request) ?: $this->signedShowUrl($provider, $payment, $request);
+        return $this->trustedReturnUrlFromRequest($request) ?: route('application.index');
     }
 
     private function trustedReturnUrlFromRequest(Request $request): ?string
