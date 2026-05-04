@@ -19,7 +19,11 @@ class AddPackJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public Organization $organization, public string $sub_domain)
+    public function __construct(
+        public Organization $organization,
+        public string $sub_domain,
+        public ?int $commercialOfferId = null
+    )
     {
         //
     }
@@ -36,37 +40,36 @@ class AddPackJob implements ShouldQueue
             ->where('client_id', $this->organization->id)
             ->where('tariff_id', '>', 4)
             ->where('status', 1)
+            ->when($this->commercialOfferId, function ($query) {
+                $query->where('commercial_offer_id', $this->commercialOfferId);
+            })
             ->get();
 
         foreach ($connectedClients as  $connectedClient) {
             $tariff = $connectedClient->tariff;
+            if (!$tariff) {
+                continue;
+            }
+
             $data = [
                 'type' => $tariff->type,
                 'b_organization_id' => $this->organization->id,
             ];
 
+            $quantity = max(1, (int)round((float)($connectedClient->quantity ?? 1)));
+            $data['amount'] = $quantity;
+
             if ($tariff->type == 'add_user') {
-                $data['amount'] = $connectedClient->quantity;
+                $data['user_count'] = $quantity;
             }
 
             if ($tariff->type == 'add_sales_funnel') {
-                $data['amount'] = $connectedClient->quantity;
+                $data['sales_funnel_count'] = $quantity;
             }
 
-            if ($tariff->type == 'add_channel') {
-                $data['amount'] = $connectedClient->quantity;
-            }
-
-            if ($tariff->type == 'add_insta_channel') {
-                $data['amount'] = $connectedClient->quantity;
-            }
-
-            if ($tariff->type == 'add_mini_app_b2b') {
-                $data['amount'] = $connectedClient->quantity;
-            }
-
-            if ($tariff->type == 'add_mini_app_b2c') {
-                $data['amount'] = $connectedClient->quantity;
+            if (in_array($tariff->type, ['add_channel', 'add_insta_channel', 'add_mini_app_b2b', 'add_mini_app_b2c'], true)) {
+                $data['channels_count'] = $quantity;
+                $data['channel'] = $quantity;
             }
 
             $response = Http::withHeaders([

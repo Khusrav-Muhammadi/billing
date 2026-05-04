@@ -40,7 +40,8 @@ class ConnectionJob implements ShouldQueue
         $payload = [
             'b_organization_id' => $this->organization->id,
             'tariff_id' => $tariff->id,
-            'user_count' => $tariff->user_count
+            'user_count' => $tariff->user_count,
+            'channels_count' => $tariff->channels_count ?? 3,
         ];
 
         $response = Http::withHeaders([
