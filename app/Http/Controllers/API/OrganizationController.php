@@ -25,7 +25,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 
 class OrganizationController extends Controller
@@ -146,10 +145,28 @@ class OrganizationController extends Controller
             })
             ->whereDoesntHave('connections')
             ->whereHas('client', function (Builder $clientQuery) use ($authUser) {
-                if ($authUser->id !== 11) {
-                    $clientQuery->where('partner_id', Auth::id());
+                $clientQuery
+                    ->where('nfr', false)
+                    ->where('is_demo', true);
+
+                if ((int)$authUser->id === 11) {
+                    return;
                 }
-                $clientQuery->where('nfr', false);
+
+                $partnerId = (int)$authUser->id;
+                $countryId = (int)($authUser->country_id ?? 0);
+
+                $clientQuery->where(function (Builder $accessQuery) use ($partnerId, $countryId): void {
+                    $accessQuery->where('partner_id', $partnerId);
+
+                    if ($countryId > 0) {
+                        $accessQuery->orWhere(function (Builder $countryQuery) use ($countryId): void {
+                            $countryQuery
+                                ->where('country_id', $countryId)
+                                ->whereNull('partner_id');
+                        });
+                    }
+                });
             });
 
         if ($request->filled('country')) {
@@ -215,7 +232,7 @@ class OrganizationController extends Controller
     public function showV2(Organization $organization): JsonResponse
     {
         $organization->load([
-            'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,country_id,manager_id',
+            'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,tariff_id,country_id,manager_id,created_at',
             'client.country:id,name,currency_id',
             'client.country.currency:id,name,symbol_code',
             'client.partner:id,name',
@@ -246,7 +263,6 @@ class OrganizationController extends Controller
 
         $balanceOperations = ClientBalance::query()
             ->where('organization_id', (int)$organization->id)
-            ->where('type', 'income')
             ->with('currency:id,name,symbol_code')
             ->orderByDesc('date')
             ->orderByDesc('id')
@@ -260,6 +276,38 @@ class OrganizationController extends Controller
             'connection_status_history' => $connectionStatusHistory,
             'balance_operations' => $balanceOperations,
             'real_balance' => $realBalance,
+        ]);
+    }
+
+    public function becomePartner(Organization $organization): JsonResponse
+    {
+        $authUser = auth()->user();
+        $organization->load('client:id,is_demo,partner_id,country_id');
+
+        if (!$organization->client || !$organization->client->is_demo) {
+            return response()->json([
+                'message' => 'Партнером можно стать только для демо-клиента.',
+            ], 422);
+        }
+
+        if ($organization->client->partner_id !== null) {
+            return response()->json([
+                'message' => 'У этого клиента уже есть партнер.',
+            ], 422);
+        }
+
+        if ((int)$authUser->id !== 11 && (int)($authUser->country_id ?? 0) !== (int)$organization->client->country_id) {
+            return response()->json([
+                'message' => 'Этот демо-клиент относится к другой стране.',
+            ], 403);
+        }
+
+        $organization->client->partner_id = (int)$authUser->id;
+        $organization->client->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Вы стали партнером этого демо-клиента.',
         ]);
     }
 

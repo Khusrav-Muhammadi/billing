@@ -79,6 +79,11 @@ class User extends Authenticatable
         return $this->belongsTo(Currency::class, 'currency_id');
     }
 
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class, 'country_id');
+    }
+
     public function history(): MorphMany
     {
         return $this->morphMany(ModelHistory::class, 'model');
