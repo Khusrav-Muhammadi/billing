@@ -44,7 +44,7 @@
 
     <div class="footer">
         🌐 <a href="https://shamcrm.com">www.shamcrm.com</a><br>
-        📞 +998-77-375-68-68<br>
+        📞 +998-55-588-81-00<br>
         🏛 г. Ташкент, Яккасарайский район, ул. Мирабад, 10
     </div>
 </div>
