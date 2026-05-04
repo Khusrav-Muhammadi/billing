@@ -630,6 +630,10 @@ class ClientPaymentController extends Controller
     private function trustedReturnUrl(Request $request): ?string
     {
         $url = trim((string)$request->input('return_url', ''));
+        if ($url === '' && $request->is('api/*')) {
+            $url = rtrim((string)config('partners.url', 'https://partners.shamcrm.com'), '/') . '/application';
+        }
+
         if ($url === '') {
             return null;
         }
