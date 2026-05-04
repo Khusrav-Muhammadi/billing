@@ -2105,21 +2105,21 @@ class CommercialFooferController extends Controller
         $enabled = (bool)data_get($implementation, 'enabled', false);
         $price = (float)max(0, $this->toDecimal(data_get($implementation, 'price', 0)));
         $discountTotalRaw = data_get($implementation, 'discount_percent');
-        $hasTotal = is_numeric($discountTotalRaw);
-        $discountTotal = (int)max(0, min(100, floor((float)($discountTotalRaw ?? 0))));
+        $hasTotal = $discountTotalRaw !== null && $discountTotalRaw !== '';
+        $discountTotal = max(0, min(100, $this->toDecimal($discountTotalRaw ?? 0)));
 
         $discountBaseRaw = data_get($implementation, 'discount_percent_base');
-        $discountBase = is_numeric($discountBaseRaw)
-            ? (int)max(0, min(100, floor((float)$discountBaseRaw)))
+        $discountBase = $discountBaseRaw !== null && $discountBaseRaw !== ''
+            ? max(0, min(100, $this->toDecimal($discountBaseRaw)))
             : ($hasTotal ? $discountTotal : 0);
 
         $discount12ExtraRaw = data_get($implementation, 'discount_percent_12_extra');
-        $discount12Extra = is_numeric($discount12ExtraRaw)
-            ? (int)max(0, min(100, floor((float)$discount12ExtraRaw)))
+        $discount12Extra = $discount12ExtraRaw !== null && $discount12ExtraRaw !== ''
+            ? max(0, min(100, $this->toDecimal($discount12ExtraRaw)))
             : 0;
 
         if (!$hasTotal) {
-            $discountTotal = (int)max(0, min(100, $discountBase + $discount12Extra));
+            $discountTotal = max(0, min(100, $discountBase + $discount12Extra));
         }
 
         $extrasRaw = data_get($implementation, 'extra_services', []);
@@ -2143,9 +2143,9 @@ class CommercialFooferController extends Controller
         return [
             'enabled' => $enabled,
             'price' => $price,
-            'discount_percent' => (int)$discountTotal,
-            'discount_percent_base' => (int)$discountBase,
-            'discount_percent_12_extra' => (int)$discount12Extra,
+            'discount_percent' => $discountTotal,
+            'discount_percent_base' => $discountBase,
+            'discount_percent_12_extra' => $discount12Extra,
             'extra_services' => array_values($extras),
         ];
     }

@@ -298,6 +298,34 @@ class CPGenerator {
         return this.shouldShowImplementationSection() && Boolean(this.state.implementationEnabled);
     }
 
+    parsePercentValue(value) {
+        const normalized = String(value ?? "").replace(",", ".").trim();
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    roundPercentValue(value) {
+        return Math.round(this.parsePercentValue(value) * 10000) / 10000;
+    }
+
+    formatPercentValue(value) {
+        return this.roundPercentValue(value).toFixed(4).replace(".", ",");
+    }
+
+    limitPercentInputPrecision(input) {
+        const value = String(input?.value ?? "");
+        const separatorIndex = value.search(/[,.]/);
+        if (separatorIndex < 0) {
+            return;
+        }
+
+        const head = value.slice(0, separatorIndex + 1);
+        const fraction = value.slice(separatorIndex + 1).replace(/[,.]/g, "");
+        if (fraction.length > 4) {
+            input.value = head + fraction.slice(0, 4);
+        }
+    }
+
     getImplementationDiscountCapPercent() {
         const caps = this.config?.implementation?.discount_caps || {};
         const byType = caps?.by_type || {};
@@ -316,8 +344,8 @@ class CPGenerator {
     }
 
     getImplementationDiscountPercent() {
-        const raw = Number(this.state.implementationDiscountPercent) || 0;
-        const val = Math.max(0, Math.min(100, Math.floor(raw)));
+        const raw = this.parsePercentValue(this.state.implementationDiscountPercent);
+        const val = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
 
         const caps = this.config?.implementation?.discount_caps || {};
         const byType = caps?.by_type || {};
@@ -357,8 +385,8 @@ class CPGenerator {
         if (this.state.periodMonths !== 12) {
             return 0;
         }
-        const raw = Number(this.state.implementationDiscountPercent12) || 0;
-        const val = Math.max(0, Math.min(100, Math.floor(raw)));
+        const raw = this.parsePercentValue(this.state.implementationDiscountPercent12);
+        const val = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
         const cap = this.getImplementationDiscount12ExtraCapPercent();
         return Math.min(val, cap);
     }
@@ -1019,10 +1047,10 @@ class CPGenerator {
                 const legacyDiscount = Number(payload.implementation.discount_percent);
                 this.state.implementationDiscountPercent = Math.max(
                     0,
-                    Math.min(100, Math.floor(Number.isFinite(baseDiscount) ? baseDiscount : (legacyDiscount || 0)))
+                    Math.min(100, (Number.isFinite(baseDiscount) ? baseDiscount : (legacyDiscount || 0)))
                 );
                 const extra12 = Number(payload.implementation.discount_percent_12_extra);
-                this.state.implementationDiscountPercent12 = Math.max(0, Math.min(100, Math.floor(Number.isFinite(extra12) ? extra12 : 0)));
+                this.state.implementationDiscountPercent12 = Math.max(0, Math.min(100, (Number.isFinite(extra12) ? extra12 : 0)));
                 const extras = Array.isArray(payload.implementation.extra_services) ? payload.implementation.extra_services : [];
                 this.state.customOneTimePayments = extras.map((extra) => ({
                     name: String(extra?.name || '').trim(),
@@ -1287,7 +1315,7 @@ class CPGenerator {
         if (discountInput) {
             const cap = this.getImplementationDiscountCapPercent();
             const current = this.getImplementationDiscountPercent();
-            discountInput.value = String(current);
+            discountInput.value = this.formatPercentValue(current);
             discountInput.max = String(cap);
             discountInput.disabled = this.state.isLocked;
         }
@@ -1307,7 +1335,7 @@ class CPGenerator {
         if (discount12Input) {
             const cap = this.getImplementationDiscount12ExtraCapPercent();
             const current = this.getImplementationDiscount12ExtraPercent();
-            discount12Input.value = String(current);
+            discount12Input.value = this.formatPercentValue(current);
             discount12Input.max = String(cap);
             discount12Input.disabled = this.state.isLocked || this.state.periodMonths !== 12;
         }
@@ -3870,33 +3898,39 @@ class CPGenerator {
 
         const implementationDiscountInput = document.getElementById('implementationDiscountPercent');
         if (implementationDiscountInput) {
-            const syncImplementationDiscount = () => {
-                const raw = Number(implementationDiscountInput.value) || 0;
-                const capped = Math.max(0, Math.min(100, Math.floor(raw)));
+            const syncImplementationDiscount = (commit = false) => {
+                this.limitPercentInputPrecision(implementationDiscountInput);
+                const raw = this.parsePercentValue(implementationDiscountInput.value);
+                const capped = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
                 this.state.implementationDiscountPercent = capped;
-                implementationDiscountInput.value = String(this.getImplementationDiscountPercent());
+                if (commit) {
+                    implementationDiscountInput.value = this.formatPercentValue(this.getImplementationDiscountPercent());
+                    this.renderImplementationSection();
+                }
                 this.markOfferDirty();
-                this.renderImplementationSection();
                 this.updateSummary();
             };
 
-            implementationDiscountInput.addEventListener('change', () => syncImplementationDiscount());
-            implementationDiscountInput.addEventListener('input', () => syncImplementationDiscount());
+            implementationDiscountInput.addEventListener('change', () => syncImplementationDiscount(true));
+            implementationDiscountInput.addEventListener('input', () => syncImplementationDiscount(false));
         }
 
         const implementationDiscount12Input = document.getElementById('implementationDiscountPercent12');
         if (implementationDiscount12Input) {
-            const syncImplementationDiscount12 = () => {
-                const raw = Number(implementationDiscount12Input.value) || 0;
-                const capped = Math.max(0, Math.min(100, Math.floor(raw)));
+            const syncImplementationDiscount12 = (commit = false) => {
+                this.limitPercentInputPrecision(implementationDiscount12Input);
+                const raw = this.parsePercentValue(implementationDiscount12Input.value);
+                const capped = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
                 this.state.implementationDiscountPercent12 = capped;
-                implementationDiscount12Input.value = String(this.getImplementationDiscount12ExtraPercent());
+                if (commit) {
+                    implementationDiscount12Input.value = this.formatPercentValue(this.getImplementationDiscount12ExtraPercent());
+                }
                 this.markOfferDirty();
                 this.updateSummary();
             };
 
-            implementationDiscount12Input.addEventListener('change', () => syncImplementationDiscount12());
-            implementationDiscount12Input.addEventListener('input', () => syncImplementationDiscount12());
+            implementationDiscount12Input.addEventListener('change', () => syncImplementationDiscount12(true));
+            implementationDiscount12Input.addEventListener('input', () => syncImplementationDiscount12(false));
         }
 
         const addCustomOneTimePaymentBtn = document.getElementById('addCustomOneTimePaymentBtn');
