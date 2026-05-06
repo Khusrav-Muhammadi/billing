@@ -2,13 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Events\ClientHistoryEvent;
-use App\Events\OrganizationHistoryEvent;
-use App\Models\Client;
 use App\Models\Organization;
-use App\Models\OrganizationPack;
-use App\Models\Tariff;
-use App\Services\WithdrawalService;
+use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -16,7 +11,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class ActivationJob implements ShouldQueue
 {
@@ -36,7 +30,7 @@ class ActivationJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = 'https://' . $this->domain . '-back.' . $domain . '/api/organization/activation';
 
         $data = [
@@ -44,9 +38,37 @@ class ActivationJob implements ShouldQueue
             'has_access' => $this->activation
         ];
 
-        $res = Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, $data);
+        try {
+            $res = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $data);
+        } catch (\Throwable $e) {
+            foreach (Organization::query()->whereIn('id', $this->organizationIds)->get(['id', 'client_id']) as $organization) {
+                app(IntegrationActionLogService::class)->logApiResponse(
+                    organizationId: (int)$organization->id,
+                    clientId: (int)$organization->client_id,
+                    action: $this->activation ? 'activation' : 'deactivation',
+                    method: 'POST',
+                    url: $url,
+                    payload: $data,
+                    error: $e->getMessage()
+                );
+            }
+
+            return;
+        }
+
+        foreach (Organization::query()->whereIn('id', $this->organizationIds)->get(['id', 'client_id']) as $organization) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$organization->id,
+                clientId: (int)$organization->client_id,
+                action: $this->activation ? 'activation' : 'deactivation',
+                method: 'POST',
+                url: $url,
+                payload: $data,
+                response: $res
+            );
+        }
 
         if ($res->successful()) {
             DB::transaction(function () {

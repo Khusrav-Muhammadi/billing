@@ -21,6 +21,10 @@ class CPGenerator {
             extraUsers: 0,
             selectedServices: {},
             implementationPrice: 0,
+            implementationEnabled: false,
+            hasSavedImplementation: false,
+            implementationDiscountPercent: 0,
+            implementationDiscountPercent12: 0,
             onlineStorePrice: 0,
             customOneTimePayments: [],
             clientPhone: '',
@@ -271,6 +275,127 @@ class CPGenerator {
 
     isConnectionMode() {
         return String(this.state.requestType || '').trim() === 'connection';
+    }
+
+    shouldShowImplementationSection() {
+        if (this.state.editOfferId) {
+            return Boolean(this.state.hasSavedImplementation);
+        }
+
+        const partner = this.getSelectedPartner();
+        if (Boolean(partner?.has_implementation)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    isImplementationEnabled() {
+        return this.shouldShowImplementationSection() && Boolean(this.state.implementationEnabled);
+    }
+
+    parsePercentValue(value) {
+        const normalized = String(value ?? "").replace(",", ".").trim();
+        const parsed = Number(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    roundPercentValue(value) {
+        return Math.round(this.parsePercentValue(value) * 10000) / 10000;
+    }
+
+    formatPercentValue(value) {
+        return this.roundPercentValue(value).toFixed(4).replace(".", ",");
+    }
+
+    limitPercentInputPrecision(input) {
+        const value = String(input?.value ?? "");
+        const separatorIndex = value.search(/[,.]/);
+        if (separatorIndex < 0) {
+            return;
+        }
+
+        const head = value.slice(0, separatorIndex + 1);
+        const fraction = value.slice(separatorIndex + 1).replace(/[,.]/g, "");
+        if (fraction.length > 4) {
+            input.value = head + fraction.slice(0, 4);
+        }
+    }
+
+    getImplementationDiscountCapPercent() {
+        const caps = this.config?.implementation?.discount_caps || {};
+        const byType = caps?.by_type || {};
+        const byCurrency = caps?.by_currency || {};
+        const defaults = caps?.default || {};
+        const currencyCode = this.normalizeCurrencyCode(this.state.currency);
+        const currencyCaps = currencyCode && Object.prototype.hasOwnProperty.call(byCurrency, currencyCode)
+            ? byCurrency[currencyCode]
+            : null;
+
+        const rawCap = currencyCaps && Object.prototype.hasOwnProperty.call(currencyCaps, 'standard')
+            ? currencyCaps.standard
+            : (Object.prototype.hasOwnProperty.call(byType, 'standard') ? byType.standard : defaults.standard);
+        const cap = Number(rawCap) || 0;
+        return Math.max(0, Math.min(100, cap));
+    }
+
+    getImplementationDiscountPercent() {
+        const raw = this.parsePercentValue(this.state.implementationDiscountPercent);
+        const val = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+
+        const caps = this.config?.implementation?.discount_caps || {};
+        const byType = caps?.by_type || {};
+        const byCurrency = caps?.by_currency || {};
+        const defaults = caps?.default || {};
+        const currencyCode = this.normalizeCurrencyCode(this.state.currency);
+        const currencyCaps = currencyCode && Object.prototype.hasOwnProperty.call(byCurrency, currencyCode)
+            ? byCurrency[currencyCode]
+            : null;
+
+        const rawCap = currencyCaps && Object.prototype.hasOwnProperty.call(currencyCaps, 'standard')
+            ? currencyCaps.standard
+            : (Object.prototype.hasOwnProperty.call(byType, 'standard') ? byType.standard : defaults.standard);
+        const cap = Math.max(0, Math.min(100, Number(rawCap) || 0));
+
+        return Math.min(val, cap);
+    }
+
+    getImplementationDiscount12ExtraCapPercent() {
+        const caps = this.config?.implementation?.discount_caps || {};
+        const byType = caps?.by_type || {};
+        const byCurrency = caps?.by_currency || {};
+        const defaults = caps?.default || {};
+        const currencyCode = this.normalizeCurrencyCode(this.state.currency);
+        const currencyCaps = currencyCode && Object.prototype.hasOwnProperty.call(byCurrency, currencyCode)
+            ? byCurrency[currencyCode]
+            : null;
+
+        const rawCap = currencyCaps && Object.prototype.hasOwnProperty.call(currencyCaps, 'months_12')
+            ? currencyCaps.months_12
+            : (Object.prototype.hasOwnProperty.call(byType, 'months_12') ? byType.months_12 : defaults.months_12);
+        const cap = Number(rawCap) || 0;
+        return Math.max(0, Math.min(100, cap));
+    }
+
+    getImplementationDiscount12ExtraPercent() {
+        if (this.state.periodMonths !== 12) {
+            return 0;
+        }
+        const raw = this.parsePercentValue(this.state.implementationDiscountPercent12);
+        const val = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+        const cap = this.getImplementationDiscount12ExtraCapPercent();
+        return Math.min(val, cap);
+    }
+
+    getImplementationTotalDiscountPercent() {
+        const base = this.getImplementationDiscountPercent();
+        const extra = this.getImplementationDiscount12ExtraPercent();
+
+        if (this.state.periodMonths !== 12) {
+            return base;
+        }
+
+        return Math.max(0, Math.min(100, base + extra));
     }
 
     getRequestTypeLabel() {
@@ -959,6 +1084,29 @@ class CPGenerator {
                 this.state.selectedServices = normalized;
             }
 
+            if (payload.implementation && typeof payload.implementation === 'object') {
+                this.state.implementationEnabled = Boolean(payload.implementation.enabled);
+                this.state.implementationPrice = Math.max(0, Number(payload.implementation.price) || 0);
+                const baseDiscount = Number(payload.implementation.discount_percent_base);
+                const legacyDiscount = Number(payload.implementation.discount_percent);
+                this.state.implementationDiscountPercent = Math.max(
+                    0,
+                    Math.min(100, (Number.isFinite(baseDiscount) ? baseDiscount : (legacyDiscount || 0)))
+                );
+                const extra12 = Number(payload.implementation.discount_percent_12_extra);
+                this.state.implementationDiscountPercent12 = Math.max(0, Math.min(100, (Number.isFinite(extra12) ? extra12 : 0)));
+                const extras = Array.isArray(payload.implementation.extra_services) ? payload.implementation.extra_services : [];
+                this.state.customOneTimePayments = extras.map((extra) => ({
+                    name: String(extra?.name || '').trim(),
+                    price: Math.max(0, Number(extra?.price) || 0),
+                }));
+                this.state.hasSavedImplementation = Boolean(payload.implementation.enabled)
+                    || this.state.implementationPrice > 0
+                    || this.state.implementationDiscountPercent > 0
+                    || this.state.implementationDiscountPercent12 > 0
+                    || this.state.customOneTimePayments.some((extra) => extra.name !== '' || extra.price > 0);
+            }
+
             const selectedClient = this.getSelectedClient();
             if (selectedClient) {
                 this.state.clientName = selectedClient.name || this.state.clientName || '';
@@ -1148,6 +1296,7 @@ class CPGenerator {
         this.renderClientPartnerSelectors();
         this.renderTariffs();
         this.renderServices();
+        this.renderImplementationSection();
         this.updateExtraUsersSection();
         this.updateSummary();
         this.applyPaymentMethodsUI();
@@ -1163,6 +1312,92 @@ class CPGenerator {
         );
         this.setRenewalNoChangesControlsEnabled();
         this.updatePayButtonState();
+    }
+
+    renderImplementationSection() {
+        const section = document.getElementById('implementationSection');
+        if (!section) {
+            return;
+        }
+
+        const shouldShow = this.shouldShowImplementationSection();
+        section.style.display = shouldShow ? '' : 'none';
+
+        if (!shouldShow) {
+            return;
+        }
+
+        const requiredByPartner = this.isImplementationRequiredByPartner();
+        if (requiredByPartner && !this.state.isLocked) {
+            this.state.implementationEnabled = true;
+        }
+        const enabled = Boolean(this.state.implementationEnabled);
+        const enabledInput = document.getElementById('implementationEnabled');
+        if (enabledInput) {
+            enabledInput.checked = enabled;
+            enabledInput.disabled = this.state.isLocked || requiredByPartner;
+        }
+
+        const fields = document.getElementById('implementationFields');
+        if (fields) {
+            fields.hidden = !enabled;
+        }
+
+        const discountInput = document.getElementById('implementationDiscountPercent');
+        if (discountInput) {
+            const cap = this.getImplementationDiscountCapPercent();
+            const current = this.getImplementationDiscountPercent();
+            discountInput.value = this.formatPercentValue(current);
+            discountInput.max = String(cap);
+            discountInput.disabled = this.state.isLocked;
+        }
+
+        const discountHint = document.getElementById('implementationDiscountHint');
+        if (discountHint) {
+            const cap = this.getImplementationDiscountCapPercent();
+            discountHint.textContent = `Потолок скидки (Стандартная): ${cap}%.`;
+        }
+
+        const discount12Block = document.getElementById('implementationDiscount12Block');
+        if (discount12Block) {
+            discount12Block.hidden = this.state.periodMonths !== 12;
+        }
+
+        const discount12Input = document.getElementById('implementationDiscountPercent12');
+        if (discount12Input) {
+            const cap = this.getImplementationDiscount12ExtraCapPercent();
+            const current = this.getImplementationDiscount12ExtraPercent();
+            discount12Input.value = this.formatPercentValue(current);
+            discount12Input.max = String(cap);
+            discount12Input.disabled = this.state.isLocked || this.state.periodMonths !== 12;
+        }
+
+        const discount12Hint = document.getElementById('implementationDiscount12Hint');
+        if (discount12Hint) {
+            const cap = this.getImplementationDiscount12ExtraCapPercent();
+            discount12Hint.textContent = `Потолок доп. скидки: ${cap}%.`;
+        }
+
+        const priceInput = document.getElementById('implementationPrice');
+        if (priceInput) {
+            priceInput.disabled = true;
+            priceInput.readOnly = true;
+        }
+
+        const addBtn = document.getElementById('addCustomOneTimePaymentBtn');
+        if (addBtn) {
+            addBtn.disabled = this.state.isLocked || !enabled;
+        }
+
+        if (enabled) {
+            this.updateOneTimePayments();
+            this.renderCustomOneTimePayments();
+        } else {
+            const container = document.getElementById('customOneTimePayments');
+            if (container) {
+                container.innerHTML = '';
+            }
+        }
     }
 
     applyTariffDefaults() {
@@ -1383,6 +1618,31 @@ class CPGenerator {
         return this.partners.find((p) => String(p.id) === String(this.state.selectedPartnerId)) || null;
     }
 
+    isImplementationRequiredByPartner(partner = this.getSelectedPartner()) {
+        return false;
+    }
+
+    applyPartnerImplementationDefaults(partner = this.getSelectedPartner()) {
+        if (this.state.isLocked || this.state.editOfferId) {
+            return;
+        }
+
+        const hasImplementation = Boolean(partner?.has_implementation);
+        const required = false;
+
+        if (!hasImplementation) {
+            this.state.implementationEnabled = false;
+            this.state.implementationDiscountPercent = 0;
+            this.state.implementationDiscountPercent12 = 0;
+            this.state.customOneTimePayments = [];
+            return;
+        }
+
+        if (required) {
+            this.state.implementationEnabled = true;
+        }
+    }
+
     getPaymentPayer(client = this.getSelectedClient()) {
         const partner = this.getSelectedPartner();
         if (partner) {
@@ -1519,7 +1779,7 @@ class CPGenerator {
         return items
             .map((item) => {
                 const kind = String(item?.pricing_kind || '');
-                const percent = kind === 'tariff' ? tariffPercent : packPercent;
+                const percent = kind === 'tariff' ? tariffPercent : (kind === 'one_time' ? 0 : packPercent);
                 return {
                     ...item,
                     price: this.applyPartnerShare(item?.price, percent),
@@ -1815,6 +2075,37 @@ class CPGenerator {
             });
         });
 
+        if (this.isImplementationEnabled()) {
+            const breakdown = this.getImplementationPricingBreakdown();
+
+            if (breakdown.baseAfterDiscount > 0) {
+                items.push({
+                    service_key: 'implementation',
+                    name: 'Внедрение и обучение',
+                    quantity: 1,
+                    pricing_kind: 'one_time',
+                    unit_price: this.roundMoney(breakdown.baseAfterDiscount),
+                    price: this.roundMoney(breakdown.baseAfterDiscount),
+                });
+            }
+
+            (this.state.customOneTimePayments || []).forEach((payment, index) => {
+                const price = Math.max(0, Number(payment?.price) || 0);
+                if (price <= 0) {
+                    return;
+                }
+                const name = String(payment?.name || '').trim() || `Доп. услуга (${index + 1})`;
+                items.push({
+                    service_key: `implementation-extra-${index + 1}`,
+                    name,
+                    quantity: 1,
+                    pricing_kind: 'one_time',
+                    unit_price: this.roundMoney(price),
+                    price: this.roundMoney(price),
+                });
+            });
+        }
+
         // Remove zero/negative lines
         return items.filter((i) => (Number(i.price) || 0) > 0);
     }
@@ -1886,13 +2177,14 @@ class CPGenerator {
             const tariffId = this.extractTariffOrServiceIdFromKey(item.service_key);
             const isTariffLine = item.pricing_kind === 'tariff'
                 || (selectedTariffId && String(item.service_key) === `tariff-${selectedTariffId}`);
+            const isOneTimeLine = String(item.pricing_kind) === 'one_time';
             return {
                 tariff_id: tariffId,
                 quantity,
                 unit_price: isTariffLine ? baseTariffMonthly : sourceUnitPrice,
                 months: periodMonths,
                 discount_percent: isTariffLine ? discountPercent : 0,
-                partner_percent: isTariffLine ? tariffPartnerPercent : packPartnerPercent,
+                partner_percent: isTariffLine ? tariffPartnerPercent : (isOneTimeLine ? 0 : packPartnerPercent),
                 total_price: sourcePrice,
             };
         })
@@ -1926,6 +2218,19 @@ class CPGenerator {
             partner_phone: partner?.phone || '',
             partner_email: partner?.email || '',
             payer,
+            implementation: {
+                enabled: Boolean(this.state.implementationEnabled),
+                price: this.roundMoney(Number(this.state.implementationPrice) || 0),
+                discount_percent: this.getImplementationTotalDiscountPercent(),
+                discount_percent_base: this.getImplementationDiscountPercent(),
+                discount_percent_12_extra: this.getImplementationDiscount12ExtraPercent(),
+                extra_services: (this.state.customOneTimePayments || [])
+                    .map((p) => ({
+                        name: String(p?.name || '').trim(),
+                        price: this.roundMoney(Number(p?.price) || 0),
+                    }))
+                    .filter((p) => p.name !== '' || (Number(p.price) || 0) > 0),
+            },
             monthly_total: this.roundMoney(grossTotals.monthly || 0),
             period_total: this.roundMoney(grossTotals.period || 0),
             grand_total: originalTotal,
@@ -2247,6 +2552,7 @@ class CPGenerator {
                 this.renderTariffs();
                 this.renderServices();
                 this.updateExtraUsersSection();
+                this.renderImplementationSection();
                 this.updateSummary();
                 this.updateSelectedClientOrderNumberUI();
                 this.updateSelectedClientOperationStartDateUI();
@@ -2262,10 +2568,12 @@ class CPGenerator {
 
                 this.state.selectedPartnerId = item.id;
                 this.state.partnerName = item.name || 'Партнер';
+                this.applyPartnerImplementationDefaults(item);
                 // Partner percent affects all prices, so rerender totals/cards.
                 this.renderTariffs();
                 this.renderServices();
                 this.updateExtraUsersSection();
+                this.renderImplementationSection();
                 this.updateSummary();
                 this.applyPaymentMethodsUI();
             }
@@ -2759,60 +3067,20 @@ class CPGenerator {
         // Update implementation input and state
         const implInput = document.getElementById('implementationPrice');
         if (implInput) {
-            // Проверяем, была ли смена валюты и нужно ли обновить значение
-            if (this.state.previousCurrency && this.state.previousCurrency !== this.state.currency) {
-                const oldSuggestedPrice = this.getSuggestedImplementationPrice(this.state.previousCurrency);
-                // Если значение было установлено автоматически (равно suggestedPrice для старой валюты)
-                if (Math.abs(this.state.implementationPrice - oldSuggestedPrice) < 0.01) {
-                    // Обновляем на suggestedPrice для новой валюты
-                    this.state.implementationPrice = suggestedPrice;
-                    this.state.implementationPriceWasAutoSet = true;
-                }
-                // Сбрасываем флаг предыдущей валюты
-                this.state.previousCurrency = null;
+            const hasSavedImplPrice = this.state.editOfferId && (Number(this.state.implementationPrice) || 0) > 0;
+            if (!hasSavedImplPrice) {
+                this.state.implementationPrice = Math.max(0, Number(suggestedPrice) || 0);
             }
-
-            // Проверяем, была ли смена тарифа и нужно ли обновить значение
-            if (this.state.previousTariff && this.state.previousTariff !== this.state.selectedTariff) {
-                const oldTariff = this.config.tariffs[this.state.previousTariff];
-                if (oldTariff && oldTariff.suggestedImplementationPrice) {
-                    const oldSuggestedPrice = oldTariff.suggestedImplementationPrice[this.state.currency];
-                    // Если значение было равно suggestedPrice для старого тарифа, обновляем на новый
-                    if (Math.abs(this.state.implementationPrice - oldSuggestedPrice) < 0.01) {
-                        this.state.implementationPrice = suggestedPrice;
-                        this.state.implementationPriceWasAutoSet = true;
-                    }
-                }
-                // Сбрасываем флаг предыдущего тарифа
-                this.state.previousTariff = null;
-            }
-
-            // Если значение было установлено автоматически, обновляем его при изменении suggestedPrice
-            if (this.state.implementationPriceWasAutoSet && suggestedPrice > 0) {
-                // Обновляем значение на новый suggestedPrice
-                this.state.implementationPrice = suggestedPrice;
-                implInput.value = this.formatNumberInput(suggestedPrice);
-            } else if (suggestedPrice > 0) {
-                // Если текущее значение в state равно 0, устанавливаем suggestedPrice
-                if (this.state.implementationPrice === 0 || !this.state.implementationPrice) {
-                    this.state.implementationPrice = suggestedPrice;
-                    this.state.implementationPriceWasAutoSet = true;
-                    implInput.value = this.formatNumberInput(suggestedPrice);
-                } else {
-                    // Если пользователь уже ввел значение, используем его (с форматированием)
-                    implInput.value = this.formatNumberInput(this.state.implementationPrice);
-                }
-            } else {
-                // Если нет suggested price, используем текущее значение из state (с форматированием)
-                implInput.value = this.formatNumberInput(this.state.implementationPrice || 0);
-            }
+            implInput.value = this.formatNumberInput(this.state.implementationPrice || 0);
+            implInput.disabled = true;
+            implInput.readOnly = true;
         }
 
         // Update implementation hint - всегда показываем цену
         const implHint = document.getElementById('implementationHint');
         if (implHint) {
             if (suggestedPrice > 0) {
-                implHint.textContent = `${this.formatServicePrice(suggestedPrice)} (скидка до 50 процентов)`;
+                implHint.textContent = `${this.formatServicePrice(suggestedPrice)}`;
             } else {
                 implHint.textContent = '';
             }
@@ -2863,13 +3131,14 @@ class CPGenerator {
                                value="${payment.name || ''}">
                     </label>
                     <div class="one-time-input-group">
-                        <input type="number"
+                        <input type="text"
                                class="one-time-input custom-service-price-input"
                                data-index="${index}"
+                               inputmode="decimal"
                                min="0"
                                step="0.01"
                                placeholder="0"
-                               value="${payment.price || 0}">
+                               value="${this.formatNumberInput(payment.price || 0)}">
                         <span class="one-time-currency">${this.getCurrentCurrency().symbol}</span>
                         <button class="remove-custom-service-btn" data-index="${index}" title="Удалить">×</button>
                     </div>
@@ -2897,13 +3166,24 @@ class CPGenerator {
 
         // Price inputs
         document.querySelectorAll('.custom-service-price-input').forEach(input => {
-            input.addEventListener('input', (e) => {
-                const index = parseInt(e.target.dataset.index);
-                if (this.state.customOneTimePayments[index]) {
-                    this.state.customOneTimePayments[index].price = parseFloat(e.target.value) || 0;
-                    this.markOfferDirty();
-                    this.updateSummary();
+            const syncCustomServicePrice = (target) => {
+                const index = parseInt(target.dataset.index);
+                if (!this.state.customOneTimePayments[index]) {
+                    return;
                 }
+                const value = this.parseNumberInput(target.value);
+                const normalized = Math.max(0, Number(value) || 0);
+                this.state.customOneTimePayments[index].price = normalized;
+                target.value = this.formatNumberInput(normalized);
+                this.markOfferDirty();
+                this.updateSummary();
+            };
+
+            input.addEventListener('input', (e) => {
+                syncCustomServicePrice(e.target);
+            });
+            input.addEventListener('change', (e) => {
+                syncCustomServicePrice(e.target);
             });
         });
 
@@ -3027,16 +3307,74 @@ class CPGenerator {
             return { ...r, qty, unitMonthly, months, sum, discountAmount, afterDiscount, partnerShare, discountPercent, partnerPercent };
         });
 
-        const totalSum = computed.reduce((s, r) => s + r.sum, 0);
-        const totalDiscount = computed.reduce((s, r) => s + r.discountAmount, 0);
-        const totalAfterDiscount = computed.reduce((s, r) => s + r.afterDiscount, 0);
-        const totalPartnerShare = computed.reduce((s, r) => s + r.partnerShare, 0);
+        const recurringTotalSum = computed.reduce((s, r) => s + r.sum, 0);
+        const recurringTotalDiscount = computed.reduce((s, r) => s + r.discountAmount, 0);
+        const recurringTotalAfterDiscount = computed.reduce((s, r) => s + r.afterDiscount, 0);
+        const recurringTotalPartnerShare = computed.reduce((s, r) => s + r.partnerShare, 0);
+
+        const oneTimeRows = [];
+        if (this.isImplementationEnabled()) {
+            const breakdown = this.getImplementationPricingBreakdown();
+
+            if (breakdown.baseAfterDiscount > 0) {
+                oneTimeRows.push({
+                    name: 'Внедрение и обучение',
+                    qty: 1,
+                    unitMonthly: breakdown.baseAfterDiscount,
+                    kind: 'one_time',
+                    discountPercent: 0,
+                    partnerPercent: 0,
+                    months: 1,
+                });
+            }
+
+            (this.state.customOneTimePayments || []).forEach((payment, index) => {
+                const price = Math.max(0, Number(payment?.price) || 0);
+                if (price <= 0) {
+                    return;
+                }
+                const name = String(payment?.name || '').trim() || `Доп. услуга (${index + 1})`;
+                oneTimeRows.push({
+                    name,
+                    qty: 1,
+                    unitMonthly: price,
+                    kind: 'one_time',
+                    discountPercent: 0,
+                    partnerPercent: 0,
+                    months: 1,
+                });
+            });
+        }
+
+        const computedOneTime = oneTimeRows.map((r) => {
+            const qty = Number(r.qty) || 0;
+            const unitMonthly = Number(r.unitMonthly) || 0;
+            const monthsForLine = 1;
+            const sum = unitMonthly * qty * monthsForLine;
+            const discountPercent = Number(r.discountPercent) || 0;
+            const partnerPercent = Number(r.partnerPercent) || 0;
+            const discountAmount = sum * (discountPercent / 100);
+            const afterDiscount = sum - discountAmount;
+            const partnerShare = afterDiscount * (partnerPercent / 100);
+            return { ...r, qty, unitMonthly, months: monthsForLine, sum, discountAmount, afterDiscount, partnerShare, discountPercent, partnerPercent };
+        });
+
+        const oneTimeTotalSum = computedOneTime.reduce((s, r) => s + r.sum, 0);
+        const oneTimeTotalDiscount = computedOneTime.reduce((s, r) => s + r.discountAmount, 0);
+        const oneTimeTotalAfterDiscount = computedOneTime.reduce((s, r) => s + r.afterDiscount, 0);
+        const oneTimeTotalPartnerShare = computedOneTime.reduce((s, r) => s + r.partnerShare, 0);
+
+        const totalSum = recurringTotalSum + oneTimeTotalSum;
+        const totalDiscount = recurringTotalDiscount + oneTimeTotalDiscount;
+        const totalAfterDiscount = recurringTotalAfterDiscount + oneTimeTotalAfterDiscount;
+        const totalPartnerShare = recurringTotalPartnerShare + oneTimeTotalPartnerShare;
+
         const payer = this.getPaymentPayer();
         const totalToPay = payer?.type === 'partner'
             ? Math.max(0, this.roundMoney(totalAfterDiscount - totalPartnerShare))
             : totalAfterDiscount;
 
-        if (computed.length > 0) {
+        if (computed.length > 0 || computedOneTime.length > 0) {
             let tableHTML = '<div class="payments-table-wrap"><table class="payments-table payments-table-wide">';
             tableHTML += '<thead>';
             tableHTML += '<tr><th colspan="9" class="section-header">Платежи</th></tr>';
@@ -3069,6 +3407,25 @@ class CPGenerator {
                 `;
             });
 
+            if (computedOneTime.length > 0) {
+                tableHTML += '<tr><th colspan="9" class="section-header">Разовые платежи</th></tr>';
+                computedOneTime.forEach((r) => {
+                    tableHTML += `
+                        <tr>
+                            <td>${r.name}</td>
+                            <td>${r.qty}</td>
+                            <td>${this.formatServicePrice(r.unitMonthly)}</td>
+                            <td>—</td>
+                            <td>${this.formatTotalPrice(r.sum)}</td>
+                            <td>${this.formatTotalPrice(r.discountAmount)} (${r.discountPercent}%)</td>
+                            <td>${this.formatTotalPrice(r.afterDiscount)}</td>
+                            <td>${r.partnerPercent}%</td>
+                            <td>${this.formatTotalPrice(r.partnerShare)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
             const partnerTotalLabel = tariffPartnerPercent === packPartnerPercent
                 ? `${tariffPartnerPercent}%`
                 : '—';
@@ -3092,7 +3449,10 @@ class CPGenerator {
         }
 
         const monthlyRaw = rows.reduce((s, r) => s + (Number(r.unitMonthly) || 0) * (Number(r.qty) || 0), 0);
-        const monthlyToPay = months > 0 ? (totalToPay / months) : totalToPay;
+        const recurringToPay = payer?.type === 'partner'
+            ? Math.max(0, this.roundMoney(recurringTotalAfterDiscount - recurringTotalPartnerShare))
+            : recurringTotalAfterDiscount;
+        const monthlyToPay = months > 0 ? (recurringToPay / months) : recurringToPay;
 
         // Build period details string
         const periodDetailsEl = document.getElementById('periodDetails');
@@ -3425,6 +3785,86 @@ class CPGenerator {
                 this.renderAll();
             });
         });
+
+        const implementationEnabledInput = document.getElementById('implementationEnabled');
+        if (implementationEnabledInput) {
+            implementationEnabledInput.addEventListener('change', (e) => {
+                if (this.state.isLocked) {
+                    e.target.checked = Boolean(this.state.implementationEnabled);
+                    return;
+                }
+
+                if (this.isImplementationRequiredByPartner()) {
+                    e.target.checked = true;
+                    this.state.implementationEnabled = true;
+                    this.renderImplementationSection();
+                    this.updateSummary();
+                    return;
+                }
+
+                this.state.implementationEnabled = Boolean(e.target.checked);
+                this.markOfferDirty();
+                this.renderImplementationSection();
+                this.updateSummary();
+            });
+        }
+
+        const implementationPriceInput = document.getElementById('implementationPrice');
+        if (implementationPriceInput) {
+            implementationPriceInput.disabled = true;
+            implementationPriceInput.readOnly = true;
+        }
+
+        const implementationDiscountInput = document.getElementById('implementationDiscountPercent');
+        if (implementationDiscountInput) {
+            const syncImplementationDiscount = (commit = false) => {
+                this.limitPercentInputPrecision(implementationDiscountInput);
+                const raw = this.parsePercentValue(implementationDiscountInput.value);
+                const capped = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+                this.state.implementationDiscountPercent = capped;
+                if (commit) {
+                    implementationDiscountInput.value = this.formatPercentValue(this.getImplementationDiscountPercent());
+                    this.renderImplementationSection();
+                }
+                this.markOfferDirty();
+                this.updateSummary();
+            };
+
+            implementationDiscountInput.addEventListener('change', () => syncImplementationDiscount(true));
+            implementationDiscountInput.addEventListener('input', () => syncImplementationDiscount(false));
+        }
+
+        const implementationDiscount12Input = document.getElementById('implementationDiscountPercent12');
+        if (implementationDiscount12Input) {
+            const syncImplementationDiscount12 = (commit = false) => {
+                this.limitPercentInputPrecision(implementationDiscount12Input);
+                const raw = this.parsePercentValue(implementationDiscount12Input.value);
+                const capped = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+                this.state.implementationDiscountPercent12 = capped;
+                if (commit) {
+                    implementationDiscount12Input.value = this.formatPercentValue(this.getImplementationDiscount12ExtraPercent());
+                }
+                this.markOfferDirty();
+                this.updateSummary();
+            };
+
+            implementationDiscount12Input.addEventListener('change', () => syncImplementationDiscount12(true));
+            implementationDiscount12Input.addEventListener('input', () => syncImplementationDiscount12(false));
+        }
+
+        const addCustomOneTimePaymentBtn = document.getElementById('addCustomOneTimePaymentBtn');
+        if (addCustomOneTimePaymentBtn) {
+            addCustomOneTimePaymentBtn.addEventListener('click', () => {
+                if (this.state.isLocked) {
+                    return;
+                }
+                if (!this.isImplementationEnabled()) {
+                    return;
+                }
+                this.addCustomOneTimePayment();
+                this.updateSummary();
+            });
+        }
 
         document.getElementById('usersMinusBtn').addEventListener('click', () => {
             if (this.isRenewalNoChangesMode()) {
@@ -3988,6 +4428,41 @@ class CPGenerator {
         return services;
     }
 
+    getImplementationPricingBreakdown() {
+        if (!this.isImplementationEnabled()) {
+            return {
+                base: 0,
+                discountPercent: 0,
+                discountAmount: 0,
+                baseAfterDiscount: 0,
+                extras: 0,
+                total: 0,
+            };
+        }
+
+        const base = Math.max(0, Number(this.state.implementationPrice) || 0);
+        const extras = (this.state.customOneTimePayments || [])
+            .reduce((sum, payment) => sum + Math.max(0, Number(payment?.price) || 0), 0);
+
+        const discountPercent = this.getImplementationTotalDiscountPercent();
+        const discountAmount = base * (discountPercent / 100);
+        const baseAfterDiscount = Math.max(0, base - discountAmount);
+        const total = this.roundMoney(baseAfterDiscount + extras);
+
+        return {
+            base: this.roundMoney(base),
+            discountPercent,
+            discountAmount: this.roundMoney(discountAmount),
+            baseAfterDiscount: this.roundMoney(baseAfterDiscount),
+            extras: this.roundMoney(extras),
+            total,
+        };
+    }
+
+    calculateOneTimeTotal() {
+        return this.getImplementationPricingBreakdown().total || 0;
+    }
+
     calculateTotals() {
         let monthlyTariffBase = 0;
         let monthlyPacks = 0;
@@ -4046,11 +4521,13 @@ class CPGenerator {
 
         const monthlyToPay = (monthlyTariffBase * periodMultiplier) + monthlyPacks;
         const periodToPay = monthlyToPay * months;
+        const oneTimeToPay = this.calculateOneTimeTotal();
 
         return {
             monthly: monthlyToPay,
             period: periodToPay,
-            grand: periodToPay
+            one_time: oneTimeToPay,
+            grand: this.roundMoney(periodToPay + oneTimeToPay)
         };
     }
 
@@ -4123,11 +4600,14 @@ class CPGenerator {
             + this.applyPartnerShare(monthlyPacks, packPercent)
         );
         const periodNet = this.roundMoney(monthlyNet * months);
+        const oneTimeGross = this.calculateOneTimeTotal();
+        const oneTimeNet = this.roundMoney(oneTimeGross);
 
         return {
             monthly: monthlyNet,
             period: periodNet,
-            grand: periodNet,
+            one_time: oneTimeNet,
+            grand: this.roundMoney(periodNet + oneTimeNet),
         };
     }
 

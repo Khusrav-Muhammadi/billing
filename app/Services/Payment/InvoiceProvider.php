@@ -322,7 +322,7 @@ class InvoiceProvider implements PaymentProviderInterface
         return [
             'name' => 'Общество с ограниченной ответственностью "SOFTTECH GROUP"',
             'address' => 'г. Ташкент, Яккасарайский район Богсарай, улица Мирабад 10',
-            'phone' => '+998773756868',
+            'phone' => '+998555888100',
             'inn' => '31168486',
             'oked' => '62010',
             'account' => '20208000807159380001',

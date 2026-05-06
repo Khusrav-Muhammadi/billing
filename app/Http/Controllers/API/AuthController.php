@@ -18,9 +18,13 @@ class AuthController extends Controller
 
             return response()->json([
                 'token' => $token->plainTextToken,
-                'user' => $user->load(['procents' => function ($q) {
-                    $q->latest()->limit(1);
-                }]),
+                'user' => $user->load([
+                    'country:id,name,currency_id',
+                    'country.currency:id,name,symbol_code',
+                    'procents' => function ($q) {
+                        $q->latest()->limit(1);
+                    },
+                ]),
             ], 200);
         }
 

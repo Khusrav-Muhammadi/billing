@@ -198,7 +198,7 @@
         </div>
         <h1 class="title">Подтверждение оплаты</h1>
         <p class="subtitle">
-            Перед переходом к оплате проверьте данные. Нажмите «Далее», чтобы открыть страницу оплаты в {{ $providerLabel }}.
+            Перед отправкой ссылки проверьте данные. После подтверждения ссылка на оплату в {{ $providerLabel }} уйдёт на почту клиента{{ $hasPartner ? ' и партнёра' : '' }}.
         </p>
     </div>
 
@@ -250,6 +250,13 @@
             </div>
         @endif
 
+        @if (session('payment_link_sent'))
+            <div class="notice" style="border-color:#bbf7d0; background:#f0fdf4; color:#166534;">
+                <strong style="color:#14532d;">Готово.</strong>
+                {{ session('payment_link_sent') }}
+            </div>
+        @endif
+
         <form method="POST" action="{{ $goUrl }}" style="margin:0;">
             @csrf
 
@@ -257,10 +264,10 @@
                 <strong>Важно.</strong>
                 @if($hasPartner)
 
-                    Нажимая «Далее», я подтверждаю, что ознакомил(а) клиента с услугами SHAMCRM и условиями оферты.
+                    Нажимая «Отправить ссылку», я подтверждаю, что ознакомил(а) клиента с услугами SHAMCRM и условиями оферты.
                     В случае отказа средства возврату не подлежат.
                 @else
-                    Нажимая «Далее», я подтверждаю, что ознакомлен(а) и согласен(на) с условиями публичной оферты SHAMCRM.
+                    Нажимая «Отправить ссылку», я подтверждаю, что ознакомлен(а) и согласен(на) с условиями публичной оферты SHAMCRM.
                 @endif
                 <div style="margin-top:8px;">
                     <a href="{{ $agreementUrl }}" target="_blank" rel="noopener" style="color:#92400e; font-weight:700;">
@@ -281,7 +288,7 @@
 
             <div class="actions">
                 <button class="btn btn-primary" id="goBtn" type="submit">
-                    Далее
+                    Отправить ссылку
                 </button>
                 <a class="btn btn-secondary" href="javascript:history.back()">
                     Назад

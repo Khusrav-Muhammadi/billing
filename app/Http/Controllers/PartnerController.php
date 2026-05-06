@@ -8,6 +8,7 @@ use App\Http\Requests\Partner\StoreStatusRequest;
 use App\Http\Requests\Partner\UpdateManagerRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Models\Account;
+use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Partner;
 use App\Models\PartnerProcent;
@@ -34,6 +35,9 @@ class PartnerController extends Controller
             ->with('currency:id,symbol_code,name')
             ->orderBy('name')
             ->get(['id', 'name', 'currency_id']);
+        $countries = Country::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         $partnerCurrencies = Currency::query()
             ->select('id', 'name', 'symbol_code')
@@ -42,7 +46,7 @@ class PartnerController extends Controller
             ->sortBy(fn ($currency) => strtoupper((string) $currency->symbol_code) === 'USD' ? 1 : 2)
             ->values();
 
-        return view('admin.partners.create', compact('accounts', 'partnerCurrencies'));
+        return view('admin.partners.create', compact('accounts', 'partnerCurrencies', 'countries'));
     }
 
     public function store(StoreRequest $request)
@@ -59,6 +63,9 @@ class PartnerController extends Controller
             ->with('currency:id,symbol_code,name')
             ->orderBy('name')
             ->get(['id', 'name', 'currency_id']);
+        $countries = Country::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
         $partnerCurrencies = Currency::query()
             ->select('id', 'name', 'symbol_code')
             ->get()
@@ -80,7 +87,7 @@ class PartnerController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'accounts', 'partnerCurrencies', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory'));
+        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'accounts', 'partnerCurrencies', 'countries', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory'));
     }
 
     public function update(User $partner, UpdateRequest $request)

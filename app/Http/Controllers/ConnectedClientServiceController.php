@@ -8,6 +8,7 @@ use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\CurrencyRate;
 use App\Models\ExchangeRate;
+use App\Models\ImplementationDiscountCap;
 use App\Models\Organization;
 use App\Models\Partner;
 use App\Models\PartnerProcent;
@@ -16,6 +17,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ConnectedClientServiceController extends Controller
 {
@@ -141,13 +143,18 @@ class ConnectedClientServiceController extends Controller
             ->get();
         $operationStartDates = $this->getOrganizationOperationStartDates($organizations->pluck('id')->all());
 
-        // Partners live in users table (role column) in this project.
-        $partners = User::query()
-            ->whereRaw('LOWER(role) = ?', ['partner'])
-            ->with('currency:id,symbol_code')
-            ->select('id', 'name', 'email', 'phone', 'payment_methods', 'currency_id')
-            ->orderBy('name')
-            ->get();
+	        // Partners live in users table (role column) in this project.
+	        $partnerSelect = ['id', 'name', 'email', 'phone', 'payment_methods', 'currency_id', 'has_implementation'];
+	        if (Schema::hasColumn('users', 'implementation_required')) {
+	            $partnerSelect[] = 'implementation_required';
+	        }
+
+	        $partners = User::query()
+	            ->whereRaw('LOWER(role) = ?', ['partner'])
+	            ->with('currency:id,symbol_code')
+	            ->select($partnerSelect)
+	            ->orderBy('name')
+	            ->get();
 
         $partnerPercentsById = $this->getPartnerPercents($partners->pluck('id')->all(), $asOfTs);
 
@@ -169,15 +176,19 @@ class ConnectedClientServiceController extends Controller
                 'currency_id' => $o->client?->country?->currency_id,
                 'currency'    => $o->client?->country?->currency?->symbol_code,
             ]),
-            'partners'      => $partners->map(fn($p) => [
-                'id'    => $p->id,
-                'name'  => $p->name,
-                'email' => $p->email ?? '',
-                'phone' => $p->phone ?? '',
-                'currency_id' => $p->currency_id ? (int) $p->currency_id : null,
-                'currency' => $this->resolvePartnerCurrencyCode($p),
-                'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id]['tariff'] ?? 0),
-                'procent_from_pack' => (int) ($partnerPercentsById[(string) $p->id]['pack'] ?? 0),
+	            'partners'      => $partners->map(fn($p) => [
+	                'id'    => $p->id,
+	                'name'  => $p->name,
+	                'email' => $p->email ?? '',
+	                'phone' => $p->phone ?? '',
+	                'has_implementation' => (bool) $p->has_implementation,
+		                'implementation_required' => Schema::hasColumn('users', 'implementation_required')
+		                    ? (bool) $p->implementation_required
+		                    : false,
+	                'currency_id' => $p->currency_id ? (int) $p->currency_id : null,
+	                'currency' => $this->resolvePartnerCurrencyCode($p),
+	                'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id]['tariff'] ?? 0),
+	                'procent_from_pack' => (int) ($partnerPercentsById[(string) $p->id]['pack'] ?? 0),
                 'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
             ]),
         ]);
@@ -260,37 +271,46 @@ class ConnectedClientServiceController extends Controller
         $asOfTs = $this->getAsOfTs($request);
         $search = trim((string) $request->query('search', ''));
 
-        $partners = User::query()
-            ->whereRaw('LOWER(role) = ?', ['partner'])
-            ->when($search !== '', function ($query) use ($search) {
-                $like = '%' . $search . '%';
-                $query->where(function ($q) use ($like) {
-                    $q->where('name', 'like', $like)
-                        ->orWhere('email', 'like', $like)
-                        ->orWhere('phone', 'like', $like);
-                });
-            })
-            ->with('currency:id,symbol_code')
-            ->select('id', 'name', 'email', 'phone', 'payment_methods', 'currency_id')
-            ->orderBy('name')
-            ->limit(50)
-            ->get();
+	        $partnerSelect = ['id', 'name', 'email', 'phone', 'payment_methods', 'currency_id', 'has_implementation'];
+	        if (Schema::hasColumn('users', 'implementation_required')) {
+	            $partnerSelect[] = 'implementation_required';
+	        }
+
+	        $partners = User::query()
+	            ->whereRaw('LOWER(role) = ?', ['partner'])
+	            ->when($search !== '', function ($query) use ($search) {
+	                $like = '%' . $search . '%';
+	                $query->where(function ($q) use ($like) {
+	                    $q->where('name', 'like', $like)
+	                        ->orWhere('email', 'like', $like)
+	                        ->orWhere('phone', 'like', $like);
+	                });
+	            })
+	            ->with('currency:id,symbol_code')
+	            ->select($partnerSelect)
+	            ->orderBy('name')
+	            ->limit(50)
+	            ->get();
 
         $partnerPercentsById = $this->getPartnerPercents($partners->pluck('id')->all(), $asOfTs);
 
-        return response()->json([
-            'partners' => $partners->map(fn($p) => [
-                'id'    => $p->id,
-                'name'  => $p->name,
-                'email' => $p->email ?? '',
-                'phone' => $p->phone ?? '',
-                'currency_id' => $p->currency_id ? (int) $p->currency_id : null,
-                'currency' => $this->resolvePartnerCurrencyCode($p),
-                'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id]['tariff'] ?? 0),
-                'procent_from_pack' => (int) ($partnerPercentsById[(string) $p->id]['pack'] ?? 0),
-                'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
-            ]),
-        ]);
+	        return response()->json([
+	            'partners' => $partners->map(fn($p) => [
+		                'id'    => $p->id,
+		                'name'  => $p->name,
+		                'email' => $p->email ?? '',
+		                'phone' => $p->phone ?? '',
+		                'has_implementation' => (bool) $p->has_implementation,
+		                'implementation_required' => Schema::hasColumn('users', 'implementation_required')
+		                    ? (bool) $p->implementation_required
+		                    : false,
+		                'currency_id' => $p->currency_id ? (int) $p->currency_id : null,
+		                'currency' => $this->resolvePartnerCurrencyCode($p),
+		                'procent_from_tariff' => (int) ($partnerPercentsById[(string) $p->id]['tariff'] ?? 0),
+		                'procent_from_pack' => (int) ($partnerPercentsById[(string) $p->id]['pack'] ?? 0),
+	                'payment_methods' => $this->normalizePartnerPaymentMethods($p->payment_methods ?? null),
+	            ]),
+	        ]);
     }
 
     private function resolvePartnerCurrencyCode(User $partner): ?string
@@ -560,6 +580,7 @@ class ConnectedClientServiceController extends Controller
                 'extraUserPrices' => $extraUserPrices,
                 'prices12Months'  => array_map(fn($p) => round($p * 0.85, 4), $prices),
                 'extraUserPrice'  => $extraUserPrices,
+                'suggestedImplementationPrice' => $this->buildImplementationPricesForTariff($tariff, $today),
                 'includedServices' => $includedServicesKeys,
                 'includedServiceQuantities' => $includedQty,
                 'features'        => [],
@@ -685,12 +706,118 @@ class ConnectedClientServiceController extends Controller
             ],
             'tariffs'  => $tariffsForJs,
             'services' => $servicesForJs,
+            'implementation' => [
+                'discount_caps' => $this->buildImplementationDiscountCapsForJs(),
+            ],
             'company'  => [
                 'name'    => 'SHAMCRM',
                 'phone'   => '+998785557416',
                 'email'   => 'info@shamcrm.com',
                 'website' => 'shamcrm.com',
             ],
+        ];
+    }
+
+    private function buildImplementationPricesForTariff(Tariff $tariff, int $today): array
+    {
+        $bestByCurrency = [];
+
+        foreach (($tariff->prices ?? collect())->whereNull('organization_id')->where('kind', 'implementation') as $price) {
+            $symbol = $price->currency?->symbol_code;
+            if (!$symbol) continue;
+
+            $start = $this->parseDateToTs($price->start_date);
+            $end = $this->parseDateToTs($price->date);
+
+            if ($start !== null && $start > $today) continue;
+            if ($end !== null && $end < $today) continue;
+
+            $startScore = $start ?? 0;
+            $endScore = $end ?? PHP_INT_MAX;
+            $prev = $bestByCurrency[$symbol] ?? null;
+            if (
+                !$prev
+                || $startScore > $prev['start']
+                || ($startScore === $prev['start'] && $endScore >= $prev['end'])
+            ) {
+                $bestByCurrency[$symbol] = [
+                    'start' => $startScore,
+                    'end' => $endScore,
+                    'sum' => (float) $price->sum,
+                ];
+            }
+        }
+
+        $result = [];
+        foreach ($bestByCurrency as $symbol => $row) {
+            $result[$symbol] = (float) $row['sum'];
+        }
+
+        return $result;
+    }
+
+    private function buildImplementationDiscountCapsForJs(): array
+    {
+        if (!Schema::hasTable('implementation_discount_caps')) {
+            return [
+                'by_type' => [],
+                'default' => ['standard' => 0, 'months_12' => 0],
+            ];
+        }
+
+        $hasCurrency = Schema::hasColumn('implementation_discount_caps', 'currency_code');
+
+        $select = ['period_type', 'max_percent'];
+        if ($hasCurrency) {
+            $select[] = 'currency_code';
+        }
+
+        $caps = ImplementationDiscountCap::query()
+            ->where('is_active', true)
+            ->orderByDesc('id')
+            ->get($select);
+
+        if (!$hasCurrency) {
+            $byType = [];
+            foreach ($caps as $cap) {
+                $type = (string) $cap->period_type;
+                if ($type !== 'standard' && $type !== 'months_12') {
+                    continue;
+                }
+                if (!array_key_exists($type, $byType)) {
+                    $byType[$type] = (float) $cap->max_percent;
+                }
+            }
+
+            return [
+                'by_type' => $byType,
+                'default' => ['standard' => 0, 'months_12' => 0],
+            ];
+        }
+
+        $byCurrency = [];
+
+        foreach ($caps as $cap) {
+            $type = (string) $cap->period_type;
+            if ($type !== 'standard' && $type !== 'months_12') {
+                continue;
+            }
+
+            $currency = strtoupper(trim((string) ($cap->currency_code ?? '')));
+            if ($currency === '') continue;
+
+            if (!isset($byCurrency[$currency])) {
+                $byCurrency[$currency] = [];
+            }
+            if (!array_key_exists($type, $byCurrency[$currency])) {
+                $byCurrency[$currency][$type] = (float) $cap->max_percent;
+            }
+        }
+
+        return [
+            'by_currency' => $byCurrency,
+            'by_type' => [], // legacy/global fallback (disabled when currency-based caps exist)
+            'default' => ['standard' => 0, 'months_12' => 0],
         ];
     }
 

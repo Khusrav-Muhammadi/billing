@@ -8,38 +8,54 @@
 @section('content')
     <div class="card-body">
         <h4 class="card-title">Оплата</h4>
-        <p>Этот раздел предназначен для проведения оплаты аккаунтов ваших клиентов в shamCRM за вычетом вашей комиссии. От клиента вы получаете полную сумму за лицензии в соответствии с ценами на нашем сайте. В данном разделе вы выставляете счет для себя (он будет уже с учетом партнерской скидки) и оплачиваете его.
-        </p>
-        <div class="dropdown d-inline-block mb-3">
-            <button class="btn btn-primary dropdown-toggle"
-                    type="button"
-                    id="applicationCreateDropdown"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false">
-                Добавить запрос
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="applicationCreateDropdown">
-                <li>
-                    <a class="dropdown-item" href="{{ route('application.create.connection') }}">
-                        Подключение
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item" href="{{ route('application.create.connection-extra-services') }}">
-                        Подключение доп услуг
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item" href="{{ route('application.create.renewal') }}">
-                        Продление (изменение)
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item" href="{{ route('application.create.renewal-no-changes') }}">
-                        Продление
-                    </a>
-                </li>
-            </ul>
+        <div class="mb-3">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle"
+                            type="button"
+                            id="applicationCreateDropdown"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                        Добавить запрос
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="applicationCreateDropdown">
+                        <li>
+                            <a class="dropdown-item" href="{{ route('application.create.connection') }}">
+                                Подключение
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('application.create.connection-extra-services') }}">
+                                Подключение доп услуг
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('application.create.renewal') }}">
+                                Продление (изменение)
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('application.create.renewal-no-changes') }}">
+                                Продление
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div style="margin-left: auto;"></div>
+
+                <form method="GET" action="{{ route('application.index') }}" class="d-flex gap-2 align-items-center flex-wrap">
+                    <input type="text"
+                           class="form-control"
+                           name="search"
+                           value="{{ $search }}"
+                           placeholder="Поиск по клиенту"
+                           style="width: 250px;">
+                    @if($search !== '')
+                        <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Сбросить</a>
+                    @endif
+                </form>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-hover">
@@ -142,7 +158,7 @@
                     <tr class="offer-row" data-href="{{ route(\App\Http\Controllers\ApplicationController::getRouteNameForOfferType($offer->request_type), $offer) }}" style="cursor: pointer;">
                         <td>{{ $offer->client_name ?: '-' }}</td>
                         <td>{{ $offer->partner_name ?? '-' }}</td>
-                        <td>{{ optional($offer->saved_at)->format('d.m.Y') }}</td>
+                        <td>{{ optional($offer->status_date)->format('d.m.Y') }}</td>
                         <td class="offer-status-cell">
                             <span class="badge {{ $operationStatusClass }}">{{ $operationStatusLabel }}</span>
                             <div class="offer-status-actions">
@@ -172,7 +188,9 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center">Пока нет сохраненных КП</td>
+                        <td colspan="10" class="text-center">
+                            {{ $search !== '' ? 'По этому клиенту КП не найдены' : 'Пока нет сохраненных КП' }}
+                        </td>
                     </tr>
                 @endforelse
                 </tbody>
@@ -241,9 +259,9 @@
                                             <td>{{ $statusRow->payment_order_number ?: '-' }}</td>
                                             <td>{{ $statusRow->author?->name ?? '-' }}</td>
                                             <td>
-                                                <button type="button" 
-                                                        class="btn btn-link p-0 m-0" 
-                                                        data-bs-toggle="modal" 
+                                                <button type="button"
+                                                        class="btn btn-link p-0 m-0"
+                                                        data-bs-toggle="modal"
                                                         data-bs-target="#offerStatusEditModal{{ $statusRow->id }}">
                                                     <i class="mdi mdi-pencil-box-outline text-primary" style="font-size: 30px"></i>
                                                 </button>

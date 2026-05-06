@@ -8,6 +8,8 @@ use App\Http\Controllers\BusinessTypeController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ConnectedClientServiceController;
 use App\Http\Controllers\DayClosingController;
+use App\Http\Controllers\ImplementationDiscountCapController;
+use App\Http\Controllers\ImplementationPriceController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PackController;
 use App\Http\Controllers\PartnerController;
@@ -47,6 +49,9 @@ Route::prefix('payment/verification')->group(function () {
         ->middleware('signed')
         ->name('payment.verification.go');
 });
+
+Route::get('payment/success/{payment}', [\App\Http\Controllers\ClientPaymentController::class, 'onlinePaymentSuccess'])
+    ->name('client-payment.online.success');
 
 // Preview page for PDF generation (accessed by Browsershot)
 Route::get('/commercial-offer-preview', [\App\Http\Controllers\API\CommercialOfferController::class, 'previewPage']);
@@ -106,6 +111,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [\App\Http\Controllers\ClientPaymentController::class, 'index'])->name('client-payment.index');
         Route::post('/', [\App\Http\Controllers\ClientPaymentController::class, 'store'])->name('client-payment.create');
         Route::get('/invoice/{payment}', [\App\Http\Controllers\ClientPaymentController::class, 'invoice'])->name('client-payment.invoice');
+        Route::patch('/invoice/{payment}/customer', [\App\Http\Controllers\ClientPaymentController::class, 'updateInvoiceCustomer'])->name('client-payment.invoice.customer.update');
     });
 
     Route::group(['prefix' => 'organization'], function () {
@@ -127,6 +133,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/store', fn () => redirect()->route('client.create'));
         Route::post('/store/', [OrganizationV2Controller::class, 'store'])->name('organization_v2.store');
         Route::get('show/{organization}', [OrganizationV2Controller::class, 'show'])->name('organization_v2.show');
+        Route::post('integration-log/{log}/retry', [OrganizationV2Controller::class, 'retryIntegrationLog'])->name('organization_v2.integration-log.retry');
         Route::get('edit/{organization}', [OrganizationV2Controller::class, 'edit'])->name('organization_v2.edit');
         Route::patch('update/{organization}', [OrganizationV2Controller::class, 'update'])->name('organization_v2.update');
         Route::delete('/{organization}', [OrganizationV2Controller::class, 'destroy'])->name('organization_v2.destroy');
@@ -232,6 +239,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/store', [SaleController::class, 'store'])->name('sale.store');
         Route::patch('/{sale}', [SaleController::class, 'update'])->name('sale.update');
         Route::delete('/{sale}', [SaleController::class, 'destroy'])->name('sale.delete');
+    });
+
+    Route::group(['prefix' => 'implementation-deals'], function () {
+        Route::get('/', [ImplementationDiscountCapController::class, 'index'])->name('implementation-deals.index');
+        Route::post('/store', [ImplementationDiscountCapController::class, 'store'])->name('implementation-deals.store');
+        Route::patch('/{cap}', [ImplementationDiscountCapController::class, 'update'])->name('implementation-deals.update');
+        Route::delete('/{cap}', [ImplementationDiscountCapController::class, 'destroy'])->name('implementation-deals.destroy');
+    });
+
+    Route::group(['prefix' => 'implementation-prices'], function () {
+        Route::get('/', [ImplementationPriceController::class, 'index'])->name('implementation-prices.index');
+        Route::post('/store', [ImplementationPriceController::class, 'store'])->name('implementation-prices.store');
+        Route::patch('/{price}', [ImplementationPriceController::class, 'update'])->name('implementation-prices.update');
+        Route::delete('/{price}', [ImplementationPriceController::class, 'destroy'])->name('implementation-prices.destroy');
     });
 
     Route::group(['prefix' => 'pack'], function () {

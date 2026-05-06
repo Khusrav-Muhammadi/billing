@@ -7,48 +7,53 @@
 
 @section('content')
 
-    <form id="filterForm">
-        <div class="row mb-3">
+    <form id="filterForm" method="GET" action="{{ route('organization_v2.demo') }}">
+        <div class="row mb-3 align-items-end">
             <div class="col-md-2">
-                <select name="clientType" class="form-control">
-                    <option value="">Тип подключения</option>
-                    <option value="Клиенты">Клиенты</option>
-                    <option value="Партнеры">Партнеры</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select name="status" class="form-control">
-                    <option value="">Статус</option>
-                    <option value="1">Активный</option>
-                    <option value="0">Неактивный</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select name="tariff" class="form-control">
-                    <option value="">Тариф</option>
-                    @foreach($tariffs as $tariff)
-                        <option value="{{ $tariff->id }}">{{ $tariff->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-2">
+                <label class="form-label">Страна</label>
                 <select name="country" class="form-control">
-                    <option value="">Страна</option>
+                    <option value="">Все страны</option>
                     @foreach($countries as $country)
-                        <option value="{{ $country->id }}">{{ $country->name }}</option>
+                        <option value="{{ $country->id }}" @selected((string)request('country') === (string)$country->id)>
+                            {{ $country->name }}
+                        </option>
                     @endforeach
                 </select>
             </div>
             <div class="col-md-2">
+                <label class="form-label">Партнер</label>
                 <select name="partner" class="form-control">
-                    <option value="">Партнер</option>
+                    <option value="">Все партнеры</option>
                     @foreach($partners as $partner)
-                        <option value="{{ $partner->id }}">{{ $partner->name }}</option>
+                        <option value="{{ $partner->id }}" @selected((string)request('partner') === (string)$partner->id)>
+                            {{ $partner->name }}
+                        </option>
                     @endforeach
                 </select>
             </div>
             <div class="col-md-2">
-                <input type="text" name="search" class="form-control" placeholder="Поиск">
+                <label class="form-label">Статус демо</label>
+                <select name="status" class="form-control">
+                    <option value="">Все статусы</option>
+                    <option value="1" @selected(request('status') === '1')>Активный</option>
+                    <option value="0" @selected(request('status') === '0')>Неактивный</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Срок действия от</label>
+                <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Срок действия до</label>
+                <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Поиск</label>
+                <input type="text" name="search" class="form-control" placeholder="Поиск" value="{{ request('search') }}">
+            </div>
+            <div class="col-md-12 mt-3">
+                <button type="submit" class="btn btn-primary">Фильтр</button>
+                <a href="{{ route('organization_v2.demo') }}" class="btn btn-outline-secondary">Сбросить</a>
             </div>
         </div>
     </form>
@@ -56,7 +61,7 @@
 	        <h4 class="card-title">Клиенты</h4>
 	        <a href="{{ route('client.create') }}" type="button" class="btn btn-primary">Создать</a>
 	        <div class="table-responsive">
-	            @include('admin.partials.organizations_v2', ['organizations' => $organizations])
+	            @include('admin.partials.organizations_v2', ['organizations' => $organizations, 'isDemoList' => true])
 	        </div>
 	    </div>
 
@@ -66,48 +71,7 @@
 @section('script')
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const filterForm = document.getElementById('filterForm');
-            const tableContainer = document.querySelector('.table-responsive');
-            console.log(filterForm)
-            const fetchClients = () => {
-                const formData = new FormData(filterForm);
-
-                fetch('{{ route('organization_v2.demo') }}?' + new URLSearchParams(formData), {
-                    method: 'GET',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                    .then(response => response.text())
-                    .then(html => {
-                        tableContainer.innerHTML = html;
-                    })
-                    .catch(error => console.error('Ошибка загрузки:', error));
-            };
-
-            filterForm.querySelectorAll('select, input').forEach(element => {
-                element.addEventListener('change', fetchClients);
-            });
-
             document.addEventListener('click', event => {
-                const paginationLink = event.target.closest('.pagination a');
-                if (paginationLink) {
-                    event.preventDefault();
-                    const url = paginationLink.getAttribute('href');
-
-                    fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                        .then(response => response.text())
-                        .then(html => {
-                            tableContainer.innerHTML = html;
-                        })
-                        .catch(error => console.error('Ошибка пагинации:', error));
-                }
-
                 const row = event.target.closest('.organization-row');
                 if (!row) {
                     return;

@@ -41,6 +41,10 @@ return [
     'resend' => [
         'mail_from' => 'noreply@shamcrm.com',
         'api-key' => 're_8rvJ21cM_E54QeGRcoaRRxWrMu1LWBNqM'
-    ]
+    ],
+
+    'sham' => [
+        'domain' => env('APP_DOMAIN'),
+    ],
 
 ];

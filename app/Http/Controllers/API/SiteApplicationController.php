@@ -59,6 +59,7 @@ class SiteApplicationController extends Controller
 
             $data = [
                 'name' => $client->name,
+                'email' => $client->email,
                 'phone' => $client->phone,
                 'client_id' => $client->id,
                 'has_access' => true,

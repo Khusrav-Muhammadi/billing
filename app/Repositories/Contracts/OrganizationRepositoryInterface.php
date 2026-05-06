@@ -9,6 +9,9 @@ use App\Models\User;
 interface OrganizationRepositoryInterface
 {
     public function index(array $data);
+    public function active(array $data);
+    public function inActive(array $data);
+    public function nfr(array $data);
 
     public function demo(array $data);
 

@@ -103,6 +103,18 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="{{ route('implementation-deals.index') }}">
+            <i class="mdi mdi-percent menu-icon"></i>
+            <span class="menu-title">Скидки</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('implementation-prices.index') }}">
+            <i class="mdi mdi-school menu-icon"></i>
+            <span class="menu-title">Внедрение</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="{{ route('day-closing.index') }}">
             <i class="mdi mdi-calendar-check menu-icon"></i>
             <span class="menu-title">Закрытие дня</span>

@@ -12,6 +12,13 @@
         $totalFormatted = number_format($totalSum, 2, ',', ' ');
         $items = $payment->paymentItems ?? collect();
         $organizationOrderNumber = trim((string) ($organizationOrderNumber ?? ''));
+        $invoiceOrganization = $offer?->organization;
+        $customer = [
+            'legal_name' => (string) ($invoiceOrganization?->legal_name ?: $invoiceOrganization?->name ?: ($payment->name ?? '')),
+            'INN' => (string) ($invoiceOrganization?->INN ?? ''),
+            'email' => (string) ($invoiceOrganization?->email ?: ($payment->email ?? '')),
+            'phone' => (string) ($invoiceOrganization?->phone ?: ($payment->phone ?? '')),
+        ];
     @endphp
 
     <div class="invoice-wrapper">
@@ -35,33 +42,56 @@
                     <li>Расчетный счет: 2020800080715938001</li>
                 </ul>
             </div>
-            @if($offer->partner_id == 11)
-                <div class="invoice-block invoice-divider">
-                    <div>
-                        <strong>Покупатель:</strong>
-                        "{{ $offer->client_name }}"
-                        @if($offer->client_phone)
-                            {{ $offer->client_phone }}
-                        @endif
-                        @if($offer->client_email)
-                            {{ $offer->client_email }}
-                        @endif
-                    </div>
-                </div>
-            @else
             <div class="invoice-block invoice-divider">
-                <div>
+                <div class="customer-details"
+                     data-update-url="{{ $invoiceOrganization ? route('client-payment.invoice.customer.update', $payment) : '' }}">
                     <strong>Покупатель:</strong>
-                    "{{ $payment->name }}"
-                    @if($payment->phone)
-                        {{ $payment->phone }}
-                    @endif
-                    @if($payment->email)
-                        {{ $payment->email }}
-                    @endif
+                    <span class="editable-field" data-field="legal_name" data-label="Покупатель" data-value="{{ $customer['legal_name'] }}" tabindex="0">
+                        <span class="editable-display">"<span class="editable-value">{{ $customer['legal_name'] !== '' ? $customer['legal_name'] : '—' }}</span>"</span>
+                        @if($invoiceOrganization)
+                            <button type="button" class="edit-field-btn" title="Изменить покупателя" aria-label="Изменить покупателя">
+                                <i class="mdi mdi-pencil"></i>
+                            </button>
+                        @endif
+                    </span>
+
+                    <span class="editable-field" data-field="INN" data-label="ИНН" data-value="{{ $customer['INN'] }}" tabindex="0">
+                        <span class="editable-display">
+                            <span class="customer-field-label">ИНН:</span>
+                            <span class="editable-value">{{ $customer['INN'] !== '' ? $customer['INN'] : '—' }}</span>
+                        </span>
+                        @if($invoiceOrganization)
+                            <button type="button" class="edit-field-btn" title="Изменить ИНН" aria-label="Изменить ИНН">
+                                <i class="mdi mdi-pencil"></i>
+                            </button>
+                        @endif
+                    </span>
+
+                    <span class="editable-field" data-field="email" data-label="Почта" data-value="{{ $customer['email'] }}" tabindex="0">
+                        <span class="editable-display">
+                            <span class="customer-field-label">Почта:</span>
+                            <span class="editable-value">{{ $customer['email'] !== '' ? $customer['email'] : '—' }}</span>
+                        </span>
+                        @if($invoiceOrganization)
+                            <button type="button" class="edit-field-btn" title="Изменить почту" aria-label="Изменить почту">
+                                <i class="mdi mdi-pencil"></i>
+                            </button>
+                        @endif
+                    </span>
+
+                    <span class="editable-field" data-field="phone" data-label="Телефон" data-value="{{ $customer['phone'] }}" tabindex="0">
+                        <span class="editable-display">
+                            <span class="customer-field-label">Телефон:</span>
+                            <span class="editable-value">{{ $customer['phone'] !== '' ? $customer['phone'] : '—' }}</span>
+                        </span>
+                        @if($invoiceOrganization)
+                            <button type="button" class="edit-field-btn" title="Изменить телефон" aria-label="Изменить телефон">
+                                <i class="mdi mdi-pencil"></i>
+                            </button>
+                        @endif
+                    </span>
                 </div>
             </div>
-            @endif
             <table class="invoice-table">
                 <thead>
                 <tr>
@@ -77,10 +107,14 @@
                     @php
                         $price = (float) ($item->price ?? 0);
                         $priceFormatted = number_format($price, 2, ',', ' ');
+                        $serviceName = (string) ($item->service_name ?? '');
+                        if (str_starts_with($serviceName, 'Внедрение и обучение')) {
+                            $serviceName = preg_replace('/\s*\(скидка\s*[\d.,]+\s*%\)\s*/u', '', $serviceName) ?: $serviceName;
+                        }
                     @endphp
                     <tr>
                         <td>{{ $index + 1 }}</td>
-                        <td>{{ $item->service_name }}</td>
+                        <td>{{ $serviceName }}</td>
                         <td>1</td>
                         <td>{{ $priceFormatted }}</td>
                         <td>{{ $priceFormatted }}</td>
@@ -158,6 +192,101 @@
             margin-bottom: 12px;
             line-height: 1.45;
         }
+        .customer-details {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 12px;
+        }
+        .editable-field {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 28px;
+            padding: 2px 4px;
+            border-radius: 6px;
+            cursor: text;
+        }
+        .editable-field:hover {
+            background: #f9fafb;
+        }
+        .editable-field:focus {
+            outline: 2px solid #bfdbfe;
+            outline-offset: 1px;
+        }
+        .editable-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .customer-field-label {
+            color: #4b5563;
+            font-weight: 600;
+        }
+        .editable-value {
+            color: #111827;
+        }
+        .edit-field-btn,
+        .save-field-btn,
+        .cancel-field-btn {
+            width: 22px;
+            height: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            color: #6b7280;
+            cursor: pointer;
+            line-height: 1;
+            font-size: 15px;
+            transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+        }
+        .edit-field-btn {
+            opacity: .55;
+        }
+        .editable-field:hover .edit-field-btn,
+        .editable-field:focus .edit-field-btn {
+            opacity: 1;
+        }
+        .edit-field-btn:hover {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            color: #2563eb;
+        }
+        .save-field-btn {
+            color: #15803d;
+        }
+        .save-field-btn:hover {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .cancel-field-btn {
+            color: #991b1b;
+        }
+        .cancel-field-btn:hover {
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+        .editable-input {
+            width: min(320px, 64vw);
+            height: 28px;
+            padding: 4px 8px;
+            border: 1px solid #93c5fd;
+            border-radius: 6px;
+            color: #111827;
+            outline: none;
+        }
+        .editable-editor {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .editable-field.is-saving {
+            opacity: .65;
+            pointer-events: none;
+        }
         .invoice-list {
             margin: 6px 0 0 18px;
             padding: 0;
@@ -195,9 +324,144 @@
             gap: 12px;
         }
         @media print {
-            .btn, .nav, .sidebar, .navbar, .invoice-actions { display: none !important; }
+            .btn, .nav, .sidebar, .navbar, .invoice-actions, .edit-field-btn { display: none !important; }
             .invoice-wrapper { padding: 0; }
             .invoice-page { border: none; }
         }
     </style>
+@endsection
+
+@section('script')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const wrapper = document.querySelector('.customer-details');
+            if (!wrapper || !wrapper.dataset.updateUrl) {
+                return;
+            }
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            const setFieldValue = (fieldNode, value) => {
+                const normalized = (value || '').trim();
+                fieldNode.dataset.value = normalized;
+                fieldNode.querySelector('.editable-value').textContent = normalized || '—';
+            };
+
+            let activeField = null;
+
+            const closeEditor = (fieldNode) => {
+                fieldNode.querySelector('.editable-editor')?.remove();
+                fieldNode.querySelectorAll('.editable-display, .edit-field-btn').forEach((node) => {
+                    node.style.display = '';
+                });
+                if (activeField === fieldNode) {
+                    activeField = null;
+                }
+            };
+
+            const openEditor = (fieldNode) => {
+                if (fieldNode.querySelector('.editable-editor')) {
+                    return;
+                }
+
+                if (activeField && activeField !== fieldNode) {
+                    closeEditor(activeField);
+                }
+                activeField = fieldNode;
+
+                fieldNode.querySelectorAll('.editable-display, .edit-field-btn').forEach((node) => {
+                    node.style.display = 'none';
+                });
+
+                const editor = document.createElement('span');
+                editor.className = 'editable-editor';
+                editor.innerHTML = `
+                    <input class="editable-input" type="text" aria-label="${fieldNode.dataset.label || 'Поле'}">
+                    <button type="button" class="save-field-btn" title="Сохранить" aria-label="Сохранить">
+                        <i class="mdi mdi-check"></i>
+                    </button>
+                    <button type="button" class="cancel-field-btn" title="Отменить" aria-label="Отменить">
+                        <i class="mdi mdi-close"></i>
+                    </button>
+                `;
+
+                const input = editor.querySelector('.editable-input');
+                fieldNode.appendChild(editor);
+                input.value = fieldNode.dataset.value || '';
+                input.focus();
+                input.select();
+
+                const save = async () => {
+                    const value = input.value.trim();
+                    fieldNode.classList.add('is-saving');
+
+                    try {
+                        const response = await fetch(wrapper.dataset.updateUrl, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                field: fieldNode.dataset.field,
+                                value,
+                            }),
+                        });
+
+                        const payload = await response.json();
+                        if (!response.ok || !payload.success) {
+                            throw new Error(payload.message || 'Не удалось сохранить');
+                        }
+
+                        const customer = payload.customer || {};
+                        Object.entries(customer).forEach(([field, fieldValue]) => {
+                            const node = wrapper.querySelector(`.editable-field[data-field="${field}"]`);
+                            if (node) {
+                                setFieldValue(node, fieldValue);
+                            }
+                        });
+                        closeEditor(fieldNode);
+                    } catch (error) {
+                        alert(error.message || 'Не удалось сохранить');
+                    } finally {
+                        fieldNode.classList.remove('is-saving');
+                    }
+                };
+
+                editor.querySelector('.save-field-btn').addEventListener('click', save);
+                editor.querySelector('.cancel-field-btn').addEventListener('click', () => closeEditor(fieldNode));
+                input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        save();
+                    }
+                    if (event.key === 'Escape') {
+                        closeEditor(fieldNode);
+                    }
+                });
+            };
+
+            wrapper.addEventListener('click', (event) => {
+                const fieldNode = event.target.closest('.editable-field');
+                if (!fieldNode || event.target.closest('.editable-editor')) {
+                    return;
+                }
+
+                openEditor(fieldNode);
+            });
+
+            wrapper.addEventListener('keydown', (event) => {
+                const fieldNode = event.target.closest('.editable-field');
+                if (!fieldNode || fieldNode.querySelector('.editable-editor')) {
+                    return;
+                }
+
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openEditor(fieldNode);
+                }
+            });
+        });
+    </script>
 @endsection

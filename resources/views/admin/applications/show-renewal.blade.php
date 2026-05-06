@@ -9,7 +9,7 @@
         @php
             $isPaidOffer = (string) ($offer->latestOfferStatus?->status ?? '') === 'paid'
                 || (string) ($offer->status ?? '') === 'paid';
-            $requestTypeLabel = 'Продление';
+            $requestTypeLabel = 'Продление (изменение)';
             $generatorPath = 'kp_generator_renewal/index.html';
             $generatorFile = public_path($generatorPath);
             $query = [

@@ -3,8 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Client;
-use App\Models\Tariff;
-use App\Models\TariffCurrency;
+use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,17 +28,43 @@ class DisableDemoJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = "https://{$this->domain}-back.{$domain}/api/organization/disable-demo";
 
         $organizations = $this->client->organizations()->get();
         foreach ($organizations as $organization) {
 
-            Http::withHeaders([
-                'Accept' => 'application/json',
-            ])->post($url, [
+            $payload = [
                 'b_organization_id' => $organization->id,
-            ]);
+            ];
+
+            try {
+                $response = Http::withHeaders([
+                    'Accept' => 'application/json',
+                ])->post($url, $payload);
+            } catch (\Throwable $e) {
+                app(IntegrationActionLogService::class)->logApiResponse(
+                    organizationId: (int)$organization->id,
+                    clientId: (int)$this->client->id,
+                    action: 'disable_demo',
+                    method: 'POST',
+                    url: $url,
+                    payload: $payload,
+                    error: $e->getMessage()
+                );
+
+                continue;
+            }
+
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$organization->id,
+                clientId: (int)$this->client->id,
+                action: 'disable_demo',
+                method: 'POST',
+                url: $url,
+                payload: $payload,
+                response: $response
+            );
         }
     }
 }

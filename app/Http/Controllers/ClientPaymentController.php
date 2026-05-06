@@ -2,17 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
+use App\Events\CommercialOfferPaidStatusEvent;
+use App\Events\CommercialOfferRenewalNoChangePaidStatusEvent;
+use App\Events\CommercialOfferRenewalPaidStatusEvent;
 use App\Http\Requests\ClientPaymentRequest;
+use App\Models\Client;
 use App\Models\CommercialOffer;
+use App\Models\CommercialOfferStatus;
 use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 
 class ClientPaymentController extends Controller
@@ -32,7 +40,7 @@ class ClientPaymentController extends Controller
     {
         $payment->load('paymentItems');
         $offer = CommercialOffer::query()
-            ->with('organization:id,name,order_number')
+            ->with('organization:id,name,legal_name,INN,email,phone,order_number')
             ->where('payment_id', $payment->id)
             ->first();
 
@@ -41,6 +49,123 @@ class ClientPaymentController extends Controller
             'offer' => $offer,
             'organizationOrderNumber' => (string) ($offer?->organization?->order_number ?? ''),
         ]);
+    }
+
+    public function onlinePaymentSuccess(Payment $payment)
+    {
+        return response('Оплата принята. Статус подключения обновится автоматически после подтверждения платежной системы.', 200);
+    }
+
+    public function updateInvoiceCustomer(Payment $payment, Request $request)
+    {
+        $data = $request->validate([
+            'field' => ['required', 'string', 'in:legal_name,INN,email,phone'],
+            'value' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $offer = CommercialOffer::query()
+            ->with('organization:id,name,legal_name,INN,email,phone,order_number')
+            ->where('payment_id', $payment->id)
+            ->firstOrFail();
+
+        $organization = $offer->organization;
+        abort_if(!$organization, 404, 'Организация не найдена');
+
+        $field = $data['field'];
+        $value = trim((string) ($data['value'] ?? ''));
+
+        $organization->forceFill([
+            $field => $value !== '' ? $value : null,
+        ])->save();
+
+        $organization->refresh();
+
+        return response()->json([
+            'success' => true,
+            'customer' => $this->invoiceCustomerData($organization),
+        ]);
+    }
+
+    public function octoWebhook(Request $request)
+    {
+        $payload = $request->all();
+        $status = strtolower((string)data_get($payload, 'status', ''));
+        $providerPaymentId = trim((string)data_get($payload, 'octo_payment_UUID', ''));
+        $paymentId = (int)data_get($payload, 'shop_transaction_id', 0);
+
+        if ($providerPaymentId === '' && $paymentId <= 0) {
+            return response()->json(['success' => false, 'message' => 'Payment id not found'], 422);
+        }
+
+        $payment = Payment::query()
+            ->when($providerPaymentId !== '', fn($query) => $query->where('transaction_id', $providerPaymentId))
+            ->when($providerPaymentId === '' && $paymentId > 0, fn($query) => $query->whereKey($paymentId))
+            ->first();
+
+        if (!$payment && $paymentId > 0) {
+            $payment = Payment::query()->find($paymentId);
+        }
+
+        if (!$payment) {
+            return response()->json(['success' => false, 'message' => 'Payment not found'], 404);
+        }
+
+        $paidAt = data_get($payload, 'payed_time')
+            ? Carbon::parse((string)data_get($payload, 'payed_time'))
+            : now();
+
+        $result = $this->handleOnlinePaymentWebhook(
+            payment: $payment,
+            success: $status === 'succeeded',
+            providerStatus: $status,
+            providerPaymentId: $providerPaymentId,
+            payload: $payload,
+            paidAt: $paidAt,
+            paymentOrderNumber: trim((string)(data_get($payload, 'rrn') ?: $providerPaymentId))
+        );
+
+        return response()->json($result);
+    }
+
+    public function alifWebhook(Request $request)
+    {
+        $payload = $request->all();
+        $providerPaymentId = trim((string)(data_get($payload, 'id') ?: data_get($payload, 'payload.id')));
+        $status = strtoupper((string)(data_get($payload, 'status') ?: data_get($payload, 'payload.status')));
+
+        if ($providerPaymentId === '') {
+            return response()->json(['success' => false, 'message' => 'Payment id not found'], 422);
+        }
+
+        $payment = Payment::query()
+            ->where('transaction_id', $providerPaymentId)
+            ->first();
+
+        if (!$payment) {
+            return response()->json(['success' => false, 'message' => 'Payment not found'], 404);
+        }
+
+        $result = $this->handleOnlinePaymentWebhook(
+            payment: $payment,
+            success: $status === 'SUCCEEDED',
+            providerStatus: $status,
+            providerPaymentId: $providerPaymentId,
+            payload: $payload,
+            paidAt: now(),
+            paymentOrderNumber: $providerPaymentId
+        );
+
+        return response()->json($result);
+    }
+
+    private function invoiceCustomerData(Organization $organization): array
+    {
+        return [
+            'legal_name' => (string) ($organization->legal_name ?: $organization->name ?: ''),
+            'INN' => (string) ($organization->INN ?? ''),
+            'email' => (string) ($organization->email ?? ''),
+            'phone' => (string) ($organization->phone ?? ''),
+        ];
     }
 
     public function store(ClientPaymentRequest $request)
@@ -208,10 +333,11 @@ class ClientPaymentController extends Controller
                 $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
 
                 if ($commercialOffer) {
-                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), [
+                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), array_filter([
                         'provider' => 'alif',
                         'payment' => $payment->id,
-                    ]);
+                        'return_url' => $this->trustedReturnUrl($request),
+                    ]));
 
                     return $request->expectsJson()
                         ? response()->json(['redirect_url' => $verificationUrl])
@@ -228,10 +354,11 @@ class ClientPaymentController extends Controller
                 $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
 
                 if ($commercialOffer) {
-                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), [
+                    $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), array_filter([
                         'provider' => 'octo',
                         'payment' => $payment->id,
-                    ]);
+                        'return_url' => $this->trustedReturnUrl($request),
+                    ]));
 
                     return $request->expectsJson()
                         ? response()->json(['redirect_url' => $verificationUrl])
@@ -321,8 +448,8 @@ class ClientPaymentController extends Controller
             "currency" => "USD",
             "description" => "Оплата услуг",
             "basket" => $basket,
-            "return_url" => "https://shamcrm.com/success",
-            "notify_url" => "https://shamcrm.com/notify",
+            "return_url" => $this->paymentReturnUrl($payment),
+            "notify_url" => route('client-payment.webhook.octo'),
             "language" => "ru",
             "ttl" => 15,
         ];
@@ -337,10 +464,12 @@ class ClientPaymentController extends Controller
             try {
                 DB::beginTransaction();
 
-                $payment->update([
-                    'transaction_id' => $json['data']['octo_payment_UUID'] ?? null,
-                    'sum' => $totalSum,
-                ]);
+                $paymentUpdate = ['sum' => $totalSum];
+                if (Schema::hasColumn('payments', 'transaction_id')) {
+                    $paymentUpdate['transaction_id'] = $json['data']['octo_payment_UUID'] ?? null;
+                }
+
+                $payment->update($paymentUpdate);
 
                 DB::commit();
             } catch (\Exception $e) {
@@ -391,11 +520,13 @@ class ClientPaymentController extends Controller
             'description' => 'Оплата услуг',
             'detail' => 'Оплата за услуги',
             'items' => $alifItems,
+            'webhook_url' => route('client-payment.webhook.alif'),
             'email' => (string) $payment->email,
             'phone' => (string) $payment->phone,
             'full_name' => (string) $payment->name,
-            'success_url' => 'https://rasulovfingrouptj.shamcrm.com/customers',
-            'fail_url' => 'https://rasulovfingrouptj.shamcrm.com/customers',
+            'success_url' => $this->paymentReturnUrl($payment),
+            'redirect_url' => $this->paymentReturnUrl($payment),
+            'fail_url' => $this->paymentReturnUrl($payment),
         ];
 
         $response = Http::withHeaders([
@@ -441,6 +572,12 @@ class ClientPaymentController extends Controller
             throw new \Exception('Alif Pay: не пришел invoice id. Ответ: ' . $details);
         }
 
+        if (Schema::hasColumn('payments', 'transaction_id')) {
+            $payment->forceFill([
+                'transaction_id' => $invoiceId,
+            ])->save();
+        }
+
         return $paymentPage . rawurlencode($invoiceId);
     }
 
@@ -483,6 +620,193 @@ class ClientPaymentController extends Controller
             'author_id' => Auth::id(),
             'account_id' => $paymentMethod === 'invoice' ? $statusAccountId : null,
         ]);
+    }
+
+    private function paymentReturnUrl(Payment $payment): string
+    {
+        return route('client-payment.online.success', ['payment' => $payment->id]);
+    }
+
+    private function trustedReturnUrl(Request $request): ?string
+    {
+        $url = trim((string)$request->input('return_url', ''));
+        if ($url === '' && $request->is('api/*')) {
+            $url = rtrim((string)config('partners.url', 'https://partners.shamcrm.com'), '/') . '/application';
+        }
+
+        if ($url === '') {
+            return null;
+        }
+
+        $host = parse_url($url, PHP_URL_HOST);
+        if (!$host) {
+            return null;
+        }
+
+        $allowedHosts = array_filter([
+            parse_url((string)config('app.url'), PHP_URL_HOST),
+            parse_url((string)config('partners.url'), PHP_URL_HOST),
+            'partners.shamcrm.com',
+        ]);
+
+        return in_array($host, $allowedHosts, true) ? $url : null;
+    }
+
+    private function handleOnlinePaymentWebhook(
+        Payment $payment,
+        bool $success,
+        string $providerStatus,
+        string $providerPaymentId,
+        array $payload,
+        Carbon $paidAt,
+        ?string $paymentOrderNumber = null
+    ): array {
+        $this->updatePaymentFromWebhook($payment, $providerStatus, $providerPaymentId, $payload, $success ? $paidAt : null);
+
+        if (!$success) {
+            return [
+                'success' => true,
+                'processed' => false,
+                'message' => 'Payment status is not successful',
+            ];
+        }
+
+        $dispatch = null;
+
+        DB::transaction(function () use ($payment, $paidAt, $paymentOrderNumber, &$dispatch) {
+            /** @var CommercialOffer|null $offer */
+            $offer = CommercialOffer::query()
+                ->where('payment_id', $payment->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$offer) {
+                return;
+            }
+
+            $alreadyPaid = (string)$offer->status === 'paid'
+                || $offer->offerStatuses()->where('status', 'paid')->exists();
+
+            if ($alreadyPaid) {
+                return;
+            }
+
+            $organization = Organization::query()->find($offer->organization_id);
+            $client = $organization?->client_id ? Client::query()->find($organization->client_id) : null;
+            if ($client) {
+                $client->update([
+                    'is_active' => 1,
+                    'is_demo' => 0,
+                ]);
+            }
+
+            $this->syncClientPartnerFromPaidOffer($offer);
+
+            /** @var CommercialOfferStatus $statusRecord */
+            $statusRecord = $offer->offerStatuses()->create([
+                'status' => 'paid',
+                'status_date' => $paidAt->toDateString(),
+                'payment_method' => 'card',
+                'account_id' => null,
+                'payment_order_number' => $paymentOrderNumber ?: null,
+                'author_id' => null,
+            ]);
+
+            $offer->update([
+                'status' => 'paid',
+                'status_date' => $paidAt->toDateString(),
+            ]);
+
+            $dispatch = [
+                'offer' => $offer->fresh(),
+                'status' => $statusRecord->fresh(),
+            ];
+        });
+
+        if (!$dispatch) {
+            return [
+                'success' => true,
+                'processed' => false,
+                'message' => 'Offer not found or already paid',
+            ];
+        }
+
+        $this->dispatchPaidCommercialOfferEvent($dispatch['offer'], $dispatch['status']);
+
+        return [
+            'success' => true,
+            'processed' => true,
+            'message' => 'Payment registered',
+        ];
+    }
+
+    private function updatePaymentFromWebhook(
+        Payment $payment,
+        string $providerStatus,
+        string $providerPaymentId,
+        array $payload,
+        ?Carbon $paidAt
+    ): void {
+        $data = [];
+
+        if (Schema::hasColumn('payments', 'provider_status')) {
+            $data['provider_status'] = $providerStatus;
+        }
+
+        if ($providerPaymentId !== '' && Schema::hasColumn('payments', 'transaction_id')) {
+            $data['transaction_id'] = $providerPaymentId;
+        }
+
+        if ($paidAt && Schema::hasColumn('payments', 'paid_at')) {
+            $data['paid_at'] = $paidAt;
+        }
+
+        if (Schema::hasColumn('payments', 'webhook_payload')) {
+            $data['webhook_payload'] = $payload;
+        }
+
+        if (!empty($data)) {
+            $payment->forceFill($data)->save();
+        }
+    }
+
+    private function dispatchPaidCommercialOfferEvent(CommercialOffer $offer, CommercialOfferStatus $status): void
+    {
+        $requestType = trim((string)($offer->request_type ?: 'connection'));
+
+        if ($requestType === 'connection_extra_services') {
+            CommercialOfferExtraServicesPaidStatusEvent::dispatch($offer, $status);
+        } elseif ($requestType === 'renewal') {
+            CommercialOfferRenewalPaidStatusEvent::dispatch($offer, $status);
+        } elseif ($requestType === 'renewal_no_changes') {
+            CommercialOfferRenewalNoChangePaidStatusEvent::dispatch($offer, $status);
+        } else {
+            CommercialOfferPaidStatusEvent::dispatch($offer, $status);
+        }
+    }
+
+    private function syncClientPartnerFromPaidOffer(?CommercialOffer $offer): void
+    {
+        if (!$offer || !$offer->organization_id || !$offer->partner_id) {
+            return;
+        }
+
+        $organization = Organization::query()
+            ->with('client:id,partner_id')
+            ->find((int)$offer->organization_id);
+
+        $client = $organization?->client;
+        if (!$client) {
+            return;
+        }
+
+        $partnerId = (int)$offer->partner_id;
+        if ((int)$client->partner_id === $partnerId) {
+            return;
+        }
+
+        $client->partner_id = $partnerId;
+        $client->save();
     }
 
     private function moneyToCents($value): int

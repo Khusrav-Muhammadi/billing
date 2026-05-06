@@ -16,6 +16,7 @@ use App\Models\Organization;
 use App\Models\PartnerProcent;
 use App\Models\Tariff;
 use App\Models\User;
+use App\Support\RegistryDateTimeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,8 +35,10 @@ class ApplicationController extends Controller
         'renewal_no_changes' => 'Продление',
     ];
 
-    public function index()
+    public function index(Request $request)
     {
+        $search = trim((string)$request->query('search', ''));
+
         $offers = CommercialOffer::query()
             ->with([
                 'tariff:id,name',
@@ -60,15 +63,21 @@ class ApplicationController extends Controller
                 'offerStatuses.account:id,name,currency_id',
                 'offerStatuses.account.currency:id,symbol_code,name',
             ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->whereHas('organization', function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")->orWhere('order_number','like', "%{$search}%");
+                });
+            })
             ->orderByDesc('id')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         $accounts = Account::query()
             ->with('currency:id,symbol_code,name')
             ->orderBy('name')
             ->get(['id', 'name', 'currency_id']);
 
-        return view('admin.applications.index', compact('offers', 'accounts'));
+        return view('admin.applications.index', compact('offers', 'accounts', 'search'));
     }
 
     public function create(Request $request)
@@ -243,6 +252,13 @@ class ApplicationController extends Controller
                 'payable_total' => $this->toDecimal(data_get($payload, 'payable_total', data_get($payload, 'grand_total', 0))),
                 'conversion_rate' => $conversionRate,
             ]);
+
+            if (Schema::hasColumn('commercial_offers', 'snapshot')) {
+                $offer->snapshot = $this->mergeSnapshotImplementation(
+                    $this->normalizeOfferSnapshotValue($offer->snapshot),
+                    data_get($payload, 'implementation')
+                );
+            }
 
             $offer->save();
 
@@ -578,7 +594,17 @@ class ApplicationController extends Controller
             'author_id' => \Illuminate\Support\Facades\Auth::id(),
         ]);
 
-        $offer->update(['status' => $validated['status']]);
+        $offerUpdate = ['status' => $validated['status']];
+        $shouldSyncRegistryDates = (string)$validated['status'] !== 'canceled';
+        if ((string)$validated['status'] !== 'canceled') {
+            $offerUpdate['status_date'] = $validated['status_date'];
+        }
+
+        $offer->update($offerUpdate);
+
+        if ($shouldSyncRegistryDates) {
+            $this->syncOfferRegistryDates($offer->fresh(), $status->fresh());
+        }
 
         if ((string)$validated['status'] === 'paid') {
             $freshOffer = $offer->fresh();
@@ -600,6 +626,56 @@ class ApplicationController extends Controller
         return redirect()
             ->route('application.index')
             ->with('success', 'Статус подключения сохранен.');
+    }
+
+    private function syncOfferRegistryDates(?CommercialOffer $offer, ?CommercialOfferStatus $status): void
+    {
+        if (!$offer || !$status) {
+            return;
+        }
+
+        $registryDateTime = RegistryDateTimeResolver::resolve($offer, $status);
+
+        $this->updateRegistryDateByOfferId('client_payment_registries', ['date', 'offer_date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('connected_client_services', ['date', 'offer_date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('discount_expenses', ['date', 'offer_date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('partner_expenses', ['date', 'offer_date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('client_balances', ['date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('implementation_currency_registries', ['date'], $offer->id, $registryDateTime);
+        $this->updateRegistryDateByOfferId('organization_connection_statuses', ['status_date'], $offer->id, $registryDateTime);
+    }
+
+    private function updateRegistryDateByOfferId(string $table, array $dateColumns, int $offerId, $dateTime): void
+    {
+        if (!Schema::hasTable($table)) {
+            return;
+        }
+
+        $offerIdColumn = collect(['commercial_offer_id', 'offer_id'])
+            ->first(fn(string $column): bool => Schema::hasColumn($table, $column));
+
+        if (!$offerIdColumn) {
+            return;
+        }
+
+        $payload = [];
+        foreach ($dateColumns as $dateColumn) {
+            if (Schema::hasColumn($table, $dateColumn)) {
+                $payload[$dateColumn] = $dateTime;
+            }
+        }
+
+        if (empty($payload)) {
+            return;
+        }
+
+        if (Schema::hasColumn($table, 'updated_at')) {
+            $payload['updated_at'] = now();
+        }
+
+        DB::table($table)
+            ->where($offerIdColumn, $offerId)
+            ->update($payload);
     }
 
 
@@ -921,6 +997,7 @@ class ApplicationController extends Controller
     {
         $requestType = $this->normalizeRequestType((string)($offer->request_type ?: 'connection'));
         $selectedTariffId = $offer->tariff_id ?: $this->resolveSelectedTariffIdFromItems($offer);
+        $snapshot = $this->normalizeOfferSnapshotValue($offer->snapshot);
 
         return [
             'offer_id' => $offer->id,
@@ -944,6 +1021,16 @@ class ApplicationController extends Controller
             'partner_name' => (string)($offer->partner_name ?? ''),
             'partner_phone' => (string)($offer->partner_phone ?? ''),
             'partner_email' => (string)($offer->partner_email ?? ''),
+            'implementation' => $this->normalizeImplementationPayload(
+                    is_array($snapshot) ? data_get($snapshot, 'implementation') : null
+                ) ?? [
+                    'enabled' => false,
+                    'price' => 0,
+                    'discount_percent' => 0,
+                    'discount_percent_base' => 0,
+                    'discount_percent_12_extra' => 0,
+                    'extra_services' => [],
+                ],
             'monthly_total' => (float)$offer->monthly_total,
             'period_total' => (float)$offer->period_total,
             'grand_total' => (float)$offer->grand_total,
@@ -962,6 +1049,92 @@ class ApplicationController extends Controller
                 ])
                 ->values()
                 ->all(),
+        ];
+    }
+
+    private function mergeSnapshotImplementation(?array $snapshot, $implementation): ?array
+    {
+        $normalized = $this->normalizeImplementationPayload($implementation);
+        if ($normalized === null) {
+            return $snapshot;
+        }
+
+        $base = is_array($snapshot) ? $snapshot : [];
+        $base['implementation'] = $normalized;
+        return $base;
+    }
+
+    private function normalizeOfferSnapshotValue($snapshot): ?array
+    {
+        if (is_array($snapshot)) {
+            return $snapshot;
+        }
+
+        if (is_string($snapshot)) {
+            $decoded = json_decode($snapshot, true);
+            return is_array($decoded) ? $decoded : null;
+        }
+
+        return null;
+    }
+
+    private function normalizeImplementationPayload($implementation): ?array
+    {
+        if (!is_array($implementation)) {
+            return null;
+        }
+
+        $enabled = (bool)data_get($implementation, 'enabled', false);
+        $price = (float)max(0, $this->toDecimal(data_get($implementation, 'price', 0)));
+        $discountTotalRaw = data_get($implementation, 'discount_percent');
+        $hasTotal = is_numeric($discountTotalRaw);
+        $discountTotal = (int)max(0, min(100, floor((float)($discountTotalRaw ?? 0))));
+
+        $discountBaseRaw = data_get($implementation, 'discount_percent_base');
+        $discountBase = is_numeric($discountBaseRaw)
+            ? (int)max(0, min(100, floor((float)$discountBaseRaw)))
+            : ($hasTotal ? $discountTotal : 0);
+
+        $discount12ExtraRaw = data_get($implementation, 'discount_percent_12_extra');
+        $discount12Extra = is_numeric($discount12ExtraRaw)
+            ? (int)max(0, min(100, floor((float)$discount12ExtraRaw)))
+            : 0;
+
+        if (!$hasTotal) {
+            $discountTotal = (int)max(0, min(100, $discountBase + $discount12Extra));
+        }
+
+        $extrasRaw = data_get($implementation, 'extra_services', []);
+        $extrasRaw = is_array($extrasRaw) ? $extrasRaw : [];
+        $extras = [];
+        foreach ($extrasRaw as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $name = trim((string)data_get($row, 'name', ''));
+            $extraPrice = (float)max(0, $this->toDecimal(data_get($row, 'price', 0)));
+            if ($name === '' && $extraPrice <= 0) {
+                continue;
+            }
+
+            $extras[] = [
+                'name' => $name,
+                'price' => $extraPrice,
+            ];
+
+            if (count($extras) >= 20) {
+                break;
+            }
+        }
+
+        return [
+            'enabled' => $enabled,
+            'price' => $price,
+            'discount_percent' => $discountTotal,
+            'discount_percent_base' => $discountBase,
+            'discount_percent_12_extra' => $discount12Extra,
+            'extra_services' => $extras,
         ];
     }
 

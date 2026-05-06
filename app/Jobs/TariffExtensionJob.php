@@ -2,10 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Models\Client;
 use App\Models\Organization;
-use App\Models\Tariff;
-use App\Models\TariffCurrency;
+use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,7 +18,7 @@ class TariffExtensionJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(public Organization $organization)
+    public function __construct(public Organization $organization, public ?bool $has_access = true)
     {
         //
     }
@@ -31,14 +29,40 @@ class TariffExtensionJob implements ShouldQueue
     public function handle(): void
     {
         $client = $this->organization->client;
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = "https://{$client->sub_domain}-back.{$domain}/api/organization/tariff-extension";
 
-        Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, [
-            'has_access' => true,
+        $payload = [
+            'has_access' => $this->has_access,
             'b_organization_id' => $this->organization->id,
-        ]);
+        ];
+
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $payload);
+        } catch (\Throwable $e) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$this->organization->id,
+                clientId: (int)($client->id ?? 0),
+                action: 'tariff_extension',
+                method: 'POST',
+                url: $url,
+                payload: $payload,
+                error: $e->getMessage()
+            );
+
+            return;
+        }
+
+        app(IntegrationActionLogService::class)->logApiResponse(
+            organizationId: (int)$this->organization->id,
+            clientId: (int)($client->id ?? 0),
+            action: 'tariff_extension',
+            method: 'POST',
+            url: $url,
+            payload: $payload,
+            response: $response
+        );
     }
 }

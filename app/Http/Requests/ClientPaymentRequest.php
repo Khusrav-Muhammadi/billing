@@ -28,7 +28,8 @@ class ClientPaymentRequest extends FormRequest
             'data' => ['array'],
             'data.*.name' => ['required', 'string'],
             'data.*.price' => ['required'],
-            'payment_type' => ['required', Rule::in(['alif', 'octo', 'invoice', 'cash'])]
+            'payment_type' => ['required', Rule::in(['alif', 'octo', 'invoice', 'cash'])],
+            'return_url' => ['nullable', 'url'],
         ];
     }
 }

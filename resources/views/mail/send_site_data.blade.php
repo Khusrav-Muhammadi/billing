@@ -46,106 +46,14 @@
             box-shadow: 0 20px 45px rgba(41, 168, 235, 0.25);
         }
 
-        .field-wrap {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .field-value {
-            flex: 1;
-            background: rgba(255,255,255,0.55);
-            border: 1px solid rgba(124,131,255,0.25);
-            border-radius: 12px;
-            padding: 10px 110px 10px 14px;
-            font-size: 15px;
-            font-weight: 500;
-            color: #1B1F3B;
-            font-family: 'Inter', system-ui, sans-serif;
-            letter-spacing: 0.2px;
-            word-break: break-all;
-            box-sizing: border-box;
-            min-height: 42px;
-            line-height: 1.4;
-        }
-
-        .field-value a {
-            color: #7C83FF;
-            text-decoration: none;
-        }
-
-        .copy-btn {
-            position: absolute;
-            right: 6px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 6px 12px;
-            border-radius: 8px;
-            border: 1.5px solid rgba(124, 131, 255, 0.35);
-            background: rgba(255,255,255,0.85);
-            color: #7C83FF;
-            font-size: 13px;
-            font-weight: 600;
-            font-family: 'Inter', system-ui, sans-serif;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: background 0.2s, border-color 0.2s, color 0.2s;
-            outline: none;
-            flex-shrink: 0;
-        }
-
-        .copy-btn:hover {
-            background: rgba(124, 131, 255, 0.12);
-            border-color: #7C83FF;
-        }
-
-        .copy-btn.copied {
-            background: rgba(52, 199, 89, 0.13);
-            border-color: #34C759;
-            color: #34C759;
-        }
-
-        .copy-btn svg {
-            width: 14px;
-            height: 14px;
-            flex-shrink: 0;
-        }
-
-        #toast {
-            position: fixed;
-            bottom: 28px;
-            left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: #1B1F3B;
-            color: #fff;
-            padding: 11px 22px;
-            border-radius: 50px;
-            font-size: 14px;
-            font-weight: 500;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.25s, transform 0.25s;
-            z-index: 9999;
-            white-space: nowrap;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.22);
-        }
-
-        #toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
     </style>
 </head>
 <body>
 
 @php
     $siteUrl = 'https://' . $client->sub_domain . '.' . env('APP_DOMAIN');
+    $accountId = $id ?? $client->order_number ?? $client->id ?? '';
 @endphp
-
-<div id="toast">✅ Скопировано!</div>
 
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 640px; margin: 0 auto;">
     <tr>
@@ -224,9 +132,57 @@
                                     <div class="field-wrap">
                                         <div class="field-value">{{ $id }}</div>
                                     </div>
+
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="background: #ffffff; border: 1px solid #dfe4ff; border-radius: 18px; margin: 0 0 24px;">
+                            <tr>
+                                <td style="padding: 18px 20px;">
+                                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="padding: 0 0 8px; font-size: 13px; line-height: 18px; color: #6b6f86;">
+                                                Ссылка
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 0 0 16px; border-bottom: 1px solid #edf0ff;">
+                                                <a href="{{ $siteUrl }}" style="display: block; color: #5661f6; font-size: 15px; font-weight: 700; line-height: 22px; text-decoration: none; word-break: break-all;">
+                                                    {{ $siteUrl }}
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 14px 0 8px; font-size: 13px; line-height: 18px; color: #6b6f86;">
+                                                Логин
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 0 0 16px; border-bottom: 1px solid #edf0ff; color: #1B1F3B; font-size: 15px; font-weight: 700; line-height: 22px; word-break: break-word;">
+                                                admin
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 14px 0 8px; font-size: 13px; line-height: 18px; color: #6b6f86;">
+                                                Пароль
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 0 0 16px; border-bottom: 1px solid #edf0ff; color: #1B1F3B; font-family: 'Courier New', Courier, monospace; font-size: 15px; font-weight: 700; line-height: 22px; letter-spacing: 0.5px; word-break: break-all;">
+                                                {{ $password }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 14px 0 8px; font-size: 13px; line-height: 18px; color: #6b6f86;">
+                                                ID
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 0; color: #1B1F3B; font-size: 15px; font-weight: 700; line-height: 22px; word-break: break-word;">
+                                                {{ $accountId }}
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </td>
                             </tr>
-
                         </table>
 
                         <!-- Telegram баннер -->
@@ -280,55 +236,6 @@
         </td>
     </tr>
 </table>
-
-<script>
-    let toastTimer;
-
-    function copyText(text, btn) {
-        const original = btn.innerHTML;
-
-        function onSuccess() {
-            btn.classList.add('copied');
-            btn.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                Скопировано`;
-
-            setTimeout(() => {
-                btn.classList.remove('copied');
-                btn.innerHTML = original;
-            }, 2000);
-
-            const toast = document.getElementById('toast');
-            clearTimeout(toastTimer);
-            toast.classList.add('show');
-            toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
-        }
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text)
-                .then(onSuccess)
-                .catch(() => fallbackCopy(text, onSuccess));
-        } else {
-            fallbackCopy(text, onSuccess);
-        }
-    }
-
-    function fallbackCopy(text, callback) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        try {
-            document.execCommand('copy');
-            if (callback) callback();
-        } catch (e) {}
-        document.body.removeChild(ta);
-    }
-</script>
 
 </body>
 </html>

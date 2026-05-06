@@ -17,13 +17,15 @@ use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Services\Organizations\OrganizationValidityService;
 use App\Services\Sale\SaleService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class OrganizationController extends Controller
@@ -93,18 +95,43 @@ class OrganizationController extends Controller
     {
         $organizations = $this->repository->index($request->all());
         $this->hydrateRealBalances($organizations);
+        app(OrganizationValidityService::class)->hydrate($organizations);
+        return response()->json([
+            'organizations' => $organizations,
+        ]);
+    }
+    public function active(Request $request): JsonResponse
+    {
+        $organizations = $this->repository->active($request->all());
+        $this->hydrateRealBalances($organizations);
         return response()->json([
             'organizations' => $organizations,
         ]);
     }
 
+    public function inActive(Request $request): JsonResponse
+    {
+        $organizations = $this->repository->inActive($request->all());
+        $this->hydrateRealBalances($organizations);
+        return response()->json([
+            'organizations' => $organizations,
+        ]);
+    }
+    public function nfr(Request $request): JsonResponse
+    {
+        $organizations = $this->repository->nfr($request->all());
+        $this->hydrateRealBalances($organizations);
+        return response()->json([
+            'organizations' => $organizations,
+        ]);
+    }
     public function demo(Request $request): JsonResponse
     {
         $authUser = auth()->user();
 
         $organizationsQuery = Organization::query()
             ->with([
-                'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,country_id,manager_id,nfr',
+                'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,tariff_id,country_id,manager_id,nfr,created_at',
                 'client.country:id,name,currency_id',
                 'client.country.currency:id,name,symbol_code',
                 'client.partner:id,name',
@@ -119,22 +146,84 @@ class OrganizationController extends Controller
             })
             ->whereDoesntHave('connections')
             ->whereHas('client', function (Builder $clientQuery) use ($authUser) {
-                if ($authUser->id !== 11) {
-                    $clientQuery->where('partner_id', Auth::id());
+                $clientQuery
+                    ->where('nfr', false)
+                    ->where('is_demo', true);
+
+                if ((int)$authUser->id === 11) {
+                    return;
                 }
-                $clientQuery->where('nfr', false);
+
+                $partnerId = (int)$authUser->id;
+                $countryId = (int)($authUser->country_id ?? 0);
+
+                $clientQuery->where(function (Builder $accessQuery) use ($partnerId, $countryId): void {
+                    $accessQuery->where('partner_id', $partnerId);
+
+                    if ($countryId > 0) {
+                        $accessQuery->orWhere(function (Builder $countryQuery) use ($countryId): void {
+                            $countryQuery
+                                ->where('country_id', $countryId)
+                                ->whereNull('partner_id');
+                        });
+                    }
+                });
             });
+
+        if ($request->filled('country')) {
+            $countryId = (int)$request->query('country');
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($countryId): void {
+                $clientQuery->where('country_id', $countryId);
+            });
+        }
+
+        if ($request->filled('partner')) {
+            $partnerId = (int)$request->query('partner');
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($partnerId): void {
+                $clientQuery->where('partner_id', $partnerId);
+            });
+        }
+
+        if ($request->query('status') !== null && $request->query('status') !== '') {
+            $isActiveDemo = (bool)$request->query('status');
+            $cutoff = now()->subDays(14);
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($isActiveDemo, $cutoff): void {
+                if ($isActiveDemo) {
+                    $clientQuery->where('created_at', '>', $cutoff);
+                    return;
+                }
+
+                $clientQuery->where('created_at', '<=', $cutoff);
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $createdFrom = Carbon::parse((string)$request->query('date_from'))->subWeeks(2)->startOfDay();
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($createdFrom): void {
+                $clientQuery->where('created_at', '>=', $createdFrom);
+            });
+        }
+
+        if ($request->filled('date_to')) {
+            $createdTo = Carbon::parse((string)$request->query('date_to'))->subWeeks(2)->endOfDay();
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($createdTo): void {
+                $clientQuery->where('created_at', '<=', $createdTo);
+            });
+        }
 
         $search = trim((string)$request->query('search', ''));
         if ($search !== '') {
             $this->applyV2OrganizationSearch($organizationsQuery, $search);
         }
 
+        $this->applyDemoOrganizationSorting($organizationsQuery, $request);
+
         $organizations = $organizationsQuery
-            ->orderByDesc('id')
-            ->get();
+            ->paginate(50)
+            ->withQueryString();
 
         $this->hydrateRealBalances($organizations);
+        $this->hydrateDemoValidateDates($organizations);
 
         return response()->json([
             'organizations' => $organizations,
@@ -145,7 +234,7 @@ class OrganizationController extends Controller
     public function showV2(Organization $organization): JsonResponse
     {
         $organization->load([
-            'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,country_id,manager_id',
+            'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,tariff_id,country_id,manager_id,created_at',
             'client.country:id,name,currency_id',
             'client.country.currency:id,name,symbol_code',
             'client.partner:id,name',
@@ -176,7 +265,6 @@ class OrganizationController extends Controller
 
         $balanceOperations = ClientBalance::query()
             ->where('organization_id', (int)$organization->id)
-            ->where('type', 'income')
             ->with('currency:id,name,symbol_code')
             ->orderByDesc('date')
             ->orderByDesc('id')
@@ -190,6 +278,38 @@ class OrganizationController extends Controller
             'connection_status_history' => $connectionStatusHistory,
             'balance_operations' => $balanceOperations,
             'real_balance' => $realBalance,
+        ]);
+    }
+
+    public function becomePartner(Organization $organization): JsonResponse
+    {
+        $authUser = auth()->user();
+        $organization->load('client:id,is_demo,partner_id,country_id');
+
+        if (!$organization->client || !$organization->client->is_demo) {
+            return response()->json([
+                'message' => 'Партнером можно стать только для демо-клиента.',
+            ], 422);
+        }
+
+        if ($organization->client->partner_id !== null) {
+            return response()->json([
+                'message' => 'У этого клиента уже есть партнер.',
+            ], 422);
+        }
+
+        if ((int)$authUser->id !== 11 && (int)($authUser->country_id ?? 0) !== (int)$organization->client->country_id) {
+            return response()->json([
+                'message' => 'Этот демо-клиент относится к другой стране.',
+            ], 403);
+        }
+
+        $organization->client->partner_id = (int)$authUser->id;
+        $organization->client->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Вы стали партнером этого демо-клиента.',
         ]);
     }
 
@@ -341,13 +461,139 @@ class OrganizationController extends Controller
         return true;
     }
 
-    private function hydrateRealBalances(Collection $organizations): void
+    private function applyDemoOrganizationSorting(Builder $query, Request $request): void
     {
-        if ($organizations->isEmpty()) {
+        $sort = (string)$request->query('sort', '');
+        $direction = strtolower((string)$request->query('direction', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        match ($sort) {
+            'order_number' => $query->orderBy('organizations.order_number', $direction),
+            'name' => $query->orderBy('organizations.name', $direction),
+            'phone' => $query->orderBy('organizations.phone', $direction),
+            'created_at' => $query->orderBy('organizations.created_at', $direction),
+            'email' => $query->orderBy($this->clientColumnSubquery('clients.email'), $direction),
+            'country' => $query->orderBy($this->clientColumnSubquery('countries.name', true), $direction),
+            'tariff' => $query->orderBy($this->tariffNameSubquery(), $direction),
+            'users_count' => $query->orderBy($this->usersCountSubquery(), $direction),
+            'balance' => $query->orderBy($this->balanceSubquery(), $direction),
+            'valid_until' => $query->orderBy($this->clientColumnSubquery('clients.created_at'), $direction),
+            'last_activity' => $query->orderBy($this->clientColumnSubquery('clients.last_activity'), $direction),
+            'status' => $query->orderBy($this->demoStatusSubquery(), $direction),
+            'partner' => $query->orderBy($this->clientColumnSubquery('partners.name', false, true), $direction),
+            'sub_domain' => $query->orderBy($this->clientColumnSubquery('clients.sub_domain'), $direction),
+            default => $query->orderByDesc('organizations.id'),
+        };
+
+        if ($sort !== '') {
+            $query->orderBy('organizations.id');
+        }
+    }
+
+    private function clientColumnSubquery(string $column, bool $joinCountry = false, bool $joinPartner = false)
+    {
+        $query = DB::table('clients')
+            ->whereColumn('clients.id', 'organizations.client_id')
+            ->limit(1);
+
+        if ($joinCountry) {
+            $query->leftJoin('countries', 'countries.id', '=', 'clients.country_id');
+        }
+
+        if ($joinPartner) {
+            $query->leftJoin('users as partners', 'partners.id', '=', 'clients.partner_id');
+        }
+
+        return $query->select($column);
+    }
+
+    private function tariffNameSubquery()
+    {
+        return DB::table('connected_client_services')
+            ->join('tariffs', 'tariffs.id', '=', 'connected_client_services.tariff_id')
+            ->whereColumn('connected_client_services.client_id', 'organizations.id')
+            ->where('tariffs.is_tariff', true)
+            ->orderBy('connected_client_services.id')
+            ->limit(1)
+            ->select('tariffs.name');
+    }
+
+    private function usersCountSubquery()
+    {
+        return DB::table('connected_client_services')
+            ->join('tariffs', 'tariffs.id', '=', 'connected_client_services.tariff_id')
+            ->whereColumn('connected_client_services.client_id', 'organizations.id')
+            ->selectRaw("
+                COALESCE(SUM(
+                    CASE
+                        WHEN tariffs.is_tariff = 1 THEN tariffs.user_count
+                        WHEN tariffs.is_extra_user = 1 THEN COALESCE(connected_client_services.quantity, 1) * COALESCE(tariffs.user_count, 1)
+                        ELSE 0
+                    END
+                ), 0)
+            ");
+    }
+
+    private function balanceSubquery()
+    {
+        $clientCurrencySubquery = "
+            SELECT countries.currency_id
+            FROM clients
+            LEFT JOIN countries ON countries.id = clients.country_id
+            WHERE clients.id = organizations.client_id
+            LIMIT 1
+        ";
+
+        return DB::table('client_balances')
+            ->whereColumn('client_balances.organization_id', 'organizations.id')
+            ->whereRaw("
+                (
+                    client_balances.currency_id = ($clientCurrencySubquery)
+                    OR NOT EXISTS (
+                        SELECT 1
+                        FROM client_balances AS same_currency_balances
+                        WHERE same_currency_balances.organization_id = organizations.id
+                          AND same_currency_balances.currency_id = ($clientCurrencySubquery)
+                    )
+                )
+            ")
+            ->selectRaw("
+                COALESCE(SUM(
+                    CASE
+                        WHEN client_balances.type = 'income' THEN client_balances.sum
+                        WHEN client_balances.type = 'outcome' THEN -client_balances.sum
+                        ELSE 0
+                    END
+                ), 0)
+            ");
+    }
+
+    private function demoStatusSubquery()
+    {
+        $cutoff = now()->subDays(14)->format('Y-m-d H:i:s');
+
+        return DB::table('clients')
+            ->whereColumn('clients.id', 'organizations.client_id')
+            ->limit(1)
+            ->selectRaw("CASE WHEN clients.created_at > '{$cutoff}' THEN 1 ELSE 0 END");
+    }
+
+    /**
+     * Adds computed `real_balance` attribute for every organization item.
+     *
+     * Repository methods may return either Eloquent Collection (indexV2, demo)
+     * or LengthAwarePaginator (active/inActive/nfr). Support both to keep APIs stable.
+     */
+    private function hydrateRealBalances(Collection|LengthAwarePaginator $organizations): void
+    {
+        $items = $organizations instanceof LengthAwarePaginator
+            ? $organizations->getCollection()
+            : $organizations;
+
+        if ($items->isEmpty()) {
             return;
         }
 
-        $organizationIds = $organizations->pluck('id')->map(fn($id) => (int)$id)->all();
+        $organizationIds = $items->pluck('id')->map(fn($id) => (int)$id)->all();
 
         $balanceByOrganization = ClientBalance::query()
             ->selectRaw("
@@ -361,7 +607,7 @@ class OrganizationController extends Controller
             ->get()
             ->groupBy('organization_id');
 
-        foreach ($organizations as $organization) {
+        foreach ($items as $organization) {
             $rows = $balanceByOrganization->get((int)$organization->id, collect());
             $targetCurrencyId = (int)($organization->client?->country?->currency_id ?? 0);
 
@@ -376,6 +622,32 @@ class OrganizationController extends Controller
             $outcome = (float)$rows->sum('total_outcome');
 
             $organization->setAttribute('real_balance', round($income - $outcome, 4));
+        }
+
+        if ($organizations instanceof LengthAwarePaginator) {
+            $organizations->setCollection($items);
+        }
+    }
+
+    private function hydrateDemoValidateDates(Collection|LengthAwarePaginator $organizations): void
+    {
+        $items = $organizations instanceof LengthAwarePaginator
+            ? $organizations->getCollection()
+            : $organizations;
+
+        foreach ($items as $organization) {
+            if (!$organization->client || !$organization->client->is_demo) {
+                continue;
+            }
+
+            $organization->client->setAttribute(
+                'validate_date',
+                optional($organization->client->created_at)->copy()?->addWeeks(2)
+            );
+        }
+
+        if ($organizations instanceof LengthAwarePaginator) {
+            $organizations->setCollection($items);
         }
     }
 

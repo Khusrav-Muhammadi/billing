@@ -2,7 +2,6 @@
 
 namespace App\Services\CommercialOffers;
 
-use App\Jobs\ActivationJob;
 use App\Jobs\AddPackJob;
 use App\Jobs\ConnectionJob;
 use App\Jobs\UpdateTariffJob;
@@ -24,7 +23,6 @@ class CommercialOfferProvisioningService
             return;
         }
 
-        $this->dispatchActivation($context['organization'], $context['client']);
         $this->dispatchTariff($offer, $offer->organization);
         $this->dispatchPackUpdates($offer, $context['organization'], $context['client']);
     }
@@ -75,16 +73,6 @@ class CommercialOfferProvisioningService
         ];
     }
 
-    private function dispatchActivation(Organization $organization, Client $client): void
-    {
-        ActivationJob::dispatch(
-            [(int)$organization->id],
-            (string)$client->sub_domain,
-            true,
-            false
-        );
-    }
-
     private function dispatchTariff(CommercialOffer $offer, Organization $organization): void
     {
         $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
@@ -96,7 +84,7 @@ class CommercialOfferProvisioningService
 
         $client = $organization->client;
 
-        ConnectionJob::dispatch($organization, $tariffId, (string)$client->sub_domain);
+        ConnectionJob::dispatchSync($organization, $tariffId, (string)$client->sub_domain);
     }
 
     private function dispatchTariffUpdate(CommercialOffer $offer, Organization $organization): void
@@ -110,15 +98,15 @@ class CommercialOfferProvisioningService
 
         $client = $organization->client;
 
-        UpdateTariffJob::dispatch($organization, $tariffId, (string)$client->sub_domain);
-        AddPackJob::dispatch($organization, (string)$client->sub_domain);
+        UpdateTariffJob::dispatchSync($organization, $tariffId, (string)$client->sub_domain);
+        AddPackJob::dispatchSync($organization, (string)$client->sub_domain, (int)$offer->id);
     }
 
     private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization): void
     {
         $client = $organization->client;
 
-        AddPackJob::dispatch($organization, (string)$client->sub_domain);
+        AddPackJob::dispatchSync($organization, (string)$client->sub_domain, (int)$offer->id);
 
     }
 
@@ -135,4 +123,3 @@ class CommercialOfferProvisioningService
         return !(bool)$tariff->is_tariff;
     }
 }
-

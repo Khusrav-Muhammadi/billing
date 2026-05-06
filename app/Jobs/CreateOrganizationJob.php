@@ -6,7 +6,7 @@ use App\Mail\SendSiteDataMail;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Tariff;
-use App\Models\TariffCurrency;
+use App\Services\IntegrationActionLogService;
 use App\Services\Mailing\ResendMailService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,16 +35,15 @@ class CreateOrganizationJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = "https://{$this->client->sub_domain}-back.{$domain}/api/organization";
-     //   $url = "https://hello-back.sham360.com/api/organization";
 
+        $tariff = Tariff::query()
+            ->whereKey($this->client->tariff_id)
+            ->where('is_tariff', true)
+            ->firstOrFail();
 
-        $tariff = TariffCurrency::find($this->client->tariff_id)->tariff;
-
-        Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post($url, [
+        $payload = [
             'name' => $this->organization->name,
             'email' => $this->client->email,
             'phone' => $this->client->phone,
@@ -55,9 +54,35 @@ class CreateOrganizationJob implements ShouldQueue
             'password' => $this->password,
             'is_demo' => $this->client->is_demo,
             'channels_count' => $tariff->channels_count ?? 3,
-        ]);
+        ];
 
-        //if (Organization::where('client_id', $this->client->id)->count() == 1) Mail::to($this->client->email)->send(new SendSiteDataMail($this->client, $this->password));
+        try {
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $payload);
+        } catch (\Throwable $e) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$this->organization->id,
+                clientId: (int)$this->client->id,
+                action: 'create_organization',
+                method: 'POST',
+                url: $url,
+                payload: $payload,
+                error: $e->getMessage()
+            );
+
+            return;
+        }
+
+        app(IntegrationActionLogService::class)->logApiResponse(
+            organizationId: (int)$this->organization->id,
+            clientId: (int)$this->client->id,
+            action: 'create_organization',
+            method: 'POST',
+            url: $url,
+            payload: $payload,
+            response: $response
+        );
 
         if (Organization::where('client_id', $this->client->id)->count() === 1) {
             $this->sendWelcomeEmail();
@@ -77,6 +102,11 @@ class CreateOrganizationJob implements ShouldQueue
                     'client'   => $this->client,
                     'password' => $this->password,
                     'id' => $this->organization->order_number
+                ],
+                logContext: [
+                    'organization_id' => $this->organization->id,
+                    'client_id' => $this->client->id,
+                    'action' => 'site_access_email',
                 ]
             );
 

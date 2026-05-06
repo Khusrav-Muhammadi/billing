@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Client;
+use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,11 +30,70 @@ class SubDomainJob implements ShouldQueue
      */
     public function handle(): void
     {
-       Http::withHeaders([
-            'Accept' => 'application/json',
-        ])->post('https://shamcrm.com/api/createSubdomain', [
-            'subdomain' => $this->client->sub_domain,
-            'country' => $this->client->country_id == 2 ? 'uz' : 'tj'
-        ]);
+       $url = 'https://shamcrm.com/api/createSubdomain';
+       $payload = [
+           'subdomain' => $this->client->sub_domain,
+           'country' => $this->client->country_id == 2 ? 'uz' : 'tj'
+       ];
+
+       try {
+           $response = Http::withHeaders([
+                'Accept' => 'application/json',
+            ])->post($url, $payload);
+       } catch (\Throwable $e) {
+           $organizations = $this->client->organizations;
+           if ($organizations->isEmpty()) {
+               app(IntegrationActionLogService::class)->logApiResponse(
+                   organizationId: null,
+                   clientId: (int)$this->client->id,
+                   action: 'create_subdomain',
+                   method: 'POST',
+                   url: $url,
+                   payload: $payload,
+                   error: $e->getMessage()
+               );
+               return;
+           }
+
+           foreach ($organizations as $organization) {
+               app(IntegrationActionLogService::class)->logApiResponse(
+                   organizationId: (int)$organization->id,
+                   clientId: (int)$this->client->id,
+                   action: 'create_subdomain',
+                   method: 'POST',
+                   url: $url,
+                   payload: $payload,
+                   error: $e->getMessage()
+               );
+           }
+
+           return;
+       }
+
+        $organizations = $this->client->organizations;
+        if ($organizations->isEmpty()) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: null,
+                clientId: (int)$this->client->id,
+                action: 'create_subdomain',
+                method: 'POST',
+                url: $url,
+                payload: $payload,
+                response: $response
+            );
+            return;
+        }
+
+        foreach ($organizations as $organization) {
+            app(IntegrationActionLogService::class)->logApiResponse(
+                organizationId: (int)$organization->id,
+                clientId: (int)$this->client->id,
+                action: 'create_subdomain',
+                method: 'POST',
+                url: $url,
+                payload: $payload,
+                response: $response
+            );
+        }
     }
 }

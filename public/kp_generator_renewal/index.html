@@ -100,16 +100,92 @@
                 </div>
             </section>
 
-            <section class="services-section">
-                <h2 class="section-title">Дополнительные услуги</h2>
-                <div class="services-grid" id="servicesGrid"></div>
-            </section>
+	            <section class="services-section">
+	                <h2 class="section-title">Дополнительные услуги</h2>
+	                <div class="services-grid" id="servicesGrid"></div>
+	            </section>
 
-            <section class="summary-section">
-                <div class="summary-card">
-                    <h2 class="summary-title">Итого</h2>
-                    <div class="summary-content">
-                        <div class="summary-items" id="summaryItems"></div>
+	            <!-- Implementation (shown only for partners with has_implementation=true) -->
+	            <section class="implementation-section" id="implementationSection" style="display:none;">
+	                <h2 class="section-title">Внедрение</h2>
+	                <div class="one-time-item">
+	                    <div class="one-time-input-wrapper">
+	                        <label class="one-time-label" style="display:flex; align-items:center; gap:10px; white-space:normal;">
+	                            <input type="checkbox" id="implementationEnabled">
+	                            <span>Есть внедрение у клиента</span>
+	                        </label>
+
+	                        <div id="implementationFields" hidden>
+	                            <div class="one-time-fixed-wrapper" style="margin-top:12px;">
+	                                <span class="one-time-label">Стоимость внедрения</span>
+	                                <div class="one-time-input-group" style="justify-content:flex-end;">
+	                                    <input type="text"
+	                                           class="one-time-input"
+	                                           id="implementationPrice"
+	                                           inputmode="decimal"
+	                                           min="0"
+	                                           placeholder="0"
+	                                           value="0">
+	                                    <span class="one-time-currency" id="implementationCurrency">—</span>
+	                                </div>
+	                            </div>
+	                            <div class="one-time-hint" id="implementationHint" style="margin-top:8px;"></div>
+
+	                            <div class="one-time-fixed-wrapper" style="margin-top:12px;">
+	                                <span class="one-time-label">Скидка на внедрение (%)</span>
+	                                <div class="one-time-input-group" style="justify-content:flex-end;">
+	                                    <input type="text"
+	                                           class="one-time-input"
+	                                           id="implementationDiscountPercent"
+	                                           min="0"
+	                                           max="100"
+	                                           inputmode="decimal"
+	                                           placeholder="0"
+	                                           value="0">
+	                                    <span class="one-time-currency">%</span>
+	                                </div>
+	                            </div>
+	                            <div class="one-time-hint" id="implementationDiscountHint" style="margin-top:8px;">
+	                                Скидка ограничена потолком сделки.
+	                            </div>
+
+	                            <div id="implementationDiscount12Block" hidden>
+	                                <div class="one-time-fixed-wrapper" style="margin-top:12px;">
+	                                    <span class="one-time-label">Доп. скидка (12 месяцев) (%)</span>
+	                                    <div class="one-time-input-group" style="justify-content:flex-end;">
+	                                        <input type="text"
+	                                               class="one-time-input"
+	                                               id="implementationDiscountPercent12"
+	                                               min="0"
+	                                               max="100"
+	                                               inputmode="decimal"
+	                                               placeholder="0"
+	                                               value="0">
+	                                        <span class="one-time-currency">%</span>
+	                                    </div>
+	                                </div>
+	                                <div class="one-time-hint" id="implementationDiscount12Hint" style="margin-top:8px;">
+	                                    Потолок доп. скидки: 0%.
+	                                </div>
+	                            </div>
+
+	                            <div style="margin-top:16px;">
+	                                <div class="section-header-with-button" style="margin-bottom:10px;">
+	                                    <h3 class="section-title" style="margin:0; font-size:1rem;">Доп. услуги</h3>
+	                                    <button class="action-btn secondary" id="addCustomOneTimePaymentBtn" type="button">+ Добавить</button>
+	                                </div>
+	                                <div id="customOneTimePayments"></div>
+	                            </div>
+	                        </div>
+	                    </div>
+	                </div>
+	            </section>
+
+	            <section class="summary-section">
+	                <div class="summary-card">
+	                    <h2 class="summary-title">Итого</h2>
+	                    <div class="summary-content">
+	                        <div class="summary-items" id="summaryItems"></div>
                         <div class="summary-divider"></div>
                         <div class="summary-totals">
                             <div class="total-row grand">
@@ -192,6 +268,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="/kp_generator_renewal/app.js?v=20260410_02"></script>
-</body>
-</html>
+	    <script src="/kp_generator_renewal/app.js?v=20260504_02"></script>
+	</body>
+	</html>

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\CommercialOfferController;
 use App\Http\Controllers\API\CommercialFooferController;
+use App\Http\Controllers\API\ImplementationCatalogController;
 use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\API\SiteApplicationController;
 use App\Http\Controllers\ProfileController;
@@ -28,6 +29,7 @@ Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
 Route::get('partners/email/verify', [SiteApplicationController::class, 'verifyPartnerEmail']);
 Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
 Route::get('createInvoice', [\App\Http\Controllers\ClientController::class, 'createInvoice']);
+Route::get('implementation-catalog', [ImplementationCatalogController::class, 'index']);
 Route::middleware('auth.basic')->group(function () {
 });
 
@@ -43,6 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('partners', [\App\Http\Controllers\API\ClientController::class, 'getPartners']);
     Route::get('countries', [\App\Http\Controllers\API\ClientController::class, 'getCountries']);
     Route::get('currencies', [\App\Http\Controllers\API\ClientController::class, 'getCurrencies']);
+    Route::get('tariffs', [\App\Http\Controllers\API\ClientController::class, 'getTariffs']);
     Route::get('businessType', [\App\Http\Controllers\API\ClientController::class, 'getBusinessTypes']);
     Route::get('sale', [\App\Http\Controllers\API\ClientController::class, 'sale']);
     Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);
@@ -55,7 +58,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('organizations/access/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'access']);
     Route::get('organizations-v2', [\App\Http\Controllers\API\OrganizationController::class, 'indexV2']);
+    Route::get('organizations-active-v2', [\App\Http\Controllers\API\OrganizationController::class, 'active']);
+    Route::get('organizations-inActive-v2', [\App\Http\Controllers\API\OrganizationController::class, 'inActive']);
+    Route::get('organizations-nfr-v2', [\App\Http\Controllers\API\OrganizationController::class, 'nfr']);
     Route::get('organizations-demo-v2', [\App\Http\Controllers\API\OrganizationController::class, 'demo']);
+    Route::post('organizations-v2/{organization}/become-partner', [\App\Http\Controllers\API\OrganizationController::class, 'becomePartner']);
     Route::get('organizations-v2/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'showV2']);
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class)->except(['store']);
     Route::post('organizations/{client}', [\App\Http\Controllers\API\OrganizationController::class, 'store']);
@@ -114,6 +121,10 @@ Route::post('organization/legal-info/{organization}', [\App\Http\Controllers\API
 Route::post('add-organization', [\App\Http\Controllers\API\OrganizationController::class, 'addOrganization']);
 
 Route::post('payment/alif/webhook/change-tariff', [\App\Http\Controllers\API\ClientController::class, 'webhookChangeTariff']);
+Route::post('client-payment/webhook/alif', [\App\Http\Controllers\ClientPaymentController::class, 'alifWebhook'])
+    ->name('client-payment.webhook.alif');
+Route::post('client-payment/webhook/octo', [\App\Http\Controllers\ClientPaymentController::class, 'octoWebhook'])
+    ->name('client-payment.webhook.octo');
 
 Route::get('tariff-difference', [\App\Http\Controllers\API\ClientController::class, 'countDifference']);
 Route::get('tariff', [\App\Http\Controllers\TariffController::class, 'getTariffByCurrency']);

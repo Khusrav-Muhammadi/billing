@@ -37,6 +37,7 @@ class User extends Authenticatable
         'currency_id',
         'sham_link',
         'has_implementation',
+        'implementation_required',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable
         'payment_methods' => 'array',
         'currency_id' => 'integer',
         'has_implementation' => 'boolean',
+        'implementation_required' => 'boolean',
     ];
 
     public function partnerStatus()
@@ -75,6 +77,11 @@ class User extends Authenticatable
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class, 'currency_id');
+    }
+
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class, 'country_id');
     }
 
     public function history(): MorphMany

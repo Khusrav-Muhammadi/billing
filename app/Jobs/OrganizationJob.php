@@ -28,11 +28,14 @@ class OrganizationJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $domain = env('APP_DOMAIN');
+        $domain = config('services.sham.domain');
         $url = "https://{$this->domain}-back.{$domain}/api/organization";
 
         $organization = $this->organization;
-        $tariff = Tariff::find($organization->client->tariff_id);
+        $tariff = Tariff::query()
+            ->whereKey($organization->client->tariff_id)
+            ->where('is_tariff', true)
+            ->firstOrFail();
 
         Http::withHeaders([
             'Accept' => 'application/json',

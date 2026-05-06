@@ -10,6 +10,7 @@ use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\CurrencyRate;
 use App\Models\ExchangeRate;
+use App\Models\ImplementationDiscountCap;
 use App\Models\Organization;
 use App\Models\PartnerProcent;
 use App\Models\Tariff;
@@ -244,6 +245,13 @@ class CommercialFooferController extends Controller
                 'payable_total' => $this->toDecimal(data_get($payload, 'payable_total', data_get($payload, 'grand_total', 0))),
                 'conversion_rate' => $this->toNullableDecimal(data_get($payload, 'conversion_rate')),
             ]);
+
+            if (Schema::hasColumn('commercial_offers', 'snapshot')) {
+                $offer->snapshot = $this->mergeSnapshotImplementation(
+                    $this->normalizeOfferSnapshotValue($offer->snapshot),
+                    data_get($payload, 'implementation')
+                );
+            }
 
             $offer->save();
 
@@ -755,6 +763,10 @@ class CommercialFooferController extends Controller
             'phone' => (string)($user->phone ?? ''),
             'procent_from_tariff' => (int)($percents['tariff'] ?? 0),
             'procent_from_pack' => (int)($percents['pack'] ?? 0),
+            'has_implementation' => (bool)($user->has_implementation ?? false),
+            'implementation_required' => Schema::hasColumn('users', 'implementation_required')
+                ? (bool)($user->implementation_required ?? false)
+                : false,
             'payment_methods' => $this->normalizePaymentMethods($user->payment_methods ?? null),
         ]];
     }
@@ -940,6 +952,15 @@ class CommercialFooferController extends Controller
                 continue;
             }
 
+            $implementationPrices = $this->pickActivePrices(
+                $this->filterImplementationPriceRows($tariff->prices),
+                $asOfTs
+            );
+            $implementationPrices = $this->normalizeExplicitCurrencyPrices(
+                $implementationPrices,
+                $currencyCodes
+            );
+
             $extraServices = $extraUserServicesByTariffId->get((int)$tariff->id);
             $extraUserTariffId = ($extraServices && $extraServices->isNotEmpty())
                 ? (int)$extraServices->first()->id
@@ -990,6 +1011,7 @@ class CommercialFooferController extends Controller
                 'extraUserTariffId' => $extraUserTariffId,
                 'prices' => $prices,
                 'prices12Months' => array_map(static fn(float $v) => round($v * 0.85, 4), $prices),
+                'suggestedImplementationPrice' => $implementationPrices,
                 'extraUserPrice' => $extraUserPrices,
                 'extraUserPrices' => $extraUserPrices,
                 'includedServices' => $includedServices,
@@ -1051,12 +1073,82 @@ class CommercialFooferController extends Controller
             ]),
             'tariffs' => $tariffsForJs,
             'services' => $servicesForJs,
+            'implementation' => [
+                'discount_caps' => $this->buildImplementationDiscountCapsForJs(),
+            ],
             'company' => (array)data_get($template, 'company', [
                 'name' => 'SHAMCRM',
                 'phone' => '+998785557416',
                 'email' => 'info@shamcrm.com',
                 'website' => 'shamcrm.com',
             ]),
+        ];
+    }
+
+    private function buildImplementationDiscountCapsForJs(): array
+    {
+        if (!Schema::hasTable('implementation_discount_caps')) {
+            return [
+                'by_type' => [],
+                'default' => ['standard' => 0, 'months_12' => 0],
+            ];
+        }
+
+        $hasCurrency = Schema::hasColumn('implementation_discount_caps', 'currency_code');
+
+        $select = ['period_type', 'max_percent'];
+        if ($hasCurrency) {
+            $select[] = 'currency_code';
+        }
+
+        $caps = ImplementationDiscountCap::query()
+            ->where('is_active', true)
+            ->orderByDesc('id')
+            ->get($select);
+
+        if (!$hasCurrency) {
+            $byType = [];
+            foreach ($caps as $cap) {
+                $type = (string)$cap->period_type;
+                if ($type !== 'standard' && $type !== 'months_12') {
+                    continue;
+                }
+                if (!array_key_exists($type, $byType)) {
+                    $byType[$type] = (float)$cap->max_percent;
+                }
+            }
+
+            return [
+                'by_type' => $byType,
+                'default' => ['standard' => 0, 'months_12' => 0],
+            ];
+        }
+
+        $byCurrency = [];
+
+        foreach ($caps as $cap) {
+            $type = (string)$cap->period_type;
+            if ($type !== 'standard' && $type !== 'months_12') {
+                continue;
+            }
+
+            $currency = strtoupper(trim((string)($cap->currency_code ?? '')));
+            if ($currency === '') {
+                continue;
+            }
+
+            if (!isset($byCurrency[$currency])) {
+                $byCurrency[$currency] = [];
+            }
+            if (!array_key_exists($type, $byCurrency[$currency])) {
+                $byCurrency[$currency][$type] = (float)$cap->max_percent;
+            }
+        }
+
+        return [
+            'by_currency' => $byCurrency,
+            'by_type' => [], // disable global caps when currency-based caps exist
+            'default' => ['standard' => 0, 'months_12' => 0],
         ];
     }
 
@@ -1725,6 +1817,36 @@ class CommercialFooferController extends Controller
         return $normalized;
     }
 
+    private function normalizeExplicitCurrencyPrices(array $prices, array $currencyCodes): array
+    {
+        $normalized = [];
+
+        foreach ($prices as $currencyCode => $rawValue) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code === '' || $code === '__META') {
+                continue;
+            }
+
+            $value = $this->toDecimal($rawValue);
+            if ($value > 0) {
+                $normalized[$code] = $value;
+            }
+        }
+
+        foreach ($currencyCodes as $currencyCode) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code === '') {
+                continue;
+            }
+
+            if (!isset($normalized[$code])) {
+                $normalized[$code] = 0.0;
+            }
+        }
+
+        return $normalized;
+    }
+
     private function hasAnyPositivePrice(array $prices): bool
     {
         foreach ($prices as $currencyCode => $rawValue) {
@@ -1775,6 +1897,22 @@ class CommercialFooferController extends Controller
         return $priceRows;
     }
 
+    private function filterImplementationPriceRows(iterable $priceRows, bool $globalOnly = true): iterable
+    {
+        if ($priceRows instanceof \Illuminate\Support\Collection) {
+            $rows = $priceRows
+                ->filter(static function ($row) {
+                    $kind = mb_strtolower(trim((string)data_get($row, 'kind', '')));
+
+                    return $kind === 'implementation';
+                })
+                ->values();
+
+            return $globalOnly ? $rows->whereNull('organization_id')->values() : $rows;
+        }
+
+        return $priceRows;
+    }
     private function readConfigTemplate(): array
     {
         $path = public_path('kp_generator/data/config.json');
@@ -1871,6 +2009,7 @@ class CommercialFooferController extends Controller
     {
         $selectedTariffId = $this->resolveSelectedTariffIdFromItems($offer);
         $organization = $this->buildOrganizationSnapshot($offer->organization);
+        $snapshot = $this->normalizeOfferSnapshotValue($offer->snapshot);
 
         return [
             'offer_id' => $offer->id,
@@ -1895,6 +2034,16 @@ class CommercialFooferController extends Controller
             'partner_name' => (string)($offer->partner_name ?? ''),
             'partner_phone' => (string)($offer->partner_phone ?? ''),
             'partner_email' => (string)($offer->partner_email ?? ''),
+            'implementation' => $this->normalizeImplementationPayload(
+                is_array($snapshot) ? data_get($snapshot, 'implementation') : null
+            ) ?? [
+                'enabled' => false,
+                'price' => 0,
+                'discount_percent' => 0,
+                'discount_percent_base' => 0,
+                'discount_percent_12_extra' => 0,
+                'extra_services' => [],
+            ],
             'payer' => [
                 'type' => (string)($offer->payer_type ?: 'client'),
                 'id' => $offer->partner_id,
@@ -1918,6 +2067,86 @@ class CommercialFooferController extends Controller
                 ])
                 ->values()
                 ->all(),
+        ];
+    }
+
+    private function mergeSnapshotImplementation(?array $snapshot, $implementation): ?array
+    {
+        $normalized = $this->normalizeImplementationPayload($implementation);
+        if ($normalized === null) {
+            return $snapshot;
+        }
+
+        $base = is_array($snapshot) ? $snapshot : [];
+        $base['implementation'] = $normalized;
+        return $base;
+    }
+
+    private function normalizeOfferSnapshotValue($snapshot): ?array
+    {
+        if (is_array($snapshot)) {
+            return $snapshot;
+        }
+
+        if (is_string($snapshot)) {
+            $decoded = json_decode($snapshot, true);
+            return is_array($decoded) ? $decoded : null;
+        }
+
+        return null;
+    }
+
+    private function normalizeImplementationPayload($implementation): ?array
+    {
+        if (!is_array($implementation)) {
+            return null;
+        }
+
+        $enabled = (bool)data_get($implementation, 'enabled', false);
+        $price = (float)max(0, $this->toDecimal(data_get($implementation, 'price', 0)));
+        $discountTotalRaw = data_get($implementation, 'discount_percent');
+        $hasTotal = $discountTotalRaw !== null && $discountTotalRaw !== '';
+        $discountTotal = max(0, min(100, $this->toDecimal($discountTotalRaw ?? 0)));
+
+        $discountBaseRaw = data_get($implementation, 'discount_percent_base');
+        $discountBase = $discountBaseRaw !== null && $discountBaseRaw !== ''
+            ? max(0, min(100, $this->toDecimal($discountBaseRaw)))
+            : ($hasTotal ? $discountTotal : 0);
+
+        $discount12ExtraRaw = data_get($implementation, 'discount_percent_12_extra');
+        $discount12Extra = $discount12ExtraRaw !== null && $discount12ExtraRaw !== ''
+            ? max(0, min(100, $this->toDecimal($discount12ExtraRaw)))
+            : 0;
+
+        if (!$hasTotal) {
+            $discountTotal = max(0, min(100, $discountBase + $discount12Extra));
+        }
+
+        $extrasRaw = data_get($implementation, 'extra_services', []);
+        $extrasRaw = is_array($extrasRaw) ? $extrasRaw : [];
+        $extras = [];
+        foreach ($extrasRaw as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $name = trim((string)data_get($row, 'name', ''));
+            $priceRow = (float)max(0, $this->toDecimal(data_get($row, 'price', 0)));
+            if ($name === '' && $priceRow <= 0) {
+                continue;
+            }
+            $extras[] = [
+                'name' => $name,
+                'price' => $priceRow,
+            ];
+        }
+
+        return [
+            'enabled' => $enabled,
+            'price' => $price,
+            'discount_percent' => $discountTotal,
+            'discount_percent_base' => $discountBase,
+            'discount_percent_12_extra' => $discount12Extra,
+            'extra_services' => array_values($extras),
         ];
     }
 
