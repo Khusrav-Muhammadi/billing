@@ -102,7 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/{user}', [ProfileController::class, 'updateApi']);
     });
 });
-
+Route::get('get/application-data', [CommercialFooferController::class, 'index']);
 Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
 
 Route::options('/{any}', function (Request $request) {
