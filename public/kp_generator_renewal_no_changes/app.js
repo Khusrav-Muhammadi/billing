@@ -704,6 +704,7 @@ class CPGenerator {
 
         const globalSelectors = [
             '#partnerSelect',
+            '#managerNameText',
             '#usersMinusBtn',
             '#usersPlusBtn',
             '#extraUsersInput',
@@ -809,6 +810,7 @@ class CPGenerator {
 
         const globalSelectors = [
             '#partnerSelect',
+            '#managerNameText',
             '#usersMinusBtn',
             '#usersPlusBtn',
             '#extraUsersInput',
@@ -922,7 +924,7 @@ class CPGenerator {
         }
         this.state.csrfToken = params.get('csrf_token') || this.state.csrfToken || '';
         this.state.managerId = params.get('author_id') || '';
-        this.state.managerName = params.get('author') || 'Менеджер';
+        this.state.managerName = params.get('author') || '';
         this.state.token = params.get('token') || '';
         this.state.leadId = params.get('lead_id') || '';
         this.state.dealStatusId = params.get('deal_status_id') || '';
@@ -1040,6 +1042,9 @@ class CPGenerator {
             }
             if (payload.partner_name) {
                 this.state.partnerName = String(payload.partner_name);
+            }
+            if (payload.manager_name !== undefined && payload.manager_name !== null) {
+                this.state.managerName = String(payload.manager_name);
             }
 
             if (payload.currency) {
@@ -1193,6 +1198,7 @@ class CPGenerator {
             '#pricingDate',
             '#clientSelect',
             '#partnerSelect',
+            '#managerNameText',
             '#usersMinusBtn',
             '#usersPlusBtn',
             '#extraUsersInput',
@@ -2436,6 +2442,10 @@ class CPGenerator {
         const dateInput = document.getElementById('pricingDate');
         if (dateInput) {
             dateInput.value = this.state.pricingDate || this.getTodayYmd();
+        }
+        const managerNameText = document.getElementById('managerNameText');
+        if (managerNameText) {
+            managerNameText.value = this.state.managerName || '';
         }
         this.renderCombo('client');
         this.renderCombo('partner');
@@ -3802,6 +3812,15 @@ class CPGenerator {
                         void this.selectComboItem('partner', first);
                     }
                 }
+            });
+        }
+
+        const managerNameText = document.getElementById('managerNameText');
+        if (managerNameText) {
+            managerNameText.addEventListener('input', (e) => {
+                this.state.managerName = e.target.value;
+                this.updateSummary();
+                this.markOfferDirty();
             });
         }
 

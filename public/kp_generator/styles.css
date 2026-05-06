@@ -52,6 +52,19 @@ body {
     align-items: flex-start;
 }
 
+.entity-selects.connection-fields {
+    display: grid;
+    grid-template-columns: minmax(104px, max-content) 220px 200px 220px 220px;
+    gap: 12px;
+    align-items: start;
+}
+
+.entity-selects.connection-fields .entity-field,
+.entity-selects.connection-fields .entity-combo {
+    min-width: 0;
+    width: 100%;
+}
+
 .entity-field {
     display: flex;
     flex-direction: column;
@@ -1532,6 +1545,11 @@ body {
     .header-content {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .entity-selects.connection-fields {
+        display: flex;
+        flex-wrap: wrap;
     }
     
     .settings-panel {

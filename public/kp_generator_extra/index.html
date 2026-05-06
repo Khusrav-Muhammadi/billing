@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Подключение доп услуг</title>
-    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260403_02">
+    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260506_02">
 </head>
 <body>
     <div class="app-container">
@@ -13,7 +13,7 @@
                 <div class="logo">
                     <span class="logo-text"></span>
                 </div>
-                <div class="entity-selects">
+                <div class="entity-selects connection-fields">
                     <label class="entity-field">
                         <span class="entity-label">Тип операции</span>
                         <div id="operationTypeValue" style="padding: 10px 0; font-size: 0.95rem; color: #111827; font-weight: 600;">—</div>
@@ -42,10 +42,16 @@
                         </div>
                     </label>
                     <label class="entity-field">
-                        <span class="entity-label">Партнёр</span>
+                        <span class="entity-label">Партнер</span>
                         <div class="entity-combo" id="partnerCombo">
                             <input id="partnerSelect" class="entity-combo-input" type="text" placeholder="Выберите партнёра" autocomplete="off">
                             <div class="entity-combo-dropdown" id="partnerDropdown" hidden></div>
+                        </div>
+                    </label>
+                    <label class="entity-field">
+                        <span class="entity-label">Ответственный менеджер</span>
+                        <div class="entity-combo">
+                            <input id="managerNameText" class="entity-combo-input" type="text" placeholder="Ответственный менеджер" autocomplete="off">
                         </div>
                     </label>
                 </div>
@@ -261,6 +267,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-	    <script src="/kp_generator_extra/app.js?v=20260504_02"></script>
+	    <script src="/kp_generator_extra/app.js?v=20260506_02"></script>
 	</body>
 	</html>
