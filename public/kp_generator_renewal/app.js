@@ -1446,9 +1446,51 @@ class CPGenerator {
         return fromDb;
     }
 
+    getExtraUserPriceTiersMap(tariffKey) {
+        const base = this.config?.tariffs?.[tariffKey]?.extraUserPriceTiers || {};
+        const clientId = this.state.selectedClientId;
+        const override = clientId ? (this.clientPrices?.[clientId]?.extra_user_tiers?.[tariffKey] || null) : null;
+        return override ? { ...base, ...override } : base;
+    }
+
+    getTotalUsersForExtraUserPricing(tariffKey) {
+        const tariff = this.config?.tariffs?.[tariffKey] || {};
+        const includedUsers = Math.max(0, Number(tariff.users) || 0);
+        const extraUsers = Math.max(0, Number(this.state.extraUsers) || 0);
+        return includedUsers + extraUsers;
+    }
+
+    getExtraUserTierPriceByTotalUsers(tariffKey, totalUsers) {
+        const tiersByCurrency = this.getExtraUserPriceTiersMap(tariffKey);
+        const tiers = Array.isArray(tiersByCurrency?.[this.state.currency])
+            ? tiersByCurrency[this.state.currency]
+            : [];
+
+        if (tiers.length === 0) {
+            return null;
+        }
+
+        const userCount = Math.max(0, Number(totalUsers) || 0);
+        const matched = tiers.find((tier) => {
+            const from = Math.max(1, Number(tier?.from) || 1);
+            const toRaw = tier?.to;
+            const to = toRaw === null || typeof toRaw === "undefined" || toRaw === ""
+                ? null
+                : Math.max(1, Number(toRaw) || 1);
+            return userCount >= from && (to === null || userCount <= to);
+        });
+
+        return matched ? (Number(matched.unitPrice) || 0) : 0;
+    }
+
     getExtraUserPriceByKey(tariffKey) {
         // Period discount (e.g. 12 months -15%) applies only to the base tariff, not to add-ons.
-        return this.getExtraUserMonthlyBase(tariffKey);
+        const tierPrice = this.getExtraUserTierPriceByTotalUsers(
+            tariffKey,
+            this.getTotalUsersForExtraUserPricing(tariffKey)
+        );
+
+        return tierPrice === null ? this.getExtraUserMonthlyBase(tariffKey) : tierPrice;
     }
 
     getSelectedClient() {
@@ -1971,7 +2013,7 @@ class CPGenerator {
 
         if (this.state.extraUsers > 0) {
             const quantity = Math.max(1, Number(this.state.extraUsers) || 1);
-            const lineUnitPrice = this.getExtraUserMonthlyBase(tariffKey);
+            const lineUnitPrice = this.getExtraUserPriceByKey(tariffKey);
             const extraUserTariffId = Number(tariff?.extraUserTariffId) || null;
             items.push({
                 service_key: extraUserTariffId
@@ -3197,7 +3239,7 @@ class CPGenerator {
                 rows.push({
                     name: `Доп. пользователи`,
                     qty: this.state.extraUsers,
-                    unitMonthly: this.getExtraUserMonthlyBase(this.state.selectedTariff),
+                    unitMonthly: this.getExtraUserPriceByKey(this.state.selectedTariff),
                     kind: 'pack',
                     discountPercent: 0,
                     partnerPercent: packPartnerPercent,
@@ -4364,10 +4406,10 @@ class CPGenerator {
             monthlyTariffBase += this.getTariffMonthlyBase(this.state.selectedTariff);
 
             if (this.state.extraUsers > 0) {
-                monthlyPacks += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
+                monthlyPacks += this.getExtraUserPriceByKey(this.state.selectedTariff) * this.state.extraUsers;
             }
         } else if (this.state.selectedTariff && this.state.extraUsers > 0) {
-            monthlyPacks += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
+            monthlyPacks += this.getExtraUserPriceByKey(this.state.selectedTariff) * this.state.extraUsers;
         }
 
         const selectedTariff = this.state.selectedTariff
@@ -4437,10 +4479,10 @@ class CPGenerator {
             monthlyTariffBase += this.getTariffMonthlyBase(this.state.selectedTariff);
 
             if (this.state.extraUsers > 0) {
-                monthlyPacks += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
+                monthlyPacks += this.getExtraUserPriceByKey(this.state.selectedTariff) * this.state.extraUsers;
             }
         } else if (this.state.selectedTariff && this.state.extraUsers > 0) {
-            monthlyPacks += this.getExtraUserMonthlyBase(this.state.selectedTariff) * this.state.extraUsers;
+            monthlyPacks += this.getExtraUserPriceByKey(this.state.selectedTariff) * this.state.extraUsers;
         }
 
         const selectedTariff = this.state.selectedTariff

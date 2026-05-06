@@ -223,6 +223,9 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'price_list'], function () {
         Route::get('/', [PriceListController::class, 'index'])->name('price_list.index');
         Route::post('/store', [PriceListController::class, 'store'])->name('price_list.store');
+        Route::post('/extra-user-tiers/store', [PriceListController::class, 'storeExtraUserTier'])->name('price_list.extra_user_tiers.store');
+        Route::patch('/extra-user-tiers/{extraUserPriceTier}', [PriceListController::class, 'updateExtraUserTier'])->name('price_list.extra_user_tiers.update');
+        Route::delete('/extra-user-tiers/{extraUserPriceTier}', [PriceListController::class, 'destroyExtraUserTier'])->name('price_list.extra_user_tiers.delete');
         Route::patch('/{price}', [PriceListController::class, 'update'])->name('price_list.update');
         Route::delete('/{price}', [PriceListController::class, 'destroy'])->name('price_list.delete');
     });

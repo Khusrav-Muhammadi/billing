@@ -8,6 +8,7 @@ use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\CurrencyRate;
 use App\Models\ExchangeRate;
+use App\Models\ExtraUserPriceTier;
 use App\Models\ImplementationDiscountCap;
 use App\Models\Organization;
 use App\Models\Partner;
@@ -580,6 +581,13 @@ class ConnectedClientServiceController extends Controller
                 'extraUserPrices' => $extraUserPrices,
                 'prices12Months'  => array_map(fn($p) => round($p * 0.85, 4), $prices),
                 'extraUserPrice'  => $extraUserPrices,
+                'extraUserPriceTiers' => $this->buildExtraUserPriceTiersForTariff(
+                    (int) $tariff->id,
+                    null,
+                    $currenciesByIdForJs,
+                    array_keys($currenciesForJs),
+                    $today
+                ),
                 'suggestedImplementationPrice' => $this->buildImplementationPricesForTariff($tariff, $today),
                 'includedServices' => $includedServicesKeys,
                 'includedServiceQuantities' => $includedQty,
@@ -1001,11 +1009,81 @@ class ConnectedClientServiceController extends Controller
         return null;
     }
 
+    private function buildExtraUserPriceTiersForTariff(
+        int $tariffId,
+        ?int $organizationId,
+        array $currenciesById,
+        array $currencyCodes,
+        int $asOfTs
+    ): array {
+        $result = [];
+        foreach ($currencyCodes as $currencyCode) {
+            $code = strtoupper(trim((string) $currencyCode));
+            if ($code !== '') {
+                $result[$code] = [];
+            }
+        }
+
+        if ($tariffId <= 0 || !Schema::hasTable('extra_user_price_tiers')) {
+            return $result;
+        }
+
+        $asOfDate = date('Y-m-d', $asOfTs);
+        $rows = ExtraUserPriceTier::query()
+            ->where('tariff_id', $tariffId)
+            ->when(
+                $organizationId !== null && $organizationId > 0,
+                fn ($query) => $query->where('organization_id', $organizationId),
+                fn ($query) => $query->whereNull('organization_id')
+            )
+            ->where(function ($query) use ($asOfDate) {
+                $query->whereNull('start_date')->orWhereDate('start_date', '<=', $asOfDate);
+            })
+            ->where(function ($query) use ($asOfDate) {
+                $query->whereNull('end_date')->orWhereDate('end_date', '>=', $asOfDate);
+            })
+            ->orderBy('min_total_users')
+            ->orderByRaw('CASE WHEN max_total_users IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('max_total_users')
+            ->orderByDesc('start_date')
+            ->orderByDesc('id')
+            ->get();
+
+        foreach ($rows as $row) {
+            $currencyCode = strtoupper(trim((string) ($currenciesById[(string) $row->currency_id] ?? '')));
+            $unitPrice = round((float) $row->unit_price, 4);
+            $minTotalUsers = (int) $row->min_total_users;
+            $maxTotalUsers = $row->max_total_users !== null ? (int) $row->max_total_users : null;
+
+            if ($currencyCode === '' || $unitPrice <= 0 || $minTotalUsers <= 0) {
+                continue;
+            }
+
+            if (!isset($result[$currencyCode])) {
+                $result[$currencyCode] = [];
+            }
+
+            $result[$currencyCode][] = [
+                'from' => $minTotalUsers,
+                'to' => $maxTotalUsers,
+                'unitPrice' => $unitPrice,
+            ];
+        }
+
+        return $result;
+    }
+
 // Собираем персональные цены для каждой организации
     private function buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, int $asOfTs): array
     {
         $result = [];
         $today = $asOfTs;
+        $currenciesById = Currency::query()
+            ->get(['id', 'symbol_code'])
+            ->mapWithKeys(static function ($currency): array {
+                return [(string) $currency->id => strtoupper(trim((string) $currency->symbol_code))];
+            })
+            ->all();
 
         foreach ($tariffs as $tariff) {
             $key = 'tariff-' . $tariff->id;
@@ -1131,6 +1209,44 @@ class ConnectedClientServiceController extends Controller
                     $result[$clientId]['services'][$key]['__meta'][$symbol]['score'] = $startScore;
                     $result[$clientId]['services'][$key]['__meta'][$symbol]['end'] = $endScore;
                 }
+            }
+        }
+
+        if (Schema::hasTable('extra_user_price_tiers')) {
+            $asOfDate = date('Y-m-d', $today);
+            $tierRows = ExtraUserPriceTier::query()
+                ->whereNotNull('organization_id')
+                ->whereIn('tariff_id', $tariffs->pluck('id')->map(static fn($id): int => (int) $id)->all())
+                ->where(function ($query) use ($asOfDate) {
+                    $query->whereNull('start_date')->orWhereDate('start_date', '<=', $asOfDate);
+                })
+                ->where(function ($query) use ($asOfDate) {
+                    $query->whereNull('end_date')->orWhereDate('end_date', '>=', $asOfDate);
+                })
+                ->orderBy('min_total_users')
+                ->orderByRaw('CASE WHEN max_total_users IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('max_total_users')
+                ->orderByDesc('start_date')
+                ->orderByDesc('id')
+                ->get();
+
+            foreach ($tierRows as $tierRow) {
+                $clientId = (int) $tierRow->organization_id;
+                $key = 'tariff-' . (int) $tierRow->tariff_id;
+                $symbol = strtoupper(trim((string) ($currenciesById[(string) $tierRow->currency_id] ?? '')));
+                $unitPrice = round((float) $tierRow->unit_price, 4);
+                $minTotalUsers = (int) $tierRow->min_total_users;
+                $maxTotalUsers = $tierRow->max_total_users !== null ? (int) $tierRow->max_total_users : null;
+
+                if ($clientId <= 0 || $symbol === '' || $unitPrice <= 0 || $minTotalUsers <= 0) {
+                    continue;
+                }
+
+                $result[$clientId]['extra_user_tiers'][$key][$symbol][] = [
+                    'from' => $minTotalUsers,
+                    'to' => $maxTotalUsers,
+                    'unitPrice' => $unitPrice,
+                ];
             }
         }
 

@@ -10,6 +10,7 @@ use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\CurrencyRate;
 use App\Models\ExchangeRate;
+use App\Models\ExtraUserPriceTier;
 use App\Models\ImplementationDiscountCap;
 use App\Models\Organization;
 use App\Models\PartnerProcent;
@@ -1014,6 +1015,13 @@ class CommercialFooferController extends Controller
                 'suggestedImplementationPrice' => $implementationPrices,
                 'extraUserPrice' => $extraUserPrices,
                 'extraUserPrices' => $extraUserPrices,
+                'extraUserPriceTiers' => $this->buildExtraUserPriceTiersForTariff(
+                    (int)$tariff->id,
+                    null,
+                    $currenciesById,
+                    $currencyCodes,
+                    $asOfTs
+                ),
                 'includedServices' => $includedServices,
                 'includedServiceQuantities' => $includedQuantities,
                 'features' => (array)data_get($templateTariff, 'features', []),
@@ -1152,6 +1160,71 @@ class CommercialFooferController extends Controller
         ];
     }
 
+    private function buildExtraUserPriceTiersForTariff(
+        int $tariffId,
+        ?int $organizationId,
+        array $currenciesById,
+        array $currencyCodes,
+        int $asOfTs
+    ): array {
+        $result = [];
+        foreach ($currencyCodes as $currencyCode) {
+            $code = strtoupper(trim((string)$currencyCode));
+            if ($code !== '') {
+                $result[$code] = [];
+            }
+        }
+
+        if ($tariffId <= 0 || !Schema::hasTable('extra_user_price_tiers')) {
+            return $result;
+        }
+
+        $rows = ExtraUserPriceTier::query()
+            ->where('tariff_id', $tariffId)
+            ->when(
+                $organizationId !== null && $organizationId > 0,
+                fn ($query) => $query->where('organization_id', $organizationId),
+                fn ($query) => $query->whereNull('organization_id')
+            )
+            ->where(function ($query) use ($asOfTs) {
+                $asOfDate = date('Y-m-d', $asOfTs);
+                $query->whereNull('start_date')->orWhereDate('start_date', '<=', $asOfDate);
+            })
+            ->where(function ($query) use ($asOfTs) {
+                $asOfDate = date('Y-m-d', $asOfTs);
+                $query->whereNull('end_date')->orWhereDate('end_date', '>=', $asOfDate);
+            })
+            ->orderBy('min_total_users')
+            ->orderByRaw('CASE WHEN max_total_users IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('max_total_users')
+            ->orderByDesc('start_date')
+            ->orderByDesc('id')
+            ->get();
+
+        foreach ($rows as $row) {
+            $currencyCode = strtoupper(trim((string)($currenciesById[(string)$row->currency_id] ?? '')));
+            $unitPrice = round((float)$row->unit_price, 4);
+            $minTotalUsers = (int)$row->min_total_users;
+            $maxTotalUsers = $row->max_total_users !== null ? (int)$row->max_total_users : null;
+
+            if ($currencyCode === '' || $unitPrice <= 0 || $minTotalUsers <= 0) {
+                continue;
+            }
+
+            if (!isset($result[$currencyCode])) {
+                $result[$currencyCode] = [];
+            }
+
+            $result[$currencyCode][] = [
+                'from' => $minTotalUsers,
+                'to' => $maxTotalUsers,
+                'unitPrice' => $unitPrice,
+            ];
+        }
+
+        return $result;
+    }
+
     private function buildClientPricesForOrganizations(int $asOfTs, array $organizationIds): array
     {
         $allowedOrgIds = array_values(array_filter(array_map('intval', $organizationIds), static fn(int $id): bool => $id > 0));
@@ -1159,6 +1232,12 @@ class CommercialFooferController extends Controller
             return [];
         }
         $allowed = array_fill_keys($allowedOrgIds, true);
+        $currenciesById = Currency::query()
+            ->get(['id', 'symbol_code'])
+            ->mapWithKeys(static function ($currency): array {
+                return [(string)$currency->id => strtoupper(trim((string)$currency->symbol_code))];
+            })
+            ->all();
 
         $tariffs = Tariff::query()
             ->where('is_tariff', true)
@@ -1353,6 +1432,44 @@ class CommercialFooferController extends Controller
             }
         }
 
+        if (Schema::hasTable('extra_user_price_tiers')) {
+            $asOfDate = date('Y-m-d', $asOfTs);
+            $tierRows = ExtraUserPriceTier::query()
+                ->whereIn('organization_id', $allowedOrgIds)
+                ->whereIn('tariff_id', $tariffs->pluck('id')->map(static fn($id): int => (int)$id)->all())
+                ->where(function ($query) use ($asOfDate) {
+                    $query->whereNull('start_date')->orWhereDate('start_date', '<=', $asOfDate);
+                })
+                ->where(function ($query) use ($asOfDate) {
+                    $query->whereNull('end_date')->orWhereDate('end_date', '>=', $asOfDate);
+                })
+                ->orderBy('min_total_users')
+                ->orderByRaw('CASE WHEN max_total_users IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('max_total_users')
+                ->orderByDesc('start_date')
+                ->orderByDesc('id')
+                ->get();
+
+            foreach ($tierRows as $tierRow) {
+                $orgId = (int)$tierRow->organization_id;
+                $tariffKey = 'tariff-' . (int)$tierRow->tariff_id;
+                $symbol = strtoupper(trim((string)($currenciesById[(string)$tierRow->currency_id] ?? '')));
+                $unitPrice = round((float)$tierRow->unit_price, 4);
+                $minTotalUsers = (int)$tierRow->min_total_users;
+                $maxTotalUsers = $tierRow->max_total_users !== null ? (int)$tierRow->max_total_users : null;
+
+                if ($orgId <= 0 || !isset($allowed[$orgId]) || $symbol === '' || $unitPrice <= 0 || $minTotalUsers <= 0) {
+                    continue;
+                }
+
+                $result[$orgId]['extra_user_tiers'][$tariffKey][$symbol][] = [
+                    'from' => $minTotalUsers,
+                    'to' => $maxTotalUsers,
+                    'unitPrice' => $unitPrice,
+                ];
+            }
+        }
+
         foreach ($result as $orgId => $groups) {
             foreach (['tariffs', 'services', 'extra_users'] as $groupName) {
                 if (empty($result[$orgId][$groupName])) {
@@ -1411,6 +1528,20 @@ class CommercialFooferController extends Controller
                 }
                 $config['tariffs'][$tariffKey]['extraUserPrices'][(string)$currencyCode] = (float)$sum;
                 $config['tariffs'][$tariffKey]['extraUserPrice'][(string)$currencyCode] = (float)$sum;
+            }
+        }
+
+        $extraUserTierOverrides = (array)($organizationPrices['extra_user_tiers'] ?? []);
+        foreach ($extraUserTierOverrides as $tariffKey => $tiersByCurrency) {
+            if (!isset($config['tariffs'][$tariffKey]) || !is_array($tiersByCurrency)) {
+                continue;
+            }
+
+            foreach ($tiersByCurrency as $currencyCode => $tiers) {
+                if (!is_array($tiers)) {
+                    continue;
+                }
+                $config['tariffs'][$tariffKey]['extraUserPriceTiers'][(string)$currencyCode] = array_values($tiers);
             }
         }
 

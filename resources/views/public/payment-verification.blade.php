@@ -185,8 +185,6 @@
     if (is_numeric($sum)) {
         $displaySum = number_format((float) $sum, 2, '.', ' ');
     }
-    $partnerName = (string) ($offer?->partner?->name ?? '');
-    $hasPartner = (bool) ($offer?->partner_id);
     $agreementUrl = 'https://shamcrm.com/agreement';
 @endphp
 
@@ -198,7 +196,7 @@
         </div>
         <h1 class="title">Подтверждение оплаты</h1>
         <p class="subtitle">
-            Перед отправкой ссылки проверьте данные. После подтверждения ссылка на оплату в {{ $providerLabel }} уйдёт на почту клиента{{ $hasPartner ? ' и партнёра' : '' }}.
+            Перед переходом к оплате проверьте данные и подтвердите согласие с условиями оферты.
         </p>
     </div>
 
@@ -250,25 +248,12 @@
             </div>
         @endif
 
-        @if (session('payment_link_sent'))
-            <div class="notice" style="border-color:#bbf7d0; background:#f0fdf4; color:#166534;">
-                <strong style="color:#14532d;">Готово.</strong>
-                {{ session('payment_link_sent') }}
-            </div>
-        @endif
-
         <form method="POST" action="{{ $goUrl }}" style="margin:0;">
             @csrf
 
             <div class="notice">
                 <strong>Важно.</strong>
-                @if($hasPartner)
-
-                    Нажимая «Отправить ссылку», я подтверждаю, что ознакомил(а) клиента с услугами SHAMCRM и условиями оферты.
-                    В случае отказа средства возврату не подлежат.
-                @else
-                    Нажимая «Отправить ссылку», я подтверждаю, что ознакомлен(а) и согласен(на) с условиями публичной оферты SHAMCRM.
-                @endif
+                Нажимая «Перейти к оплате», я подтверждаю, что ознакомлен(а) и согласен(на) с условиями публичной оферты SHAMCRM.
                 <div style="margin-top:8px;">
                     <a href="{{ $agreementUrl }}" target="_blank" rel="noopener" style="color:#92400e; font-weight:700;">
                         Ознакомиться с офертой
@@ -277,18 +262,14 @@
                 <div style="margin-top:10px; display:flex; gap:10px; align-items:flex-start;">
                     <input type="checkbox" id="consent" name="consent" value="1" style="margin-top:2px;">
                     <label for="consent" style="cursor:pointer;">
-                        @if($hasPartner)
-                            Я подтверждаю, что ознакомил(а) клиента с условиями оферты.
-                        @else
-                            Я принимаю условия оферты.
-                        @endif
+                        Я принимаю условия оферты.
                     </label>
                 </div>
             </div>
 
             <div class="actions">
                 <button class="btn btn-primary" id="goBtn" type="submit">
-                    Отправить ссылку
+                    Перейти к оплате
                 </button>
                 <a class="btn btn-secondary" href="javascript:history.back()">
                     Назад

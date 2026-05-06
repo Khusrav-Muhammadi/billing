@@ -14,6 +14,7 @@ use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Models\User;
+use App\Services\Mailing\ResendMailService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -339,9 +340,12 @@ class ClientPaymentController extends Controller
                         'return_url' => $this->trustedReturnUrl($request),
                     ]));
 
+                    $this->sendPaymentVerificationLink($commercialOffer, $payment, 'alif', $verificationUrl);
+                    $url = $this->trustedReturnUrl($request) ?: route('application.index');
+
                     return $request->expectsJson()
-                        ? response()->json(['redirect_url' => $verificationUrl])
-                        : redirect()->to($verificationUrl);
+                        ? response()->json(['redirect_url' => $url])
+                        : redirect()->to($url);
                 }
 
                 return $request->expectsJson()
@@ -360,9 +364,12 @@ class ClientPaymentController extends Controller
                         'return_url' => $this->trustedReturnUrl($request),
                     ]));
 
+                    $this->sendPaymentVerificationLink($commercialOffer, $payment, 'octo', $verificationUrl);
+                    $url = $this->trustedReturnUrl($request) ?: route('application.index');
+
                     return $request->expectsJson()
-                        ? response()->json(['redirect_url' => $verificationUrl])
-                        : redirect()->to($verificationUrl);
+                        ? response()->json(['redirect_url' => $url])
+                        : redirect()->to($url);
                 }
 
                 return $request->expectsJson()
@@ -650,6 +657,58 @@ class ClientPaymentController extends Controller
         ]);
 
         return in_array($host, $allowedHosts, true) ? $url : null;
+    }
+
+    private function sendPaymentVerificationLink(
+        CommercialOffer $offer,
+        Payment $payment,
+        string $provider,
+        string $verificationUrl
+    ): void {
+        $offer->loadMissing([
+            'organization:id,name,email,client_id',
+            'organization.client:id,name,email',
+        ]);
+
+        $email = trim((string)($offer->client_email ?: $offer->organization?->client?->email ?: $offer->organization?->email ?: $payment->email));
+        if ($email === '') {
+            Log::warning('ClientPaymentController: client email is empty for payment verification link', [
+                'payment_id' => $payment->id,
+                'commercial_offer_id' => $offer->id,
+                'organization_id' => $offer->organization_id,
+            ]);
+            return;
+        }
+
+        try {
+            app(ResendMailService::class)->sendWithView(
+                to: $email,
+                subject: 'Ссылка на оплату SHAMCRM',
+                view: 'mail.payment_checkout_link',
+                data: [
+                    'recipientName' => trim((string)($offer->client_name ?: $offer->organization?->client?->name ?: $payment->name ?: '')),
+                    'payment' => $payment,
+                    'offer' => $offer,
+                    'providerLabel' => $provider === 'alif' ? 'Alif' : 'Octo Bank',
+                    'checkoutUrl' => $verificationUrl,
+                    'currency' => strtoupper((string)($offer->payable_currency ?: $offer->currency ?: '')),
+                ],
+                sendInternalCopy: false,
+                logContext: [
+                    'organization_id' => $offer->organization_id,
+                    'client_id' => $offer->organization?->client_id,
+                    'commercial_offer_id' => $offer->id,
+                    'action' => 'payment_verification_link_email_client',
+                ]
+            );
+        } catch (\Throwable $e) {
+            Log::error('ClientPaymentController: failed to send payment verification link email', [
+                'payment_id' => $payment->id,
+                'commercial_offer_id' => $offer->id,
+                'recipient' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function handleOnlinePaymentWebhook(
