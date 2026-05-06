@@ -192,13 +192,7 @@
                                         <div class="field-value">
                                             <a href="{{ $siteUrl }}">{{ $siteUrl }}</a>
                                         </div>
-                                        <button class="copy-btn" onclick="copyText('{{ $siteUrl }}', this)">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                            </svg>
-                                            Копировать
-                                        </button>
+
                                     </div>
                                 </td>
                             </tr>
@@ -209,13 +203,6 @@
                                     <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">👤 Логин</span>
                                     <div class="field-wrap">
                                         <div class="field-value">admin</div>
-                                        <button class="copy-btn" onclick="copyText('admin', this)">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                            </svg>
-                                            Копировать
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -226,13 +213,6 @@
                                     <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">🔑 Пароль</span>
                                     <div class="field-wrap">
                                         <div class="field-value" style="letter-spacing: 1px;">{{ $password }}</div>
-                                        <button class="copy-btn" onclick="copyText('{{ $password }}', this)">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                            </svg>
-                                            Копировать
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -243,13 +223,6 @@
                                     <span style="font-size: 13.5px; color: #555; display: block; margin-bottom: 6px;">🪪 ID</span>
                                     <div class="field-wrap">
                                         <div class="field-value">{{ $id }}</div>
-                                        <button class="copy-btn" onclick="copyText('{{ $id }}', this)">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                            </svg>
-                                            Копировать
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
