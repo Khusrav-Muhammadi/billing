@@ -132,7 +132,12 @@ class ClientPaymentController extends Controller
     {
         $payload = $request->all();
         $providerPaymentId = trim((string)(data_get($payload, 'id') ?: data_get($payload, 'payload.id')));
-        $status = strtoupper((string)(data_get($payload, 'status') ?: data_get($payload, 'payload.status')));
+        $status = strtoupper((string)(
+            data_get($payload, 'payment.status')
+            ?: data_get($payload, 'status')
+            ?: data_get($payload, 'payload.payment.status')
+            ?: data_get($payload, 'payload.status')
+        ));
 
         if ($providerPaymentId === '') {
             return response()->json(['success' => false, 'message' => 'Payment id not found'], 422);
@@ -153,7 +158,7 @@ class ClientPaymentController extends Controller
             providerPaymentId: $providerPaymentId,
             payload: $payload,
             paidAt: now(),
-            paymentOrderNumber: $providerPaymentId
+            paymentOrderNumber: trim((string)(data_get($payload, 'payment.id') ?: $providerPaymentId))
         );
 
         return response()->json($result);
