@@ -22,8 +22,11 @@ class ClientBalanceRegistryService
             return;
         }
 
-        $offer->loadMissing(['items']);
+        $offer->loadMissing(['items.tariff:id,is_external']);
         $incomeAmount = $this->calculateGrossAmount($offer);
+        if ($incomeAmount <= 0) {
+            return;
+        }
 
         DB::transaction(function () use ($offer, $incomeAmount, $status) {
             ClientBalance::query()->create([
@@ -41,6 +44,10 @@ class ClientBalanceRegistryService
         $gross = 0.0;
 
         foreach ($offer->items as $item) {
+            if ($this->isExternalItem($item)) {
+                continue;
+            }
+
             $netSourceAmount = round((float) $item->total_price, 6);
             if ($netSourceAmount <= 0) {
                 continue;
@@ -49,10 +56,6 @@ class ClientBalanceRegistryService
             $discountPercent = round(max(0, (float) $item->discount_percent), 4);
             $grossLine = $this->reversePercent($netSourceAmount, $discountPercent);
             $gross += $grossLine;
-        }
-
-        if ($gross <= 0) {
-            return round((float) $offer->grand_total, 4);
         }
 
         return round($gross, 4);
@@ -70,5 +73,10 @@ class ClientBalanceRegistryService
         }
 
         return $amount / $factor;
+    }
+
+    private function isExternalItem($item): bool
+    {
+        return (bool) ($item?->tariff?->is_external ?? false);
     }
 }

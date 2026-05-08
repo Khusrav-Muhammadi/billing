@@ -22,6 +22,7 @@ class UpdateRequest extends FormRequest
             'project_count' => ['nullable', 'integer', 'min:0'],
             'end_date' => ['nullable', 'date'],
             'can_increase' => ['nullable', 'boolean'],
+            'is_external' => ['nullable', 'boolean'],
             'is_tariff' => ['nullable', 'boolean'],
             'is_extra_user' => ['nullable', 'boolean'],
             'included_services' => ['nullable', 'array'],

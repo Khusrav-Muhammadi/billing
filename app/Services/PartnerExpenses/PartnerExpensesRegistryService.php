@@ -28,11 +28,15 @@ class PartnerExpensesRegistryService
             return;
         }
 
-        $offer->loadMissing(['items']);
+        $offer->loadMissing(['items.tariff:id,is_external']);
 
         DB::transaction(function () use ($offer, $status, $requestType) {
 
             foreach ($offer->items as $item) {
+                if ($this->isExternalItem($item)) {
+                    continue;
+                }
+
                 $partnerPercent = $this->resolvePartnerPercent($offer, $item, $status);
 
                 if ($partnerPercent <= 0) {
@@ -141,6 +145,11 @@ class PartnerExpensesRegistryService
         $percent = round(max(0, $rawPercent), 2);
 
         return min(100.0, $percent);
+    }
+
+    private function isExternalItem($item): bool
+    {
+        return (bool) ($item?->tariff?->is_external ?? false);
     }
 
 }

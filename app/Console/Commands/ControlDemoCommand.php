@@ -34,6 +34,9 @@ class ControlDemoCommand extends Command
     public function handle()
     {
         $organizations = Organization::query()
+            ->whereHas('client', function ($query) {
+                return $query->where('nfr', false);
+            })
             ->whereDoesntHave('connections')
             ->with('client:id,name,email,is_demo,is_active,created_at')
             ->get();

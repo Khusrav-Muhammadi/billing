@@ -1059,12 +1059,22 @@ class CommercialFooferController extends Controller
                 continue;
             }
 
+            $implementationPrices = $this->pickActivePrices(
+                $this->filterImplementationPriceRows($service->prices),
+                $asOfTs
+            );
+            $implementationPrices = $this->normalizeExplicitCurrencyPrices(
+                $implementationPrices,
+                $currencyCodes
+            );
+
             $servicesForJs['service-' . (int)$service->id] = [
                 'id' => (int)$service->id,
                 'name' => (string)$service->name,
                 'description' => '',
                 'type' => 'monthly',
                 'prices' => $prices,
+                'suggestedImplementationPrice' => $implementationPrices,
                 'hasChannels' => (bool)$service->can_increase,
                 'isAvailableOnDate' => true,
                 'excludedOrganizationIds' => [],

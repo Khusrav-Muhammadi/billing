@@ -22,11 +22,15 @@ class DiscountExpensesRegistryService
             return;
         }
 
-        $offer->loadMissing(['items']);
+        $offer->loadMissing(['items.tariff:id,is_external']);
 
         DB::transaction(function () use ($offer, $status) {
 
             foreach ($offer->items as $item) {
+                if ($this->isExternalItem($item)) {
+                    continue;
+                }
+
                 $discountPercent = round(max(0, (float) $item->discount_percent), 2);
                 if ($discountPercent <= 0) {
                     continue;
@@ -83,6 +87,11 @@ class DiscountExpensesRegistryService
         }
 
         return round($discountedAmount / $coefficient, 4);
+    }
+
+    private function isExternalItem($item): bool
+    {
+        return (bool) ($item?->tariff?->is_external ?? false);
     }
 
 

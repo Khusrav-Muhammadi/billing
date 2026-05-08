@@ -20,6 +20,7 @@
                     <th>Кол-во пользователей</th>
                     <th>Кол-во проектов</th>
                     <th>Тип</th>
+                    <th>Внешняя</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -38,6 +39,7 @@
                                 {{ $tariff->is_tariff ? 'Тариф' : 'Услуга' }}
                             @endif
                         </td>
+                        <td>{{ $tariff->is_external ? 'Да' : 'Нет' }}</td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             @if($tariff->is_tariff && !$tariff->is_extra_user)
@@ -86,6 +88,13 @@
                                             <label for="can_increase">Можно увеличивать количество</label>
                                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                                    name="can_increase" value="1" {{ $tariff->can_increase ? 'checked' : '' }}
+                                                   style="width: 20px; height: 20px">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="is_external">Внешняя услуга</label>
+                                            <input type="checkbox" class="form-check-inline custom-checkbox"
+                                                   name="is_external" value="1" {{ $tariff->is_external ? 'checked' : '' }}
                                                    style="width: 20px; height: 20px">
                                         </div>
 
@@ -186,6 +195,13 @@
                             <label for="can_increase">Можно увеличивать количество</label>
                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                    name="can_increase" value="1" {{ old('can_increase') ? 'checked' : '' }}
+                                   style="width: 20px; height: 20px">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="is_external">Внешняя услуга</label>
+                            <input type="checkbox" class="form-check-inline custom-checkbox"
+                                   name="is_external" value="1" {{ old('is_external') ? 'checked' : '' }}
                                    style="width: 20px; height: 20px">
                         </div>
 

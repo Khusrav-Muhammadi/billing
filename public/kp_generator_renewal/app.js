@@ -278,6 +278,10 @@ class CPGenerator {
             return Boolean(this.state.hasSavedImplementation);
         }
 
+        if (this.getSelectedServiceImplementationPayments().length > 0) {
+            return true;
+        }
+
         const partner = this.getSelectedPartner();
         if (Boolean(partner?.has_implementation)) {
             return true;
@@ -287,7 +291,116 @@ class CPGenerator {
     }
 
     isImplementationEnabled() {
-        return this.shouldShowImplementationSection() && Boolean(this.state.implementationEnabled);
+        return this.shouldShowImplementationSection()
+            && (Boolean(this.state.implementationEnabled) || this.getSelectedServiceImplementationPayments().length > 0);
+    }
+
+    getSelectedServiceImplementationPayments(currencyCode = this.state.currency) {
+        const services = this.config?.services || {};
+        const selectedServices = this.state.selectedServices || {};
+        const currency = this.normalizeCurrencyCode(currencyCode);
+        const rows = [];
+
+        Object.entries(selectedServices).forEach(([serviceKey, serviceState]) => {
+            if (!serviceState?.enabled) return;
+
+            const service = services[serviceKey];
+            if (!service?.suggestedImplementationPrice) return;
+            if (!this.shouldChargeServiceImplementation(serviceKey, service, serviceState)) return;
+
+            const price = Math.max(0, Number(service.suggestedImplementationPrice[currency]) || 0);
+            if (price <= 0) return;
+
+            rows.push({
+                key: serviceKey,
+                name: `Внедрение: ${service.name || serviceKey}`,
+                price: this.roundMoney(price),
+            });
+        });
+
+        return rows;
+    }
+
+    shouldChargeServiceImplementation(serviceKey, service, serviceState) {
+        if (!serviceState?.enabled || !service) {
+            return false;
+        }
+
+        const selectedTariff = this.state.selectedTariff
+            ? this.config?.tariffs?.[this.state.selectedTariff]
+            : null;
+        const isIncluded = Boolean(selectedTariff?.includedServices?.includes(serviceKey));
+
+        if (this.isPreviouslyPurchasedNonCountableService(serviceKey, service, isIncluded)) {
+            return false;
+        }
+
+        const previousState = this.getPreviousServiceState(serviceKey);
+        const previousEnabled = Boolean(previousState?.enabled);
+        const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
+
+        if (this.isRenewalMode() && !service.hasChannels && previousEnabled && !isIncluded) {
+            return false;
+        }
+
+        if (service.hasChannels) {
+            const channels = this.getServiceChannelsCount(serviceState);
+            if (channels <= 0) {
+                return false;
+            }
+
+            if (isIncluded) {
+                const includedChannels = this.getIncludedChannels(this.state.selectedTariff, serviceKey);
+                const shouldUsePreviousChannels = this.isConnectionExtraServicesMode() || this.isRenewalMode();
+                const previousBaselineChannels = shouldUsePreviousChannels ? previousChannels : 0;
+                const baselineChannels = Math.max(0, includedChannels, previousBaselineChannels);
+                return Math.max(0, channels - baselineChannels) > 0;
+            }
+
+            if (this.isConnectionExtraServicesMode() || this.isRenewalMode()) {
+                if (previousChannels > 0) {
+                    return Math.max(0, channels - previousChannels) > 0;
+                }
+            }
+
+            return true;
+        }
+
+        if (isIncluded) {
+            return false;
+        }
+
+        return true;
+    }
+
+    getImplementationExtraServicesPayload() {
+        const rows = [];
+
+        (this.state.customOneTimePayments || []).forEach((p) => {
+            rows.push({
+                name: String(p?.name || '').trim(),
+                price: this.roundMoney(Number(p?.price) || 0),
+            });
+        });
+
+        this.getSelectedServiceImplementationPayments().forEach((p) => {
+            rows.push({
+                name: String(p?.name || '').trim(),
+                price: this.roundMoney(Number(p?.price) || 0),
+            });
+        });
+
+        const seen = new Set();
+        return rows
+            .filter((p) => p.name !== '' || (Number(p.price) || 0) > 0)
+            .filter((p) => {
+                const key = `${p.name}::${p.price}`;
+                if (seen.has(key)) {
+                    return false;
+                }
+                seen.add(key);
+                return true;
+            });
     }
 
     parsePercentValue(value) {
@@ -1064,6 +1177,13 @@ class CPGenerator {
                     name: String(extra?.name || '').trim(),
                     price: Math.max(0, Number(extra?.price) || 0),
                 }));
+                const autoServiceImplementationKeys = new Set(
+                    this.getSelectedServiceImplementationPayments().map((extra) => `${extra.name}::${extra.price}`)
+                );
+                this.state.customOneTimePayments = this.state.customOneTimePayments.filter((extra) => {
+                    const key = `${extra.name}::${this.roundMoney(extra.price)}`;
+                    return !autoServiceImplementationKeys.has(key);
+                });
                 this.state.hasSavedImplementation = Boolean(payload.implementation.enabled)
                     || this.state.implementationPrice > 0
                     || this.state.implementationDiscountPercent > 0
@@ -1292,14 +1412,15 @@ class CPGenerator {
         }
 
         const requiredByPartner = this.isImplementationRequiredByPartner();
-        if (requiredByPartner && !this.state.isLocked) {
+        const hasServiceImplementation = this.getSelectedServiceImplementationPayments().length > 0;
+        if ((requiredByPartner || hasServiceImplementation) && !this.state.isLocked) {
             this.state.implementationEnabled = true;
         }
         const enabled = Boolean(this.state.implementationEnabled);
         const enabledInput = document.getElementById('implementationEnabled');
         if (enabledInput) {
             enabledInput.checked = enabled;
-            enabledInput.disabled = this.state.isLocked || requiredByPartner;
+            enabledInput.disabled = this.state.isLocked || requiredByPartner || hasServiceImplementation;
         }
 
         const fields = document.getElementById('implementationFields');
@@ -2110,6 +2231,22 @@ class CPGenerator {
                     price: this.roundMoney(price),
                 });
             });
+
+            this.getSelectedServiceImplementationPayments().forEach((payment, index) => {
+                const price = Math.max(0, Number(payment?.price) || 0);
+                if (price <= 0) {
+                    return;
+                }
+
+                items.push({
+                    service_key: `service-implementation-${payment.key || index + 1}`,
+                    name: payment.name || `Внедрение услуги (${index + 1})`,
+                    quantity: 1,
+                    pricing_kind: 'one_time',
+                    unit_price: this.roundMoney(price),
+                    price: this.roundMoney(price),
+                });
+            });
         }
 
         // Remove zero/negative lines
@@ -2230,12 +2367,7 @@ class CPGenerator {
                 discount_percent: this.getImplementationTotalDiscountPercent(),
                 discount_percent_base: this.getImplementationDiscountPercent(),
                 discount_percent_12_extra: this.getImplementationDiscount12ExtraPercent(),
-                extra_services: (this.state.customOneTimePayments || [])
-                    .map((p) => ({
-                        name: String(p?.name || '').trim(),
-                        price: this.roundMoney(Number(p?.price) || 0),
-                    }))
-                    .filter((p) => p.name !== '' || (Number(p.price) || 0) > 0),
+                extra_services: this.getImplementationExtraServicesPayload(),
             },
             monthly_total: this.roundMoney(grossTotals.monthly || 0),
             period_total: this.roundMoney(grossTotals.period || 0),
@@ -2826,6 +2958,7 @@ class CPGenerator {
 
         this.renderServices();
         this.renderTariffs();
+        this.renderImplementationSection();
         this.updateSummary();
     }
 
@@ -2956,6 +3089,7 @@ class CPGenerator {
                 this.markOfferDirty();
 
                 this.renderServices();
+                this.renderImplementationSection();
                 this.updateSummary();
             });
         });
@@ -3000,6 +3134,7 @@ class CPGenerator {
                 this.markOfferDirty();
 
                 this.renderServices();
+                this.renderImplementationSection();
                 this.updateSummary();
             });
         });
@@ -3029,6 +3164,7 @@ class CPGenerator {
                 this.markOfferDirty();
 
                 this.renderServices();
+                this.renderImplementationSection();
                 this.updateSummary();
             });
         });
@@ -3063,8 +3199,9 @@ class CPGenerator {
         if (implCurrency) implCurrency.textContent = currency.symbol;
         if (onlineStoreCurrency) onlineStoreCurrency.textContent = currency.symbol;
 
-        // Get suggested implementation price
-        const suggestedPrice = this.getSuggestedImplementationPrice();
+        // Get suggested implementation price. Service implementation is handled as separate one-time rows.
+        const partnerAllowsBaseImplementation = Boolean(this.getSelectedPartner()?.has_implementation);
+        const suggestedPrice = partnerAllowsBaseImplementation ? this.getSuggestedImplementationPrice() : 0;
 
         // Update implementation input and state
         const implInput = document.getElementById('implementationPrice');
@@ -3338,6 +3475,22 @@ class CPGenerator {
                 const name = String(payment?.name || '').trim() || `Доп. услуга (${index + 1})`;
                 oneTimeRows.push({
                     name,
+                    qty: 1,
+                    unitMonthly: price,
+                    kind: 'one_time',
+                    discountPercent: 0,
+                    partnerPercent: 0,
+                    months: 1,
+                });
+            });
+
+            this.getSelectedServiceImplementationPayments().forEach((payment, index) => {
+                const price = Math.max(0, Number(payment?.price) || 0);
+                if (price <= 0) {
+                    return;
+                }
+                oneTimeRows.push({
+                    name: String(payment?.name || '').trim() || `Внедрение услуги (${index + 1})`,
                     qty: 1,
                     unitMonthly: price,
                     kind: 'one_time',
@@ -4393,8 +4546,11 @@ class CPGenerator {
         }
 
         const base = Math.max(0, Number(this.state.implementationPrice) || 0);
-        const extras = (this.state.customOneTimePayments || [])
+        const manualExtras = (this.state.customOneTimePayments || [])
             .reduce((sum, payment) => sum + Math.max(0, Number(payment?.price) || 0), 0);
+        const serviceImplementationExtras = this.getSelectedServiceImplementationPayments()
+            .reduce((sum, payment) => sum + Math.max(0, Number(payment?.price) || 0), 0);
+        const extras = manualExtras + serviceImplementationExtras;
 
         const discountPercent = this.getImplementationTotalDiscountPercent();
         const discountAmount = base * (discountPercent / 100);

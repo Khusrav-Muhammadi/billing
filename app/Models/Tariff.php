@@ -21,12 +21,14 @@ class Tariff extends Model
         'sale',
         'end_date',
         'can_increase',
+        'is_external',
         'type'
     ];
 
     protected $casts = [
         'end_date' => 'date',
         'can_increase' => 'bool',
+        'is_external' => 'bool',
     ];
 
     public function currencies()

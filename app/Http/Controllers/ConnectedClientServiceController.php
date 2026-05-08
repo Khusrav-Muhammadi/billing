@@ -698,6 +698,7 @@ class ConnectedClientServiceController extends Controller
                 'description' => '',
                 'type'        => 'monthly',
                 'prices'      => $prices,
+                'suggestedImplementationPrice' => $this->buildImplementationPricesForTariff($service, $today),
                 'hasChannels' => (bool) ($service->can_increase ?? false),
                 'isAvailableOnDate' => $isAvailableOnDate,
                 'excludedOrganizationIds' => $excludedOrganizationIds,

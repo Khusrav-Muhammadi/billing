@@ -34,12 +34,11 @@ class ImplementationCatalogController extends Controller
             ->get();
 
         $tariffs = Tariff::query()
-            ->where('is_tariff', true)
             ->when($tariffId > 0, static function ($query) use ($tariffId) {
                 $query->whereKey($tariffId);
             })
             ->orderBy('id')
-            ->get(['id', 'name', 'is_tariff']);
+            ->get(['id', 'name', 'is_tariff', 'is_extra_user']);
 
         $pricesByTariff = $prices
             ->groupBy(static fn (Price $price): int => (int)$price->tariff_id)
@@ -52,6 +51,8 @@ class ImplementationCatalogController extends Controller
                 ->map(static fn (Tariff $tariff): array => [
                     'id' => (int)$tariff->id,
                     'name' => (string)$tariff->name,
+                    'is_tariff' => (bool)$tariff->is_tariff,
+                    'is_extra_user' => (bool)$tariff->is_extra_user,
                     'implementation_prices' => $pricesByTariff->get((int)$tariff->id, []),
                 ])
                 ->values()

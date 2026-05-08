@@ -29,7 +29,6 @@ class ImplementationPriceController extends Controller
             ->get();
 
         $tariffs = Tariff::query()
-            ->where('is_tariff', true)
             ->orderBy('name')
             ->get();
 
@@ -93,4 +92,3 @@ class ImplementationPriceController extends Controller
         return redirect()->back();
     }
 }
-

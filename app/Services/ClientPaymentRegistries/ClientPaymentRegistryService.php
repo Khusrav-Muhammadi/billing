@@ -22,13 +22,26 @@ class ClientPaymentRegistryService
             return;
         }
 
-        $offer->loadMissing(['items']);
+        $offer->loadMissing(['items.tariff:id,is_external']);
 
-        $grossAmount = round((float) $offer->grand_total, 4);
+        $externalAmount = $this->calculateExternalAmount($offer);
+        $externalPartnerAmount = $this->calculateExternalPartnerExpenseAmount($offer);
+        $grossAmount = round(max(0, (float) $offer->grand_total - $externalAmount), 4);
+        if ($grossAmount <= 0) {
+            ClientPaymentRegistry::query()
+                ->where('commercial_offer_id', $offer->id)
+                ->delete();
+            return;
+        }
+
         $partnerAmount = $this->calculatePartnerExpenseAmount($offer);
         $netAmount = round(max(0, $grossAmount - $partnerAmount), 4);
         $tariffAmount = $netAmount;
-        $paymentAmount = round((float) $offer->payable_total, 4);
+        $externalPaymentSourceAmount = round(max(0, $externalAmount - $externalPartnerAmount), 4);
+        $paymentAmount = round(
+            max(0, (float) $offer->payable_total - $this->convertSourceToPayable($offer, $externalPaymentSourceAmount)),
+            4
+        );
 
         DB::transaction(function () use (
             $offer,
@@ -61,16 +74,35 @@ class ClientPaymentRegistryService
         });
     }
 
-    private function calculateGrossAmount(CommercialOffer $offer): float
-    {
-        return round((float) $offer->grand_total, 4);
-    }
-
-    private function calculatePartnerExpenseAmount(CommercialOffer $offer): float
+    private function calculateExternalAmount(CommercialOffer $offer): float
     {
         $sum = 0.0;
 
         foreach ($offer->items as $item) {
+            if (!$this->isExternalItem($item)) {
+                continue;
+            }
+
+            $lineAmount = round((float) $item->total_price, 6);
+            if ($lineAmount <= 0) {
+                continue;
+            }
+
+            $sum += $lineAmount;
+        }
+
+        return round($sum, 4);
+    }
+
+    private function calculateExternalPartnerExpenseAmount(CommercialOffer $offer): float
+    {
+        $sum = 0.0;
+
+        foreach ($offer->items as $item) {
+            if (!$this->isExternalItem($item)) {
+                continue;
+            }
+
             $lineAmount = round((float) $item->total_price, 6);
             if ($lineAmount <= 0) {
                 continue;
@@ -87,5 +119,52 @@ class ClientPaymentRegistryService
         return round($sum, 4);
     }
 
+    private function convertSourceToPayable(CommercialOffer $offer, float $sourceAmount): float
+    {
+        $amount = round(max(0, $sourceAmount), 4);
+        $offerCurrency = strtoupper((string) $offer->currency);
+        $payableCurrency = strtoupper((string) ($offer->payable_currency ?: $offerCurrency));
+
+        if ($amount <= 0 || $payableCurrency === $offerCurrency) {
+            return $amount;
+        }
+
+        $rate = (float) ($offer->conversion_rate ?? 0);
+        if ($rate <= 0) {
+            return 0.0;
+        }
+
+        return round($amount * $rate, 4);
+    }
+
+    private function calculatePartnerExpenseAmount(CommercialOffer $offer): float
+    {
+        $sum = 0.0;
+
+        foreach ($offer->items as $item) {
+            if ($this->isExternalItem($item)) {
+                continue;
+            }
+
+            $lineAmount = round((float) $item->total_price, 6);
+            if ($lineAmount <= 0) {
+                continue;
+            }
+
+            $partnerPercent = round(max(0, (float) $item->partner_percent), 4);
+            if ($partnerPercent <= 0) {
+                continue;
+            }
+
+            $sum += $lineAmount * ($partnerPercent / 100);
+        }
+
+        return round($sum, 4);
+    }
+
+    private function isExternalItem($item): bool
+    {
+        return (bool) ($item?->tariff?->is_external ?? false);
+    }
 
 }

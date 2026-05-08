@@ -7,7 +7,7 @@
 @section('content')
 
     <div class="card-body">
-        <h4 class="card-title">Внедрение — цены по тарифу и валюте</h4>
+        <h4 class="card-title">Внедрение — цены по услуге и валюте</h4>
 
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createImplementationPrice">
             Добавить
@@ -18,7 +18,7 @@
                 <thead>
                 <tr>
                     <th>№</th>
-                    <th>Тариф</th>
+                    <th>Услуга</th>
                     <th>Валюта</th>
                     <th>Сумма</th>
                     <th>С</th>
@@ -56,11 +56,18 @@
                                     </div>
                                     <div class="modal-body">
                                         <div class="form-group mb-2">
-                                            <label>Тариф</label>
+                                            <label>Услуга</label>
                                             <select name="tariff_id" class="form-control">
                                                 @foreach($tariffs as $tariff)
                                                     <option value="{{ $tariff->id }}" {{ $price->tariff_id == $tariff->id ? 'selected' : '' }}>
                                                         {{ $tariff->name }}
+                                                        @if($tariff->is_tariff)
+                                                            (тариф)
+                                                        @elseif($tariff->is_extra_user)
+                                                            (доп. пользователь)
+                                                        @else
+                                                            (услуга)
+                                                        @endif
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -137,10 +144,19 @@
                     </div>
                     <div class="modal-body">
                         <div class="form-group mb-2">
-                            <label>Тариф</label>
+                            <label>Услуга</label>
                             <select name="tariff_id" class="form-control">
                                 @foreach($tariffs as $tariff)
-                                    <option value="{{ $tariff->id }}">{{ $tariff->name }}</option>
+                                    <option value="{{ $tariff->id }}">
+                                        {{ $tariff->name }}
+                                        @if($tariff->is_tariff)
+                                            (тариф)
+                                        @elseif($tariff->is_extra_user)
+                                            (доп. пользователь)
+                                        @else
+                                            (услуга)
+                                        @endif
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
