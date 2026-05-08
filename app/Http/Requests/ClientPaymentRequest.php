@@ -16,7 +16,7 @@ class ClientPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'organization_id' => ['required', 'integer', 'exists:organizations,id'],
+            'organization_id' => ['nullable', 'integer', 'exists:organizations,id'],
             'partner_id' => ['nullable', 'integer', 'exists:users,id'],
             'commercial_offer_id' => ['nullable', 'integer', 'exists:commercial_offers,id'],
             // Backward-compatible alias used by partners API payloads.

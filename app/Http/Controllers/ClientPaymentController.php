@@ -489,7 +489,12 @@ class ClientPaymentController extends Controller
                 throw $e;
             }
 
-            return $json['data']['octo_pay_url'] ?? null;
+            $payUrl = trim($this->toSafeString($json['data']['octo_pay_url'] ?? ''));
+            if ($payUrl === '') {
+                throw new \Exception('OCTO: ссылка оплаты не пришла в ответе провайдера.');
+            }
+
+            return $payUrl;
         }
 
         throw new \Exception("OCTO error: " . ($json['errMessage'] ?? $resp->body()));
