@@ -64,12 +64,12 @@
 {{--            <span class="menu-title">Пакеты</span>--}}
 {{--        </a>--}}
 {{--    </li>--}}
-    <li class="nav-item">
-        <a class="nav-link" href="{{ route('client.index') }}">
-            <i class="mdi mdi-contacts menu-icon"></i>
-            <span class="menu-title">Клиенты (Старые)</span>
-        </a>
-    </li>
+{{--    <li class="nav-item">--}}
+{{--        <a class="nav-link" href="{{ route('client.index') }}">--}}
+{{--            <i class="mdi mdi-contacts menu-icon"></i>--}}
+{{--            <span class="menu-title">Клиенты (Старые)</span>--}}
+{{--        </a>--}}
+{{--    </li>--}}
 
 {{--    <li class="nav-item">--}}
 {{--        <a class="nav-link" href="{{ route('partner-request.index') }}">--}}

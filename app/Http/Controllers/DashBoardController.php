@@ -91,27 +91,9 @@ class DashBoardController extends Controller
             }
         }
 
-        $results = DB::table('transactions')
-            ->join('tariffs', 'transactions.tariff_id', '=', 'tariffs.id')
-            ->select('tariffs.name', DB::raw('SUM(transactions.sum) as total'), DB::raw('MONTH(transactions.created_at) as month'))
-            ->where('transactions.type', 'Снятие')
-            ->whereYear('transactions.created_at', $year)
-            ->groupBy('tariffs.name', 'month')
-            ->orderBy('tariffs.name')
-            ->get();
 
         $formattedResults = [];
 
-        foreach ($results as $result) {
-            if (!isset($formattedResults[$result->name])) {
-                $formattedResults[$result->name] = [
-                    'name' => $result->name,
-                    'data' => array_fill(0, 12, 0),
-                ];
-            }
-
-            $formattedResults[$result->name]['data'][$result->month - 1] = (int)$result->total;
-        }
 
         $chartData = array_values($formattedResults);
 
