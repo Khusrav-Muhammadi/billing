@@ -4,38 +4,89 @@
     Дашбоард
 @endsection
 
+@php
+    $money = static fn ($value) => '$' . number_format((float) $value, 2, '.', ' ');
+@endphp
 
 @section('content')
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Дашбоард за {{ $dashboardYear }}</h4>
+        <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center" style="gap: 8px;">
+            <label for="dashboardYear" class="mb-0">Год</label>
+            <input id="dashboardYear" name="year" type="number" min="2020" max="{{ now()->year + 1 }}"
+                   value="{{ $dashboardYear }}" class="form-control" style="width: 110px;">
+            <button type="submit" class="btn btn-primary btn-sm">Показать</button>
+        </form>
+    </div>
+
+
+
+
     <div class="row">
-        <div class="col-md-3">
-            <div class="card border-0">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 h-100">
                 <div class="card-body">
-                    <div class="card-text"><strong>Количество клиентов</strong></div>
-                    <div class="card-text">{{$clients_count}}</div>
+                    <div class="card-text"><strong>Активные клиенты</strong></div>
+                    <div class="card-text">{{ $cards['active_clients'] }}</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 h-100">
                 <div class="card-body">
-                    <div class="card-text"><strong>Доход за месяц</strong></div>
-                    <div class="card-text">{{$totalIncomeForMonth}} $</div>
+                    <div class="card-text"><strong>Чистый доход за месяц</strong></div>
+                    <div class="card-text">{{ $money($cards['month_income']) }}</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 h-100">
                 <div class="card-body">
                     <div class="card-text"><strong>Количество партнеров</strong></div>
-                    <div class="card-text">{{$partners}}</div>
+                    <div class="card-text">{{ $cards['partners'] }}</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card border-0">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 h-100">
                 <div class="card-body">
                     <div class="card-text"><strong>Доход от партнеров</strong></div>
-                    <div class="card-text">{{$totalIncomeFromPartners}} $</div>
+                    <div class="card-text">{{ $money($cards['partner_income']) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 h-100">
+                <div class="card-body">
+                    <div class="card-text"><strong>Поступления за год</strong></div>
+                    <div class="card-text">{{ $money($cards['gross_income']) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 h-100">
+                <div class="card-body">
+                    <div class="card-text"><strong>Партнерские расходы</strong></div>
+                    <div class="card-text">{{ $money($cards['partner_expenses']) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 h-100">
+                <div class="card-body">
+                    <div class="card-text"><strong>Скидки</strong></div>
+                    <div class="card-text">{{ $money($cards['discount_expenses']) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 h-100">
+                <div class="card-body">
+                    <div class="card-text"><strong>Внедрение</strong></div>
+                    <div class="card-text">{{ $money($cards['implementation_income']) }}</div>
                 </div>
             </div>
         </div>
@@ -45,12 +96,12 @@
         <div class="col-md-6">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-text"><strong>Тип подключения клиентов</strong></div>
+                    <div class="card-text"><strong>Типы операций по оплатам</strong></div>
                     <div class="d-flex flex-wrap">
                         <div class="doughnut-wrapper w-50">
-                            <canvas id="doughnutt" width="200" height="100"></canvas>
+                            <canvas id="operationTypeChart" width="200" height="100"></canvas>
                         </div>
-                        <div id="doughnut-chart-legend3"
+                        <div id="operationTypeLegend"
                              class="pl-lg-3 rounded-legend align-self-center flex-grow legend-vertical legend-bottom-left"></div>
                     </div>
                 </div>
@@ -59,24 +110,25 @@
         <div class="col-md-6">
             <div class="card border-0">
                 <div class="card-body">
-                    <div class="card-title">Партнеры</div>
+                    <div class="card-title">Партнеры по типу</div>
                     <div class="d-flex flex-wrap">
                         <div class="doughnut-wrapper w-50">
-                            <canvas id="doughnutChart5" width="200" height="100"></canvas>
+                            <canvas id="partnersChart" width="200" height="100"></canvas>
                         </div>
-                        <div id="doughnut-chart-legend3"
+                        <div id="partnersLegend"
                              class="pl-lg-3 rounded-legend align-self-center flex-grow legend-vertical legend-bottom-left"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
     <div class="row" style="margin-top: 15px">
         <div class="col-md-6">
             <div class="card border-0">
                 <div class="card-body">
                     <figure class="highcharts-figure">
-                        <div id="container"></div>
+                        <div id="connectionStatusChart"></div>
                     </figure>
                 </div>
             </div>
@@ -85,13 +137,26 @@
             <div class="card border-0">
                 <div class="card-body">
                     <figure class="highcharts-figure">
-                        <div id="line-chart"></div>
+                        <div id="tariffRevenueChart"></div>
+                    </figure>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row" style="margin-top: 15px">
+        <div class="col-md-12">
+            <div class="card border-0">
+                <div class="card-body">
+                    <figure class="highcharts-figure">
+                        <div id="financialRegistryChart"></div>
                     </figure>
                 </div>
             </div>
         </div>
     </div>
 @endsection
+
 @section('script')
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -100,82 +165,82 @@
     <script src="https://code.highcharts.com/modules/export-data.js"></script>
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
     <script>
-        if ($("#doughnutt").length) {
-            var ctx = document.getElementById('doughnutt').getContext("2d");
-            const realClients = @json($clients->real_clients);
-            const demoClients = @json($clients->demo_clients);
+        const monthLabels = @json($monthLabels);
 
-            var red2 = '#ffd70d';
+        function renderLegend(containerId, labels, colors, values, amounts) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
 
-            var green2 = '#1326f8';
-
-            var trafficChartData = {
-                datasets: [{
-                    data: [realClients, demoClients],
-                    backgroundColor: [
-                        green2,
-                        red2
-                    ],
-                    hoverBackgroundColor: [
-                        green2,
-                        red2
-                    ],
-                    borderColor: [
-                        green2,
-                        red2
-                    ],
-                    legendColor: [
-                        green2,
-                        red2
-                    ]
-                }],
-
-                labels: [
-                    'Боевой',
-                    'Демо'
-                ]
-            };
-            var trafficChartOptions = {
-                responsive: true,
-                animation: {
-                    animateScale: true,
-                    animateRotate: true
-                },
-                legend: false,
-                legendCallback: function (chart) {
-                    var text = [];
-                    text.push('<ul>');
-
-                    text.push('</ul>');
-                    return text.join('');
-                }
-            };
-            var trafficChartCanvas = $("#doughnutt").get(0).getContext("2d");
-            var trafficChart = new Chart(trafficChartCanvas, {
-                type: 'doughnut',
-                data: trafficChartData,
-                options: trafficChartOptions
-            });
+            container.innerHTML = '<ul>' + labels.map(function (label, index) {
+                const amountText = amounts ? ' / $' + Number(amounts[index] || 0).toLocaleString('ru-RU', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }) : '';
+                return '<li><span class="legend-dots" style="background:' + colors[index % colors.length] + '"></span>'
+                    + label + ' - ' + (values[index] || 0) + amountText + '</li>';
+            }).join('') + '</ul>';
         }
 
-        var activeClients = @json($activeClientsByMonth);
-        var inactiveClients = @json($inactiveClientsByMonth);
-        var chartData = @json($chartData);
+        function renderDoughnut(canvasId, legendId, labels, data, colors, amounts) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
 
-        Highcharts.chart('container', {
+            new Chart(canvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        hoverBackgroundColor: colors,
+                        borderColor: colors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            renderLegend(legendId, labels, colors, data, amounts);
+        }
+
+        renderDoughnut(
+            'operationTypeChart',
+            'operationTypeLegend',
+            @json($operationTypeLabels),
+            @json($operationTypeData),
+            ['#1326f8', '#ffd70d', '#119b18', '#c20920', '#6f42c1'],
+            @json($operationTypeAmounts)
+        );
+
+        renderDoughnut(
+            'partnersChart',
+            'partnersLegend',
+            ['Partner', 'Agent'],
+            [@json($activePartners), @json($inactivePartners)],
+            ['#119b18', '#c20920']
+        );
+
+        Highcharts.chart('connectionStatusChart', {
             chart: {
                 type: 'column'
             },
             title: {
-                text: 'Количество активных и неактивных клиентов'
+                text: 'Подключения и отключения клиентов'
             },
             xAxis: {
-                categories: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+                categories: monthLabels,
                 crosshair: true
             },
             yAxis: {
+                min: 0,
                 title: {
-                    text: ''
+                    text: 'Клиенты'
                 }
             },
             tooltip: {
@@ -189,42 +254,36 @@
             },
             series: [
                 {
-                    name: 'Активные',
-                    data: activeClients
+                    name: 'Подключены',
+                    data: @json($activeClientsByMonth)
                 },
                 {
-                    name: 'Неактивные',
-                    data: inactiveClients
+                    name: 'Отключены',
+                    data: @json($inactiveClientsByMonth)
                 }
             ]
-
         });
-        //line chart
 
-        Highcharts.chart('line-chart', {
+        Highcharts.chart('tariffRevenueChart', {
             title: {
-                text: 'Доход по тарифам',
+                text: 'Доход по тарифам и услугам',
                 align: 'left'
             },
-
-            legend: {
-                layout: 'vertical',
-                align: 'right',
-                verticalAlign: 'middle'
-            },
-
             xAxis: {
-                categories: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+                categories: monthLabels,
                 crosshair: true
             },
-
             yAxis: {
+                min: 0,
                 title: {
-                    text: ''
+                    text: 'Сумма, USD'
                 }
             },
-            series: chartData,
-
+            tooltip: {
+                valuePrefix: '$',
+                valueDecimals: 2
+            },
+            series: @json($tariffRevenueChartData),
             responsive: {
                 rules: [{
                     condition: {
@@ -241,72 +300,27 @@
             }
         });
 
-        if ($("#doughnutChart5").length) {
-            var ctx = document.getElementById('doughnutChart5').getContext("2d");
-            const activePartners = @json($activePartners);
-            const inactivePartners = @json($inactivePartners);
-
-            var red2 = '#c20920';
-
-            var green2 = '#119b18';
-
-            var trafficChartData = {
-                datasets: [{
-                    data: [activePartners, inactivePartners],
-                    backgroundColor: [
-                        green2,
-                        red2
-                    ],
-                    hoverBackgroundColor: [
-                        green2,
-                        red2
-                    ],
-                    borderColor: [
-                        green2,
-                        red2
-                    ],
-                    legendColor: [
-                        green2,
-                        red2
-                    ]
-                }],
-
-                labels: [
-                    'Активные',
-                    'Не активные'
-                ]
-            };
-            var trafficChartOptions = {
-                responsive: true,
-                animation: {
-                    animateScale: true,
-                    animateRotate: true
-                },
-                legend: false,
-                legendCallback: function (chart) {
-                    var text = [];
-                    text.push('<ul>');
-                    for (var i = 0; i < trafficChartData.datasets[0].data.length; i++) {
-                        text.push('<li><span class="legend-dots" style="background:' +
-                            trafficChartData.datasets[0].legendColor[i] +
-                            '"></span>');
-                        if (trafficChartData.labels[i]) {
-                            text.push(trafficChartData.labels[i]);
-                        }
-                        text.push('</li>');
-                    }
-                    text.push('</ul>');
-                    return text.join('');
+        Highcharts.chart('financialRegistryChart', {
+            title: {
+                text: 'Финансы по реестрам',
+                align: 'left'
+            },
+            xAxis: {
+                categories: monthLabels,
+                crosshair: true
+            },
+            yAxis: {
+                min: 0,
+                title: {
+                    text: 'Сумма, USD'
                 }
-            };
-            var trafficChartCanvas = $("#doughnutChart5").get(0).getContext("2d");
-            var trafficChart = new Chart(trafficChartCanvas, {
-                type: 'doughnut',
-                data: trafficChartData,
-                options: trafficChartOptions
-            });
-        }
-
-
+            },
+            tooltip: {
+                shared: true,
+                valuePrefix: '$',
+                valueDecimals: 2
+            },
+            series: @json($financialSeries)
+        });
     </script>
 @endsection

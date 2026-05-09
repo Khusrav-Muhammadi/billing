@@ -11,14 +11,12 @@ use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Pack;
 use App\Models\Partner;
-use App\Models\PartnerStatus;
 use App\Models\Sale;
 use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Contracts\ClientRepositoryInterface;
+use App\Services\Dashboard\DashboardMetricsService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class DashBoardController extends Controller
 {
@@ -27,86 +25,11 @@ class DashBoardController extends Controller
     {
     }
 
-    public function index(Request $request)
+    public function index(Request $request, DashboardMetricsService $dashboardMetrics)
     {
-        $year = 2025;
+        $year = (int) $request->integer('year', (int) now()->year);
 
-        $clients = Client::query()
-            ->selectRaw('
-        SUM(CASE WHEN clients.is_demo = 0 THEN 1 ELSE 0 END) as real_clients,
-        SUM(CASE WHEN clients.is_demo = 1 THEN 1 ELSE 0 END) as demo_clients
-    ')
-            ->whereYear('created_at', $year)
-            ->first();
-
-        $clientsActivity = Client::query()
-            ->selectRaw('
-        DATE_FORMAT(created_at, "%Y-%m") as month,
-        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_clients,
-        SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_clients
-    ')
-            ->whereYear('created_at', $year)
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get();
-
-        $activeClientsByMonth = array_fill(0, 12, 0);
-        $inactiveClientsByMonth = array_fill(0, 12, 0);
-
-        foreach ($clientsActivity as $activity) {
-            $month = (int)date('m', strtotime($activity->month)) - 1;
-            $activeClientsByMonth[$month] = (int)$activity->active_clients;
-            $inactiveClientsByMonth[$month] = (int)$activity->inactive_clients;
-        }
-
-        $partners = Partner::all();
-        $totalIncomeFromPartners = 0;
-
-        foreach ($partners as $partner) {
-            $clientss = Client::where('partner_id', $partner->id)->get();
-
-            foreach ($clientss as $client) {
-                $tariff = Tariff::find($client->tariff_id);
-                if ($tariff) {
-                    $totalIncomeFromPartners += $tariff->price;
-                }
-            }
-        }
-
-        $clients_count = Client::query()->where('is_active', 1)->count();
-
-        $totalIncomeForMonth = 0;
-        $currentMonth = Carbon::now()->month;
-        $currentYear = Carbon::now()->year;
-
-        $clientsss = Client::whereMonth('created_at', $currentMonth)
-            ->whereYear('created_at', $currentYear)
-            ->where('is_active', true)
-            ->get();
-
-        foreach ($clientsss as $client) {
-            $tariff = Tariff::find($client->tariff_id);
-            if ($tariff) {
-                $totalIncomeForMonth += $tariff->price;
-            }
-        }
-
-
-        $formattedResults = [];
-
-
-        $chartData = array_values($formattedResults);
-
-        $partners = Partner::count();
-
-        $activeStatus = PartnerStatus::where('is_active', true)->first();
-
-        $activePartners = Partner::where('partner_status_id', $activeStatus->id)->count();
-        $inactivePartners = Partner::where('partner_status_id', '!=', $activeStatus->id)->count();
-
-        return view('dashboard', compact(
-            'clients', 'activeClientsByMonth', 'inactiveClientsByMonth', 'chartData', 'clients_count', 'totalIncomeFromPartners', 'totalIncomeForMonth', 'partners', 'activePartners', 'inactivePartners'
-        ));
+        return view('dashboard', $dashboardMetrics->forYear($year));
     }
 
     public function create()
