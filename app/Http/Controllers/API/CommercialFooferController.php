@@ -910,8 +910,20 @@ class CommercialFooferController extends Controller
             ->orderBy('id')
             ->get();
 
+        $tariffCurrencyRows = TariffCurrency::query()
+            ->whereIn('tariff_id', $tariffs->pluck('id')->all())
+            ->get(['tariff_id', 'currency_id', 'tariff_price']);
+
         $tariffCurrencyMap = [];
-       
+        foreach ($tariffCurrencyRows as $row) {
+            $tariffId = (int)$row->tariff_id;
+            $currencyCode = (string)($currenciesById[(string)$row->currency_id] ?? '');
+            $price = (float)$row->tariff_price;
+            if ($tariffId <= 0 || $currencyCode === '' || $price <= 0) {
+                continue;
+            }
+            $tariffCurrencyMap[$tariffId][$currencyCode] = round($price, 4);
+        }
 
         $extraUserServicesByTariffId = Tariff::query()
             ->where('is_extra_user', true)
