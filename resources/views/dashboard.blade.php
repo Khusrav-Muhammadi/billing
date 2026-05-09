@@ -144,17 +144,6 @@
         </div>
     </div>
 
-    <div class="row" style="margin-top: 15px">
-        <div class="col-md-12">
-            <div class="card border-0">
-                <div class="card-body">
-                    <figure class="highcharts-figure">
-                        <div id="financialRegistryChart"></div>
-                    </figure>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 
 @section('script')
