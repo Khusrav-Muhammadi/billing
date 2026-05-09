@@ -14,7 +14,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('app:control-demo-command')->dailyAt('00:01');
 
-        
+
         $schedule->command('app:control-nfr-command')->dailyAt('00:01');
         $schedule->command('app:notify-client')->dailyAt('09:00')->withoutOverlapping();
         $schedule->command('app:mark-unpartnered-organizations-without-connection')->dailyAt('00:05')->withoutOverlapping();
