@@ -23,6 +23,7 @@ class UpdateRequest extends FormRequest
             'end_date' => ['nullable', 'date'],
             'can_increase' => ['nullable', 'boolean'],
             'is_external' => ['nullable', 'boolean'],
+            'is_one_time' => ['nullable', 'boolean'],
             'is_tariff' => ['nullable', 'boolean'],
             'is_extra_user' => ['nullable', 'boolean'],
             'included_services' => ['nullable', 'array'],

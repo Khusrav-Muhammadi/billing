@@ -96,7 +96,7 @@ class DayClosingService
                 }
 
                 $services = ConnectedClientServices::query()
-                    ->with('tariff:id,is_external')
+                    ->with('tariff:id,is_external,is_one_time')
                     ->where('client_id', (int)$organization->id)
                     ->whereDate('date', '<=', $date->toDateString())
                     ->where(function ($q) use ($date) {
@@ -112,7 +112,10 @@ class DayClosingService
                     ]);
 
                 $services = $services
-                    ->filter(fn (ConnectedClientServices $service): bool => !(bool) ($service->tariff?->is_external ?? false))
+                    ->filter(fn (ConnectedClientServices $service): bool =>
+                        !(bool) ($service->tariff?->is_external ?? false)
+                        && !(bool) ($service->tariff?->is_one_time ?? false)
+                    )
                     ->values();
 
                 if ($services->isEmpty()) {

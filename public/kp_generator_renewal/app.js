@@ -295,6 +295,30 @@ class CPGenerator {
             && (Boolean(this.state.implementationEnabled) || this.getSelectedServiceImplementationPayments().length > 0);
     }
 
+    isOneTimeService(service) {
+        return Boolean(service?.isOneTime) || String(service?.type || '') === 'one_time';
+    }
+
+    getOneTimeRenewalChargeableQuantity(serviceKey, service, serviceState, isIncluded = false) {
+        if (!this.isRenewalMode() || !this.isOneTimeService(service)) {
+            return null;
+        }
+
+        const previousState = this.getPreviousServiceState(serviceKey);
+        const previousEnabled = Boolean(previousState?.enabled);
+
+        if (!service?.hasChannels) {
+            return previousEnabled || isIncluded ? 0 : 1;
+        }
+
+        const channels = this.getServiceChannelsCount(serviceState);
+        const previousChannels = previousEnabled ? Math.max(0, Number(previousState?.channels) || 0) : 0;
+        const includedChannels = isIncluded ? Math.max(0, this.getIncludedChannels(this.state.selectedTariff, serviceKey)) : 0;
+        const baselineChannels = Math.max(previousChannels, includedChannels);
+
+        return Math.max(0, channels - baselineChannels);
+    }
+
     getSelectedServiceImplementationPayments(currencyCode = this.state.currency) {
         const services = this.config?.services || {};
         const selectedServices = this.state.selectedServices || {};
@@ -2167,6 +2191,8 @@ class CPGenerator {
             }
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+            const oneTimeRenewalQuantity = this.getOneTimeRenewalChargeableQuantity(key, service, serviceState, isIncluded);
+            if (oneTimeRenewalQuantity !== null && oneTimeRenewalQuantity <= 0) return;
             let monthlyPrice = 0;
             let displayChannels = channels;
 
@@ -2183,6 +2209,11 @@ class CPGenerator {
                 monthlyPrice = basePrice * channels;
             }
 
+            if (oneTimeRenewalQuantity !== null && service.hasChannels) {
+                monthlyPrice = basePrice * oneTimeRenewalQuantity;
+                displayChannels = oneTimeRenewalQuantity;
+            }
+
             let name = service.name || key;
             if (displayChannels > 1) {
                 name = `${name} (×${displayChannels})`;
@@ -2192,13 +2223,14 @@ class CPGenerator {
 
             const lineUnitPrice = basePrice;
             const lineMonthlyTotal = monthlyPrice;
+            const isOneTimeService = this.isOneTimeService(service);
             items.push({
                 service_key: key,
                 name,
                 quantity: Math.max(1, Number(displayChannels) || 1),
-                pricing_kind: 'pack',
+                pricing_kind: isOneTimeService ? 'one_time' : 'pack',
                 unit_price: lineUnitPrice,
-                price: this.roundMoney(lineMonthlyTotal * this.state.periodMonths)
+                price: this.roundMoney(isOneTimeService ? lineMonthlyTotal : lineMonthlyTotal * this.state.periodMonths)
             });
         });
 
@@ -2325,7 +2357,7 @@ class CPGenerator {
                 tariff_id: tariffId,
                 quantity,
                 unit_price: isTariffLine ? baseTariffMonthly : sourceUnitPrice,
-                months: periodMonths,
+                months: isOneTimeLine ? 1 : periodMonths,
                 discount_percent: isTariffLine ? discountPercent : 0,
                 partner_percent: isTariffLine ? tariffPartnerPercent : (isOneTimeLine ? 0 : packPartnerPercent),
                 total_price: sourcePrice,
@@ -3013,6 +3045,9 @@ class CPGenerator {
             const shouldDisableToggle = isConnectionExtraServices
                 && (isIncluded || isNonCountablePurchasedEarlier || isCountablePurchasedEarlier);
             const unitPrice = this.getPriceByCurrency(this.getServicePricesMap(key));
+            const priceSuffix = this.isOneTimeService(service)
+                ? (service.hasChannels ? ' /канал разово' : ' разово')
+                : (service.hasChannels ? ' /канал/мес' : ' /мес');
 
             const card = document.createElement('div');
             card.className = `service-card${isSelected ? ' selected' : ''}${isIncluded ? ' included' : ''}`;
@@ -3023,7 +3058,7 @@ class CPGenerator {
                     <div class="service-info">
                         <h3>${service.name}${isIncluded ? ' <span style="font-size: 0.75rem; color: #666;">(включено)</span>' : ''}</h3>
                         <div class="service-price" style="margin-top: 6px; font-size: 0.9rem; color: #111;">
-                            ${isIncluded && !service.hasChannels ? 'Включено' : `${this.formatServicePrice(unitPrice)}${service.hasChannels ? ' /канал/мес' : ' /мес'}`}
+                            ${isIncluded && !service.hasChannels ? 'Включено' : `${this.formatServicePrice(unitPrice)}${priceSuffix}`}
                         </div>
                         <p>${service.description}</p>
                     </div>
@@ -3359,6 +3394,7 @@ class CPGenerator {
         summaryItems.innerHTML = '';
 
         const rows = [];
+        const oneTimeRows = [];
         const months = this.state.periodMonths;
         const periodDiscountPercent = this.getPeriodDiscountPercent();
         const periodMultiplier = this.getPeriodDiscountMultiplier();
@@ -3407,6 +3443,8 @@ class CPGenerator {
 
             const unitMonthly = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+            const oneTimeRenewalQuantity = this.getOneTimeRenewalChargeableQuantity(key, service, serviceState, isIncluded);
+            if (oneTimeRenewalQuantity !== null && oneTimeRenewalQuantity <= 0) return;
             let qty = channels;
 
             // For included services with channels, only charge for additional channels
@@ -3424,14 +3462,24 @@ class CPGenerator {
                 return;
             }
 
-            rows.push({
+            if (oneTimeRenewalQuantity !== null && service.hasChannels) {
+                qty = oneTimeRenewalQuantity;
+            }
+
+            const row = {
                 name: service.name,
                 qty,
                 unitMonthly,
-                kind: 'pack',
+                kind: this.isOneTimeService(service) ? 'one_time' : 'pack',
                 discountPercent: 0,
-                partnerPercent: packPartnerPercent,
-            });
+                partnerPercent: this.isOneTimeService(service) ? 0 : packPartnerPercent,
+            };
+
+            if (this.isOneTimeService(service)) {
+                oneTimeRows.push({ ...row, months: 1 });
+            } else {
+                rows.push(row);
+            }
         });
 
         const computed = rows.map((r) => {
@@ -3451,7 +3499,6 @@ class CPGenerator {
         const recurringTotalAfterDiscount = computed.reduce((s, r) => s + r.afterDiscount, 0);
         const recurringTotalPartnerShare = computed.reduce((s, r) => s + r.partnerShare, 0);
 
-        const oneTimeRows = [];
         if (this.isImplementationEnabled()) {
             const breakdown = this.getImplementationPricingBreakdown();
 
@@ -4418,7 +4465,7 @@ class CPGenerator {
             }
 
             // Обычные услуги
-            if (service.type !== 'one_time') {
+            if (!this.isOneTimeService(service)) {
                 const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
                 if (service.hasChannels && channels <= 0) {
                     return;
@@ -4506,7 +4553,7 @@ class CPGenerator {
                         const totalPrice = this.getPriceByCurrency(this.getServicePricesMap(key)) * additionalChannels;
                         services.push({
                             name: `${service.name} (доп. ×${additionalChannels})`,
-                            type: service.type === 'one_time' ? 'one_time' : 'monthly',
+                            type: this.isOneTimeService(service) ? 'one_time' : 'monthly',
                             price: totalPrice
                         });
                     }
@@ -4516,6 +4563,8 @@ class CPGenerator {
 
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+            const oneTimeRenewalQuantity = this.getOneTimeRenewalChargeableQuantity(key, service, serviceState, isIncluded);
+            if (oneTimeRenewalQuantity !== null && oneTimeRenewalQuantity <= 0) return;
             if (!isIncluded && service.hasChannels && channels <= 0) {
                 return;
             }
@@ -4523,9 +4572,14 @@ class CPGenerator {
             let name = service.name;
             if (channels > 1) name = `${service.name} (×${channels})`;
 
+            if (oneTimeRenewalQuantity !== null && service.hasChannels) {
+                totalPrice = basePrice * oneTimeRenewalQuantity;
+                name = ` (×)`;
+            }
+
             services.push({
                 name,
-                type: service.type === 'one_time' ? 'one_time' : 'monthly',
+                type: this.isOneTimeService(service) ? 'one_time' : 'monthly',
                 price: totalPrice
             });
         });
@@ -4574,6 +4628,7 @@ class CPGenerator {
     calculateTotals() {
         let monthlyTariffBase = 0;
         let monthlyPacks = 0;
+        let oneTimePacks = 0;
         const months = this.state.periodMonths;
         const periodMultiplier = this.getPeriodDiscountMultiplier();
 
@@ -4604,6 +4659,8 @@ class CPGenerator {
 
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+            const oneTimeRenewalQuantity = this.getOneTimeRenewalChargeableQuantity(key, service, serviceState, isIncluded);
+            if (oneTimeRenewalQuantity !== null && oneTimeRenewalQuantity <= 0) return;
             if (!isIncluded && service.hasChannels && channels <= 0) {
                 return;
             }
@@ -4624,12 +4681,20 @@ class CPGenerator {
                 totalPrice = basePrice * channels;
             }
 
-            monthlyPacks += totalPrice;
+            if (oneTimeRenewalQuantity !== null) {
+                totalPrice = service.hasChannels ? basePrice * oneTimeRenewalQuantity : basePrice;
+            }
+
+            if (this.isOneTimeService(service)) {
+                oneTimePacks += totalPrice;
+            } else {
+                monthlyPacks += totalPrice;
+            }
         });
 
         const monthlyToPay = (monthlyTariffBase * periodMultiplier) + monthlyPacks;
         const periodToPay = monthlyToPay * months;
-        const oneTimeToPay = this.calculateOneTimeTotal();
+        const oneTimeToPay = this.calculateOneTimeTotal() + oneTimePacks;
 
         return {
             monthly: monthlyToPay,
@@ -4647,6 +4712,7 @@ class CPGenerator {
 
         let monthlyTariffBase = 0;
         let monthlyPacks = 0;
+        let oneTimePacks = 0;
         const months = Math.max(1, Number(this.state.periodMonths) || 1);
         const periodMultiplier = this.getPeriodDiscountMultiplier();
 
@@ -4677,6 +4743,8 @@ class CPGenerator {
 
             const basePrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             const channels = service.hasChannels ? this.getServiceChannelsCount(serviceState) : 1;
+            const oneTimeRenewalQuantity = this.getOneTimeRenewalChargeableQuantity(key, service, serviceState, isIncluded);
+            if (oneTimeRenewalQuantity !== null && oneTimeRenewalQuantity <= 0) return;
             if (!isIncluded && service.hasChannels && channels <= 0) {
                 return;
             }
@@ -4696,7 +4764,15 @@ class CPGenerator {
                 totalPrice = basePrice * channels;
             }
 
-            monthlyPacks += totalPrice;
+            if (oneTimeRenewalQuantity !== null) {
+                totalPrice = service.hasChannels ? basePrice * oneTimeRenewalQuantity : basePrice;
+            }
+
+            if (this.isOneTimeService(service)) {
+                oneTimePacks += totalPrice;
+            } else {
+                monthlyPacks += totalPrice;
+            }
         });
 
         const monthlyTariffAfterDiscount = monthlyTariffBase * periodMultiplier;
@@ -4708,7 +4784,7 @@ class CPGenerator {
             + this.applyPartnerShare(monthlyPacks, packPercent)
         );
         const periodNet = this.roundMoney(monthlyNet * months);
-        const oneTimeGross = this.calculateOneTimeTotal();
+        const oneTimeGross = this.calculateOneTimeTotal() + oneTimePacks;
         const oneTimeNet = this.roundMoney(oneTimeGross);
 
         return {

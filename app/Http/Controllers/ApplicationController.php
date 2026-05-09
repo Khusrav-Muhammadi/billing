@@ -281,14 +281,22 @@ class ApplicationController extends Controller
                     continue;
                 }
 
-                $itemTariff = Tariff::query()->select('id', 'is_tariff', 'is_extra_user')->find($tariffId);
+                $itemTariff = Tariff::query()->select('id', 'is_tariff', 'is_extra_user', 'is_one_time')->find($tariffId);
                 if (!$itemTariff) {
                     continue;
                 }
 
                 $quantity = max(1, (float)data_get($row, 'quantity', 1));
+                $isOneTimeLine = (bool)($itemTariff->is_one_time ?? false);
                 $months = max(1, (int)data_get($row, 'months', $periodMonths));
+                if ($isOneTimeLine) {
+                    $months = 1;
+                }
                 $totalPrice = $this->toDecimal(data_get($row, 'total_price', data_get($row, 'price', 0)));
+                $unitPrice = $this->toDecimal(data_get($row, 'unit_price'));
+                if ($isOneTimeLine && $unitPrice > 0) {
+                    $totalPrice = $this->toDecimal($unitPrice * $quantity);
+                }
                 if ($totalPrice <= 0) {
                     continue;
                 }
@@ -296,10 +304,9 @@ class ApplicationController extends Controller
                 $isTariffLine = (bool)($itemTariff->is_tariff) && !(bool)($itemTariff->is_extra_user);
                 $discountPercent = $isTariffLine ? $periodDiscountPercent : 0.0;
                 $partnerPercent = $partner
-                    ? ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0))
+                    ? ($isOneTimeLine ? 0.0 : ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0)))
                     : 0.0;
 
-                $unitPrice = $this->toDecimal(data_get($row, 'unit_price'));
                 $unitPrice = $this->normalizeMonthlyUnitPrice($unitPrice, $totalPrice, $quantity, $months, $discountPercent);
 
                 $offer->items()->create([

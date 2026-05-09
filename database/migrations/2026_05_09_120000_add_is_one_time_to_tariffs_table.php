@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tariffs', function (Blueprint $table): void {
-            if (!Schema::hasColumn('tariffs', 'is_external')) {
-                $table->boolean('is_external')->default(false)->after('can_increase');
+            if (!Schema::hasColumn('tariffs', 'is_one_time')) {
+                $table->boolean('is_one_time')->default(false)->after('is_external');
             }
         });
     }
@@ -18,8 +18,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('tariffs', function (Blueprint $table): void {
-            if (Schema::hasColumn('tariffs', 'is_external')) {
-                $table->dropColumn('is_external');
+            if (Schema::hasColumn('tariffs', 'is_one_time')) {
+                $table->dropColumn('is_one_time');
             }
         });
     }

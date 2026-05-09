@@ -22,6 +22,7 @@ class Tariff extends Model
         'end_date',
         'can_increase',
         'is_external',
+        'is_one_time',
         'type'
     ];
 
@@ -29,6 +30,7 @@ class Tariff extends Model
         'end_date' => 'date',
         'can_increase' => 'bool',
         'is_external' => 'bool',
+        'is_one_time' => 'bool',
     ];
 
     public function currencies()

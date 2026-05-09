@@ -700,6 +700,7 @@ class ConnectedClientServiceController extends Controller
                 'prices'      => $prices,
                 'suggestedImplementationPrice' => $this->buildImplementationPricesForTariff($service, $today),
                 'hasChannels' => (bool) ($service->can_increase ?? false),
+                'isOneTime' => (bool) ($service->is_one_time ?? false),
                 'isAvailableOnDate' => $isAvailableOnDate,
                 'excludedOrganizationIds' => $excludedOrganizationIds,
             ];

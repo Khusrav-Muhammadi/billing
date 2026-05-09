@@ -21,6 +21,7 @@
                     <th>Кол-во проектов</th>
                     <th>Тип</th>
                     <th>Внешняя</th>
+                    <th>Разовая</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -40,6 +41,7 @@
                             @endif
                         </td>
                         <td>{{ $tariff->is_external ? 'Да' : 'Нет' }}</td>
+                        <td>{{ $tariff->is_one_time ? 'Да' : 'Нет' }}</td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             @if($tariff->is_tariff && !$tariff->is_extra_user)
@@ -95,6 +97,13 @@
                                             <label for="is_external">Внешняя услуга</label>
                                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                                    name="is_external" value="1" {{ $tariff->is_external ? 'checked' : '' }}
+                                                   style="width: 20px; height: 20px">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="is_one_time">Разовая оплата</label>
+                                            <input type="checkbox" class="form-check-inline custom-checkbox"
+                                                   name="is_one_time" value="1" {{ $tariff->is_one_time ? 'checked' : '' }}
                                                    style="width: 20px; height: 20px">
                                         </div>
 
@@ -202,6 +211,13 @@
                             <label for="is_external">Внешняя услуга</label>
                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                    name="is_external" value="1" {{ old('is_external') ? 'checked' : '' }}
+                                   style="width: 20px; height: 20px">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="is_one_time">Разовая оплата</label>
+                            <input type="checkbox" class="form-check-inline custom-checkbox"
+                                   name="is_one_time" value="1" {{ old('is_one_time') ? 'checked' : '' }}
                                    style="width: 20px; height: 20px">
                         </div>
 
