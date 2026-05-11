@@ -17,7 +17,6 @@ class UpdateRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'price' => ['nullable'],
             'user_count' => ['nullable', 'integer', 'min:0'],
             'project_count' => ['nullable', 'integer', 'min:0'],
             'end_date' => ['nullable', 'date'],
