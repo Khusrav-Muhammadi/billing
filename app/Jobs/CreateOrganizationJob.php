@@ -39,7 +39,7 @@ class CreateOrganizationJob implements ShouldQueue
         $url = "https://{$this->client->sub_domain}-back.{$domain}/api/organization";
 
         $tariff = Tariff::query()
-            ->whereKey($this->client->tariff_id)
+            ->whereKey(4)
             ->where('is_tariff', true)
             ->firstOrFail();
 
