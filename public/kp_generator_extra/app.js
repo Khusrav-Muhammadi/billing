@@ -307,6 +307,41 @@ class CPGenerator {
         return Boolean(service?.isOneTime) || String(service?.type || '') === 'one_time';
     }
 
+    isExternalService(service) {
+        return Boolean(service?.isExternal) || Boolean(service?.is_external);
+    }
+
+    getServiceNumericId(service, serviceKey = '') {
+        const directId = Number(service?.id);
+        if (directId > 0) {
+            return directId;
+        }
+
+        const match = String(serviceKey || '').match(/(?:tariff|service)-(\d+)/);
+        return match ? Number(match[1]) : 0;
+    }
+
+    isOnlinePbxService(service, serviceKey = '') {
+        return this.getServiceNumericId(service, serviceKey) === 33;
+    }
+
+    buildOnlinePbxCloudAtcLine(serviceKey, service, quantity, unitPrice, lineMonthlyTotal) {
+        if (!this.isOnlinePbxService(service, serviceKey)) {
+            return null;
+        }
+
+        const serviceId = this.getServiceNumericId(service, serviceKey);
+        return {
+            service_key: serviceId > 0 ? `service-${serviceId}-cloud-atc` : `${serviceKey}-cloud-atc`,
+            name: 'Облачная Atc',
+            quantity: Math.max(1, Number(quantity) || 1),
+            pricing_kind: 'pack',
+            unit_price: unitPrice,
+            price: this.roundMoney(lineMonthlyTotal * this.state.periodMonths),
+            is_external: true,
+        };
+    }
+
     getOneTimeRenewalChargeableQuantity(serviceKey, service, serviceState, isIncluded = false) {
         if (!this.isRenewalMode() || !this.isOneTimeService(service)) {
             return null;
@@ -1944,7 +1979,7 @@ class CPGenerator {
         return items
             .map((item) => {
                 const kind = String(item?.pricing_kind || '');
-                const percent = kind === 'tariff' ? tariffPercent : (kind === 'one_time' ? 0 : packPercent);
+                const percent = item?.is_external ? 0 : (kind === 'tariff' ? tariffPercent : (kind === 'one_time' ? 0 : packPercent));
                 return {
                     ...item,
                     price: this.applyPartnerShare(item?.price, percent),
@@ -2268,14 +2303,22 @@ class CPGenerator {
             const lineUnitPrice = basePrice;
             const lineMonthlyTotal = monthlyPrice;
             const isOneTimeService = this.isOneTimeService(service);
-            items.push({
+            const quantity = Math.max(1, Number(displayChannels) || 1);
+            const serviceLine = {
                 service_key: key,
                 name,
-                quantity: Math.max(1, Number(displayChannels) || 1),
+                quantity,
                 pricing_kind: isOneTimeService ? 'one_time' : 'pack',
                 unit_price: lineUnitPrice,
-                price: this.roundMoney(isOneTimeService ? lineMonthlyTotal : lineMonthlyTotal * this.state.periodMonths)
-            });
+                price: this.roundMoney(isOneTimeService ? lineMonthlyTotal : lineMonthlyTotal * this.state.periodMonths),
+                is_external: this.isExternalService(service),
+            };
+            items.push(serviceLine);
+
+            const cloudAtcLine = this.buildOnlinePbxCloudAtcLine(key, service, quantity, lineUnitPrice, lineMonthlyTotal);
+            if (cloudAtcLine) {
+                items.push(cloudAtcLine);
+            }
         });
 
         if (this.isImplementationEnabled()) {
@@ -2397,13 +2440,14 @@ class CPGenerator {
             const isTariffLine = item.pricing_kind === 'tariff'
                 || (selectedTariffId && String(item.service_key) === `tariff-${selectedTariffId}`);
             const isOneTimeLine = String(item.pricing_kind) === 'one_time';
+            const isExternalLine = Boolean(item.is_external);
             return {
                 tariff_id: tariffId,
                 quantity,
                 unit_price: isTariffLine ? baseTariffMonthly : sourceUnitPrice,
                 months: isOneTimeLine ? 1 : periodMonths,
                 discount_percent: isTariffLine ? discountPercent : 0,
-                partner_percent: isTariffLine ? tariffPartnerPercent : (isOneTimeLine ? 0 : packPartnerPercent),
+                partner_percent: isTariffLine ? tariffPartnerPercent : ((isOneTimeLine || isExternalLine) ? 0 : packPartnerPercent),
                 total_price: sourcePrice,
             };
         })
@@ -3584,19 +3628,28 @@ class CPGenerator {
                 qty = oneTimeRenewalQuantity;
             }
 
+            const isOneTimeService = this.isOneTimeService(service);
+            const isExternalService = this.isExternalService(service);
             const row = {
                 name: service.name,
                 qty,
                 unitMonthly,
-                kind: this.isOneTimeService(service) ? 'one_time' : 'pack',
+                kind: isOneTimeService ? 'one_time' : 'pack',
                 discountPercent: 0,
-                partnerPercent: this.isOneTimeService(service) ? 0 : packPartnerPercent,
+                partnerPercent: (isOneTimeService || isExternalService) ? 0 : packPartnerPercent,
             };
 
-            if (this.isOneTimeService(service)) {
+            if (isOneTimeService) {
                 oneTimeRows.push({ ...row, months: 1 });
             } else {
                 rows.push(row);
+                if (this.isOnlinePbxService(service, key)) {
+                    rows.push({
+                        ...row,
+                        name: 'Облачная Atc',
+                        partnerPercent: 0,
+                    });
+                }
             }
         });
 
@@ -4925,6 +4978,9 @@ class CPGenerator {
                 oneTimePacks += totalPrice;
             } else {
                 monthlyPacks += totalPrice;
+                if (this.isOnlinePbxService(service, key)) {
+                    monthlyPacks += totalPrice;
+                }
             }
         });
 
@@ -4948,6 +5004,7 @@ class CPGenerator {
 
         let monthlyTariffBase = 0;
         let monthlyPacks = 0;
+        let monthlyExternalPacks = 0;
         let oneTimePacks = 0;
         const months = Math.max(1, Number(this.state.periodMonths) || 1);
         const periodMultiplier = this.getPeriodDiscountMultiplier();
@@ -5032,8 +5089,16 @@ class CPGenerator {
 
             if (this.isOneTimeService(service)) {
                 oneTimePacks += totalPrice;
+            } else if (this.isExternalService(service)) {
+                monthlyExternalPacks += totalPrice;
+                if (this.isOnlinePbxService(service, key)) {
+                    monthlyExternalPacks += totalPrice;
+                }
             } else {
                 monthlyPacks += totalPrice;
+                if (this.isOnlinePbxService(service, key)) {
+                    monthlyExternalPacks += totalPrice;
+                }
             }
         });
 
@@ -5044,6 +5109,7 @@ class CPGenerator {
         const monthlyNet = this.roundMoney(
             this.applyPartnerShare(monthlyTariffAfterDiscount, tariffPercent)
             + this.applyPartnerShare(monthlyPacks, packPercent)
+            + monthlyExternalPacks
         );
         const periodNet = this.roundMoney(monthlyNet * months);
         const oneTimeGross = this.calculateOneTimeTotal() + oneTimePacks;

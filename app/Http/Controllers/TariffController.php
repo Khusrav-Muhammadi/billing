@@ -76,8 +76,7 @@ class TariffController extends Controller
     public function update(Tariff $tariff, UpdateRequest $request)
     {
         $data = $request->validated();
-        $data['price'] = (int) ($data['price'] ?? $tariff->price ?? 0);
-
+   
         $data['is_tariff'] = (bool) ($data['is_tariff'] ?? false);
         $data['is_extra_user'] = (bool) ($data['is_extra_user'] ?? false);
         $data['can_increase'] = (bool) ($data['can_increase'] ?? false);

@@ -281,13 +281,14 @@ class ApplicationController extends Controller
                     continue;
                 }
 
-                $itemTariff = Tariff::query()->select('id', 'is_tariff', 'is_extra_user', 'is_one_time')->find($tariffId);
+                $itemTariff = Tariff::query()->select('id', 'is_tariff', 'is_extra_user', 'is_one_time', 'is_external')->find($tariffId);
                 if (!$itemTariff) {
                     continue;
                 }
 
                 $quantity = max(1, (float)data_get($row, 'quantity', 1));
                 $isOneTimeLine = (bool)($itemTariff->is_one_time ?? false);
+                $isExternalLine = (bool)($itemTariff->is_external ?? false) || (bool)data_get($row, 'is_external', false);
                 $months = max(1, (int)data_get($row, 'months', $periodMonths));
                 if ($isOneTimeLine) {
                     $months = 1;
@@ -304,7 +305,7 @@ class ApplicationController extends Controller
                 $isTariffLine = (bool)($itemTariff->is_tariff) && !(bool)($itemTariff->is_extra_user);
                 $discountPercent = $isTariffLine ? $periodDiscountPercent : 0.0;
                 $partnerPercent = $partner
-                    ? ($isOneTimeLine ? 0.0 : ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0)))
+                    ? (($isOneTimeLine || $isExternalLine) ? 0.0 : ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0)))
                     : 0.0;
 
                 $unitPrice = $this->normalizeMonthlyUnitPrice($unitPrice, $totalPrice, $quantity, $months, $discountPercent);

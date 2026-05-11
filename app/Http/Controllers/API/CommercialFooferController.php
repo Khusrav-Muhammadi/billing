@@ -277,13 +277,14 @@ class CommercialFooferController extends Controller
                     continue;
                 }
 
-                $itemTariff = Tariff::query()->select('id', 'is_one_time')->find($tariffId);
+                $itemTariff = Tariff::query()->select('id', 'is_one_time', 'is_external')->find($tariffId);
                 if (!$itemTariff) {
                     continue;
                 }
 
                 $quantity = max(1, (float)data_get($row, 'quantity', 1));
                 $isOneTimeLine = (bool)($itemTariff->is_one_time ?? false);
+                $isExternalLine = (bool)($itemTariff->is_external ?? false) || (bool)data_get($row, 'is_external', false);
                 $months = max(1, (int)data_get($row, 'months', $periodMonths));
                 if ($isOneTimeLine) {
                     $months = 1;
@@ -306,7 +307,7 @@ class CommercialFooferController extends Controller
                     'unit_price' => $unitPrice,
                     'months' => $months,
                     'discount_percent' => $this->toDecimal(data_get($row, 'discount_percent', 0)),
-                    'partner_percent' => $isOneTimeLine ? 0 : $this->toDecimal(data_get($row, 'partner_percent', 0)),
+                    'partner_percent' => ($isOneTimeLine || $isExternalLine) ? 0 : $this->toDecimal(data_get($row, 'partner_percent', 0)),
                     'total_price' => $totalPrice,
                 ]);
             }
@@ -1083,6 +1084,7 @@ class CommercialFooferController extends Controller
                 'suggestedImplementationPrice' => $implementationPrices,
                 'hasChannels' => (bool)$service->can_increase,
                 'isOneTime' => (bool)($service->is_one_time ?? false),
+                'isExternal' => (bool)($service->is_external ?? false),
                 'isAvailableOnDate' => true,
                 'excludedOrganizationIds' => [],
             ];
