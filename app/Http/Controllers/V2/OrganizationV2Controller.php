@@ -80,18 +80,15 @@ class OrganizationV2Controller extends Controller
     public function show(Organization $organization)
     {
         $organization->load([
-            'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,tariff_id,country_id',
+            'client:id,name,email,phone,sub_domain,last_activity,is_active,partner_id,country_id',
             'client.country:id,name,currency_id',
             'client.country.currency:id,name,symbol_code',
             'client.partner:id,name',
-            'client.tariffPrice:id,tariff_id',
-            'client.tariffPrice.tariff:id,name,user_count',
         ]);
 
         $connectedServices = ConnectedClientServices::query()
             ->where('client_id', (int) $organization->id)
             ->with([
-                'tariff:id,name',
                 'offerCurrency:id,name,symbol_code',
             ])
             ->orderBy('date')
