@@ -362,7 +362,6 @@ class SiteApplicationController extends Controller
             'email' => $data['email'],
             'country_id' => $countryId,
             'is_demo' => true,
-            'tariff_id' => $tariffId,
             'sub_domain' => $this->generateSubdomain($data['email']),
             'manager_id' => $data['manager_id'] ?? null,
             'partner_id' => $data['partner_id'] ?? null,
