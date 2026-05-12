@@ -1972,6 +1972,28 @@ class CPGenerator {
         return (payer?.type === 'partner');
     }
 
+    isImplementationPaymentItem(item) {
+        const key = String(item?.service_key || '');
+        return key === 'implementation'
+            || key.startsWith('implementation-extra-')
+            || key.startsWith('service-implementation-');
+    }
+
+    getPartnerPercentForPaymentItem(item, tariffPercent, packPercent) {
+        if (item?.is_external || this.isImplementationPaymentItem(item)) {
+            return 0;
+        }
+
+        const kind = String(item?.pricing_kind || '');
+        if (kind === 'tariff') {
+            return tariffPercent;
+        }
+        if (kind === 'pack' || kind === 'one_time') {
+            return packPercent;
+        }
+        return 0;
+    }
+
     applyPartnerShare(amount, percent) {
         const val = Number(amount) || 0;
         const p = Math.max(0, Math.min(100, Number(percent) || 0));
@@ -1988,10 +2010,7 @@ class CPGenerator {
 
         return items
             .map((item) => {
-                const kind = String(item?.pricing_kind || '');
-                const percent = item?.is_external ? 0 : (kind === 'tariff'
-                    ? tariffPercent
-                    : (kind === 'pack' || kind === 'one_time' ? packPercent : 0));
+                const percent = this.getPartnerPercentForPaymentItem(item, tariffPercent, packPercent);
                 return {
                     ...item,
                     price: this.applyPartnerShare(item?.price, percent),
@@ -2453,13 +2472,14 @@ class CPGenerator {
                 || (selectedTariffId && String(item.service_key) === `tariff-${selectedTariffId}`);
             const isOneTimeLine = String(item.pricing_kind) === 'one_time';
             const isExternalLine = Boolean(item.is_external);
+            const isImplementationLine = this.isImplementationPaymentItem(item);
             return {
                 tariff_id: tariffId,
                 quantity,
                 unit_price: isTariffLine ? baseTariffMonthly : sourceUnitPrice,
                 months: isOneTimeLine ? 1 : periodMonths,
                 discount_percent: isTariffLine ? discountPercent : 0,
-                partner_percent: isTariffLine ? tariffPartnerPercent : (isExternalLine ? 0 : packPartnerPercent),
+                partner_percent: isTariffLine ? tariffPartnerPercent : ((isExternalLine || isImplementationLine) ? 0 : packPartnerPercent),
                 total_price: sourcePrice,
             };
         })
@@ -3712,7 +3732,7 @@ class CPGenerator {
                     unitMonthly: breakdown.base,
                     kind: 'one_time',
                     discountPercent: breakdown.discountPercent,
-                    partnerPercent: packPartnerPercent,
+                    partnerPercent: 0,
                     months: 1,
                 });
             }
@@ -3729,7 +3749,7 @@ class CPGenerator {
                     unitMonthly: price,
                     kind: 'one_time',
                     discountPercent: 0,
-                    partnerPercent: packPartnerPercent,
+                    partnerPercent: 0,
                     months: 1,
                 });
             });
@@ -3745,7 +3765,7 @@ class CPGenerator {
                     unitMonthly: price,
                     kind: 'one_time',
                     discountPercent: 0,
-                    partnerPercent: packPartnerPercent,
+                    partnerPercent: 0,
                     months: 1,
                 });
             });
@@ -5150,7 +5170,7 @@ class CPGenerator {
         );
         const periodNet = this.roundMoney(monthlyNet * months);
         const oneTimeNet = this.roundMoney(
-            this.applyPartnerShare(this.calculateOneTimeTotal(), packPercent)
+            this.calculateOneTimeTotal()
             + this.applyPartnerShare(oneTimePacks, packPercent)
         );
 

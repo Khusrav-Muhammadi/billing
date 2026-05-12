@@ -273,9 +273,11 @@ class ApplicationController extends Controller
                     continue;
                 }
 
+                $serviceKey = (string)data_get($row, 'service_key', '');
+                $isImplementationLine = $this->isImplementationItemKey($serviceKey);
                 $tariffId = $this->toNullableInt(data_get($row, 'tariff_id'));
                 if (!$tariffId) {
-                    $tariffId = $this->extractTariffIdFromAnyKey(data_get($row, 'service_key'));
+                    $tariffId = $this->extractTariffIdFromAnyKey($serviceKey);
                 }
                 if (!$tariffId) {
                     continue;
@@ -305,7 +307,7 @@ class ApplicationController extends Controller
                 $isTariffLine = (bool)($itemTariff->is_tariff) && !(bool)($itemTariff->is_extra_user);
                 $discountPercent = $isTariffLine ? $periodDiscountPercent : 0.0;
                 $partnerPercent = $partner
-                    ? ($isExternalLine ? 0.0 : ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0)))
+                    ? (($isExternalLine || $isImplementationLine) ? 0.0 : ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0)))
                     : 0.0;
 
                 $unitPrice = $this->normalizeMonthlyUnitPrice($unitPrice, $totalPrice, $quantity, $months, $discountPercent);
@@ -1373,5 +1375,14 @@ class ApplicationController extends Controller
         }
 
         return null;
+    }
+
+    private function isImplementationItemKey($key): bool
+    {
+        $raw = trim((string)$key);
+
+        return $raw === 'implementation'
+            || str_starts_with($raw, 'implementation-extra-')
+            || str_starts_with($raw, 'service-implementation-');
     }
 }

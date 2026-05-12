@@ -135,6 +135,10 @@ class PartnerExpensesRegistryService
                 ->where('id', $resolvedTariffId)
                 ->first(['id', 'is_tariff', 'is_extra_user', 'is_one_time']);
 
+            if ((bool) ($tariffRow?->is_one_time ?? false)) {
+                return 0.0;
+            }
+
             $isTariff = (bool) ($tariffRow?->is_tariff) && !(bool) ($tariffRow?->is_extra_user);
         }
 

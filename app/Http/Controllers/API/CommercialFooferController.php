@@ -268,9 +268,11 @@ class CommercialFooferController extends Controller
                     continue;
                 }
 
+                $serviceKey = (string)data_get($row, 'service_key', '');
+                $isImplementationLine = $this->isImplementationItemKey($serviceKey);
                 $tariffId = $this->toNullableInt(data_get($row, 'tariff_id'));
                 if (!$tariffId) {
-                    $tariffId = $this->extractTariffIdFromAnyKey(data_get($row, 'service_key'));
+                    $tariffId = $this->extractTariffIdFromAnyKey($serviceKey);
                 }
 
                 if (!$tariffId) {
@@ -307,7 +309,7 @@ class CommercialFooferController extends Controller
                     'unit_price' => $unitPrice,
                     'months' => $months,
                     'discount_percent' => $this->toDecimal(data_get($row, 'discount_percent', 0)),
-                    'partner_percent' => $isExternalLine ? 0 : $this->toDecimal(data_get($row, 'partner_percent', 0)),
+                    'partner_percent' => ($isExternalLine || $isImplementationLine) ? 0 : $this->toDecimal(data_get($row, 'partner_percent', 0)),
                     'total_price' => $totalPrice,
                 ]);
             }
@@ -2468,5 +2470,14 @@ class CommercialFooferController extends Controller
         }
 
         return null;
+    }
+
+    private function isImplementationItemKey($key): bool
+    {
+        $raw = trim((string)$key);
+
+        return $raw === 'implementation'
+            || str_starts_with($raw, 'implementation-extra-')
+            || str_starts_with($raw, 'service-implementation-');
     }
 }
