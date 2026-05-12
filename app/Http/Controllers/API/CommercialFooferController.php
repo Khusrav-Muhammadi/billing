@@ -307,7 +307,7 @@ class CommercialFooferController extends Controller
                     'unit_price' => $unitPrice,
                     'months' => $months,
                     'discount_percent' => $this->toDecimal(data_get($row, 'discount_percent', 0)),
-                    'partner_percent' => ($isOneTimeLine || $isExternalLine) ? 0 : $this->toDecimal(data_get($row, 'partner_percent', 0)),
+                    'partner_percent' => $isExternalLine ? 0 : $this->toDecimal(data_get($row, 'partner_percent', 0)),
                     'total_price' => $totalPrice,
                 ]);
             }

@@ -305,7 +305,7 @@ class ApplicationController extends Controller
                 $isTariffLine = (bool)($itemTariff->is_tariff) && !(bool)($itemTariff->is_extra_user);
                 $discountPercent = $isTariffLine ? $periodDiscountPercent : 0.0;
                 $partnerPercent = $partner
-                    ? (($isOneTimeLine || $isExternalLine) ? 0.0 : ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0)))
+                    ? ($isExternalLine ? 0.0 : ($isTariffLine ? (float)($partnerPercents['tariff'] ?? 0) : (float)($partnerPercents['pack'] ?? 0)))
                     : 0.0;
 
                 $unitPrice = $this->normalizeMonthlyUnitPrice($unitPrice, $totalPrice, $quantity, $months, $discountPercent);

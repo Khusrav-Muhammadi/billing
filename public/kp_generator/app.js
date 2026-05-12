@@ -328,19 +328,25 @@ class CPGenerator {
         return this.getServiceNumericId(service, serviceKey) === 33;
     }
 
+    getOnlinePbxCloudAtcUnitPrice() {
+        return 240000;
+    }
+
     buildOnlinePbxCloudAtcLine(serviceKey, service, quantity, unitPrice, lineMonthlyTotal) {
         if (!this.isOnlinePbxService(service, serviceKey)) {
             return null;
         }
 
+        const cloudAtcUnitPrice = this.getOnlinePbxCloudAtcUnitPrice();
+        const cloudAtcMonthlyTotal = cloudAtcUnitPrice * Math.max(1, Number(quantity) || 1);
         const serviceId = this.getServiceNumericId(service, serviceKey);
         return {
             service_key: serviceId > 0 ? `service-${serviceId}-cloud-atc` : `${serviceKey}-cloud-atc`,
             name: 'Облачная Atc',
             quantity: Math.max(1, Number(quantity) || 1),
             pricing_kind: 'pack',
-            unit_price: unitPrice,
-            price: this.roundMoney(lineMonthlyTotal * this.state.periodMonths),
+            unit_price: cloudAtcUnitPrice,
+            price: this.roundMoney(cloudAtcMonthlyTotal * this.state.periodMonths),
             is_external: true,
         };
     }
@@ -1985,7 +1991,7 @@ class CPGenerator {
                 const kind = String(item?.pricing_kind || '');
                 const percent = item?.is_external ? 0 : (kind === 'tariff'
                     ? tariffPercent
-                    : (kind === 'pack' ? packPercent : 0));
+                    : (kind === 'pack' || kind === 'one_time' ? packPercent : 0));
                 return {
                     ...item,
                     price: this.applyPartnerShare(item?.price, percent),
@@ -2453,7 +2459,7 @@ class CPGenerator {
                 unit_price: isTariffLine ? baseTariffMonthly : sourceUnitPrice,
                 months: isOneTimeLine ? 1 : periodMonths,
                 discount_percent: isTariffLine ? discountPercent : 0,
-                partner_percent: isTariffLine ? tariffPartnerPercent : ((isOneTimeLine || isExternalLine) ? 0 : packPartnerPercent),
+                partner_percent: isTariffLine ? tariffPartnerPercent : (isExternalLine ? 0 : packPartnerPercent),
                 total_price: sourcePrice,
             };
         })
@@ -3662,7 +3668,7 @@ class CPGenerator {
                 unitMonthly,
                 kind: isOneTimeService ? 'one_time' : 'pack',
                 discountPercent: 0,
-                partnerPercent: (isOneTimeService || isExternalService) ? 0 : packPartnerPercent,
+                partnerPercent: isExternalService ? 0 : packPartnerPercent,
             };
 
             if (isOneTimeService) {
@@ -3673,6 +3679,7 @@ class CPGenerator {
                     rows.push({
                         ...row,
                         name: 'Облачная Atc',
+                        unitMonthly: this.getOnlinePbxCloudAtcUnitPrice(),
                         partnerPercent: 0,
                     });
                 }
@@ -3705,7 +3712,7 @@ class CPGenerator {
                     unitMonthly: breakdown.base,
                     kind: 'one_time',
                     discountPercent: breakdown.discountPercent,
-                    partnerPercent: 0,
+                    partnerPercent: packPartnerPercent,
                     months: 1,
                 });
             }
@@ -3722,7 +3729,7 @@ class CPGenerator {
                     unitMonthly: price,
                     kind: 'one_time',
                     discountPercent: 0,
-                    partnerPercent: 0,
+                    partnerPercent: packPartnerPercent,
                     months: 1,
                 });
             });
@@ -3738,7 +3745,7 @@ class CPGenerator {
                     unitMonthly: price,
                     kind: 'one_time',
                     discountPercent: 0,
-                    partnerPercent: 0,
+                    partnerPercent: packPartnerPercent,
                     months: 1,
                 });
             });
@@ -5001,7 +5008,10 @@ class CPGenerator {
             } else {
                 monthlyPacks += totalPrice;
                 if (this.isOnlinePbxService(service, key)) {
-                    monthlyPacks += totalPrice;
+                    const cloudAtcQuantity = service.hasChannels && basePrice > 0
+                        ? Math.max(1, totalPrice / basePrice)
+                        : Math.max(1, Number(channels) || 1);
+                    monthlyPacks += this.getOnlinePbxCloudAtcUnitPrice() * cloudAtcQuantity;
                 }
             }
         });
@@ -5113,12 +5123,18 @@ class CPGenerator {
             } else if (this.isExternalService(service)) {
                 monthlyExternalPacks += totalPrice;
                 if (this.isOnlinePbxService(service, key)) {
-                    monthlyExternalPacks += totalPrice;
+                    const cloudAtcQuantity = service.hasChannels && basePrice > 0
+                        ? Math.max(1, totalPrice / basePrice)
+                        : Math.max(1, Number(channels) || 1);
+                    monthlyExternalPacks += this.getOnlinePbxCloudAtcUnitPrice() * cloudAtcQuantity;
                 }
             } else {
                 monthlyPacks += totalPrice;
                 if (this.isOnlinePbxService(service, key)) {
-                    monthlyExternalPacks += totalPrice;
+                    const cloudAtcQuantity = service.hasChannels && basePrice > 0
+                        ? Math.max(1, totalPrice / basePrice)
+                        : Math.max(1, Number(channels) || 1);
+                    monthlyExternalPacks += this.getOnlinePbxCloudAtcUnitPrice() * cloudAtcQuantity;
                 }
             }
         });
@@ -5133,8 +5149,10 @@ class CPGenerator {
             + monthlyExternalPacks
         );
         const periodNet = this.roundMoney(monthlyNet * months);
-        const oneTimeGross = this.calculateOneTimeTotal() + oneTimePacks;
-        const oneTimeNet = this.roundMoney(oneTimeGross);
+        const oneTimeNet = this.roundMoney(
+            this.applyPartnerShare(this.calculateOneTimeTotal(), packPercent)
+            + this.applyPartnerShare(oneTimePacks, packPercent)
+        );
 
         return {
             monthly: monthlyNet,

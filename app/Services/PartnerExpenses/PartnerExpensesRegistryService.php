@@ -33,7 +33,7 @@ class PartnerExpensesRegistryService
         DB::transaction(function () use ($offer, $status, $requestType) {
 
             foreach ($offer->items as $item) {
-                if ($this->isExternalItem($item) || $this->isOneTimeItem($item)) {
+                if ($this->isExternalItem($item)) {
                     continue;
                 }
 
@@ -135,10 +135,6 @@ class PartnerExpensesRegistryService
                 ->where('id', $resolvedTariffId)
                 ->first(['id', 'is_tariff', 'is_extra_user', 'is_one_time']);
 
-            if ((bool) ($tariffRow?->is_one_time ?? false)) {
-                return 0.0;
-            }
-
             $isTariff = (bool) ($tariffRow?->is_tariff) && !(bool) ($tariffRow?->is_extra_user);
         }
 
@@ -154,11 +150,6 @@ class PartnerExpensesRegistryService
     private function isExternalItem($item): bool
     {
         return (bool) ($item?->tariff?->is_external ?? false);
-    }
-
-    private function isOneTimeItem($item): bool
-    {
-        return (bool) ($item?->tariff?->is_one_time ?? false);
     }
 
 }
