@@ -386,6 +386,33 @@
             font-size: 20px;
         }
 
+        .price-breakdown {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+            line-height: 1.2;
+        }
+
+        .price-before-discount {
+            color: #8b95aa;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: line-through;
+        }
+
+        .discount-line {
+            color: #16a34a;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .price-after-discount {
+            color: var(--brand-blue);
+            font-size: 16px;
+            font-weight: 800;
+        }
+
         .services-total {
             max-width: 700px;
             margin: 40px auto 0;
@@ -687,10 +714,30 @@
 
     <!-- ONE-TIME SERVICES SECTION -->
     @if(isset($one_time_services) && count($one_time_services) > 0)
+    @php
+        $implementationData = is_array($implementation ?? null) ? $implementation : [];
+        $implementationBasePrice = (float)($implementationData['base_price'] ?? 0);
+        $implementationFinalPrice = (float)($implementationData['price'] ?? 0);
+        $implementationDiscountPercent = (float)($implementationData['discount_percent'] ?? 0);
+        $implementationBaseDiscountPercent = (float)($implementationData['discount_percent_base'] ?? 0);
+        $implementationMonths12DiscountPercent = (float)($implementationData['discount_percent_12_extra'] ?? 0);
+        $implementationDiscountAmount = (float)($implementationData['discount_amount'] ?? max(0, $implementationBasePrice - $implementationFinalPrice));
+        $hasImplementationDiscount = $implementationBasePrice > 0
+            && $implementationFinalPrice >= 0
+            && $implementationDiscountAmount > 0.01
+            && $implementationDiscountPercent > 0;
+    @endphp
     <div class="section-block" style="margin-top: 40px;">
         <h2 class="section-title">Услуги внедрения и обучения (разово)</h2>
         <table class="services-table">
             @foreach($one_time_services as $service)
+            @php
+                $isImplementationService = trim((string)($service['name'] ?? '')) === 'Внедрение';
+                $showImplementationDiscount = $isImplementationService
+                    && $hasImplementationDiscount
+                    && isset($service['status'])
+                    && $service['status'] === 'selected';
+            @endphp
             <tr>
                 <td>{{ $service['name'] }}</td>
                 <td class="{{ (isset($service['status']) && $service['status'] === 'included') ? 'check' : '' }}">
@@ -698,6 +745,27 @@
                         {{ $service['value'] }}
                     @elseif(isset($service['status']) && $service['status'] === 'included')
                         ✓
+                    @elseif($showImplementationDiscount)
+                        <div class="price-breakdown">
+                            <div class="price-before-discount">{{ formatPrice($implementationBasePrice) }} {{ $currency }}</div>
+                            <div class="discount-line">
+                                Скидка {{ rtrim(rtrim(number_format($implementationDiscountPercent, 2, ',', ' '), '0'), ',') }}%
+                                (−{{ formatPrice($implementationDiscountAmount) }} {{ $currency }})
+                            </div>
+                            @if($implementationBaseDiscountPercent > 0)
+                                <div class="discount-line">
+                                    на внедрение:
+                                    {{ rtrim(rtrim(number_format($implementationBaseDiscountPercent, 2, ',', ' '), '0'), ',') }}%
+                                </div>
+                            @endif
+                            @if($implementationMonths12DiscountPercent > 0)
+                                <div class="discount-line">
+                                    за 12 месяцев:
+                                    {{ rtrim(rtrim(number_format($implementationMonths12DiscountPercent, 2, ',', ' '), '0'), ',') }}%
+                                </div>
+                            @endif
+                            <div class="price-after-discount">{{ formatPrice($service['price']) }} {{ $currency }}</div>
+                        </div>
                     @elseif(isset($service['status']) && $service['status'] === 'selected' && isset($service['price']))
                         {{ formatPrice($service['price']) }} {{ $currency }}
                     @else

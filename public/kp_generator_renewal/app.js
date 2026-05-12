@@ -337,7 +337,7 @@ class CPGenerator {
     }
 
     getOnlinePbxCloudAtcUnitPrice() {
-        return 240000;
+        return 210000;
     }
 
     buildOnlinePbxCloudAtcLine(serviceKey, service, quantity, unitPrice, lineMonthlyTotal) {
@@ -346,12 +346,12 @@ class CPGenerator {
         }
 
         const cloudAtcUnitPrice = this.getOnlinePbxCloudAtcUnitPrice();
-        const cloudAtcMonthlyTotal = cloudAtcUnitPrice * Math.max(1, Number(quantity) || 1);
+        const cloudAtcMonthlyTotal = cloudAtcUnitPrice;
         const serviceId = this.getServiceNumericId(service, serviceKey);
         return {
             service_key: serviceId > 0 ? `service-${serviceId}-cloud-atc` : `${serviceKey}-cloud-atc`,
             name: 'Облачная Atc',
-            quantity: Math.max(1, Number(quantity) || 1),
+            quantity: 1,
             pricing_kind: 'pack',
             unit_price: cloudAtcUnitPrice,
             price: this.roundMoney(cloudAtcMonthlyTotal * this.state.periodMonths),
@@ -3581,6 +3581,7 @@ class CPGenerator {
                     rows.push({
                         ...row,
                         name: 'Облачная Atc',
+                        qty: 1,
                         unitMonthly: this.getOnlinePbxCloudAtcUnitPrice(),
                         partnerPercent: 0,
                     });
@@ -4796,10 +4797,7 @@ class CPGenerator {
             } else {
                 monthlyPacks += totalPrice;
                 if (this.isOnlinePbxService(service, key)) {
-                    const cloudAtcQuantity = service.hasChannels && basePrice > 0
-                        ? Math.max(1, totalPrice / basePrice)
-                        : Math.max(1, Number(channels) || 1);
-                    monthlyPacks += this.getOnlinePbxCloudAtcUnitPrice() * cloudAtcQuantity;
+                    monthlyPacks += this.getOnlinePbxCloudAtcUnitPrice();
                 }
             }
         });
@@ -4886,18 +4884,12 @@ class CPGenerator {
             } else if (this.isExternalService(service)) {
                 monthlyExternalPacks += totalPrice;
                 if (this.isOnlinePbxService(service, key)) {
-                    const cloudAtcQuantity = service.hasChannels && basePrice > 0
-                        ? Math.max(1, totalPrice / basePrice)
-                        : Math.max(1, Number(channels) || 1);
-                    monthlyExternalPacks += this.getOnlinePbxCloudAtcUnitPrice() * cloudAtcQuantity;
+                    monthlyExternalPacks += this.getOnlinePbxCloudAtcUnitPrice();
                 }
             } else {
                 monthlyPacks += totalPrice;
                 if (this.isOnlinePbxService(service, key)) {
-                    const cloudAtcQuantity = service.hasChannels && basePrice > 0
-                        ? Math.max(1, totalPrice / basePrice)
-                        : Math.max(1, Number(channels) || 1);
-                    monthlyExternalPacks += this.getOnlinePbxCloudAtcUnitPrice() * cloudAtcQuantity;
+                    monthlyExternalPacks += this.getOnlinePbxCloudAtcUnitPrice();
                 }
             }
         });

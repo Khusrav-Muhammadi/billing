@@ -80,6 +80,16 @@ class CommercialOfferController extends Controller
             'one_time_services.*.price' => 'nullable|numeric|min:0',
             'one_time_services.*.value' => 'nullable|string|max:255', // текстовое значение (10 канала)
 
+            'implementation' => 'nullable|array',
+            'implementation.enabled' => 'nullable|boolean',
+            'implementation.base_price' => 'nullable|numeric|min:0',
+            'implementation.price' => 'nullable|numeric|min:0',
+            'implementation.discount_percent' => 'nullable|numeric|min:0|max:100',
+            'implementation.discount_percent_base' => 'nullable|numeric|min:0|max:100',
+            'implementation.discount_percent_12_extra' => 'nullable|numeric|min:0|max:100',
+            'implementation.discount_amount' => 'nullable|numeric|min:0',
+            'implementation.months_12_discount_applied' => 'nullable|boolean',
+
             'contacts' => 'nullable|array',
             'contacts.phone' => 'nullable|string|max:50',
             'contacts.website' => 'nullable|string|max:100',
@@ -138,6 +148,7 @@ class CommercialOfferController extends Controller
             'additional_users' => $validated['additional_users'] ?? ['quantity' => 0, 'price_per_user' => 0],
             'modules' => $validated['modules'],
             'one_time_services' => $validated['one_time_services'] ?? [],
+            'implementation' => $validated['implementation'] ?? [],
             'contacts' => $validated['contacts'],
             'currency' => $currency,
             'validity_date' => $validityDate,
@@ -281,6 +292,7 @@ class CommercialOfferController extends Controller
             ['name' => 'Интеграция Telegram', 'status' => 'included', 'value' => '10 канала'],
             ['name' => 'Интеграция WhatsApp', 'status' => 'included', 'value' => '10 канала'],
             ['name' => 'Интеграция Messenger', 'status' => 'included', 'value' => '10 канала'],
+            ['name' => 'Внедрение', 'status' => 'selected', 'price' => 30600000],
         ];
 
         // Calculate totals
@@ -323,6 +335,16 @@ class CommercialOfferController extends Controller
             ],
             'modules' => $modules,
             'one_time_services' => $oneTimeServices,
+            'implementation' => [
+                'enabled' => true,
+                'base_price' => 36000000,
+                'price' => 30600000,
+                'discount_percent' => 15,
+                'discount_percent_base' => 0,
+                'discount_percent_12_extra' => 15,
+                'discount_amount' => 5400000,
+                'months_12_discount_applied' => true,
+            ],
             'contacts' => [
                 'phone' => '+998 78 555 7416',
                 'website' => 'shamcrm.com',
