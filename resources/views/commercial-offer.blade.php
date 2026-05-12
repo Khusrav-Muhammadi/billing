@@ -752,18 +752,7 @@
                                 Скидка {{ rtrim(rtrim(number_format($implementationDiscountPercent, 2, ',', ' '), '0'), ',') }}%
                                 (−{{ formatPrice($implementationDiscountAmount) }} {{ $currency }})
                             </div>
-                            @if($implementationBaseDiscountPercent > 0)
-                                <div class="discount-line">
-                                    на внедрение:
-                                    {{ rtrim(rtrim(number_format($implementationBaseDiscountPercent, 2, ',', ' '), '0'), ',') }}%
-                                </div>
-                            @endif
-                            @if($implementationMonths12DiscountPercent > 0)
-                                <div class="discount-line">
-                                    за 12 месяцев:
-                                    {{ rtrim(rtrim(number_format($implementationMonths12DiscountPercent, 2, ',', ' '), '0'), ',') }}%
-                                </div>
-                            @endif
+                        
                             <div class="price-after-discount">{{ formatPrice($service['price']) }} {{ $currency }}</div>
                         </div>
                     @elseif(isset($service['status']) && $service['status'] === 'selected' && isset($service['price']))
