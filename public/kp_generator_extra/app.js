@@ -307,6 +307,15 @@ class CPGenerator {
         return Boolean(service?.isOneTime) || String(service?.type || '') === 'one_time';
     }
 
+    formatSummaryServiceName(row) {
+        const name = row?.name || '';
+        if (!row?.showOneTimeServiceLabel) {
+            return name;
+        }
+
+        return `<span class="one-time-service-word">Разовый платеж</span>${name}`;
+    }
+
     isExternalService(service) {
         return Boolean(service?.isExternal) || Boolean(service?.is_external);
     }
@@ -3668,7 +3677,7 @@ class CPGenerator {
             };
 
             if (isOneTimeService) {
-                oneTimeRows.push({ ...row, months: 1 });
+                oneTimeRows.push({ ...row, months: 1, showOneTimeServiceLabel: true });
             } else {
                 rows.push(row);
                 if (this.isOnlinePbxService(service, key)) {
@@ -3796,7 +3805,7 @@ class CPGenerator {
             computed.forEach((r) => {
                 tableHTML += `
                     <tr>
-                        <td>${r.name}</td>
+                        <td>${this.formatSummaryServiceName(r)}</td>
                         <td>${r.qty}</td>
                         <td>${r.kind === 'tariff' ? this.formatPrice(r.unitMonthly) : this.formatServicePrice(r.unitMonthly)}</td>
                         <td>${r.months}</td>
@@ -3814,7 +3823,7 @@ class CPGenerator {
                 computedOneTime.forEach((r) => {
                     tableHTML += `
                         <tr>
-                            <td>${r.name}</td>
+                            <td>${this.formatSummaryServiceName(r)}</td>
                             <td>${r.qty}</td>
                             <td>${this.formatServicePrice(r.unitMonthly)}</td>
                             <td>—</td>
