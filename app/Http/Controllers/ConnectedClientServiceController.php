@@ -701,6 +701,7 @@ class ConnectedClientServiceController extends Controller
                 'suggestedImplementationPrice' => $this->buildImplementationPricesForTariff($service, $today),
                 'hasChannels' => (bool) ($service->can_increase ?? false),
                 'isOneTime' => (bool) ($service->is_one_time ?? false),
+                'oneTimeLabel' => (string) ($service->one_time_label ?? ''),
                 'isExternal' => (bool) ($service->is_external ?? false),
                 'isAvailableOnDate' => $isAvailableOnDate,
                 'excludedOrganizationIds' => $excludedOrganizationIds,

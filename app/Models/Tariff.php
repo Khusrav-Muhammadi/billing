@@ -23,6 +23,7 @@ class Tariff extends Model
         'can_increase',
         'is_external',
         'is_one_time',
+        'one_time_label',
         'type'
     ];
 

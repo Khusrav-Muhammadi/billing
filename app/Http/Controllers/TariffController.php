@@ -56,6 +56,7 @@ class TariffController extends Controller
         $data['can_increase'] = (bool) ($data['can_increase'] ?? false);
         $data['is_external'] = (bool) ($data['is_external'] ?? false);
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
+        $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
 
         if ($data['is_extra_user']) {
             $data['is_tariff'] = false; // extra user is not a tariff itself
@@ -82,6 +83,7 @@ class TariffController extends Controller
         $data['can_increase'] = (bool) ($data['can_increase'] ?? false);
         $data['is_external'] = (bool) ($data['is_external'] ?? false);
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
+        $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
         if ($data['is_extra_user']) {
             $data['is_tariff'] = false;
         }

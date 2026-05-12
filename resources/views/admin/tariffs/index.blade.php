@@ -22,6 +22,7 @@
                     <th>Тип</th>
                     <th>Внешняя</th>
                     <th>Разовая</th>
+                    <th>Текст разовой</th>
                     <th>Действие</th>
                 </tr>
                 </thead>
@@ -42,6 +43,7 @@
                         </td>
                         <td>{{ $tariff->is_external ? 'Да' : 'Нет' }}</td>
                         <td>{{ $tariff->is_one_time ? 'Да' : 'Нет' }}</td>
+                        <td>{{ $tariff->one_time_label ?: '—' }}</td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $tariff->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
                             @if($tariff->is_tariff && !$tariff->is_extra_user)
@@ -105,6 +107,13 @@
                                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                                    name="is_one_time" value="1" {{ $tariff->is_one_time ? 'checked' : '' }}
                                                    style="width: 20px; height: 20px">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="one_time_label">Текст перед названием для разовой оплаты</label>
+                                            <input type="text" class="form-control" name="one_time_label"
+                                                   value="{{ $tariff->one_time_label }}"
+                                                   placeholder="Например: Разовый платеж">
                                         </div>
 
                                         <div class="form-group">
@@ -219,6 +228,13 @@
                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                    name="is_one_time" value="1" {{ old('is_one_time') ? 'checked' : '' }}
                                    style="width: 20px; height: 20px">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="one_time_label">Текст перед названием для разовой оплаты</label>
+                            <input type="text" class="form-control" name="one_time_label"
+                                   value="{{ old('one_time_label') }}"
+                                   placeholder="Например: Разовый платеж">
                         </div>
 
                         <div class="form-group">

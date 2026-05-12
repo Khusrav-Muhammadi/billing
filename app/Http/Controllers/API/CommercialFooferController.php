@@ -1086,6 +1086,7 @@ class CommercialFooferController extends Controller
                 'suggestedImplementationPrice' => $implementationPrices,
                 'hasChannels' => (bool)$service->can_increase,
                 'isOneTime' => (bool)($service->is_one_time ?? false),
+                'oneTimeLabel' => (string)($service->one_time_label ?? ''),
                 'isExternal' => (bool)($service->is_external ?? false),
                 'isAvailableOnDate' => true,
                 'excludedOrganizationIds' => [],

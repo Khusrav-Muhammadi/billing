@@ -299,13 +299,23 @@ class CPGenerator {
         return Boolean(service?.isOneTime) || String(service?.type || '') === 'one_time';
     }
 
+    escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     formatSummaryServiceName(row) {
-        const name = row?.name || '';
-        if (!row?.showOneTimeServiceLabel) {
+        const name = this.escapeHtml(row?.name || '');
+        const label = String(row?.oneTimeLabel || '').trim();
+        if (!row?.showOneTimeServiceLabel || label === '') {
             return name;
         }
 
-        return `<span class="one-time-service-word">Разовый платеж</span>${name}`;
+        return `<span class="one-time-service-word">${this.escapeHtml(label)}</span>${name}`;
     }
 
     isExternalService(service) {
@@ -3559,7 +3569,12 @@ class CPGenerator {
             };
 
             if (isOneTimeService) {
-                oneTimeRows.push({ ...row, months: 1, showOneTimeServiceLabel: true });
+                oneTimeRows.push({
+                    ...row,
+                    months: 1,
+                    showOneTimeServiceLabel: true,
+                    oneTimeLabel: service.oneTimeLabel || '',
+                });
             } else {
                 rows.push(row);
                 if (this.isOnlinePbxService(service, key)) {
