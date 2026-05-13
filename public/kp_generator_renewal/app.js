@@ -535,6 +535,9 @@ class CPGenerator {
     getImplementationDiscountPercent() {
         const raw = this.parsePercentValue(this.state.implementationDiscountPercent);
         const val = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+        if (this.state.editOfferId) {
+            return val;
+        }
 
         const caps = this.config?.implementation?.discount_caps || {};
         const byType = caps?.by_type || {};
@@ -576,6 +579,9 @@ class CPGenerator {
         }
         const raw = this.parsePercentValue(this.state.implementationDiscountPercent12);
         const val = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+        if (this.state.editOfferId) {
+            return val;
+        }
         const cap = this.getImplementationDiscount12ExtraCapPercent();
         return Math.min(val, cap);
     }
@@ -4093,7 +4099,8 @@ class CPGenerator {
             const syncImplementationDiscount = (commit = false) => {
                 this.limitPercentInputPrecision(implementationDiscountInput);
                 const raw = this.parsePercentValue(implementationDiscountInput.value);
-                const capped = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+                const cap = this.getImplementationDiscountCapPercent();
+                const capped = this.roundPercentValue(Math.max(0, Math.min(cap, raw)));
                 this.state.implementationDiscountPercent = capped;
                 if (commit) {
                     implementationDiscountInput.value = this.formatPercentValue(this.getImplementationDiscountPercent());
@@ -4112,7 +4119,8 @@ class CPGenerator {
             const syncImplementationDiscount12 = (commit = false) => {
                 this.limitPercentInputPrecision(implementationDiscount12Input);
                 const raw = this.parsePercentValue(implementationDiscount12Input.value);
-                const capped = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+                const cap = this.getImplementationDiscount12ExtraCapPercent();
+                const capped = this.roundPercentValue(Math.max(0, Math.min(cap, raw)));
                 this.state.implementationDiscountPercent12 = capped;
                 if (commit) {
                     implementationDiscount12Input.value = this.formatPercentValue(this.getImplementationDiscount12ExtraPercent());
