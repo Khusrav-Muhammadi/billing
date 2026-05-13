@@ -69,7 +69,7 @@ class ApplicationController extends Controller
                 });
             })
             ->orderByDesc('id')
-            ->paginate(20)
+            ->paginate(1000)
             ->withQueryString();
 
         $accounts = Account::query()
