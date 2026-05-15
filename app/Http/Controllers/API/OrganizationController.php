@@ -131,12 +131,10 @@ class OrganizationController extends Controller
 
         $organizationsQuery = Organization::query()
             ->with([
-                'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,tariff_id,country_id,manager_id,nfr,created_at',
+                'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,country_id,manager_id,nfr,created_at',
                 'client.country:id,name,currency_id',
                 'client.country.currency:id,name,symbol_code',
-                'client.partner:id,name',
-                'client.tariffPrice:id,tariff_id',
-                'client.tariffPrice.tariff:id,name,user_count',
+                'client.partner:id,name'
             ])
             ->where(function ($query) use ($request) {
                 $query->whereHas('balances')
