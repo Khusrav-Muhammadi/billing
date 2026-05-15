@@ -234,12 +234,10 @@ class OrganizationController extends Controller
     public function showV2(Organization $organization): JsonResponse
     {
         $organization->load([
-            'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,tariff_id,country_id,manager_id,created_at',
+            'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,country_id,manager_id,created_at',
             'client.country:id,name,currency_id',
             'client.country.currency:id,name,symbol_code',
-            'client.partner:id,name',
-            'client.tariffPrice:id,tariff_id',
-            'client.tariffPrice.tariff:id,name,user_count',
+            'client.partner:id,name'
         ]);
 
 
