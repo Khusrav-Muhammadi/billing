@@ -2,21 +2,20 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\ConnectionJob;
 use App\Jobs\TariffExtensionJob;
 use App\Models\IntegrationActionLog;
 use App\Models\Organization;
 use App\Services\Mailing\ResendMailService;
 use Illuminate\Console\Command;
 
-class ControlDemoCommand extends Command
+class SendEmail extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'app:control-demo-command';
+    protected $signature = 'send:email';
 
     //
     /**
@@ -49,7 +48,8 @@ class ControlDemoCommand extends Command
 
             if ($daysSinceCreated > self::DEMO_DAYS) {
                 $organization->client?->update(['is_active' => false]);
-                ConnectionJob::dispatch($organization);
+                TariffExtensionJob::dispatch($organization, false);
+                $sent += $this->sendDemoExpiredFollowUpIfNeeded($organization, $daysSinceCreated);
             }
         }
 
