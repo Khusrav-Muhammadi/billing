@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('accounts', [AccountController::class, 'index']);
     Route::get('client-payment/invoice/{payment}', [ApiClientPaymentController::class, 'invoice']);
+    Route::patch('client-payment/invoice/{payment}/customer', [ApiClientPaymentController::class, 'updateInvoiceCustomer']);
 
     Route::get('commercial-foofers/{offer}/statuses', [CommercialOfferStatusController::class, 'index']);
     Route::post('commercial-foofers/{offer}/statuses', [CommercialOfferStatusController::class, 'store']);

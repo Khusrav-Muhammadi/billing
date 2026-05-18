@@ -126,6 +126,10 @@ Route::post('client-payment/webhook/alif', [\App\Http\Controllers\ClientPaymentC
 Route::post('client-payment/webhook/octo', [\App\Http\Controllers\ClientPaymentController::class, 'octoWebhook'])
     ->name('client-payment.webhook.octo');
 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::patch('client-payment/invoice/{payment}/customer', [\App\Http\Controllers\API\ClientPaymentController::class, 'updateInvoiceCustomer']);
+});
+
 Route::get('tariff-difference', [\App\Http\Controllers\API\ClientController::class, 'countDifference']);
 Route::get('tariff', [\App\Http\Controllers\TariffController::class, 'getTariffByCurrency']);
 Route::get('t/tariff', [\App\Http\Controllers\TariffController::class, 'tariff']);

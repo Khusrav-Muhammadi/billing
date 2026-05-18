@@ -4,7 +4,9 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\CommercialOffer;
+use App\Models\Organization;
 use App\Models\Payment;
+use Illuminate\Http\Request;
 
 class ClientPaymentController extends Controller
 {
@@ -43,5 +45,45 @@ class ClientPaymentController extends Controller
             ])->values(),
             'offer' => $offer
         ]);
+    }
+
+    public function updateInvoiceCustomer(Payment $payment, Request $request)
+    {
+        $data = $request->validate([
+            'field' => ['required', 'string', 'in:legal_name,INN,email,phone'],
+            'value' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $offer = CommercialOffer::query()
+            ->with('organization:id,name,legal_name,INN,email,phone,order_number')
+            ->where('payment_id', $payment->id)
+            ->firstOrFail();
+
+        $organization = $offer->organization;
+        abort_if(!$organization, 404, 'Организация не найдена');
+
+        $field = $data['field'];
+        $value = trim((string) ($data['value'] ?? ''));
+
+        $organization->forceFill([
+            $field => $value !== '' ? $value : null,
+        ])->save();
+
+        $organization->refresh();
+
+        return response()->json([
+            'success' => true,
+            'customer' => $this->invoiceCustomerData($organization),
+        ]);
+    }
+
+    private function invoiceCustomerData(Organization $organization): array
+    {
+        return [
+            'legal_name' => (string) ($organization->legal_name ?: $organization->name ?: ''),
+            'INN' => (string) ($organization->INN ?? ''),
+            'email' => (string) ($organization->email ?? ''),
+            'phone' => (string) ($organization->phone ?? ''),
+        ];
     }
 }
