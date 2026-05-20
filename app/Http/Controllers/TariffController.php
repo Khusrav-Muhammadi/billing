@@ -65,7 +65,7 @@ class TariffController extends Controller
         $data['partner_id'] = $data['partner_id'] ?? null;
 
         if ($data['is_extra_user']) {
-            $data['is_tariff'] = false; 
+            $data['is_tariff'] = false;
         }
 
         if (!$data['is_extra_user']) {
