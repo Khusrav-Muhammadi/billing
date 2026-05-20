@@ -115,22 +115,22 @@ class ConnectedClientServiceController extends Controller
         $visiblePartnerId = $this->currentPartnerId();
 
         $tariffs = Tariff::where('is_tariff', true)
-            ->where(function ($query) use ($visiblePartnerId) {
-                $query->whereNull('partner_id');
-                if ($visiblePartnerId) {
-                    $query->orWhere('partner_id', $visiblePartnerId);
-                }
+            ->when($visiblePartnerId !== null, function ($query) use ($visiblePartnerId) {
+                $query->where(function ($query) use ($visiblePartnerId) {
+                    $query->whereNull('partner_id')
+                        ->orWhere('partner_id', $visiblePartnerId);
+                });
             })
             ->with(['prices.currency', 'includedServices'])
             ->get()
             ;
 
         $services = Tariff::where('is_tariff', false)
-            ->where(function ($query) use ($visiblePartnerId) {
-                $query->whereNull('partner_id');
-                if ($visiblePartnerId) {
-                    $query->orWhere('partner_id', $visiblePartnerId);
-                }
+            ->when($visiblePartnerId !== null, function ($query) use ($visiblePartnerId) {
+                $query->where(function ($query) use ($visiblePartnerId) {
+                    $query->whereNull('partner_id')
+                        ->orWhere('partner_id', $visiblePartnerId);
+                });
             })
             ->where(function ($q) {
                 $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
@@ -146,11 +146,11 @@ class ConnectedClientServiceController extends Controller
 
         $extraUserServicesByTariffId = Tariff::query()
             ->where('is_extra_user', true)
-            ->where(function ($query) use ($visiblePartnerId) {
-                $query->whereNull('partner_id');
-                if ($visiblePartnerId) {
-                    $query->orWhere('partner_id', $visiblePartnerId);
-                }
+            ->when($visiblePartnerId !== null, function ($query) use ($visiblePartnerId) {
+                $query->where(function ($query) use ($visiblePartnerId) {
+                    $query->whereNull('partner_id')
+                        ->orWhere('partner_id', $visiblePartnerId);
+                });
             })
             ->with(['prices.currency'])
             ->get()
