@@ -236,7 +236,7 @@ class CPGenerator {
             this.combo.partner.items = [];
         }
 
-        const tariffKeys = Object.keys(this.config.tariffs || {});
+        const tariffKeys = Object.keys(this.config.tariffs || {}).filter((key) => this.isTariffVisibleForSelectedPartner(key));
         if (!tariffKeys.length) {
             this.state.selectedTariff = null;
         } else if (!this.state.selectedTariff || !tariffKeys.includes(this.state.selectedTariff)) {
@@ -1715,6 +1715,22 @@ class CPGenerator {
         return tierPrice === null ? this.getExtraUserMonthlyBase(tariffKey) : tierPrice;
     }
 
+    isItemVisibleForSelectedPartner(item) {
+        if (!item) return false;
+        const partnerId = item.partnerId ?? item.partner_id ?? null;
+        if (partnerId === null || partnerId === undefined || String(partnerId).trim() === "") {
+            return true;
+        }
+
+        const selectedPartnerId = String(this.state.selectedPartnerId || "").trim();
+        return selectedPartnerId !== "" && String(partnerId) === selectedPartnerId;
+    }
+
+    isTariffVisibleForSelectedPartner(tariffKey) {
+        return this.isItemVisibleForSelectedPartner(this.config?.tariffs?.[tariffKey]);
+    }
+
+
     getSelectedClient() {
         if (!this.state.selectedClientId) return null;
         return this.clients.find((c) => String(c.id) === String(this.state.selectedClientId)) || null;
@@ -1722,6 +1738,10 @@ class CPGenerator {
 
     isServiceVisibleForCurrentClient(serviceKey, service) {
         if (!service) {
+            return false;
+        }
+
+        if (!this.isItemVisibleForSelectedPartner(service)) {
             return false;
         }
 
@@ -1746,6 +1766,12 @@ class CPGenerator {
         if (!this.config?.services) {
             return;
         }
+
+        if (this.state.selectedTariff && !this.isTariffVisibleForSelectedPartner(this.state.selectedTariff)) {
+            this.state.selectedTariff = null;
+            this.state.extraUsers = 0;
+        }
+
 
         Object.entries(this.config.services).forEach(([serviceKey, service]) => {
             if (this.isServiceVisibleForCurrentClient(serviceKey, service)) {
@@ -2922,6 +2948,7 @@ class CPGenerator {
                 this.state.partnerName = item.name || 'Партнер';
                 this.applyPartnerImplementationDefaults(item);
                 // Partner percent affects all prices, so rerender totals/cards.
+                this.normalizeSelectedServicesByVisibility();
                 this.renderTariffs();
                 this.renderServices();
                 this.updateExtraUsersSection();
@@ -2963,7 +2990,7 @@ class CPGenerator {
         }
         grid.innerHTML = '';
 
-        const tariffKeys = Object.keys(this.config.tariffs);
+        const tariffKeys = Object.keys(this.config.tariffs).filter((key) => this.isTariffVisibleForSelectedPartner(key));
         const popularIndex = Math.floor(tariffKeys.length / 2);
 
         tariffKeys.forEach((key, index) => {
@@ -3109,6 +3136,10 @@ class CPGenerator {
             return;
         }
         if (this.isConnectionExtraServicesMode()) {
+            return;
+        }
+
+        if (!this.isTariffVisibleForSelectedPartner(tariffKey)) {
             return;
         }
 

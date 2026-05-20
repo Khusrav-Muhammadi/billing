@@ -853,6 +853,7 @@ class CommercialFooferController extends Controller
     {
         $template = $this->readConfigTemplate();
         $templateTariffs = is_array(data_get($template, 'tariffs')) ? data_get($template, 'tariffs') : [];
+        $visiblePartnerId = $this->currentPartnerId();
 
         $currencyRows = Currency::query()
             ->select('id', 'symbol_code', 'name')
@@ -903,6 +904,12 @@ class CommercialFooferController extends Controller
 
         $tariffs = Tariff::query()
             ->where('is_tariff', true)
+            ->where(function (Builder $query) use ($visiblePartnerId) {
+                $query->whereNull('partner_id');
+                if ($visiblePartnerId) {
+                    $query->orWhere('partner_id', $visiblePartnerId);
+                }
+            })
             ->where(function (Builder $query) {
                 $query->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
@@ -930,6 +937,12 @@ class CommercialFooferController extends Controller
 
         $extraUserServicesByTariffId = Tariff::query()
             ->where('is_extra_user', true)
+            ->where(function (Builder $query) use ($visiblePartnerId) {
+                $query->whereNull('partner_id');
+                if ($visiblePartnerId) {
+                    $query->orWhere('partner_id', $visiblePartnerId);
+                }
+            })
             ->with(['prices.currency:id,symbol_code'])
             ->get()
             ->groupBy('parent_tariff_id');
@@ -1017,6 +1030,7 @@ class CommercialFooferController extends Controller
             $tariffsForJs['tariff-' . (int)$tariff->id] = [
                 'id' => (int)$tariff->id,
                 'name' => (string)$tariff->name,
+                'partnerId' => $tariff->partner_id ? (int)$tariff->partner_id : null,
                 'users' => (int)($tariff->user_count ?? 0),
                 'extraUserTariffId' => $extraUserTariffId,
                 'prices' => $prices,
@@ -1040,6 +1054,12 @@ class CommercialFooferController extends Controller
 
         $services = Tariff::query()
             ->where('is_tariff', false)
+            ->where(function (Builder $query) use ($visiblePartnerId) {
+                $query->whereNull('partner_id');
+                if ($visiblePartnerId) {
+                    $query->orWhere('partner_id', $visiblePartnerId);
+                }
+            })
             ->where(function (Builder $query) {
                 $query->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
@@ -1080,6 +1100,7 @@ class CommercialFooferController extends Controller
             $servicesForJs['service-' . (int)$service->id] = [
                 'id' => (int)$service->id,
                 'name' => (string)$service->name,
+                'partnerId' => $service->partner_id ? (int)$service->partner_id : null,
                 'description' => '',
                 'type' => 'monthly',
                 'prices' => $prices,
@@ -1245,6 +1266,16 @@ class CommercialFooferController extends Controller
         }
 
         return $result;
+    }
+
+    private function currentPartnerId(): ?int
+    {
+        $user = Auth::user();
+        if (!$user || mb_strtolower(trim((string)($user->role ?? ''))) !== 'partner') {
+            return null;
+        }
+
+        return (int)$user->id;
     }
 
     private function buildClientPricesForOrganizations(int $asOfTs, array $organizationIds): array

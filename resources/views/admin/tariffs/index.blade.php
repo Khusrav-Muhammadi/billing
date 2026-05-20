@@ -20,6 +20,7 @@
                     <th>Кол-во пользователей</th>
                     <th>Кол-во проектов</th>
                     <th>Тип</th>
+                    <th>Партнер</th>
                     <th>Внешняя</th>
                     <th>Разовая</th>
                     <th>Текст разовой</th>
@@ -41,6 +42,7 @@
                                 {{ $tariff->is_tariff ? 'Тариф' : 'Услуга' }}
                             @endif
                         </td>
+                        <td>{{ $tariff->partner?->name ?: 'Все' }}</td>
                         <td>{{ $tariff->is_external ? 'Да' : 'Нет' }}</td>
                         <td>{{ $tariff->is_one_time ? 'Да' : 'Нет' }}</td>
                         <td>{{ $tariff->one_time_label ?: '—' }}</td>
@@ -137,6 +139,18 @@
                                                 @foreach($baseTariffs as $baseTariff)
                                                     <option value="{{ $baseTariff->id }}" {{ (string)$tariff->parent_tariff_id === (string)$baseTariff->id ? 'selected' : '' }}>
                                                         {{ $baseTariff->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="partner_id">Только для партнера</label>
+                                            <select class="form-control" name="partner_id">
+                                                <option value="">Для всех</option>
+                                                @foreach($partners as $partner)
+                                                    <option value="{{ $partner->id }}" {{ (string)$tariff->partner_id === (string)$partner->id ? 'selected' : '' }}>
+                                                        {{ $partner->name }}{{ $partner->email ? ' — ' . $partner->email : '' }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -257,6 +271,18 @@
                                 <option value="">Выберите тариф</option>
                                 @foreach($baseTariffs as $baseTariff)
                                     <option value="{{ $baseTariff->id }}">{{ $baseTariff->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="partner_id">Только для партнера</label>
+                            <select class="form-control" name="partner_id">
+                                <option value="">Для всех</option>
+                                @foreach($partners as $partner)
+                                    <option value="{{ $partner->id }}" {{ (string)old('partner_id') === (string)$partner->id ? 'selected' : '' }}>
+                                        {{ $partner->name }}{{ $partner->email ? ' — ' . $partner->email : '' }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>

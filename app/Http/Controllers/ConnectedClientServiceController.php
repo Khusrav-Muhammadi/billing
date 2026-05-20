@@ -112,13 +112,26 @@ class ConnectedClientServiceController extends Controller
     {
         $asOfTs = $this->getAsOfTs($request);
         $currencies = Currency::all()->keyBy('symbol_code');
+        $visiblePartnerId = $this->currentPartnerId();
 
         $tariffs = Tariff::where('is_tariff', true)
+            ->where(function ($query) use ($visiblePartnerId) {
+                $query->whereNull('partner_id');
+                if ($visiblePartnerId) {
+                    $query->orWhere('partner_id', $visiblePartnerId);
+                }
+            })
             ->with(['prices.currency', 'includedServices'])
             ->get()
             ;
 
         $services = Tariff::where('is_tariff', false)
+            ->where(function ($query) use ($visiblePartnerId) {
+                $query->whereNull('partner_id');
+                if ($visiblePartnerId) {
+                    $query->orWhere('partner_id', $visiblePartnerId);
+                }
+            })
             ->where(function ($q) {
                 $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
@@ -133,6 +146,12 @@ class ConnectedClientServiceController extends Controller
 
         $extraUserServicesByTariffId = Tariff::query()
             ->where('is_extra_user', true)
+            ->where(function ($query) use ($visiblePartnerId) {
+                $query->whereNull('partner_id');
+                if ($visiblePartnerId) {
+                    $query->orWhere('partner_id', $visiblePartnerId);
+                }
+            })
             ->with(['prices.currency'])
             ->get()
             ->groupBy('parent_tariff_id');
@@ -318,6 +337,16 @@ class ConnectedClientServiceController extends Controller
     {
         $raw = $partner->currency?->symbol_code;
         return $this->normalizePartnerCurrencyCode($raw);
+    }
+
+    private function currentPartnerId(): ?int
+    {
+        $user = auth()->user();
+        if (!$user || mb_strtolower(trim((string) ($user->role ?? ''))) !== 'partner') {
+            return null;
+        }
+
+        return (int) $user->id;
     }
 
     private function normalizePartnerCurrencyCode($code): ?string
@@ -575,6 +604,7 @@ class ConnectedClientServiceController extends Controller
             $tariffsForJs[$key] = [
                 'id'              => $tariff->id,
                 'name'            => $tariff->name,
+                'partnerId'       => $tariff->partner_id ? (int) $tariff->partner_id : null,
                 'users'           => $tariff->user_count ?? 0,
                 'extraUserTariffId' => $extraUserTariffId,
                 'prices'          => $prices,
@@ -695,6 +725,7 @@ class ConnectedClientServiceController extends Controller
             $servicesForJs[$key] = [
                 'id'          => $service->id,
                 'name'        => $service->name,
+                'partnerId'   => $service->partner_id ? (int) $service->partner_id : null,
                 'description' => '',
                 'type'        => 'monthly',
                 'prices'      => $prices,

@@ -27,6 +27,7 @@ class StoreRequest extends FormRequest
             'one_time_label' => ['nullable', 'string', 'max:255'],
             'is_tariff' => ['nullable', 'boolean'],
             'is_extra_user' => ['nullable', 'boolean'],
+            'partner_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->whereRaw('LOWER(role) = ?', ['partner']))],
             'included_services' => ['nullable', 'array'],
             'included_services.*' => ['integer', Rule::exists('tariffs', 'id')],
             'included_services_qty' => ['nullable', 'array'],

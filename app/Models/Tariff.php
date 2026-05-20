@@ -17,6 +17,7 @@ class Tariff extends Model
         'is_tariff',
         'is_extra_user',
         'parent_tariff_id',
+        'partner_id',
         'currency_id',
         'sale',
         'end_date',
@@ -42,6 +43,11 @@ class Tariff extends Model
     public function prices()
     {
         return $this->hasMany(Price::class);
+    }
+
+    public function partner()
+    {
+        return $this->belongsTo(User::class, 'partner_id');
     }
 
     public function includedServices()

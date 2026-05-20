@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Tariff;
 use App\Models\TariffCurrency;
+use App\Models\User;
 use App\Support\CurrencyResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,7 +19,7 @@ class TariffController extends Controller
     public function index()
     {
         $tariffs = Tariff::query()
-            ->with(['includedServices', 'excludedOrganizations'])
+            ->with(['includedServices', 'excludedOrganizations', 'partner:id,name'])
             ->orderBy('name')
             ->get();
         $baseTariffs = Tariff::query()
@@ -42,7 +43,13 @@ class TariffController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.tariffs.index', compact('tariffs', 'baseTariffs', 'services', 'organizations'));
+        $partners = User::query()
+            ->whereRaw('LOWER(role) = ?', ['partner'])
+            ->select(['id', 'name', 'email', 'phone'])
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.tariffs.index', compact('tariffs', 'baseTariffs', 'services', 'organizations', 'partners'));
     }
 
     public function store(StoreRequest $request)
@@ -57,6 +64,7 @@ class TariffController extends Controller
         $data['is_external'] = (bool) ($data['is_external'] ?? false);
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
         $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
+        $data['partner_id'] = $data['partner_id'] ?? null;
 
         if ($data['is_extra_user']) {
             $data['is_tariff'] = false; // extra user is not a tariff itself
@@ -84,6 +92,7 @@ class TariffController extends Controller
         $data['is_external'] = (bool) ($data['is_external'] ?? false);
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
         $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
+        $data['partner_id'] = $data['partner_id'] ?? null;
         if ($data['is_extra_user']) {
             $data['is_tariff'] = false;
         }
