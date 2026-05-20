@@ -506,9 +506,9 @@ class ConnectedClientServiceController extends Controller
             }
 
             // Fallback: if prices table is empty, use tariffs.price (same value for all currencies)
-            if (empty($prices) && $tariff->price !== null) {
+            if (empty($prices)) {
                 foreach ($currenciesForJs as $symbolCode => $_currency) {
-                    $prices[$symbolCode] = (float) $tariff->price;
+                    $prices[$symbolCode] = (float) ($tariff->price ?? 0);
                 }
             }
 
@@ -679,9 +679,9 @@ class ConnectedClientServiceController extends Controller
 
             $prices = $activePrices;
 
-            if (empty($prices) && $service->price !== null) {
+            if (empty($prices)) {
                 foreach ($currenciesForJs as $symbolCode => $_currency) {
-                    $prices[$symbolCode] = (float) $service->price;
+                    $prices[$symbolCode] = (float) ($service->price ?? 0);
                 }
             }
 

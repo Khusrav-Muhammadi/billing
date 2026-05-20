@@ -969,9 +969,9 @@ class CommercialFooferController extends Controller
                 $prices,
                 $currencyCodes,
                 $usdRates,
-                $tariff->price !== null ? round((float)$tariff->price, 4) : null
+                round((float)($tariff->price ?? 0), 4)
             );
-            if (!$this->hasAnyPositivePrice($prices)) {
+            if (empty($prices)) {
                 continue;
             }
 
@@ -1085,9 +1085,9 @@ class CommercialFooferController extends Controller
                 $prices,
                 $currencyCodes,
                 $usdRates,
-                $service->price !== null ? round((float)$service->price, 4) : null
+                round((float)($service->price ?? 0), 4)
             );
-            if (!$this->hasAnyPositivePrice($prices)) {
+            if (empty($prices)) {
                 continue;
             }
 
