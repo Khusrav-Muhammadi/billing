@@ -595,10 +595,12 @@ class ConnectedClientServiceController extends Controller
 
             $includedServicesKeys = [];
             $includedQty = [];
+            $includedPaid = [];
             foreach (($tariff->includedServices ?? []) as $includedService) {
                 $serviceKey = 'service-' . $includedService->id;
                 $includedServicesKeys[] = $serviceKey;
                 $includedQty[$serviceKey] = (int) ($includedService->pivot?->quantity ?? 1);
+                $includedPaid[$serviceKey] = (bool) ($includedService->pivot?->is_paid ?? false);
             }
 
             $tariffsForJs[$key] = [
@@ -621,6 +623,7 @@ class ConnectedClientServiceController extends Controller
                 'suggestedImplementationPrice' => $this->buildImplementationPricesForTariff($tariff, $today),
                 'includedServices' => $includedServicesKeys,
                 'includedServiceQuantities' => $includedQty,
+                'includedServicePaidFlags' => $includedPaid,
                 'features'        => [],
             ];
         }

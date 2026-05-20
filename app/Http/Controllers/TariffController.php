@@ -121,6 +121,7 @@ class TariffController extends Controller
         }
 
         $qtyMap = (array) $request->input('included_services_qty', []);
+        $paidMap = (array) $request->input('included_services_paid', []);
         $servicesCanIncrease = Tariff::query()
             ->whereIn('id', $ids)
             ->pluck('can_increase', 'id')
@@ -133,7 +134,10 @@ class TariffController extends Controller
             if (empty($servicesCanIncrease[$id])) {
                 $qty = 1;
             }
-            $sync[$id] = ['quantity' => $qty];
+            $sync[$id] = [
+                'quantity' => $qty,
+                'is_paid' => !empty($paidMap[$id]),
+            ];
         }
 
         $tariff->includedServices()->sync($sync);
@@ -199,6 +203,7 @@ class TariffController extends Controller
         $data = $request->validate([
             'service_id' => ['required', 'integer', 'exists:tariffs,id'],
             'quantity' => ['nullable', 'integer', 'min:1'],
+            'is_paid' => ['nullable', 'boolean'],
         ]);
 
         $service = Tariff::query()->findOrFail((int) $data['service_id']);
@@ -211,7 +216,10 @@ class TariffController extends Controller
         }
 
         $tariff->includedServices()->syncWithoutDetaching([
-            $service->id => ['quantity' => $qty],
+            $service->id => [
+                'quantity' => $qty,
+                'is_paid' => (bool)($data['is_paid'] ?? false),
+            ],
         ]);
 
         return redirect()->route('tariff.included_services.index', $tariff);
@@ -223,16 +231,20 @@ class TariffController extends Controller
         abort_if((bool) $service->is_tariff || (bool) $service->is_extra_user, 404);
 
         $data = $request->validate([
-            'quantity' => ['required', 'integer', 'min:1'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
+            'is_paid' => ['nullable', 'boolean'],
         ]);
 
-        $qty = (int) $data['quantity'];
+        $qty = (int) ($data['quantity'] ?? 1);
         if (!(bool) ($service->can_increase ?? false)) {
             $qty = 1;
         }
 
         $tariff->includedServices()->syncWithoutDetaching([
-            $service->id => ['quantity' => $qty],
+            $service->id => [
+                'quantity' => $qty,
+                'is_paid' => (bool)($data['is_paid'] ?? false),
+            ],
         ]);
 
         return redirect()->route('tariff.included_services.index', $tariff);

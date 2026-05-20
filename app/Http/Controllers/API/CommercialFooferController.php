@@ -1021,10 +1021,12 @@ class CommercialFooferController extends Controller
 
             $includedServices = [];
             $includedQuantities = [];
+            $includedPaid = [];
             foreach ($tariff->includedServices as $includedService) {
                 $serviceKey = 'service-' . (int)$includedService->id;
                 $includedServices[] = $serviceKey;
                 $includedQuantities[$serviceKey] = max(1, (int)($includedService->pivot?->quantity ?? 1));
+                $includedPaid[$serviceKey] = (bool)($includedService->pivot?->is_paid ?? false);
             }
 
             $tariffsForJs['tariff-' . (int)$tariff->id] = [
@@ -1047,6 +1049,7 @@ class CommercialFooferController extends Controller
                 ),
                 'includedServices' => $includedServices,
                 'includedServiceQuantities' => $includedQuantities,
+                'includedServicePaidFlags' => $includedPaid,
                 'features' => (array)data_get($templateTariff, 'features', []),
                 'tariffFeatures' => (array)data_get($templateTariff, 'tariffFeatures', []),
             ];
@@ -2369,6 +2372,7 @@ class CommercialFooferController extends Controller
             $result[$serviceKey] = [
                 'can_increase' => (bool)$service->can_increase,
                 'included_channels' => max(0, (int)($service->pivot?->quantity ?? 1)),
+                'included_paid' => (bool)($service->pivot?->is_paid ?? false),
             ];
         }
 

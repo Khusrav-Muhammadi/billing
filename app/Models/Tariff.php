@@ -53,7 +53,7 @@ class Tariff extends Model
     public function includedServices()
     {
         return $this->belongsToMany(Tariff::class, 'tariff_included_services', 'tariff_id', 'service_id')
-            ->withPivot(['quantity'])
+            ->withPivot(['quantity', 'is_paid'])
             ->withTimestamps();
     }
 

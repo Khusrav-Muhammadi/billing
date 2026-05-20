@@ -26,6 +26,7 @@
                     <th>Услуга</th>
                     <th>Можно увеличивать</th>
                     <th style="width: 160px;">Кол-во</th>
+                    <th style="width: 120px;">Платно</th>
                     <th style="width: 120px;">Действие</th>
                 </tr>
                 </thead>
@@ -35,6 +36,7 @@
                         <td>{{ $service->name }}</td>
                         <td>{{ $service->can_increase ? 'Да' : 'Нет' }}</td>
                         <td>{{ (int) ($service->pivot?->quantity ?? 1) }}</td>
+                        <td>{{ $service->pivot?->is_paid ? 'Да' : 'Нет' }}</td>
                         <td>
                             <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $service->id }}">
                                 <i class="mdi mdi-pencil-box-outline" style="font-size: 24px"></i>
@@ -68,6 +70,16 @@
                                                 <small class="text-muted">Для этой услуги количество фиксировано (1).</small>
                                             @endif
                                         </div>
+                                        <div class="form-group mt-2">
+                                            <label>Платно</label>
+                                            <input type="checkbox"
+                                                   class="form-check-inline custom-checkbox"
+                                                   name="is_paid"
+                                                   value="1"
+                                                   {{ $service->pivot?->is_paid ? 'checked' : '' }}
+                                                   style="width: 20px; height: 20px">
+                                            <small class="text-muted d-block">Если включено, услуга автоматически выбирается с тарифом, не снимается и считается в итоге.</small>
+                                        </div>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -100,7 +112,7 @@
                     </div>
                 @empty
                     <tr>
-                        <td colspan="4" class="text-muted">Пока нет включенных услуг.</td>
+                        <td colspan="5" class="text-muted">Пока нет включенных услуг.</td>
                     </tr>
                 @endforelse
                 </tbody>
@@ -132,6 +144,15 @@
                             <label>Количество</label>
                             <input type="number" class="form-control" name="quantity" id="serviceQty" min="1" value="1" disabled>
                             <small class="text-muted" id="qtyHint">Количество доступно только для услуг с “Можно увеличивать количество”.</small>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label>Платно</label>
+                            <input type="checkbox"
+                                   class="form-check-inline custom-checkbox"
+                                   name="is_paid"
+                                   value="1"
+                                   style="width: 20px; height: 20px">
+                            <small class="text-muted d-block">Услуга будет автоматически выбрана с тарифом, ее нельзя будет снять, и она попадет в итог.</small>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -169,4 +190,3 @@
         });
     </script>
 @endsection
-

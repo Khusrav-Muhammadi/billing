@@ -366,14 +366,15 @@ class CPGenerator {
 
         const previousState = this.getPreviousServiceState(serviceKey);
         const previousEnabled = Boolean(previousState?.enabled);
+        const isIncludedPaid = this.isIncludedServicePaid(this.state.selectedTariff, serviceKey);
 
         if (!service?.hasChannels) {
-            return previousEnabled || isIncluded ? 0 : 1;
+            return previousEnabled || (isIncluded && !isIncludedPaid) ? 0 : 1;
         }
 
         const channels = this.getServiceChannelsCount(serviceState);
         const previousChannels = previousEnabled ? Math.max(0, Number(previousState?.channels) || 0) : 0;
-        const includedChannels = isIncluded ? Math.max(0, this.getIncludedChannels(this.state.selectedTariff, serviceKey)) : 0;
+        const includedChannels = (isIncluded && !isIncludedPaid) ? Math.max(0, this.getIncludedChannels(this.state.selectedTariff, serviceKey)) : 0;
         const baselineChannels = Math.max(previousChannels, includedChannels);
 
         return Math.max(0, channels - baselineChannels);
@@ -421,6 +422,7 @@ class CPGenerator {
 
         const previousState = this.getPreviousServiceState(serviceKey);
         const previousEnabled = Boolean(previousState?.enabled);
+        const isIncludedPaid = this.isIncludedServicePaid(this.state.selectedTariff, serviceKey);
         const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
 
         if (this.isRenewalMode() && !service.hasChannels && previousEnabled && !isIncluded) {
@@ -433,7 +435,7 @@ class CPGenerator {
                 return false;
             }
 
-            if (isIncluded) {
+            if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, serviceKey)) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, serviceKey);
                 const shouldUsePreviousChannels = this.isConnectionExtraServicesMode() || this.isRenewalMode();
                 const previousBaselineChannels = shouldUsePreviousChannels ? previousChannels : 0;
@@ -450,7 +452,7 @@ class CPGenerator {
             return true;
         }
 
-        if (isIncluded) {
+        if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, serviceKey)) {
             return false;
         }
 
@@ -797,16 +799,16 @@ class CPGenerator {
                     return;
                 }
 
-                nextSelectedServices[serviceKey] = { enabled: false, channels: 0 };
+                nextSelectedServices[serviceKey] = { enabled: false, channels: 0, includedPaid: this.isIncludedServicePaid(this.state.selectedTariff, serviceKey) };
                 return;
             }
 
             if (isIncluded || previouslyEnabled) {
-                nextSelectedServices[serviceKey] = { enabled: true, channels: 1 };
+                nextSelectedServices[serviceKey] = { enabled: true, channels: 1, includedPaid: this.isIncludedServicePaid(this.state.selectedTariff, serviceKey) };
                 return;
             }
 
-            nextSelectedServices[serviceKey] = { enabled: false, channels: 1 };
+            nextSelectedServices[serviceKey] = { enabled: false, channels: 1, includedPaid: this.isIncludedServicePaid(this.state.selectedTariff, serviceKey) };
         });
 
         this.state.selectedServices = nextSelectedServices;
@@ -843,6 +845,7 @@ class CPGenerator {
                 nextSelectedServices[serviceKey] = {
                     enabled: previousEnabled || isIncluded || channels > 0,
                     channels,
+                    includedPaid: this.isIncludedServicePaid(this.state.selectedTariff, serviceKey),
                 };
                 return;
             }
@@ -850,6 +853,7 @@ class CPGenerator {
             nextSelectedServices[serviceKey] = {
                 enabled: previousEnabled || isIncluded,
                 channels: 1,
+                includedPaid: this.isIncludedServicePaid(this.state.selectedTariff, serviceKey),
             };
         });
 
@@ -1598,7 +1602,8 @@ class CPGenerator {
 
             this.state.selectedServices[serviceKey] = {
                 enabled,
-                channels: service.hasChannels ? Math.max(prevChannels, includedMin) : 1
+                channels: service.hasChannels ? Math.max(prevChannels, includedMin) : 1,
+                includedPaid: this.isIncludedServicePaid(this.state.selectedTariff, serviceKey)
             };
         });
     }
@@ -2309,13 +2314,13 @@ class CPGenerator {
             let monthlyPrice = 0;
             let displayChannels = channels;
 
-            if (isIncluded && service.hasChannels) {
+            if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key) && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(tariffKey, key);
                 const additionalChannels = Math.max(0, channels - includedChannels);
                 if (additionalChannels <= 0) return;
                 monthlyPrice = basePrice * additionalChannels;
                 displayChannels = additionalChannels;
-            } else if (isIncluded) {
+            } else if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key)) {
                 return;
             } else {
                 if (service.hasChannels && channels <= 0) return;
@@ -2330,7 +2335,7 @@ class CPGenerator {
             let name = service.name || key;
             if (displayChannels > 1) {
                 name = `${name} (×${displayChannels})`;
-            } else if (isIncluded && service.hasChannels) {
+            } else if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key) && service.hasChannels) {
                 name = `${name} (доп. ×${displayChannels})`;
             }
 
@@ -2968,6 +2973,14 @@ class CPGenerator {
         return 0;
     }
 
+    isIncludedServicePaid(tariffKey, serviceKey) {
+        if (!tariffKey || !serviceKey) return false;
+        const tariff = this.config?.tariffs?.[tariffKey];
+        const flags = tariff?.includedServicePaidFlags || {};
+        return Boolean(flags?.[serviceKey]);
+    }
+
+
     // Get included channels count for a service in a tariff.
     // In connection_extra_services mode this includes channels that were purchased before.
     getIncludedChannels(tariffKey, serviceKey) {
@@ -3108,10 +3121,10 @@ class CPGenerator {
 
                 if (service && service.hasChannels) {
                     // Initialize with included channels
-                    this.state.selectedServices[serviceKey] = { enabled: true, channels: Math.max(0, includedChannels) };
+                    this.state.selectedServices[serviceKey] = { enabled: true, channels: Math.max(0, includedChannels), includedPaid: this.isIncludedServicePaid(tariffKey, serviceKey) };
                 } else {
                     // Service without channels - just enable it
-                    this.state.selectedServices[serviceKey] = { enabled: true, channels: 1 };
+                    this.state.selectedServices[serviceKey] = { enabled: true, channels: 1, includedPaid: this.isIncludedServicePaid(tariffKey, serviceKey) };
                 }
             });
         }
@@ -3145,6 +3158,7 @@ class CPGenerator {
             const isConnectionExtraServices = this.isConnectionExtraServicesMode();
             const isIncluded = selectedTariff?.includedServices?.includes(key);
             const isSelected = this.state.selectedServices[key]?.enabled;
+            const isIncludedPaid = this.isIncludedServicePaid(this.state.selectedTariff, key);
             const previousState = this.getPreviousServiceState(key);
             const previousEnabled = Boolean(previousState?.enabled);
             const previousChannels = Math.max(0, Number(previousState?.channels) || 0);
@@ -3170,8 +3184,8 @@ class CPGenerator {
                 && service.hasChannels
                 && !isIncluded
                 && previousChannels > 0;
-            const shouldDisableToggle = isConnectionExtraServices
-                && (isIncluded || isNonCountablePurchasedEarlier || isCountablePurchasedEarlier);
+            const shouldDisableToggle = isIncludedPaid || (isConnectionExtraServices
+                && (isIncluded || isNonCountablePurchasedEarlier || isCountablePurchasedEarlier));
             const unitPrice = this.getPriceByCurrency(this.getServicePricesMap(key));
             const priceSuffix = this.isOneTimeService(service)
                 ? (service.hasChannels ? ' /канал разово' : ' разово')
@@ -3184,9 +3198,9 @@ class CPGenerator {
             card.innerHTML = `
                 <div class="service-header">
                     <div class="service-info">
-                        <h3>${service.name}${isIncluded ? ' <span style="font-size: 0.75rem; color: #666;">(включено)</span>' : ''}</h3>
+                        <h3>${service.name}${isIncluded ? ` <span style="font-size: 0.75rem; color: #666;">${isIncludedPaid ? '(включено, платно)' : '(включено)'}</span>` : ''}</h3>
                         <div class="service-price" style="margin-top: 6px; font-size: 0.9rem; color: #111;">
-                            ${isIncluded && !service.hasChannels ? 'Включено' : `${this.formatServicePrice(unitPrice)}${priceSuffix}`}
+                            ${isIncluded && !isIncludedPaid && !service.hasChannels ? 'Включено' : `${this.formatServicePrice(unitPrice)}${priceSuffix}`}
                         </div>
                         <p>${service.description}</p>
                     </div>
@@ -3576,7 +3590,7 @@ class CPGenerator {
             let qty = channels;
 
             // For included services with channels, only charge for additional channels
-            if (isIncluded && service.hasChannels) {
+            if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key) && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
                 const additionalChannels = channels - includedChannels;
                 if (additionalChannels > 0) {
@@ -3584,7 +3598,7 @@ class CPGenerator {
                 } else {
                     return; // No additional charges
                 }
-            } else if (isIncluded) {
+            } else if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key)) {
                 return; // Included service without channels - no charge
             } else if (service.hasChannels && channels <= 0) {
                 return;
@@ -4594,7 +4608,7 @@ class CPGenerator {
             }
 
             // Пропускаем включенные услуги без доп. каналов
-            if (isIncluded) {
+            if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key)) {
                 if (service.hasChannels) {
                     const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
                     const additionalChannels = this.getServiceChannelsCount(serviceState) - includedChannels;
@@ -4689,7 +4703,7 @@ class CPGenerator {
             }
 
             // Other services
-            if (isIncluded) {
+            if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key)) {
                 // For included services with channels, only charge for additional
                 if (service.hasChannels) {
                     const channels = this.getServiceChannelsCount(serviceState);
@@ -4813,7 +4827,7 @@ class CPGenerator {
             let totalPrice = 0;
 
             // For included services with channels, only charge for additional channels
-            if (isIncluded && service.hasChannels) {
+            if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key) && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
                 const additionalChannels = Math.max(0, channels - includedChannels); // Channels beyond included are paid
                 if (additionalChannels > 0) {
@@ -4821,7 +4835,7 @@ class CPGenerator {
                 } else {
                     return; // No additional charges
                 }
-            } else if (isIncluded) {
+            } else if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key)) {
                 return; // Included service without channels - no charge
             } else {
                 totalPrice = basePrice * channels;
@@ -4900,7 +4914,7 @@ class CPGenerator {
             }
             let totalPrice = 0;
 
-            if (isIncluded && service.hasChannels) {
+            if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key) && service.hasChannels) {
                 const includedChannels = this.getIncludedChannels(this.state.selectedTariff, key);
                 const additionalChannels = Math.max(0, channels - includedChannels);
                 if (additionalChannels > 0) {
@@ -4908,7 +4922,7 @@ class CPGenerator {
                 } else {
                     return;
                 }
-            } else if (isIncluded) {
+            } else if (isIncluded && !this.isIncludedServicePaid(this.state.selectedTariff, key)) {
                 return;
             } else {
                 totalPrice = basePrice * channels;

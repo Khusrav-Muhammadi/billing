@@ -1179,6 +1179,7 @@ class ApplicationController extends Controller
                     $selectedServices[$serviceKey] = [
                         'enabled' => true,
                         'channels' => $includedChannels,
+                        'included_paid' => (bool)($includedService->pivot?->is_paid ?? false),
                     ];
                 }
             }
