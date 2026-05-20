@@ -55,8 +55,6 @@ class TariffController extends Controller
     public function store(StoreRequest $request)
     {
         $data = $request->validated();
-        $data['price'] = (int) ($data['price'] ?? 0);
-
         // Checkbox fields: absent means "false"
         $data['is_tariff'] = (bool) ($data['is_tariff'] ?? false);
         $data['is_extra_user'] = (bool) ($data['is_extra_user'] ?? false);
@@ -67,7 +65,7 @@ class TariffController extends Controller
         $data['partner_id'] = $data['partner_id'] ?? null;
 
         if ($data['is_extra_user']) {
-            $data['is_tariff'] = false; // extra user is not a tariff itself
+            $data['is_tariff'] = false; 
         }
 
         if (!$data['is_extra_user']) {
