@@ -14,9 +14,16 @@ class ClientPaymentController extends Controller
     {
         $payment->load('paymentItems');
         $offer = CommercialOffer::query()
-            ->with('organization:id,name,legal_name,INN,email,phone,order_number')
+            ->with([
+                'organization:id,name,legal_name,INN,email,phone,order_number',
+                'items:id,commercial_offer_id,tariff_id,quantity,unit_price,months,total_price',
+                'items.tariff:id,name',
+            ])
             ->where('payment_id', $payment->id)
             ->first();
+
+        $offerItems = $offer?->items?->values() ?? collect();
+        $usedOfferItemIndexes = [];
 
         return response()->json([
             'payment' => [
@@ -39,12 +46,82 @@ class ClientPaymentController extends Controller
                     ]
                     : null,
             ],
-            'items' => $payment->paymentItems->map(fn ($item) => [
-                'service_name' => $item->service_name,
-                'price' => $item->price,
-            ])->values(),
+            'items' => $payment->paymentItems->map(function ($item) use ($offerItems, &$usedOfferItemIndexes) {
+                $offerItem = $this->findInvoiceOfferItem($item, $offerItems, $usedOfferItemIndexes);
+
+                return [
+                    'service_name' => $item->service_name,
+                    'price' => $item->price,
+                    'quantity' => $offerItem ? $this->formatInvoiceQuantity((float) $offerItem->quantity) : 1,
+                    'months' => $offerItem ? (int) $offerItem->months : null,
+                    'period_months' => $offerItem ? (int) $offerItem->months : null,
+                    'unit_price' => $offerItem ? (float) $offerItem->unit_price : null,
+                ];
+            })->values(),
             'offer' => $offer
         ]);
+    }
+
+    private function findInvoiceOfferItem($paymentItem, $offerItems, array &$usedOfferItemIndexes)
+    {
+        $paymentName = $this->normalizeInvoiceItemName((string) $paymentItem->service_name);
+        $paymentPrice = (float) $paymentItem->price;
+
+        foreach ($offerItems as $index => $offerItem) {
+            if (isset($usedOfferItemIndexes[$index])) {
+                continue;
+            }
+
+            if (
+                $this->normalizeInvoiceItemName((string) ($offerItem->tariff?->name ?? '')) === $paymentName
+                && $this->invoiceAmountsEqual((float) $offerItem->total_price, $paymentPrice)
+            ) {
+                $usedOfferItemIndexes[$index] = true;
+
+                return $offerItem;
+            }
+        }
+
+        foreach ($offerItems as $index => $offerItem) {
+            if (isset($usedOfferItemIndexes[$index])) {
+                continue;
+            }
+
+            if ($this->normalizeInvoiceItemName((string) ($offerItem->tariff?->name ?? '')) === $paymentName) {
+                $usedOfferItemIndexes[$index] = true;
+
+                return $offerItem;
+            }
+        }
+
+        foreach ($offerItems as $index => $offerItem) {
+            if (isset($usedOfferItemIndexes[$index])) {
+                continue;
+            }
+
+            if ($this->invoiceAmountsEqual((float) $offerItem->total_price, $paymentPrice)) {
+                $usedOfferItemIndexes[$index] = true;
+
+                return $offerItem;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeInvoiceItemName(string $name): string
+    {
+        return trim((string) preg_replace('/\s+/u', ' ', mb_strtolower($name)));
+    }
+
+    private function invoiceAmountsEqual(float $left, float $right): bool
+    {
+        return abs($left - $right) < 0.01;
+    }
+
+    private function formatInvoiceQuantity(float $quantity): int|float
+    {
+        return floor($quantity) === $quantity ? (int) $quantity : $quantity;
     }
 
     public function updateInvoiceCustomer(Payment $payment, Request $request)

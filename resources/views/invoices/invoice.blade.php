@@ -130,19 +130,45 @@
 
         .signature-section {
             margin-top: 40px;
-            display: flex;
-            justify-content: space-between;
+            width: 100%;
+            border-collapse: collapse;
         }
 
         .signature-block {
-            width: 45%;
-            text-align: center;
+            width: 50%;
+            height: 80px;
+            vertical-align: bottom;
+            font-size: 10px;
+        }
+
+        .signature-field {
+            position: relative;
+            display: inline-block;
+            width: 190px;
+            height: 76px;
+            vertical-align: bottom;
         }
 
         .signature-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 12px;
             border-bottom: 1px solid #000;
-            margin-bottom: 5px;
-            height: 30px;
+        }
+
+        .signature-img {
+            position: absolute;
+            left: 18px;
+            bottom: 14px;
+            width: 82px;
+            height: auto;
+            z-index: 2;
+        }
+
+        .stamp-img {
+            width: 86px;
+            height: 86px;
         }
 
         .amount-words {
@@ -261,5 +287,32 @@
     <p>Оплата настоящего счета означает согласие с условиями предоставления услуг.</p>
     <p>Наличие в платежно-расчетном документе ссылки на счет №{{ $invoiceData['invoice_number'] }} обязательно. В случае неуказания номера счета ваш платеж не будет обработан или будет зачтен получателем по своему усмотрению в счет оплаты любого заказа.</p>
 </div>
+
+@php
+    $signaturePath = public_path('assets/images/invoice/imzo.png');
+    $stampPath = public_path('assets/images/invoice/pechat.png');
+    $signatureSrc = file_exists($signaturePath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($signaturePath)) : '';
+    $stampSrc = file_exists($stampPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($stampPath)) : '';
+@endphp
+
+<table class="signature-section">
+    <tr>
+        <td class="signature-block">
+            Руководитель:
+            <span class="signature-field">
+                <span class="signature-line"></span>
+                @if($signatureSrc !== '')
+                    <img src="{{ $signatureSrc }}" class="signature-img" alt="Подпись руководителя">
+                @endif
+            </span>
+            / Ахмедов М.Р.
+        </td>
+        <td class="signature-block">
+            @if($stampSrc !== '')
+                <img src="{{ $stampSrc }}" class="stamp-img" alt="Печать организации">
+            @endif
+        </td>
+    </tr>
+</table>
 </body>
 </html>

@@ -13,6 +13,8 @@
         $items = $payment->paymentItems ?? collect();
         $organizationOrderNumber = trim((string) ($organizationOrderNumber ?? ''));
         $invoiceOrganization = $offer?->organization;
+        $signatureUrl = asset('assets/images/invoice/imzo.png');
+        $stampUrl = asset('assets/images/invoice/pechat.png');
         $customer = [
             'legal_name' => (string) ($invoiceOrganization?->legal_name ?: $invoiceOrganization?->name ?: ($payment->name ?? '')),
             'INN' => (string) ($invoiceOrganization?->INN ?? ''),
@@ -157,8 +159,17 @@
 
 
             <div class="invoice-sign">
-                <div>Руководитель: _____________ / Ахмедов М.Р.</div>
-                <div>Бухгалтер: _____________</div>
+                <div class="invoice-sign-row">
+                    <span class="invoice-sign-label">Руководитель:</span>
+                    <span class="invoice-sign-field">
+                        <span class="invoice-sign-line"></span>
+                        <img src="{{ $signatureUrl }}" class="invoice-signature-img" alt="Подпись руководителя">
+                    </span>
+                    <span>/ Ахмедов М.Р.</span>
+                </div>
+                <div class="invoice-stamp-row">
+                    <img src="{{ $stampUrl }}" class="invoice-stamp-img" alt="Печать организации">
+                </div>
             </div>
         </div>
     </div>
@@ -319,14 +330,71 @@
         .invoice-sign {
             margin-top: 18px;
             font-size: 14px;
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(210px, .85fr);
             gap: 12px;
+            align-items: end;
+        }
+        .invoice-sign-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            min-height: 96px;
+            white-space: nowrap;
+        }
+        .invoice-sign-label {
+            flex: 0 0 auto;
+        }
+        .invoice-sign-field {
+            position: relative;
+            display: inline-block;
+            width: 210px;
+            height: 86px;
+            flex: 0 0 210px;
+        }
+        .invoice-sign-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 14px;
+            border-bottom: 1px solid #111827;
+        }
+        .invoice-signature-img {
+            position: absolute;
+            left: 20px;
+            bottom: 16px;
+            width: 92px;
+            height: auto;
+            z-index: 2;
+        }
+        .invoice-stamp-img {
+            width: 96px;
+            height: 96px;
+            opacity: .82;
+        }
+        .invoice-stamp-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-start;
+            min-height: 96px;
+        }
+        @media (max-width: 767px) {
+            .invoice-sign {
+                grid-template-columns: 1fr;
+            }
+            .invoice-sign-row {
+                white-space: normal;
+            }
         }
         @media print {
             .btn, .nav, .sidebar, .navbar, .invoice-actions, .edit-field-btn { display: none !important; }
             .invoice-wrapper { padding: 0; }
             .invoice-page { border: none; }
+            .invoice-signature-img,
+            .invoice-stamp-img {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 @endsection
