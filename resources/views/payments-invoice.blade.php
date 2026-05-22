@@ -13,6 +13,7 @@
         $items = $payment->paymentItems ?? collect();
         $organizationOrderNumber = trim((string) ($organizationOrderNumber ?? ''));
         $invoiceOrganization = $offer?->organization;
+        $partnerId = (int) data_get($offer, 'partner_id', 0);
         $signatureUrl = $signatureUrl ?? asset('assets/images/invoice/imzo.png');
         $stampUrl = $stampUrl ?? asset('assets/images/invoice/pechat.png');
         $customer = [
@@ -142,7 +143,7 @@
 
             <div class="invoice-divider"></div>
 
-            @if($offer->partner_id && $offer->partner_id != 11)
+            @if($partnerId && $partnerId !== 11)
             <div class="invoice-block">
                 <div><strong>Условия:</strong></div>
                 <ul class="invoice-list">
