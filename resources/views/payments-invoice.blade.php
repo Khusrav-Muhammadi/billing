@@ -402,6 +402,22 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
+            .invoice-sign {
+                white-space: nowrap !important;
+                display: flex;
+                align-items: flex-end;
+                gap: 20px;
+            }
+            .invoice-sign-row {
+                white-space: nowrap !important;
+                flex-shrink: 0;
+            }
+            .invoice-stamp-row {
+                white-space: nowrap !important;
+                display: inline-block !important;
+                flex-shrink: 0;
+                margin-left: 0 !important;
+            }
         }
     </style>
 @endsection
