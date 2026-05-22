@@ -353,7 +353,7 @@
         .invoice-sign-field {
             position: relative;
             display: inline-block;
-            width: 210px;
+            width: 150px;
             height: 86px;
             vertical-align: bottom;
         }
@@ -373,14 +373,14 @@
             z-index: 2;
         }
         .invoice-stamp-img {
-            width: 96px;
-            height: 96px;
+            width: 82px;
+            height: 82px;
             opacity: .82;
         }
         .invoice-stamp-row {
             display: inline-block;
             min-height: 96px;
-            margin-left: 34px;
+            margin-left: 0;
             vertical-align: bottom;
         }
         @media (max-width: 767px) {
