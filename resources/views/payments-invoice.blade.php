@@ -196,10 +196,25 @@
         }
         .sidebar,
         .navbar,
+        .default-layout-navbar,
+        .navbar-menu-wrapper,
+        .navbar-brand-wrapper,
+        .navbar-nav,
+        .navbar-toggler,
+        .fixed-top,
         .footer,
         .invoice-actions,
         .edit-field-btn {
             display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
+            width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: 0 !important;
+            overflow: hidden !important;
+            background: transparent !important;
         }
         .main-panel,
         .content-wrapper {
