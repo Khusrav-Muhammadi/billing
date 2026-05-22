@@ -182,6 +182,31 @@
     </div>
 
     <style>
+        @if(!empty($hideInvoiceActions))
+        body,
+        .container-scroller,
+        .page-body-wrapper,
+        .main-panel,
+        .content-wrapper {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            min-height: 0 !important;
+            background: #fff !important;
+        }
+        .sidebar,
+        .navbar,
+        .footer,
+        .invoice-actions,
+        .edit-field-btn {
+            display: none !important;
+        }
+        .main-panel,
+        .content-wrapper {
+            position: static !important;
+            float: none !important;
+        }
+        @endif
         .invoice-wrapper {
             max-width: 900px;
             margin: 0 auto;
