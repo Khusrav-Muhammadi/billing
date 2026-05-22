@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommercialOffer;
 use App\Models\Organization;
 use App\Models\Payment;
+use App\Services\ClientPaymentInvoiceEmailService;
 use Illuminate\Http\Request;
 
 class ClientPaymentController extends Controller
@@ -152,6 +153,24 @@ class ClientPaymentController extends Controller
             'success' => true,
             'customer' => $this->invoiceCustomerData($organization),
         ]);
+    }
+
+    public function sendInvoiceEmail(Payment $payment, ClientPaymentInvoiceEmailService $invoiceEmailService)
+    {
+        try {
+            $result = $invoiceEmailService->send($payment);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Счет отправлен на почту: ' . $result['email'],
+                'email' => $result['email'],
+            ]);
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
     }
 
     private function invoiceCustomerData(Organization $organization): array

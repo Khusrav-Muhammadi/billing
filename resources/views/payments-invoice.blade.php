@@ -13,8 +13,8 @@
         $items = $payment->paymentItems ?? collect();
         $organizationOrderNumber = trim((string) ($organizationOrderNumber ?? ''));
         $invoiceOrganization = $offer?->organization;
-        $signatureUrl = asset('assets/images/invoice/imzo.png');
-        $stampUrl = asset('assets/images/invoice/pechat.png');
+        $signatureUrl = $signatureUrl ?? asset('assets/images/invoice/imzo.png');
+        $stampUrl = $stampUrl ?? asset('assets/images/invoice/pechat.png');
         $customer = [
             'legal_name' => (string) ($invoiceOrganization?->legal_name ?: $invoiceOrganization?->name ?: ($payment->name ?? '')),
             'INN' => (string) ($invoiceOrganization?->INN ?? ''),
@@ -24,10 +24,16 @@
     @endphp
 
     <div class="invoice-wrapper">
-        <div class="invoice-actions">
-            <a href="{{ route('client-payment.index') }}" class="btn btn-light">Назад</a>
-            <button class="btn btn-primary" onclick="window.print()">Печать / Скачать PDF</button>
-        </div>
+        @if(empty($hideInvoiceActions))
+            <div class="invoice-actions">
+                <a href="{{ route('client-payment.index') }}" class="btn btn-light">Назад</a>
+                <form action="{{ route('client-payment.invoice.email', $payment) }}" method="POST" class="m-0">
+                    @csrf
+                    <button class="btn btn-success" type="submit">Отправить на почту</button>
+                </form>
+                <button class="btn btn-primary" onclick="window.print()">Печать / Скачать PDF</button>
+            </div>
+        @endif
 
         <div class="invoice-page">
             <h2 class="invoice-title">Счет на оплату № {{ $payment->id }} от {{ $invoiceDate }}</h2>
@@ -46,11 +52,11 @@
             </div>
             <div class="invoice-block invoice-divider">
                 <div class="customer-details"
-                     data-update-url="{{ $invoiceOrganization ? route('client-payment.invoice.customer.update', $payment) : '' }}">
+                     data-update-url="{{ $invoiceOrganization && empty($hideInvoiceActions) ? route('client-payment.invoice.customer.update', $payment) : '' }}">
                     <strong>Покупатель:</strong>
                     <span class="editable-field" data-field="legal_name" data-label="Покупатель" data-value="{{ $customer['legal_name'] }}" tabindex="0">
                         <span class="editable-display">"<span class="editable-value">{{ $customer['legal_name'] !== '' ? $customer['legal_name'] : '—' }}</span>"</span>
-                        @if($invoiceOrganization)
+                        @if($invoiceOrganization && empty($hideInvoiceActions))
                             <button type="button" class="edit-field-btn" title="Изменить покупателя" aria-label="Изменить покупателя">
                                 <i class="mdi mdi-pencil"></i>
                             </button>
@@ -62,7 +68,7 @@
                             <span class="customer-field-label">ИНН:</span>
                             <span class="editable-value">{{ $customer['INN'] !== '' ? $customer['INN'] : '—' }}</span>
                         </span>
-                        @if($invoiceOrganization)
+                        @if($invoiceOrganization && empty($hideInvoiceActions))
                             <button type="button" class="edit-field-btn" title="Изменить ИНН" aria-label="Изменить ИНН">
                                 <i class="mdi mdi-pencil"></i>
                             </button>
@@ -74,7 +80,7 @@
                             <span class="customer-field-label">Почта:</span>
                             <span class="editable-value">{{ $customer['email'] !== '' ? $customer['email'] : '—' }}</span>
                         </span>
-                        @if($invoiceOrganization)
+                        @if($invoiceOrganization && empty($hideInvoiceActions))
                             <button type="button" class="edit-field-btn" title="Изменить почту" aria-label="Изменить почту">
                                 <i class="mdi mdi-pencil"></i>
                             </button>
@@ -86,7 +92,7 @@
                             <span class="customer-field-label">Телефон:</span>
                             <span class="editable-value">{{ $customer['phone'] !== '' ? $customer['phone'] : '—' }}</span>
                         </span>
-                        @if($invoiceOrganization)
+                        @if($invoiceOrganization && empty($hideInvoiceActions))
                             <button type="button" class="edit-field-btn" title="Изменить телефон" aria-label="Изменить телефон">
                                 <i class="mdi mdi-pencil"></i>
                             </button>

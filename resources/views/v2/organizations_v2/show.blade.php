@@ -286,6 +286,7 @@
                                 'demo_expired_followup_14' => 'Демо: письмо через 14 дней',
                                 'demo_expired_followup_18' => 'Демо: письмо через 18 дней',
                                 'commercial_offer_paid_email' => 'Письмо после оплаты',
+                                'client_payment_invoice_email' => 'Отправка счета на почту',
                                 'low_balance_email' => 'Уведомление о балансе',
                                 'update_tariff' => 'Изменение тарифа',
                                 'connection_update_tariff' => 'Подключение тарифа',

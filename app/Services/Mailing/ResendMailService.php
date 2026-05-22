@@ -23,7 +23,8 @@ class ResendMailService
         string $view,
         array $data = [],
         bool $sendInternalCopy = true,
-        array $logContext = []
+        array $logContext = [],
+        array $attachments = []
     ): bool
     {
         $html = view($view, $data)->render();
@@ -33,7 +34,7 @@ class ResendMailService
             $this->send('bahovaddinhonkasimov@gmail.com', $subject, $html);
         }
 
-        $sent = $this->send($to, $subject, $html);
+        $sent = $this->send($to, $subject, $html, $attachments);
 
         if (!empty($logContext)) {
             app(IntegrationActionLogService::class)->logEmail(
@@ -45,7 +46,7 @@ class ResendMailService
                 payload: [
                     'view' => $view,
                     'data' => $data,
-                    'request_body' => $this->mailPayload($to, $subject, $html, $text),
+                    'request_body' => $this->mailPayload($to, $subject, $html, $text, $this->attachmentPayload($attachments, false)),
                     'email_body' => [
                         'html' => $html,
                         'text' => $text,
@@ -59,9 +60,9 @@ class ResendMailService
         return $sent;
     }
 
-    public function send(string $to, string $subject, string $html): bool
+    public function send(string $to, string $subject, string $html, array $attachments = []): bool
     {
-        $payload = $this->mailPayload($to, $subject, $html, strip_tags($html));
+        $payload = $this->mailPayload($to, $subject, $html, strip_tags($html), $this->attachmentPayload($attachments));
 
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $this->apiKey,
@@ -80,14 +81,38 @@ class ResendMailService
         return true;
     }
 
-    private function mailPayload(string $to, string $subject, string $html, string $text): array
+    private function mailPayload(string $to, string $subject, string $html, string $text, array $attachments = []): array
     {
-        return [
+        $payload = [
             'from' => "shamCRM <{$this->fromEmail}>",
             'to' => [$to],
             'subject' => $subject,
             'html' => $html,
             'text' => $text,
         ];
+
+        if (!empty($attachments)) {
+            $payload['attachments'] = $attachments;
+        }
+
+        return $payload;
+    }
+
+    private function attachmentPayload(array $attachments, bool $includeContent = true): array
+    {
+        return collect($attachments)
+            ->map(function (array $attachment) use ($includeContent) {
+                $payload = [
+                    'filename' => (string) ($attachment['filename'] ?? 'attachment'),
+                ];
+
+                if ($includeContent) {
+                    $payload['content'] = base64_encode((string) ($attachment['content'] ?? ''));
+                }
+
+                return $payload;
+            })
+            ->values()
+            ->all();
     }
 }
