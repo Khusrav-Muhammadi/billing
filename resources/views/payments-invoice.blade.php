@@ -185,6 +185,7 @@
             max-width: 900px;
             margin: 0 auto;
             padding: 24px;
+            font-family: "DejaVu Sans", Arial, sans-serif;
         }
         .invoice-actions {
             display: flex;
@@ -336,27 +337,25 @@
         .invoice-sign {
             margin-top: 18px;
             font-size: 14px;
-            display: grid;
-            grid-template-columns: minmax(0, 1.15fr) minmax(210px, .85fr);
-            gap: 12px;
-            align-items: end;
+            white-space: nowrap;
         }
         .invoice-sign-row {
-            display: flex;
-            align-items: flex-end;
-            gap: 6px;
+            display: inline-block;
             min-height: 96px;
+            vertical-align: bottom;
             white-space: nowrap;
         }
         .invoice-sign-label {
-            flex: 0 0 auto;
+            display: inline-block;
+            vertical-align: bottom;
+            margin-bottom: 8px;
         }
         .invoice-sign-field {
             position: relative;
             display: inline-block;
             width: 210px;
             height: 86px;
-            flex: 0 0 210px;
+            vertical-align: bottom;
         }
         .invoice-sign-line {
             position: absolute;
@@ -379,17 +378,19 @@
             opacity: .82;
         }
         .invoice-stamp-row {
-            display: flex;
-            align-items: flex-end;
-            justify-content: flex-start;
+            display: inline-block;
             min-height: 96px;
+            margin-left: 34px;
+            vertical-align: bottom;
         }
         @media (max-width: 767px) {
-            .invoice-sign {
-                grid-template-columns: 1fr;
-            }
+            .invoice-sign { white-space: normal; }
             .invoice-sign-row {
                 white-space: normal;
+            }
+            .invoice-stamp-row {
+                display: block;
+                margin-left: 0;
             }
         }
         @media print {

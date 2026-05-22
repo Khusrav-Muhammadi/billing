@@ -93,7 +93,13 @@ class ClientPaymentInvoiceEmailService
             'hideInvoiceActions' => true,
             'signatureUrl' => $this->imageDataUri(public_path('assets/images/invoice/imzo.png')),
             'stampUrl' => $this->imageDataUri(public_path('assets/images/invoice/pechat.png')),
-        ])->setPaper('a4')->output();
+        ])->setPaper('a4')
+            ->setOptions([
+                'defaultFont' => 'DejaVu Sans',
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+            ])
+            ->output();
     }
 
     private function recipient(Payment $payment, ?CommercialOffer $offer): array

@@ -30,9 +30,7 @@ class ResendMailService
         $html = view($view, $data)->render();
         $text = strip_tags($html);
 
-        if ($sendInternalCopy) {
-            $this->send('bahovaddinhonkasimov@gmail.com', $subject, $html);
-        }
+
 
         $sent = $this->send($to, $subject, $html, $attachments);
 
