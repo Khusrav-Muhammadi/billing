@@ -1,5 +1,3 @@
-
-
 <style>
     .w{max-width:560px;margin:0 auto;font-family:Arial,sans-serif;border-radius:16px;overflow:hidden;background:#2b3180}
     .hero{background:#2b3180;padding:44px 44px 36px;position:relative;overflow:hidden}
