@@ -17,7 +17,6 @@ class StoreRequest extends FormRequest
     {
         return [
             'name' => ['required'],
-            'price' => ['nullable'],
             'user_count' => ['nullable', 'integer', 'min:0'],
             'project_count' => ['nullable', 'integer', 'min:0'],
             'end_date' => ['nullable', 'date'],
@@ -27,10 +26,13 @@ class StoreRequest extends FormRequest
             'one_time_label' => ['nullable', 'string', 'max:255'],
             'is_tariff' => ['nullable', 'boolean'],
             'is_extra_user' => ['nullable', 'boolean'],
+            'partner_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->whereRaw('LOWER(role) = ?', ['partner']))],
             'included_services' => ['nullable', 'array'],
             'included_services.*' => ['integer', Rule::exists('tariffs', 'id')],
             'included_services_qty' => ['nullable', 'array'],
             'included_services_qty.*' => ['integer', 'min:1'],
+            'included_services_paid' => ['nullable', 'array'],
+            'included_services_paid.*' => ['nullable', 'boolean'],
             'excluded_organization_ids' => ['nullable', 'array'],
             'excluded_organization_ids.*' => ['integer', Rule::exists('organizations', 'id')],
             'parent_tariff_id' => [

@@ -14,6 +14,7 @@ use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Models\User;
+use App\Services\ClientPaymentInvoiceEmailService;
 use App\Services\Mailing\ResendMailService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -85,6 +86,17 @@ class ClientPaymentController extends Controller
             'success' => true,
             'customer' => $this->invoiceCustomerData($organization),
         ]);
+    }
+
+    public function sendInvoiceEmail(Payment $payment, ClientPaymentInvoiceEmailService $invoiceEmailService)
+    {
+        try {
+            $result = $invoiceEmailService->send($payment);
+
+            return back()->with('success', 'Счет отправлен на почту: ' . $result['email']);
+        } catch (\Throwable $exception) {
+            return back()->withErrors(['error' => $exception->getMessage()]);
+        }
     }
 
     public function octoWebhook(Request $request)

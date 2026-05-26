@@ -111,6 +111,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [\App\Http\Controllers\ClientPaymentController::class, 'index'])->name('client-payment.index');
         Route::post('/', [\App\Http\Controllers\ClientPaymentController::class, 'store'])->name('client-payment.create');
         Route::get('/invoice/{payment}', [\App\Http\Controllers\ClientPaymentController::class, 'invoice'])->name('client-payment.invoice');
+        Route::post('/invoice/{payment}/email', [\App\Http\Controllers\ClientPaymentController::class, 'sendInvoiceEmail'])->name('client-payment.invoice.email');
         Route::patch('/invoice/{payment}/customer', [\App\Http\Controllers\ClientPaymentController::class, 'updateInvoiceCustomer'])->name('client-payment.invoice.customer.update');
     });
 

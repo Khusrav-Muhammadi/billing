@@ -9,6 +9,7 @@ use App\Http\Requests\Organization\StoreRequest;
 use App\Models\ClientBalance;
 use App\Models\ConnectedClientServices;
 use App\Models\Client;
+use App\Models\IntegrationActionLog;
 use App\Models\Organization;
 use App\Models\OrganizationConnectionStatus;
 use App\Models\OrganizationPack;
@@ -268,12 +269,26 @@ class OrganizationController extends Controller
 
         $realBalance = $this->calculateRealBalance($organization, $balanceOperations);
 
+        $integrationLogs = IntegrationActionLog::query()
+            ->where(function ($query) use ($organization): void {
+                $query->where('organization_id', (int)$organization->id);
+
+                if ($organization->client_id) {
+                    $query->orWhere('client_id', (int)$organization->client_id);
+                }
+            })
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
         return response()->json([
             'organization' => $organization,
             'connected_services' => $connectedServices,
             'connection_status_history' => $connectionStatusHistory,
             'balance_operations' => $balanceOperations,
             'real_balance' => $realBalance,
+            'integration_logs' => $integrationLogs,
         ]);
     }
 

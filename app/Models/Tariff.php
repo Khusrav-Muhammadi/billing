@@ -17,6 +17,7 @@ class Tariff extends Model
         'is_tariff',
         'is_extra_user',
         'parent_tariff_id',
+        'partner_id',
         'currency_id',
         'sale',
         'end_date',
@@ -44,10 +45,15 @@ class Tariff extends Model
         return $this->hasMany(Price::class);
     }
 
+    public function partner()
+    {
+        return $this->belongsTo(User::class, 'partner_id');
+    }
+
     public function includedServices()
     {
         return $this->belongsToMany(Tariff::class, 'tariff_included_services', 'tariff_id', 'service_id')
-            ->withPivot(['quantity'])
+            ->withPivot(['quantity', 'is_paid'])
             ->withTimestamps();
     }
 

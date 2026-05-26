@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Tariff;
 use App\Models\TariffCurrency;
+use App\Models\User;
 use App\Support\CurrencyResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -18,7 +19,7 @@ class TariffController extends Controller
     public function index()
     {
         $tariffs = Tariff::query()
-            ->with(['includedServices', 'excludedOrganizations'])
+            ->with(['includedServices', 'excludedOrganizations', 'partner:id,name'])
             ->orderBy('name')
             ->get();
         $baseTariffs = Tariff::query()
@@ -42,14 +43,18 @@ class TariffController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.tariffs.index', compact('tariffs', 'baseTariffs', 'services', 'organizations'));
+        $partners = User::query()
+            ->whereRaw('LOWER(role) = ?', ['partner'])
+            ->select(['id', 'name', 'email', 'phone'])
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.tariffs.index', compact('tariffs', 'baseTariffs', 'services', 'organizations', 'partners'));
     }
 
     public function store(StoreRequest $request)
     {
         $data = $request->validated();
-        $data['price'] = (int) ($data['price'] ?? 0);
-
         // Checkbox fields: absent means "false"
         $data['is_tariff'] = (bool) ($data['is_tariff'] ?? false);
         $data['is_extra_user'] = (bool) ($data['is_extra_user'] ?? false);
@@ -57,9 +62,10 @@ class TariffController extends Controller
         $data['is_external'] = (bool) ($data['is_external'] ?? false);
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
         $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
+        $data['partner_id'] = $data['partner_id'] ?? null;
 
         if ($data['is_extra_user']) {
-            $data['is_tariff'] = false; // extra user is not a tariff itself
+            $data['is_tariff'] = false;
         }
 
         if (!$data['is_extra_user']) {
@@ -84,6 +90,7 @@ class TariffController extends Controller
         $data['is_external'] = (bool) ($data['is_external'] ?? false);
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
         $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
+        $data['partner_id'] = $data['partner_id'] ?? null;
         if ($data['is_extra_user']) {
             $data['is_tariff'] = false;
         }
@@ -114,6 +121,7 @@ class TariffController extends Controller
         }
 
         $qtyMap = (array) $request->input('included_services_qty', []);
+        $paidMap = (array) $request->input('included_services_paid', []);
         $servicesCanIncrease = Tariff::query()
             ->whereIn('id', $ids)
             ->pluck('can_increase', 'id')
@@ -126,7 +134,10 @@ class TariffController extends Controller
             if (empty($servicesCanIncrease[$id])) {
                 $qty = 1;
             }
-            $sync[$id] = ['quantity' => $qty];
+            $sync[$id] = [
+                'quantity' => $qty,
+                'is_paid' => !empty($paidMap[$id]),
+            ];
         }
 
         $tariff->includedServices()->sync($sync);
@@ -192,6 +203,7 @@ class TariffController extends Controller
         $data = $request->validate([
             'service_id' => ['required', 'integer', 'exists:tariffs,id'],
             'quantity' => ['nullable', 'integer', 'min:1'],
+            'is_paid' => ['nullable', 'boolean'],
         ]);
 
         $service = Tariff::query()->findOrFail((int) $data['service_id']);
@@ -204,7 +216,10 @@ class TariffController extends Controller
         }
 
         $tariff->includedServices()->syncWithoutDetaching([
-            $service->id => ['quantity' => $qty],
+            $service->id => [
+                'quantity' => $qty,
+                'is_paid' => (bool)($data['is_paid'] ?? false),
+            ],
         ]);
 
         return redirect()->route('tariff.included_services.index', $tariff);
@@ -216,16 +231,20 @@ class TariffController extends Controller
         abort_if((bool) $service->is_tariff || (bool) $service->is_extra_user, 404);
 
         $data = $request->validate([
-            'quantity' => ['required', 'integer', 'min:1'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
+            'is_paid' => ['nullable', 'boolean'],
         ]);
 
-        $qty = (int) $data['quantity'];
+        $qty = (int) ($data['quantity'] ?? 1);
         if (!(bool) ($service->can_increase ?? false)) {
             $qty = 1;
         }
 
         $tariff->includedServices()->syncWithoutDetaching([
-            $service->id => ['quantity' => $qty],
+            $service->id => [
+                'quantity' => $qty,
+                'is_paid' => (bool)($data['is_paid'] ?? false),
+            ],
         ]);
 
         return redirect()->route('tariff.included_services.index', $tariff);

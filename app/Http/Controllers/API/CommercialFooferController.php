@@ -853,6 +853,7 @@ class CommercialFooferController extends Controller
     {
         $template = $this->readConfigTemplate();
         $templateTariffs = is_array(data_get($template, 'tariffs')) ? data_get($template, 'tariffs') : [];
+        $visiblePartnerId = $this->currentPartnerId();
 
         $currencyRows = Currency::query()
             ->select('id', 'symbol_code', 'name')
@@ -903,6 +904,12 @@ class CommercialFooferController extends Controller
 
         $tariffs = Tariff::query()
             ->where('is_tariff', true)
+            ->when($visiblePartnerId !== null, function (Builder $query) use ($visiblePartnerId) {
+                $query->where(function (Builder $query) use ($visiblePartnerId) {
+                    $query->whereNull('partner_id')
+                        ->orWhere('partner_id', $visiblePartnerId);
+                });
+            })
             ->where(function (Builder $query) {
                 $query->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
@@ -930,6 +937,12 @@ class CommercialFooferController extends Controller
 
         $extraUserServicesByTariffId = Tariff::query()
             ->where('is_extra_user', true)
+            ->when($visiblePartnerId !== null, function (Builder $query) use ($visiblePartnerId) {
+                $query->where(function (Builder $query) use ($visiblePartnerId) {
+                    $query->whereNull('partner_id')
+                        ->orWhere('partner_id', $visiblePartnerId);
+                });
+            })
             ->with(['prices.currency:id,symbol_code'])
             ->get()
             ->groupBy('parent_tariff_id');
@@ -956,9 +969,9 @@ class CommercialFooferController extends Controller
                 $prices,
                 $currencyCodes,
                 $usdRates,
-                $tariff->price !== null ? round((float)$tariff->price, 4) : null
+                round((float)($tariff->price ?? 0), 4)
             );
-            if (!$this->hasAnyPositivePrice($prices)) {
+            if (empty($prices)) {
                 continue;
             }
 
@@ -1008,15 +1021,18 @@ class CommercialFooferController extends Controller
 
             $includedServices = [];
             $includedQuantities = [];
+            $includedPaid = [];
             foreach ($tariff->includedServices as $includedService) {
                 $serviceKey = 'service-' . (int)$includedService->id;
                 $includedServices[] = $serviceKey;
                 $includedQuantities[$serviceKey] = max(1, (int)($includedService->pivot?->quantity ?? 1));
+                $includedPaid[$serviceKey] = (bool)($includedService->pivot?->is_paid ?? false);
             }
 
             $tariffsForJs['tariff-' . (int)$tariff->id] = [
                 'id' => (int)$tariff->id,
                 'name' => (string)$tariff->name,
+                'partnerId' => $tariff->partner_id ? (int)$tariff->partner_id : null,
                 'users' => (int)($tariff->user_count ?? 0),
                 'extraUserTariffId' => $extraUserTariffId,
                 'prices' => $prices,
@@ -1033,6 +1049,7 @@ class CommercialFooferController extends Controller
                 ),
                 'includedServices' => $includedServices,
                 'includedServiceQuantities' => $includedQuantities,
+                'includedServicePaidFlags' => $includedPaid,
                 'features' => (array)data_get($templateTariff, 'features', []),
                 'tariffFeatures' => (array)data_get($templateTariff, 'tariffFeatures', []),
             ];
@@ -1040,6 +1057,12 @@ class CommercialFooferController extends Controller
 
         $services = Tariff::query()
             ->where('is_tariff', false)
+            ->when($visiblePartnerId !== null, function (Builder $query) use ($visiblePartnerId) {
+                $query->where(function (Builder $query) use ($visiblePartnerId) {
+                    $query->whereNull('partner_id')
+                        ->orWhere('partner_id', $visiblePartnerId);
+                });
+            })
             ->where(function (Builder $query) {
                 $query->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
@@ -1062,9 +1085,9 @@ class CommercialFooferController extends Controller
                 $prices,
                 $currencyCodes,
                 $usdRates,
-                $service->price !== null ? round((float)$service->price, 4) : null
+                round((float)($service->price ?? 0), 4)
             );
-            if (!$this->hasAnyPositivePrice($prices)) {
+            if (empty($prices)) {
                 continue;
             }
 
@@ -1080,6 +1103,7 @@ class CommercialFooferController extends Controller
             $servicesForJs['service-' . (int)$service->id] = [
                 'id' => (int)$service->id,
                 'name' => (string)$service->name,
+                'partnerId' => $service->partner_id ? (int)$service->partner_id : null,
                 'description' => '',
                 'type' => 'monthly',
                 'prices' => $prices,
@@ -1245,6 +1269,16 @@ class CommercialFooferController extends Controller
         }
 
         return $result;
+    }
+
+    private function currentPartnerId(): ?int
+    {
+        $user = Auth::user();
+        if (!$user || mb_strtolower(trim((string)($user->role ?? ''))) !== 'partner') {
+            return null;
+        }
+
+        return (int)$user->id;
     }
 
     private function buildClientPricesForOrganizations(int $asOfTs, array $organizationIds): array
@@ -2338,6 +2372,7 @@ class CommercialFooferController extends Controller
             $result[$serviceKey] = [
                 'can_increase' => (bool)$service->can_increase,
                 'included_channels' => max(0, (int)($service->pivot?->quantity ?? 1)),
+                'included_paid' => (bool)($service->pivot?->is_paid ?? false),
             ];
         }
 

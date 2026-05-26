@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="132" height="132" viewBox="0 0 132 132">
+  <rect width="132" height="132" fill="none"/>
+  <circle cx="66" cy="66" r="55" fill="none" stroke="#2454a6" stroke-width="4"/>
+  <circle cx="66" cy="66" r="43" fill="none" stroke="#2454a6" stroke-width="2"/>
+  <text x="66" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#2454a6">SOFTTECH</text>
+  <text x="66" y="59" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#2454a6">GROUP</text>
+  <text x="66" y="80" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#2454a6">MCHJ</text>
+  <text x="66" y="99" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#2454a6">TASHKENT</text>
+</svg>
