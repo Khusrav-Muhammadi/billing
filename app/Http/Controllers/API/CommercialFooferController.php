@@ -2094,7 +2094,12 @@ class CommercialFooferController extends Controller
 
     private function ownedOffersQuery(): Builder
     {
-        $userId = (int)Auth::id();
+        $user = Auth::user();
+        if ($user && mb_strtolower(trim((string)($user->role ?? ''))) === 'admin') {
+            return CommercialOffer::query();
+        }
+
+        $userId = (int)($user?->id ?? 0);
 
         return CommercialOffer::query()
             ->where(function (Builder $query) use ($userId) {
