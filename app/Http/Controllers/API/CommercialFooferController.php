@@ -55,6 +55,11 @@ class CommercialFooferController extends Controller
             ])
             ->orderByDesc('id');
 
+        $search = trim((string)$request->query('search', ''));
+        if ($search !== '') {
+            $this->applyOfferSearch($query, $search);
+        }
+
         $requestType = trim((string)$request->query('request_type', ''));
         if ($requestType !== '' && in_array($requestType, self::REQUEST_TYPES, true)) {
             $query->where('request_type', $requestType);
@@ -63,6 +68,68 @@ class CommercialFooferController extends Controller
         $offers = $query->paginate($perPage);
 
         return response()->json($offers);
+    }
+
+    private function applyOfferSearch(Builder $query, string $search): void
+    {
+        $searchTerm = '%' . $search . '%';
+        $digits = preg_replace('/\D+/', '', $search);
+        $digits = is_string($digits) ? $digits : '';
+
+        $query->where(function (Builder $builder) use ($search, $searchTerm, $digits): void {
+            $builder
+                ->where('commercial_offers.client_name', 'like', $searchTerm)
+                ->orWhere('commercial_offers.client_phone', 'like', $searchTerm)
+                ->orWhere('commercial_offers.client_email', 'like', $searchTerm)
+                ->orWhere('commercial_offers.partner_name', 'like', $searchTerm)
+                ->orWhere('commercial_offers.partner_phone', 'like', $searchTerm)
+                ->orWhere('commercial_offers.partner_email', 'like', $searchTerm)
+                ->orWhere('commercial_offers.manager_name', 'like', $searchTerm)
+                ->orWhere('commercial_offers.status', 'like', $searchTerm)
+                ->orWhere('commercial_offers.request_type', 'like', $searchTerm)
+                ->orWhereHas('organization', function (Builder $organizationQuery) use ($searchTerm, $digits): void {
+                    $organizationQuery
+                        ->where('name', 'like', $searchTerm)
+                        ->orWhere('phone', 'like', $searchTerm)
+                        ->orWhere('email', 'like', $searchTerm)
+                        ->orWhere('order_number', 'like', $searchTerm)
+                        ->orWhereHas('client', function (Builder $clientQuery) use ($searchTerm): void {
+                            $clientQuery
+                                ->where('name', 'like', $searchTerm)
+                                ->orWhere('email', 'like', $searchTerm)
+                                ->orWhere('phone', 'like', $searchTerm)
+                                ->orWhere('sub_domain', 'like', $searchTerm)
+                                ->orWhere('contact_person', 'like', $searchTerm);
+                        });
+
+                    if ($digits !== '') {
+                        $organizationQuery->orWhere('order_number', 'like', '%' . $digits . '%');
+
+                        if (strlen($digits) < 9) {
+                            $organizationQuery->orWhere('order_number', 'like', '%' . Organization::formatOrderNumber((int)$digits) . '%');
+                        }
+                    }
+                })
+                ->orWhereHas('partner', function (Builder $partnerQuery) use ($searchTerm): void {
+                    $partnerQuery
+                        ->where('name', 'like', $searchTerm)
+                        ->orWhere('email', 'like', $searchTerm)
+                        ->orWhere('phone', 'like', $searchTerm);
+                })
+                ->orWhereHas('tariff', function (Builder $tariffQuery) use ($searchTerm): void {
+                    $tariffQuery->where('name', 'like', $searchTerm);
+                });
+
+            if ($digits !== '') {
+                $builder
+                    ->orWhere('commercial_offers.client_phone', 'like', '%' . $digits . '%')
+                    ->orWhere('commercial_offers.partner_phone', 'like', '%' . $digits . '%');
+            }
+
+            if (ctype_digit($search)) {
+                $builder->orWhereKey((int)$search);
+            }
+        });
     }
 
     public function index(Request $request): JsonResponse
