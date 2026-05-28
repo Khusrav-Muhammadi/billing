@@ -149,7 +149,7 @@ class OrganizationController extends Controller
                     ->where('nfr', false)
                     ->where('is_demo', true);
 
-                if ((int)$authUser->id === 11) {
+                if ((int)$authUser->id === 11 || (int)$authUser->id === 1) {
                     return;
                 }
 
