@@ -40,8 +40,6 @@ class Client extends Model
         return $this->belongsTo(Tariff::class, 'tariff_id');
     }
 
-
-
     public function tariffPrice()
     {
         return $this->belongsTo(TariffCurrency::class, 'tariff_id');

@@ -8,6 +8,7 @@ use App\Jobs\DisableDemoJob;
 use App\Jobs\SubDomainJob;
 use App\Jobs\UpdateTariffJob;
 use App\Models\Client;
+use App\Models\ClientBalance;
 use App\Models\Organization;
 use App\Models\PartnerRequest;
 use App\Models\TariffCurrency;
@@ -196,31 +197,23 @@ class ClientRepository implements ClientRepositoryInterface
     public function getBalance(array $data)
     {
         $client = Client::where('sub_domain', $data['sub_domain'])->first();
+        $organization = $client->organizations()->first();
 
-        $sum = 0;
-        foreach ($client->organizations as $organization) {
-            $sum += $organization->balance;
-        }
+        $clientBalancesIncomeSum = ClientBalance::where([
+            ['organization_id', $organization->id],
+            ['type', 'income'],
+        ])->sum('sum');
+
+        $clientBalancesOutcomeSum = ClientBalance::where([
+            ['organization_id', $organization->id],
+            ['type', 'outcome'],
+        ])->sum('sum');
 
         return response()->json([
-            'balance' => $sum,
+            'balance' => $clientBalancesIncomeSum - $clientBalancesOutcomeSum,
             'tariff' => $client->tariffPrice?->tariff?->name,
             'nfr' => $client->nfr
         ]);
-    }
-
-    public function withdrawal(Client $client)
-    {
-        $service = new WithdrawalService();
-        $sum = $service->countSum($client);
-
-        $organizations = $client->organizations()
-            ->where('has_access', true)->get();
-
-        foreach ($organizations as $organization) {
-            $service->handle($organization, $sum);
-        }
-
     }
 
     public function getByPartner(array $data)
