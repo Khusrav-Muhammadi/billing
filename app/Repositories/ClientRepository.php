@@ -211,7 +211,7 @@ class ClientRepository implements ClientRepositoryInterface
 
         return response()->json([
             'balance' => $clientBalancesIncomeSum - $clientBalancesOutcomeSum,
-            'tariff' => $client->tariffPrice?->tariff?->name,
+            'currency' => $client->country?->currency?->name,
             'nfr' => $client->nfr
         ]);
     }
