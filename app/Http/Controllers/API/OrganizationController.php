@@ -422,7 +422,7 @@ class OrganizationController extends Controller
 
         $tariffId = (int)$request->query('tariff', 0);
         if ($tariffId > 0) {
-            $query->where('tariff_id', $tariffId);
+//            $query->where('tariff_id', $tariffId);
         }
     }
 
