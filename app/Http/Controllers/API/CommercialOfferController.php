@@ -72,6 +72,9 @@ class CommercialOfferController extends Controller
             'modules.*.name' => 'required|string|max:255',
             'modules.*.status' => 'required|in:included,selected,not_available',
             'modules.*.price' => 'nullable|numeric|min:0',
+            'modules.*.is_one_time' => 'nullable|boolean',
+            'modules.*.isOneTime' => 'nullable|boolean',
+            'modules.*.type' => 'nullable|string|max:50',
 
             // Единоразовые услуги внедрения (страница 4)
             'one_time_services' => 'nullable|array',
@@ -112,22 +115,35 @@ class CommercialOfferController extends Controller
                 * $periodMonths;
         }
 
-        // Modules total (only selected modules)
-        $modulesTotal = 0;
-        foreach ($validated['modules'] as $module) {
-            if ($module['status'] === 'selected' && isset($module['price'])) {
-                $modulesTotal += $module['price'] * $periodMonths;
-            }
-        }
-
         // One-time total (сумма услуг со статусом selected)
         $oneTimeTotal = 0;
+        $selectedOneTimeServices = [];
         if (isset($validated['one_time_services'])) {
             foreach ($validated['one_time_services'] as $service) {
                 if (isset($service['status']) && $service['status'] === 'selected' && isset($service['price'])) {
-                    $oneTimeTotal += $service['price'];
+                    $oneTimeTotal += (float)$service['price'];
+                    $selectedOneTimeServices[] = (string)$service['name'];
                 }
             }
+        }
+
+        // Modules total (only selected monthly modules). One-time services can still
+        // be present in modules for display, but they must not be multiplied by period.
+        $modulesTotal = 0;
+        foreach ($validated['modules'] as $module) {
+            if ($module['status'] !== 'selected' || !isset($module['price'])) {
+                continue;
+            }
+
+            $price = (float)$module['price'];
+            if ($this->isOneTimeModule($module, $selectedOneTimeServices)) {
+                if (!$this->hasMatchingOneTimeService((string)$module['name'], $selectedOneTimeServices)) {
+                    $oneTimeTotal += $price;
+                }
+                continue;
+            }
+
+            $modulesTotal += $price * $periodMonths;
         }
 
         // Grand total
@@ -239,6 +255,54 @@ class CommercialOfferController extends Controller
     public function previewPage()
     {
         return view('commercial-offer', $this->getTestData());
+    }
+
+    private function isOneTimeModule(array $module, array $selectedOneTimeServices): bool
+    {
+        if ((bool)($module['is_one_time'] ?? false)) {
+            return true;
+        }
+
+        if ((bool)($module['isOneTime'] ?? false)) {
+            return true;
+        }
+
+        if (($module['type'] ?? null) === 'one_time') {
+            return true;
+        }
+
+        return $this->hasMatchingOneTimeService((string)($module['name'] ?? ''), $selectedOneTimeServices);
+    }
+
+    private function hasMatchingOneTimeService(string $moduleName, array $selectedOneTimeServices): bool
+    {
+        $moduleName = $this->normalizeOfferLineName($moduleName);
+        if ($moduleName === '') {
+            return false;
+        }
+
+        foreach ($selectedOneTimeServices as $serviceName) {
+            $serviceName = $this->normalizeOfferLineName((string)$serviceName);
+            if ($serviceName === '') {
+                continue;
+            }
+
+            if ($serviceName === $moduleName || str_contains($serviceName, $moduleName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function normalizeOfferLineName(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = str_replace('ё', 'е', $value);
+        $value = preg_replace('/^(подключение|внедрение)\s*:\s*/u', '', $value) ?? $value;
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return trim($value);
     }
 
     /**
