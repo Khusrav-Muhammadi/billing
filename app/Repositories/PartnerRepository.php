@@ -42,7 +42,7 @@ class PartnerRepository implements PartnerRepositoryInterface
         $data['payment_methods'] = $this->normalizePaymentMethods($data['payment_methods'] ?? null);
         $data['status'] = $this->normalizePartnerStatus($data['status'] ?? null);
 
-        $data['partner_status_id'] = PartnerStatus::first()->id;
+        $data['partner_status_id'] =1;
         $data['login'] = $data['email'];
         $data['role'] = 'partner';
         $data['password'] = Hash::make($data['email']);
