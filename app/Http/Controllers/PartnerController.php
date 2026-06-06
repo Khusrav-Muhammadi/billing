@@ -58,7 +58,6 @@ class PartnerController extends Controller
 
     public function edit(User $partner)
     {
-        $partnerStatuses = PartnerStatus::all();
         $accounts = Account::query()
             ->with('currency:id,symbol_code,name')
             ->orderBy('name')
@@ -87,7 +86,7 @@ class PartnerController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('admin.partners.edit', compact('partner', 'partnerStatuses', 'accounts', 'partnerCurrencies', 'countries', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory'));
+        return view('admin.partners.edit', compact('partner', 'accounts', 'partnerCurrencies', 'countries', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory'));
     }
 
     public function update(User $partner, UpdateRequest $request)
