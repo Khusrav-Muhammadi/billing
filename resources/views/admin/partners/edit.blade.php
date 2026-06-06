@@ -41,17 +41,6 @@
                 @enderror
             </div>
 
-            <div class="form-group">
-                <label for="partner_status_id">Статус партнёра</label>
-                <select class="form-control form-control-sm @error('partner_status_id') is-invalid @enderror" name="partner_status_id">
-                    @foreach($partnerStatuses as $status)
-                        <option value="{{ $status->id }}" {{ old('partner_status_id', $partner->partner_status_id) == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
-                    @endforeach
-                </select>
-                @error('partner_status_id')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
-            </div>
 
             <div class="form-group">
                 <label for="address">Адрес</label>
