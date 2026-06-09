@@ -17,9 +17,7 @@ class PartnerStatusController extends Controller
 
     public function index(Request $request)
     {
-        $partnerStatuses = PartnerStatus::all();
-
-        return view('admin.partner-status.index', compact('partnerStatuses'));
+        return view('admin.partner-status.index');
     }
 
     public function store(PartnerStatusStoreRequest $request)
