@@ -104,6 +104,10 @@ class SiteApplicationController extends Controller
             'email.required' => 'Поле email обязательно.',
             'email.max' => 'Поле email не должно превышать 255 символов.',
         ]);
+        return response()->json([
+            'success' => true,
+            'email' => $request->input('email');
+        ]);
 
         $raw = trim((string)$request->input('email'));
         $email = mb_strtolower($raw);
