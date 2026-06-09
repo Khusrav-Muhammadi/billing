@@ -106,7 +106,7 @@ class SiteApplicationController extends Controller
         ]);
         return response()->json([
             'success' => true,
-            'email' => $request->input('email');
+            'email' => $request->input('email')
         ]);
 
         $raw = trim((string)$request->input('email'));
