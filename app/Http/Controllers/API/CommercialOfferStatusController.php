@@ -127,11 +127,7 @@ class CommercialOfferStatusController extends Controller
     {
         $userId = (int) Auth::id();
 
-        return CommercialOffer::query()
-            ->where(function (Builder $query) use ($userId) {
-                $query->where('created_by', $userId)
-                    ->orWhere('partner_id', $userId);
-            });
+        return CommercialOffer::query();
     }
 }
 
