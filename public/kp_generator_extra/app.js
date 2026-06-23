@@ -290,11 +290,6 @@ class CPGenerator {
             return true;
         }
 
-        const partner = this.getSelectedPartner();
-        if (Boolean(partner?.has_implementation)) {
-            return true;
-        }
-
         return false;
     }
 
@@ -1880,7 +1875,7 @@ class CPGenerator {
             return;
         }
 
-        const hasImplementation = Boolean(partner?.has_implementation);
+        const hasImplementation = false;
         const required = false;
 
         if (!hasImplementation) {
@@ -3467,8 +3462,8 @@ class CPGenerator {
         if (onlineStoreCurrency) onlineStoreCurrency.textContent = currency.symbol;
 
         // Get suggested implementation price. Service implementation is handled as separate one-time rows.
-        const partnerAllowsBaseImplementation = Boolean(this.getSelectedPartner()?.has_implementation);
-        const suggestedPrice = partnerAllowsBaseImplementation ? this.getSuggestedImplementationPrice() : 0;
+        const partnerAllowsBaseImplementation = false;
+        const suggestedPrice = 0;
 
         // Update implementation input and state
         const implInput = document.getElementById('implementationPrice');
