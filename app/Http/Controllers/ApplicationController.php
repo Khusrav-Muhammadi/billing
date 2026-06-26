@@ -928,6 +928,23 @@ class ApplicationController extends Controller
         $selectedServices = [];
         $processedCountableKeys = [];
 
+        if ($selectedTariffId) {
+            $selectedTariff = Tariff::query()
+                ->with('includedServices:id,can_increase')
+                ->find($selectedTariffId);
+
+            if ($selectedTariff) {
+                foreach ($selectedTariff->includedServices as $includedService) {
+                    $serviceKey = 'service-' . (int)$includedService->id;
+                    $includedChannels = max(0, (int)($includedService->pivot?->quantity ?? 1));
+                    $selectedServices[$serviceKey] = [
+                        'enabled' => true,
+                        'channels' => $includedChannels,
+                    ];
+                }
+            }
+        }
+
         foreach ($rows as $row) {
             $tariff = $tariffsById[(int)$row->tariff_id] ?? null;
             if (!$tariff) {
