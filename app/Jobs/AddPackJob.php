@@ -40,37 +40,49 @@ class AddPackJob implements ShouldQueue
             ->where('client_id', $this->organization->id)
             ->where('tariff_id', '>', 4)
             ->where('status', 1)
-            ->when($this->commercialOfferId, function ($query) {
-                $query->where('commercial_offer_id', $this->commercialOfferId);
-            })
             ->get();
 
-        foreach ($connectedClients as  $connectedClient) {
+        $grouped = [];
+        $offerIds = [];
+
+        foreach ($connectedClients as $connectedClient) {
             $tariff = $connectedClient->tariff;
-            if (!$tariff) {
+            if (!$tariff || !$tariff->type) {
                 continue;
             }
 
+            $type = $tariff->type;
+            $quantity = max(1, (int)round((float)($connectedClient->quantity ?? 1)));
+
+            if (!isset($grouped[$type])) {
+                $grouped[$type] = 0;
+            }
+            $grouped[$type] += $quantity;
+            $offerIds[$type] = $connectedClient->commercial_offer_id;
+        }
+
+        foreach ($grouped as $type => $totalQuantity) {
             $data = [
-                'type' => $tariff->type,
+                'type' => $type,
                 'b_organization_id' => $this->organization->id,
             ];
 
-            $quantity = max(1, (int)round((float)($connectedClient->quantity ?? 1)));
-            $data['amount'] = $quantity;
+            $data['amount'] = $totalQuantity;
 
-            if ($tariff->type == 'add_user') {
-                $data['user_count'] = $quantity;
+            if ($type == 'add_user') {
+                $data['user_count'] = $totalQuantity;
             }
 
-            if ($tariff->type == 'add_sales_funnel') {
-                $data['sales_funnel_count'] = $quantity;
+            if ($type == 'add_sales_funnel') {
+                $data['sales_funnel_count'] = $totalQuantity;
             }
 
-            if (in_array($tariff->type, ['add_channel', 'add_insta_channel', 'add_mini_app_b2b', 'add_mini_app_b2c'], true)) {
-                $data['channels_count'] = $quantity;
-                $data['channel'] = $quantity;
+            if (in_array($type, ['add_channel', 'add_insta_channel', 'add_mini_app_b2b', 'add_mini_app_b2c'], true)) {
+                $data['channels_count'] = $totalQuantity;
+                $data['channel'] = $totalQuantity;
             }
+
+            $commercialOfferId = isset($offerIds[$type]) ? (int)$offerIds[$type] : null;
 
             try {
                 $response = Http::withHeaders([
@@ -85,7 +97,7 @@ class AddPackJob implements ShouldQueue
                     url: $url,
                     payload: $data,
                     error: $e->getMessage(),
-                    commercialOfferId: $connectedClient->commercial_offer_id ? (int)$connectedClient->commercial_offer_id : null
+                    commercialOfferId: $commercialOfferId
                 );
 
                 continue;
@@ -99,10 +111,8 @@ class AddPackJob implements ShouldQueue
                 url: $url,
                 payload: $data,
                 response: $response,
-                commercialOfferId: $connectedClient->commercial_offer_id ? (int)$connectedClient->commercial_offer_id : null
+                commercialOfferId: $commercialOfferId
             );
-
         }
-
     }
 }
