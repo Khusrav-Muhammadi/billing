@@ -28,6 +28,7 @@ class CommercialOfferPaymentNotificationService
                 'organization:id,name,email,client_id',
                 'organization.client:id,name,email',
                 'items.tariff:id,name,is_tariff,is_extra_user',
+                'partner:id,name,email',
             ]);
 
             $email = $this->resolveClientEmail($offer);
@@ -70,14 +71,36 @@ class CommercialOfferPaymentNotificationService
 
     private function resolveClientEmail(CommercialOffer $offer): ?string
     {
-        $email = trim((string)($offer->organization?->client?->email ?: $offer->client_email ?: $offer->organization?->email));
+        $partnerId = (int) ($offer->partner_id ?? 0);
+        $email = '';
+        if ($partnerId > 0 && $partnerId !== 11) {
+            $email = trim((string) ($offer->partner?->email ?? ''));
+            if ($email === '') {
+                $email = trim((string) ($offer->partner_email ?? ''));
+            }
+        }
+
+        if ($email === '') {
+            $email = trim((string)($offer->organization?->client?->email ?: $offer->client_email ?: $offer->organization?->email));
+        }
 
         return $email !== '' ? $email : null;
     }
 
     private function resolveClientName(CommercialOffer $offer): string
     {
-        $name = trim((string)($offer->organization?->name ?: $offer->client_name ?: $offer->organization?->client?->name));
+        $partnerId = (int) ($offer->partner_id ?? 0);
+        $name = '';
+        if ($partnerId > 0 && $partnerId !== 11) {
+            $name = trim((string) ($offer->partner?->name ?? ''));
+            if ($name === '') {
+                $name = trim((string) ($offer->partner_name ?? ''));
+            }
+        }
+
+        if ($name === '') {
+            $name = trim((string)($offer->organization?->name ?: $offer->client_name ?: $offer->organization?->client?->name));
+        }
 
         return $name !== '' ? $name : 'клиент';
     }

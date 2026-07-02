@@ -690,11 +690,34 @@ class ClientPaymentController extends Controller
         $offer->loadMissing([
             'organization:id,name,email,client_id',
             'organization.client:id,name,email',
+            'partner:id,name,email',
         ]);
 
-        $email = trim((string)($offer->client_email ?: $offer->organization?->client?->email ?: $offer->organization?->email ?: $payment->email));
+        $partnerId = (int) ($offer->partner_id ?? 0);
+        $email = '';
+        $recipientName = '';
+
+        if ($partnerId > 0 && $partnerId !== 11) {
+            $email = trim((string) ($offer->partner?->email ?? ''));
+            if ($email === '') {
+                $email = trim((string) ($offer->partner_email ?? ''));
+            }
+            $recipientName = trim((string) ($offer->partner?->name ?? ''));
+            if ($recipientName === '') {
+                $recipientName = trim((string) ($offer->partner_name ?? ''));
+            }
+        }
+
         if ($email === '') {
-            Log::warning('ClientPaymentController: client email is empty for payment verification link', [
+            $email = trim((string)($offer->client_email ?: $offer->organization?->client?->email ?: $offer->organization?->email ?: $payment->email));
+        }
+
+        if ($recipientName === '') {
+            $recipientName = trim((string)($offer->client_name ?: $offer->organization?->client?->name ?: $payment->name ?: ''));
+        }
+
+        if ($email === '') {
+            Log::warning('ClientPaymentController: client/partner email is empty for payment verification link', [
                 'payment_id' => $payment->id,
                 'commercial_offer_id' => $offer->id,
                 'organization_id' => $offer->organization_id,
@@ -708,7 +731,7 @@ class ClientPaymentController extends Controller
                 subject: 'Ссылка на оплату SHAMCRM',
                 view: 'mail.payment_checkout_link',
                 data: [
-                    'recipientName' => trim((string)($offer->client_name ?: $offer->organization?->client?->name ?: $payment->name ?: '')),
+                    'recipientName' => $recipientName,
                     'payment' => $payment,
                     'offer' => $offer,
                     'providerLabel' => $provider === 'alif' ? 'Alif' : 'Octo Bank',
@@ -720,7 +743,7 @@ class ClientPaymentController extends Controller
                     'organization_id' => $offer->organization_id,
                     'client_id' => $offer->organization?->client_id,
                     'commercial_offer_id' => $offer->id,
-                    'action' => 'payment_verification_link_email_client',
+                    'action' => $partnerId > 0 && $partnerId !== 11 ? 'payment_verification_link_email_partner' : 'payment_verification_link_email_client',
                 ]
             );
         } catch (\Throwable $e) {
