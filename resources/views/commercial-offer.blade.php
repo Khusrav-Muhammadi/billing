@@ -762,15 +762,15 @@
             }
         @endphp
         <div class="tariff-price-label" style="text-align: center; margin-bottom: 30px;">
-            Стоимость тарифа: 
+            <div>Стоимость тарифа:</div>
             @if($is12Months)
-                <span class="price-breakdown" style="display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; flex-direction: row;">
-                    <span class="price-before-discount" style="font-size: 18px; font-weight: 500;">{{ formatPrice($originalPrice) }} {{ $currency }}</span>
+                <div class="price-breakdown" style="display: inline-flex; flex-direction: column; align-items: center; gap: 5px; line-height: 1.2; margin-top: 10px;">
+                    <span class="price-before-discount" style="font-size: 18px; font-weight: 500; text-decoration: line-through; color: #8b95aa;">{{ formatPrice($originalPrice) }} {{ $currency }}</span>
                     <span class="discount-line" style="font-size: 16px; font-weight: 700; color: #16a34a;">Скидка 15% (−{{ formatPrice($discountAmount) }} {{ $currency }})</span>
-                    <span class="tariff-price-value" style="font-size: 22px; font-weight: 800;">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</span>
-                </span>
+                    <div class="tariff-price-value" style="font-size: 24px; font-weight: 800; color: var(--brand-blue);">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</div>
+                </div>
             @else
-                <span class="tariff-price-value">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</span>
+                <div class="tariff-price-value" style="font-size: 24px; font-weight: 800; color: var(--brand-blue); margin-top: 10px;">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</div>
             @endif
         </div>
 
