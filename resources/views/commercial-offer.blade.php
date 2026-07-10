@@ -990,6 +990,15 @@
         <div class="validity-line">
             Предложение действительно до: <span> {{now()->addDays(14)->format('d.m.yy')}}</span>
         </div>
+
+        <div class="warning-box" style="margin-top: 30px; padding: 20px; border: 1px solid #fecaca; background-color: #fff5f5; border-radius: 12px; text-align: left; color: #b91c1c; font-size: 15px; line-height: 1.5; font-family: 'Cygrotesk', 'Inter', Arial, sans-serif;">
+            <div style="font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">⚠️</span> ВАЖНОЕ УВЕДОМЛЕНИЕ:
+            </div>
+            <div>
+                Оплата принимается только в безналичной форме на расчетный счет компании или через официальных партнеров. Передача наличных денежных средств сотрудникам компании или на их карту <strong>ЗАПРЕЩЕНА</strong>. В случае нарушения данного правила компания не несет ответственность.
+            </div>
+        </div>
     </div>
 </div>
 
