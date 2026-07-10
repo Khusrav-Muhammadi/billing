@@ -726,6 +726,105 @@
             && $implementationFinalPrice >= 0
             && $implementationDiscountAmount > 0.01
             && $implementationDiscountPercent > 0;
+
+        if (!function_exists('getAiPromoOriginalPrice')) {
+            function getAiPromoOriginalPrice($serviceName, $currency) {
+                $name = mb_strtolower(trim($serviceName));
+                $name = str_replace('ё', 'е', $name);
+                $curr = mb_strtolower(trim($currency));
+                
+                $cleanName = preg_replace('/^внедрение\s*:\s*/u', '', $name);
+                
+                $isAiPromo = str_contains($cleanName, 'deepsales') || 
+                             (str_contains($cleanName, 'asterix') && str_contains($cleanName, 'скидка'));
+                             
+                if (!$isAiPromo) {
+                    return null;
+                }
+                
+                $isImpl = str_starts_with($name, 'внедрение:');
+                
+                if (str_contains($cleanName, 'deepsales')) {
+                    if ($isImpl) {
+                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                            return 500;
+                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                            return 5000;
+                        } else {
+                            return 6000000;
+                        }
+                    } else {
+                        if (str_contains($cleanName, 'mini')) {
+                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                                return 38;
+                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                                return 375;
+                            } else {
+                                return 450000;
+                            }
+                        } elseif (str_contains($cleanName, 'start')) {
+                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                                return 60;
+                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                                return 600;
+                            } else {
+                                return 720000;
+                            }
+                        } else { // pro
+                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                                return 90;
+                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                                return 900;
+                            } else {
+                                return 1150000;
+                            }
+                        }
+                    }
+                }
+                
+                if (str_contains($cleanName, 'asterix')) {
+                    if (str_contains($cleanName, 'до 15')) {
+                        if ($isImpl) {
+                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                                return 400;
+                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                                return 4000;
+                            } else {
+                                return 5000000;
+                            }
+                        } else {
+                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                                return 50;
+                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                                return 500;
+                            } else {
+                                return 500000;
+                            }
+                        }
+                    } else {
+                        if ($isImpl) {
+                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                                return 800;
+                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                                return 8000;
+                            } else {
+                                return 10000000;
+                            }
+                        } else {
+                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                                return 100;
+                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                                return 1000;
+                            } else {
+                                return 1000000;
+                            }
+                        }
+                    }
+                }
+                
+                return null;
+            }
+        }
     @endphp
     <div class="section-block" style="margin-top: 40px;">
         <h2 class="section-title">Услуги внедрения и обучения (разово)</h2>
@@ -737,6 +836,8 @@
                     && $hasImplementationDiscount
                     && isset($service['status'])
                     && $service['status'] === 'selected';
+                
+                $aiPromoOriginalPrice = getAiPromoOriginalPrice($service['name'] ?? '', $currency);
             @endphp
             <tr>
                 <td>{{ $service['name'] }}</td>
@@ -754,6 +855,15 @@
                             </div>
                         
                             <div class="price-after-discount">{{ formatPrice($service['price']) }} {{ $currency }}</div>
+                        </div>
+                    @elseif($aiPromoOriginalPrice !== null)
+                        <div class="price-breakdown">
+                            <div class="price-before-discount">{{ formatPrice($aiPromoOriginalPrice) }} {{ $currency }}</div>
+                            <div class="discount-line">
+                                Скидка 100%
+                                (−{{ formatPrice($aiPromoOriginalPrice) }} {{ $currency }})
+                            </div>
+                            <div class="price-after-discount">{{ formatPrice(0) }} {{ $currency }}</div>
                         </div>
                     @elseif(isset($service['status']) && $service['status'] === 'selected' && isset($service['price']))
                         {{ formatPrice($service['price']) }} {{ $currency }}
