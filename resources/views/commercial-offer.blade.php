@@ -2,6 +2,105 @@
     function formatPrice($number) {
         return number_format((float) $number, 2, ',', ' ');
     }
+
+    if (!function_exists('getAiPromoOriginalPrice')) {
+        function getAiPromoOriginalPrice($serviceName, $currency) {
+            $name = mb_strtolower(trim($serviceName));
+            $name = str_replace('ё', 'е', $name);
+            $curr = mb_strtolower(trim($currency));
+            
+            $cleanName = preg_replace('/^внедрение\s*:\s*/u', '', $name);
+            
+            $isAiPromo = str_contains($cleanName, 'deepsales') || 
+                         (str_contains($cleanName, 'asterix') && str_contains($cleanName, 'скидка'));
+                         
+            if (!$isAiPromo) {
+                return null;
+            }
+            
+            $isImpl = str_starts_with($name, 'внедрение:');
+            
+            if (str_contains($cleanName, 'deepsales')) {
+                if ($isImpl) {
+                    if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                        return 500;
+                    } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                        return 5000;
+                    } else {
+                        return 6000000;
+                    }
+                } else {
+                    if (str_contains($cleanName, 'mini')) {
+                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                            return 38;
+                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                            return 375;
+                        } else {
+                            return 450000;
+                        }
+                    } elseif (str_contains($cleanName, 'start')) {
+                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                            return 60;
+                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                            return 600;
+                        } else {
+                            return 720000;
+                        }
+                    } else { // pro
+                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                            return 90;
+                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                            return 900;
+                        } else {
+                            return 1150000;
+                        }
+                    }
+                }
+            }
+            
+            if (str_contains($cleanName, 'asterix')) {
+                if (str_contains($cleanName, 'до 15')) {
+                    if ($isImpl) {
+                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                            return 400;
+                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                            return 4000;
+                        } else {
+                            return 5000000;
+                        }
+                    } else {
+                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                            return 50;
+                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                            return 500;
+                        } else {
+                            return 500000;
+                        }
+                    }
+                } else { // больше 15
+                    if ($isImpl) {
+                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                            return 800;
+                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                            return 8000;
+                        } else {
+                            return 10000000;
+                        }
+                    } else {
+                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
+                            return 100;
+                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
+                            return 1000;
+                        } else {
+                            return 1000000;
+                        }
+                    }
+                }
+            }
+            
+            return null;
+        }
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="ru">
@@ -655,8 +754,24 @@
             </div>
         </div>
 
+        @php
+            $is12Months = ((int)$tariff['period_months'] === 12);
+            if ($is12Months) {
+                $originalPrice = round((float)$tariff['monthly_price'] / 0.85, 2);
+                $discountAmount = $originalPrice - (float)$tariff['monthly_price'];
+            }
+        @endphp
         <div class="tariff-price-label" style="text-align: center; margin-bottom: 30px;">
-            Стоимость тарифа: <span class="tariff-price-value">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</span>
+            Стоимость тарифа: 
+            @if($is12Months)
+                <span class="price-breakdown" style="display: inline-flex; align-items: center; gap: 8px; vertical-align: middle; flex-direction: row;">
+                    <span class="price-before-discount" style="font-size: 18px; font-weight: 500;">{{ formatPrice($originalPrice) }} {{ $currency }}</span>
+                    <span class="discount-line" style="font-size: 16px; font-weight: 700; color: #16a34a;">Скидка 15% (−{{ formatPrice($discountAmount) }} {{ $currency }})</span>
+                    <span class="tariff-price-value" style="font-size: 22px; font-weight: 800;">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</span>
+                </span>
+            @else
+                <span class="tariff-price-value">{{ formatPrice($tariff['monthly_price']) }} {{ $currency }}/мес.</span>
+            @endif
         </div>
 
         @if(isset($tariff_features) && count($tariff_features) > 0)
@@ -702,7 +817,21 @@
                     @if($module['status'] === 'included')
                         ✓
                     @elseif($module['status'] === 'selected')
-                        {{ formatPrice($module['price']) }} {{ $currency }}
+                        @php
+                            $aiPromoOriginalPrice = getAiPromoOriginalPrice($module['name'], $currency);
+                        @endphp
+                        @if($aiPromoOriginalPrice !== null)
+                            <div class="price-breakdown">
+                                <div class="price-before-discount">{{ formatPrice($aiPromoOriginalPrice) }} {{ $currency }}</div>
+                                <div class="discount-line">
+                                    Скидка 100%
+                                    (−{{ formatPrice($aiPromoOriginalPrice) }} {{ $currency }})
+                                </div>
+                                <div class="price-after-discount">{{ formatPrice(0) }} {{ $currency }}</div>
+                            </div>
+                        @else
+                            {{ formatPrice($module['price']) }} {{ $currency }}
+                        @endif
                     @else
                         ✗
                     @endif
@@ -726,99 +855,6 @@
             && $implementationFinalPrice >= 0
             && $implementationDiscountAmount > 0.01
             && $implementationDiscountPercent > 0;
-
-        if (!function_exists('getAiPromoOriginalPrice')) {
-            function getAiPromoOriginalPrice($serviceName, $currency) {
-                $name = mb_strtolower(trim($serviceName));
-                $name = str_replace('ё', 'е', $name);
-                $curr = mb_strtolower(trim($currency));
-                
-                $cleanName = preg_replace('/^внедрение\s*:\s*/u', '', $name);
-                
-                $isAiPromo = str_contains($cleanName, 'deepsales') || 
-                             (str_contains($cleanName, 'asterix') && str_contains($cleanName, 'скидка'));
-                             
-                if (!$isAiPromo) {
-                    return null;
-                }
-                
-                $isImpl = str_starts_with($name, 'внедрение:');
-                
-                if (str_contains($cleanName, 'deepsales')) {
-                    if ($isImpl) {
-                        if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
-                            return 500;
-                        } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
-                            return 5000;
-                        } else {
-                            return 6000000;
-                        }
-                    } else {
-                        if (str_contains($cleanName, 'mini')) {
-                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
-                                return 38;
-                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
-                                return 375;
-                            } else {
-                                return 450000;
-                            }
-                        } elseif (str_contains($cleanName, 'start')) {
-                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
-                                return 60;
-                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
-                                return 600;
-                            } else {
-                                return 720000;
-                            }
-                        } else { // pro
-                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
-                                return 90;
-                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
-                                return 900;
-                            } else {
-                                return 1150000;
-                            }
-                        }
-                    }
-                }
-                
-                if (str_contains($cleanName, 'asterix')) {
-                    if (str_contains($cleanName, 'до 15')) {
-                        if ($isImpl) {
-                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
-                                return 400;
-                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
-                                return 4000;
-                            } else {
-                                return 5000000;
-                            }
-                        } else {
-                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
-                                return 50;
-                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
-                                return 500;
-                            } else {
-                                return 500000;
-                            }
-                        }
-                    } else {
-                        if ($isImpl) {
-                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
-                                return 800;
-                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
-                                return 8000;
-                            } else {
-                                return 10000000;
-                            }
-                        } else {
-                            if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
-                                return 100;
-                            } elseif (str_contains($curr, 'сомони') || str_contains($curr, 'tjs')) {
-                                return 1000;
-                            } else {
-                                return 1000000;
-                            }
-                        }
                     }
                 }
                 
