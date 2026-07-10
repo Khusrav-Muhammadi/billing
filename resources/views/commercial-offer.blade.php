@@ -855,12 +855,6 @@
             && $implementationFinalPrice >= 0
             && $implementationDiscountAmount > 0.01
             && $implementationDiscountPercent > 0;
-                    }
-                }
-                
-                return null;
-            }
-        }
     @endphp
     <div class="section-block" style="margin-top: 40px;">
         <h2 class="section-title">Услуги внедрения и обучения (разово)</h2>
