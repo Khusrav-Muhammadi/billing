@@ -922,10 +922,41 @@
                     <td>Тариф "{{ $tariff['name'] }}" за {{ $tariff['period_months'] }} мес.</td>
                     <td>{{ formatPrice($calculations['tariff_total']) }} {{ $currency }}</td>
                 </tr>
-                @if($calculations['modules_total'] > 0)
+                @php
+                    $hasSelectedDeepSales = false;
+                    $deepSalesOriginalPrice = 0;
+                    foreach ($modules as $module) {
+                        if (($module['status'] ?? '') === 'selected') {
+                            $originalVal = getAiPromoOriginalPrice($module['name'], $currency);
+                            if ($originalVal !== null && str_contains(mb_strtolower($module['name']), 'deepsales')) {
+                                $hasSelectedDeepSales = true;
+                                $deepSalesOriginalPrice = (float)$originalVal;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    $showModulesRow = ($calculations['modules_total'] > 0 || $hasSelectedDeepSales);
+                    
+                    if ($hasSelectedDeepSales) {
+                        $deepSalesOriginalTotal = $deepSalesOriginalPrice * (int)$tariff['period_months'];
+                        $modulesOriginalTotal = (float)$calculations['modules_total'] + $deepSalesOriginalTotal;
+                    }
+                @endphp
+                @if($showModulesRow)
                 <tr>
                     <td>Дополнительные модули за {{ $tariff['period_months'] }} мес.</td>
-                    <td>{{ formatPrice($calculations['modules_total']) }} {{ $currency }}</td>
+                    <td>
+                        @if($hasSelectedDeepSales)
+                            <div class="price-breakdown">
+                                <span class="price-before-discount">{{ formatPrice($modulesOriginalTotal) }} {{ $currency }}</span>
+                                <span class="discount-line">Скидка на DeepSales</span>
+                                <span class="price-after-discount">{{ formatPrice($calculations['modules_total']) }} {{ $currency }}</span>
+                            </div>
+                        @else
+                            {{ formatPrice($calculations['modules_total']) }} {{ $currency }}
+                        @endif
+                    </td>
                 </tr>
                 @endif
                 @if(isset($additional_users) && $additional_users['quantity'] > 0)
