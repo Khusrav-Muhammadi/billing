@@ -8,18 +8,18 @@
             $name = mb_strtolower(trim($serviceName));
             $name = str_replace('ё', 'е', $name);
             $curr = mb_strtolower(trim($currency));
-            
+
             $cleanName = preg_replace('/^внедрение\s*:\s*/u', '', $name);
-            
-            $isAiPromo = str_contains($cleanName, 'deepsales') || 
+
+            $isAiPromo = str_contains($cleanName, 'deepsales') ||
                          (str_contains($cleanName, 'asterix') && str_contains($cleanName, 'скидка'));
-                         
+
             if (!$isAiPromo) {
                 return null;
             }
-            
+
             $isImpl = str_starts_with($name, 'внедрение:');
-            
+
             if (str_contains($cleanName, 'deepsales')) {
                 if ($isImpl) {
                     if ($curr === '$' || str_contains($curr, 'usd') || str_contains($curr, 'dollar') || str_contains($curr, 'доллар')) {
@@ -57,7 +57,7 @@
                     }
                 }
             }
-            
+
             if (str_contains($cleanName, 'asterix')) {
                 if (str_contains($cleanName, 'до 15')) {
                     if ($isImpl) {
@@ -97,7 +97,7 @@
                     }
                 }
             }
-            
+
             return null;
         }
     }
@@ -866,7 +866,7 @@
                     && $hasImplementationDiscount
                     && isset($service['status'])
                     && $service['status'] === 'selected';
-                
+
                 $aiPromoOriginalPrice = getAiPromoOriginalPrice($service['name'] ?? '', $currency);
             @endphp
             <tr>
@@ -883,7 +883,7 @@
                                 Скидка {{ rtrim(rtrim(number_format($implementationDiscountPercent, 2, ',', ' '), '0'), ',') }}%
                                 (−{{ formatPrice($implementationDiscountAmount) }} {{ $currency }})
                             </div>
-                        
+
                             <div class="price-after-discount">{{ formatPrice($service['price']) }} {{ $currency }}</div>
                         </div>
                     @elseif($aiPromoOriginalPrice !== null)
@@ -935,9 +935,9 @@
                             }
                         }
                     }
-                    
+
                     $showModulesRow = ($calculations['modules_total'] > 0 || $hasSelectedDeepSales);
-                    
+
                     if ($hasSelectedDeepSales) {
                         $deepSalesOriginalTotal = $deepSalesOriginalPrice * (int)$tariff['period_months'];
                         $modulesOriginalTotal = (float)$calculations['modules_total'] + $deepSalesOriginalTotal;
@@ -1019,7 +1019,7 @@
         </div>
 
         <div class="validity-line">
-            Предложение действительно до: <span> {{now()->addDays(14)->format('d.m.yy')}}</span>
+            Предложение действительно до: <span> {{now()->addDays(14)->format('d.m.y')}}</span>
         </div>
 
         <div class="warning-box" style="margin-top: 30px; padding: 20px; border: 1px solid #fecaca; background-color: #fff5f5; border-radius: 12px; text-align: left; color: #b91c1c; font-size: 15px; line-height: 1.5; font-family: 'Cygrotesk', 'Inter', Arial, sans-serif;">
