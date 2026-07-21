@@ -18,7 +18,10 @@ class ImplementationCurrencyRegistryService
         }
 
         $implementation = $this->resolveImplementation($offer);
-        if (!$implementation || !(bool)($implementation['enabled'] ?? false)) {
+        $enabled = (bool)($implementation['enabled'] ?? false);
+        $extraAmount = $this->sumExtraServices($implementation['extra_services'] ?? []);
+
+        if (!$implementation || (!$enabled && $extraAmount <= 0)) {
             ImplementationCurrencyRegistry::query()
                 ->where('commercial_offer_id', (int)$offer->id)
                 ->delete();
@@ -26,10 +29,9 @@ class ImplementationCurrencyRegistryService
             return;
         }
 
-        $baseAmount = round(max(0, (float)($implementation['price'] ?? 0)), 4);
-        $discountPercent = round(max(0, min(100, (float)($implementation['discount_percent'] ?? 0))), 4);
+        $baseAmount = $enabled ? round(max(0, (float)($implementation['price'] ?? 0)), 4) : 0.0;
+        $discountPercent = $enabled ? round(max(0, min(100, (float)($implementation['discount_percent'] ?? 0))), 4) : 0.0;
         $discountAmount = round($baseAmount * ($discountPercent / 100), 4);
-        $extraAmount = $this->sumExtraServices($implementation['extra_services'] ?? []);
         $totalAmount = round(max(0, $baseAmount - $discountAmount) + $extraAmount, 4);
 
         if ($totalAmount <= 0) {

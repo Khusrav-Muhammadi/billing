@@ -282,6 +282,10 @@ class CPGenerator {
             return Boolean(this.state.hasSavedImplementation);
         }
 
+        if (this.isConnectionExtraServicesMode() || this.isConnectionMode() || (this.state.customOneTimePayments || []).length > 0) {
+            return true;
+        }
+
         const partner = this.getSelectedPartner();
         if (Boolean(partner?.has_implementation)) {
             return true;
@@ -1485,18 +1489,11 @@ class CPGenerator {
 
         const addBtn = document.getElementById('addCustomOneTimePaymentBtn');
         if (addBtn) {
-            addBtn.disabled = this.state.isLocked || !enabled;
+            addBtn.disabled = this.state.isLocked;
         }
 
-        if (enabled) {
-            this.updateOneTimePayments();
-            this.renderCustomOneTimePayments();
-        } else {
-            const container = document.getElementById('customOneTimePayments');
-            if (container) {
-                container.innerHTML = '';
-            }
-        }
+        this.updateOneTimePayments();
+        this.renderCustomOneTimePayments();
     }
 
     applyTariffDefaults() {
@@ -2293,23 +2290,23 @@ class CPGenerator {
                     price: this.roundMoney(breakdown.baseAfterDiscount),
                 });
             }
-
-            (this.state.customOneTimePayments || []).forEach((payment, index) => {
-                const price = Math.max(0, Number(payment?.price) || 0);
-                if (price <= 0) {
-                    return;
-                }
-                const name = String(payment?.name || '').trim() || `Доп. услуга (${index + 1})`;
-                items.push({
-                    service_key: `implementation-extra-${index + 1}`,
-                    name,
-                    quantity: 1,
-                    pricing_kind: 'one_time',
-                    unit_price: this.roundMoney(price),
-                    price: this.roundMoney(price),
-                });
-            });
         }
+
+        (this.state.customOneTimePayments || []).forEach((payment, index) => {
+            const price = Math.max(0, Number(payment?.price) || 0);
+            if (price <= 0) {
+                return;
+            }
+            const name = String(payment?.name || '').trim() || `Доп. услуга (${index + 1})`;
+            items.push({
+                service_key: `implementation-extra-${index + 1}`,
+                name,
+                quantity: 1,
+                pricing_kind: 'one_time',
+                unit_price: this.roundMoney(price),
+                price: this.roundMoney(price),
+            });
+        });
 
         // Remove zero/negative lines
         return items.filter((i) => (Number(i.price) || 0) > 0);
@@ -4703,20 +4700,21 @@ class CPGenerator {
     }
 
     getImplementationPricingBreakdown() {
+        const extras = (this.state.customOneTimePayments || [])
+            .reduce((sum, payment) => sum + Math.max(0, Number(payment?.price) || 0), 0);
+
         if (!this.isImplementationEnabled()) {
             return {
                 base: 0,
                 discountPercent: 0,
                 discountAmount: 0,
                 baseAfterDiscount: 0,
-                extras: 0,
-                total: 0,
+                extras: this.roundMoney(extras),
+                total: this.roundMoney(extras),
             };
         }
 
         const base = Math.max(0, Number(this.state.implementationPrice) || 0);
-        const extras = (this.state.customOneTimePayments || [])
-            .reduce((sum, payment) => sum + Math.max(0, Number(payment?.price) || 0), 0);
 
         const discountPercent = this.getImplementationTotalDiscountPercent();
         const discountAmount = base * (discountPercent / 100);

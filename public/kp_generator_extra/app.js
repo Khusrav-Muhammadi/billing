@@ -290,6 +290,10 @@ class CPGenerator {
             return true;
         }
 
+        if (this.isConnectionExtraServicesMode() || this.isConnectionMode() || (this.state.customOneTimePayments || []).length > 0) {
+            return true;
+        }
+
         return false;
     }
 
@@ -1564,18 +1568,11 @@ class CPGenerator {
 
         const addBtn = document.getElementById('addCustomOneTimePaymentBtn');
         if (addBtn) {
-            addBtn.disabled = this.state.isLocked || !enabled;
+            addBtn.disabled = this.state.isLocked;
         }
 
-        if (enabled) {
-            this.updateOneTimePayments();
-            this.renderCustomOneTimePayments();
-        } else {
-            const container = document.getElementById('customOneTimePayments');
-            if (container) {
-                container.innerHTML = '';
-            }
-        }
+        this.updateOneTimePayments();
+        this.renderCustomOneTimePayments();
     }
 
     applyTariffDefaults() {
@@ -2407,22 +2404,6 @@ class CPGenerator {
                 });
             }
 
-            (this.state.customOneTimePayments || []).forEach((payment, index) => {
-                const price = Math.max(0, Number(payment?.price) || 0);
-                if (price <= 0) {
-                    return;
-                }
-                const name = String(payment?.name || '').trim() || `Доп. услуга (${index + 1})`;
-                items.push({
-                    service_key: `implementation-extra-${index + 1}`,
-                    name,
-                    quantity: 1,
-                    pricing_kind: 'one_time',
-                    unit_price: this.roundMoney(price),
-                    price: this.roundMoney(price),
-                });
-            });
-
             this.getSelectedServiceImplementationPayments().forEach((payment, index) => {
                 const price = Math.max(0, Number(payment?.price) || 0);
                 if (price <= 0) {
@@ -2439,6 +2420,22 @@ class CPGenerator {
                 });
             });
         }
+
+        (this.state.customOneTimePayments || []).forEach((payment, index) => {
+            const price = Math.max(0, Number(payment?.price) || 0);
+            if (price <= 0) {
+                return;
+            }
+            const name = String(payment?.name || '').trim() || `Доп. услуга (${index + 1})`;
+            items.push({
+                service_key: `implementation-extra-${index + 1}`,
+                name,
+                quantity: 1,
+                pricing_kind: 'one_time',
+                unit_price: this.roundMoney(price),
+                price: this.roundMoney(price),
+            });
+        });
 
         // Remove zero/negative lines
         return items.filter((i) => (Number(i.price) || 0) > 0);
@@ -4946,20 +4943,21 @@ class CPGenerator {
     }
 
     getImplementationPricingBreakdown() {
+        const manualExtras = (this.state.customOneTimePayments || [])
+            .reduce((sum, payment) => sum + Math.max(0, Number(payment?.price) || 0), 0);
+
         if (!this.isImplementationEnabled()) {
             return {
                 base: 0,
                 discountPercent: 0,
                 discountAmount: 0,
                 baseAfterDiscount: 0,
-                extras: 0,
-                total: 0,
+                extras: this.roundMoney(manualExtras),
+                total: this.roundMoney(manualExtras),
             };
         }
 
         const base = Math.max(0, Number(this.state.implementationPrice) || 0);
-        const manualExtras = (this.state.customOneTimePayments || [])
-            .reduce((sum, payment) => sum + Math.max(0, Number(payment?.price) || 0), 0);
         const serviceImplementationExtras = this.getSelectedServiceImplementationPayments()
             .reduce((sum, payment) => sum + Math.max(0, Number(payment?.price) || 0), 0);
         const extras = manualExtras + serviceImplementationExtras;
