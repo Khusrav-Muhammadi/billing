@@ -278,12 +278,12 @@ class CPGenerator {
     }
 
     shouldShowImplementationSection() {
-        if (this.state.editOfferId) {
-            return Boolean(this.state.hasSavedImplementation);
-        }
-
         if (this.isConnectionExtraServicesMode() || this.isConnectionMode() || (this.state.customOneTimePayments || []).length > 0) {
             return true;
+        }
+
+        if (this.state.editOfferId) {
+            return Boolean(this.state.hasSavedImplementation);
         }
 
         const partner = this.getSelectedPartner();
@@ -4120,9 +4120,6 @@ class CPGenerator {
         if (addCustomOneTimePaymentBtn) {
             addCustomOneTimePaymentBtn.addEventListener('click', () => {
                 if (this.state.isLocked) {
-                    return;
-                }
-                if (!this.isImplementationEnabled()) {
                     return;
                 }
                 this.addCustomOneTimePayment();

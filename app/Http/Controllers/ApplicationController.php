@@ -323,7 +323,7 @@ class ApplicationController extends Controller
                 ]);
             }
 
-            if ($offer->items()->count() === 0) {
+            if ($offer->items()->count() === 0 && (float)$offer->grand_total <= 0) {
                 throw ValidationException::withMessages([
                     'payload' => 'В КП нет позиций для сохранения.',
                 ]);
