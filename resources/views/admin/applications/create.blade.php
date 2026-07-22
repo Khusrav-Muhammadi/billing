@@ -21,6 +21,10 @@
         if ($organizationId) {
             $query['organization_id'] = $organizationId;
         }
+        $partnerId = request()->query('partner_id');
+        if ($partnerId) {
+            $query['partner_id'] = $partnerId;
+        }
         $iframeUrl = asset('kp_generator/index.html') . '?' . http_build_query($query);
     @endphp
     <iframe

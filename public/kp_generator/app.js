@@ -547,6 +547,9 @@ class CPGenerator {
     }
 
     getImplementationDiscountPercent() {
+        if (String(this.state.selectedPartnerId) === '11') {
+            return this.state.periodMonths === 12 ? 100 : 0;
+        }
         const raw = this.parsePercentValue(this.state.implementationDiscountPercent);
         const val = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
         if (this.state.editOfferId) {
@@ -588,7 +591,7 @@ class CPGenerator {
     }
 
     getImplementationDiscount12ExtraPercent() {
-        if (this.state.periodMonths !== 12) {
+        if (this.state.periodMonths !== 12 || String(this.state.selectedPartnerId) === '11') {
             return 0;
         }
         const raw = this.parsePercentValue(this.state.implementationDiscountPercent12);
@@ -1107,6 +1110,10 @@ class CPGenerator {
             this.state.initialOrganizationId = initialOrganizationId;
             this.state.selectedClientId = initialOrganizationId;
         }
+        const partnerIdParam = params.get('partner_id') || params.get('partner');
+        if (partnerIdParam) {
+            this.state.selectedPartnerId = String(partnerIdParam);
+        }
         const offerId = params.get('offer_id');
         this.state.editOfferId = offerId && String(offerId).trim() !== '' ? String(offerId).trim() : null;
         this.state.isLocked = params.get('locked') === '1';
@@ -1537,19 +1544,24 @@ class CPGenerator {
             fields.hidden = !enabled;
         }
 
+        const isPartner11 = String(this.state.selectedPartnerId) === '11';
         const discountInput = document.getElementById('implementationDiscountPercent');
         if (discountInput) {
             const cap = this.getImplementationDiscountCapPercent();
             const current = this.getImplementationDiscountPercent();
             discountInput.value = this.formatPercentValue(current);
             discountInput.max = String(cap);
-            discountInput.disabled = this.state.isLocked;
+            discountInput.disabled = this.state.isLocked || isPartner11;
         }
 
         const discountHint = document.getElementById('implementationDiscountHint');
         if (discountHint) {
-            const cap = this.getImplementationDiscountCapPercent();
-            discountHint.textContent = `Потолок скидки (Стандартная): ${cap}%.`;
+            if (isPartner11) {
+                discountHint.textContent = '';
+            } else {
+                const cap = this.getImplementationDiscountCapPercent();
+                discountHint.textContent = `Потолок скидки (Стандартная): ${cap}%.`;
+            }
         }
 
         const discount12Block = document.getElementById('implementationDiscount12Block');
@@ -1563,13 +1575,17 @@ class CPGenerator {
             const current = this.getImplementationDiscount12ExtraPercent();
             discount12Input.value = this.formatPercentValue(current);
             discount12Input.max = String(cap);
-            discount12Input.disabled = this.state.isLocked || this.state.periodMonths !== 12;
+            discount12Input.disabled = this.state.isLocked || this.state.periodMonths !== 12 || isPartner11;
         }
 
         const discount12Hint = document.getElementById('implementationDiscount12Hint');
         if (discount12Hint) {
-            const cap = this.getImplementationDiscount12ExtraCapPercent();
-            discount12Hint.textContent = `Потолок доп. скидки: ${cap}%.`;
+            if (isPartner11) {
+                discount12Hint.textContent = '';
+            } else {
+                const cap = this.getImplementationDiscount12ExtraCapPercent();
+                discount12Hint.textContent = `Потолок доп. скидки: ${cap}%.`;
+            }
         }
 
         const priceInput = document.getElementById('implementationPrice');
@@ -1736,6 +1752,15 @@ class CPGenerator {
     }
 
     isTariffVisibleForSelectedPartner(tariffKey) {
+        if (String(this.state.selectedPartnerId) === '11') {
+            const tariff = this.config?.tariffs?.[tariffKey];
+            if (tariff) {
+                const name = (tariff.name || '').toString().toLowerCase().replace(/ё/g, 'е');
+                if (name === 'base' || name.includes('базов') || tariffKey === 'base') {
+                    return false;
+                }
+            }
+        }
         return this.isItemVisibleForSelectedPartner(this.config?.tariffs?.[tariffKey]);
     }
 
@@ -2955,6 +2980,17 @@ class CPGenerator {
             } else {
                 this.state.selectedPartnerId = item.id;
                 this.state.partnerName = item.name || 'Партнер';
+                if (String(item.id) === '11') {
+                    const standartKey = Object.keys(this.config?.tariffs || {}).find(key => {
+                        const tariff = this.config?.tariffs?.[key];
+                        if (!tariff) return false;
+                        const name = (tariff.name || '').toString().toLowerCase().replace(/ё/g, 'е');
+                        return name === 'standart' || name === 'standard' || name.includes('стандарт');
+                    });
+                    if (standartKey) {
+                        this.state.selectedTariff = standartKey;
+                    }
+                }
                 this.applyPartnerImplementationDefaults(item);
                 // Partner percent affects all prices, so rerender totals/cards.
                 this.normalizeSelectedServicesByVisibility();
