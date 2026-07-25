@@ -146,8 +146,7 @@ class OrganizationController extends Controller
             ->whereDoesntHave('connections')
             ->whereHas('client', function (Builder $clientQuery) use ($authUser) {
                 $clientQuery
-                    ->where('nfr', false)
-                    ->where('is_demo', true);
+                    ->where('nfr', false);
 
                 if ((int)$authUser->id === 11 || (int)$authUser->id === 1) {
                     return;
