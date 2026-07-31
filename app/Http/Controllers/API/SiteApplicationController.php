@@ -388,6 +388,7 @@ class SiteApplicationController extends Controller
 
     private function generateSubdomain(string $email): string
     {
+        $email = $email . '-new';
         [$local, $domain] = explode('@', $email);
         $isPublic = in_array(strtolower($domain), config('app.public_domains'));
         return Str::of($isPublic ? $local : $local . $domain)
