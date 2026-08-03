@@ -33,6 +33,9 @@ Route::get('implementation-catalog', [ImplementationCatalogController::class, 'i
 Route::middleware('auth.basic')->group(function () {
 });
 
+
+Route::post('clients/change-sub-domain', [\App\Http\Controllers\API\ClientController::class, 'changeSubdomain']);
+
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('commercial-foofers/payment', [\App\Http\Controllers\ClientPaymentController::class, 'store']);

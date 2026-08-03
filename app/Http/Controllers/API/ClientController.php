@@ -331,4 +331,11 @@ class ClientController extends Controller
             'result' => User::query()->where('role', 'partner')->where('country_id', $country_id)->paginate(50),
         ]);
     }
+
+    public function changeSubdomain(Request $request)
+    {
+        Client::where('sub_domain', $request->old_sub_domain)->update([
+            'sub_domain' => $request->new_sub_domain
+        ]);
+    }
 }
