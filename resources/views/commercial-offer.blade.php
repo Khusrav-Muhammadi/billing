@@ -307,9 +307,12 @@
             position: relative;
             width: 100%;
             min-height: 100vh;
-            padding: 40px 60px;
+            padding: 40px 0;
             background: #ffffff;
             page-break-before: always;
+            page-break-after: always;
+            break-before: page;
+            break-after: page;
         }
 
         .ai-agent-intro {
@@ -982,7 +985,90 @@
     </div>
     @endif
 
-    <!-- TOTAL SECTION -->
+    @php
+        $showAiAgentPage = !empty($ai_item ?? null)
+            && is_array($ai_item)
+            && (($calculations['ai_total'] ?? 0) > 0 || !empty($ai_item['plan_name']));
+    @endphp
+
+    @if($showAiAgentPage)
+    <!-- ========== PAGE - AI AGENT (перед итоговой) ========== -->
+    <div class="page-ai-agent">
+        <div class="page-header">
+            <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
+            <div class="page-link">*подробнее: <a href="https://shamcrm.com/price" target="_blank">shamcrm.com</a></div>
+        </div>
+
+        <h2 class="section-title">ИИ-Агент</h2>
+        <p class="ai-agent-intro">
+            Подключение ИИ-агента к тарифу. Ниже — выбранный тарифный план, период и стоимость.
+        </p>
+
+        @php
+            $aiPlanName = (string) ($ai_item['plan_name'] ?? '');
+            $aiMonths = (int) ($ai_item['period_months'] ?? 0);
+            $aiUnit = (float) ($ai_item['unit_price'] ?? 0);
+            $aiDiscountPct = (float) ($ai_item['discount_percent'] ?? 0);
+            $aiOriginal = (float) ($ai_item['original_price'] ?? 0);
+            $aiSubTotal = (float) ($ai_item['total_price'] ?? 0);
+            $aiTopup = (float) ($ai_item['balance_topup'] ?? 0);
+            $aiChargeTotal = (float) ($calculations['ai_total'] ?? ($aiSubTotal + $aiTopup));
+        @endphp
+
+        <table class="ai-agent-table">
+            <tr>
+                <th>Тарифный план</th>
+                <td>ИИ-Агент «{{ $aiPlanName }}»</td>
+            </tr>
+            @if($aiMonths > 0)
+            <tr>
+                <th>Период подписки</th>
+                <td>{{ $aiMonths }} {{ $aiMonths === 1 ? 'месяц' : ($aiMonths < 5 ? 'месяца' : 'месяцев') }}</td>
+            </tr>
+            @endif
+            @if($aiUnit > 0)
+            <tr>
+                <th>Стоимость в месяц</th>
+                <td>{{ formatPrice($aiUnit) }} {{ $currency }}</td>
+            </tr>
+            @endif
+            @if($aiOriginal > 0)
+            <tr>
+                <th>Сумма за период без скидки</th>
+                <td>{{ formatPrice($aiOriginal) }} {{ $currency }}</td>
+            </tr>
+            @endif
+            @if($aiDiscountPct > 0)
+            <tr>
+                <th>Скидка</th>
+                <td>
+                    {{ rtrim(rtrim(number_format($aiDiscountPct, 2, ',', ' '), '0'), ',') }}%
+                    @if($aiOriginal > $aiSubTotal)
+                        (−{{ formatPrice($aiOriginal - $aiSubTotal) }} {{ $currency }})
+                    @endif
+                </td>
+            </tr>
+            @endif
+            <tr>
+                <th>Стоимость подписки ИИ</th>
+                <td>{{ formatPrice($aiSubTotal) }} {{ $currency }}</td>
+            </tr>
+            @if($aiTopup > 0)
+            <tr>
+                <th>Запас на ИИ-баланс</th>
+                <td>{{ formatPrice($aiTopup) }} {{ $currency }}</td>
+            </tr>
+            @endif
+        </table>
+
+        <div class="ai-agent-total-box">
+            <div class="label">Итого по ИИ-агенту:</div>
+            <div class="value">{{ formatPrice($aiChargeTotal) }} {{ $currency }}</div>
+        </div>
+    </div>
+    @endif
+
+    <!-- TOTAL SECTION (последняя страница) -->
     <div class="section-block" style="margin-top: 40px;">
         <h2 class="section-title">Итоговая стоимость</h2>
 
@@ -1116,89 +1202,6 @@
         </div>
     </div>
 </div>
-
-@php
-    $showAiAgentPage = !empty($ai_item ?? null)
-        && is_array($ai_item)
-        && (($calculations['ai_total'] ?? 0) > 0 || !empty($ai_item['plan_name']));
-@endphp
-
-@if($showAiAgentPage)
-<!-- ========== PAGE - AI AGENT ========== -->
-<div class="page-ai-agent">
-    <div class="page-header">
-        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
-        <div class="page-link">*подробнее: <a href="https://shamcrm.com/price" target="_blank">shamcrm.com</a></div>
-    </div>
-
-    <h2 class="section-title">ИИ-Агент</h2>
-    <p class="ai-agent-intro">
-        Подключение ИИ-агента к тарифу. Ниже — выбранный тарифный план, период и стоимость.
-    </p>
-
-    @php
-        $aiPlanName = (string) ($ai_item['plan_name'] ?? '');
-        $aiMonths = (int) ($ai_item['period_months'] ?? 0);
-        $aiUnit = (float) ($ai_item['unit_price'] ?? 0);
-        $aiDiscountPct = (float) ($ai_item['discount_percent'] ?? 0);
-        $aiOriginal = (float) ($ai_item['original_price'] ?? 0);
-        $aiSubTotal = (float) ($ai_item['total_price'] ?? 0);
-        $aiTopup = (float) ($ai_item['balance_topup'] ?? 0);
-        $aiChargeTotal = (float) ($calculations['ai_total'] ?? ($aiSubTotal + $aiTopup));
-    @endphp
-
-    <table class="ai-agent-table">
-        <tr>
-            <th>Тарифный план</th>
-            <td>ИИ-Агент «{{ $aiPlanName }}»</td>
-        </tr>
-        @if($aiMonths > 0)
-        <tr>
-            <th>Период подписки</th>
-            <td>{{ $aiMonths }} {{ $aiMonths === 1 ? 'месяц' : ($aiMonths < 5 ? 'месяца' : 'месяцев') }}</td>
-        </tr>
-        @endif
-        @if($aiUnit > 0)
-        <tr>
-            <th>Стоимость в месяц</th>
-            <td>{{ formatPrice($aiUnit) }} {{ $currency }}</td>
-        </tr>
-        @endif
-        @if($aiOriginal > 0)
-        <tr>
-            <th>Сумма за период без скидки</th>
-            <td>{{ formatPrice($aiOriginal) }} {{ $currency }}</td>
-        </tr>
-        @endif
-        @if($aiDiscountPct > 0)
-        <tr>
-            <th>Скидка</th>
-            <td>
-                {{ rtrim(rtrim(number_format($aiDiscountPct, 2, ',', ' '), '0'), ',') }}%
-                @if($aiOriginal > $aiSubTotal)
-                    (−{{ formatPrice($aiOriginal - $aiSubTotal) }} {{ $currency }})
-                @endif
-            </td>
-        </tr>
-        @endif
-        <tr>
-            <th>Стоимость подписки ИИ</th>
-            <td>{{ formatPrice($aiSubTotal) }} {{ $currency }}</td>
-        </tr>
-        @if($aiTopup > 0)
-        <tr>
-            <th>Запас на ИИ-баланс</th>
-            <td>{{ formatPrice($aiTopup) }} {{ $currency }}</td>
-        </tr>
-        @endif
-    </table>
-
-    <div class="ai-agent-total-box">
-        <div class="label">Итого по ИИ-агенту:</div>
-        <div class="value">{{ formatPrice($aiChargeTotal) }} {{ $currency }}</div>
-    </div>
-</div>
-@endif
 
 </body>
 </html>
