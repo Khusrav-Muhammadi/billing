@@ -25,20 +25,16 @@
                 <th>№</th>
                 <th>Название</th>
                 <th>Провайдер</th>
-                <th>Цена вход / 1M токенов</th>
-                <th>Цена выход / 1M токенов</th>
                 <th>Статус</th>
                 <th>Действие</th>
             </tr>
             </thead>
             <tbody>
-            @foreach($models as $model)
+            @forelse($models as $model)
                 <tr>
                     <td>{{ $loop->iteration }}</td>
-                    <td>{{ $model->name }}</td>
+                    <td><code>{{ $model->name }}</code></td>
                     <td>{{ $providers[$model->provider] ?? $model->provider }}</td>
-                    <td>{{ number_format($model->cost_per_1m_input, 4) }}</td>
-                    <td>{{ number_format($model->cost_per_1m_output, 4) }}</td>
                     <td>
                         @if($model->is_active)
                             <span class="badge bg-success">Активна</span>
@@ -46,9 +42,16 @@
                             <span class="badge bg-secondary">Отключена</span>
                         @endif
                     </td>
-                    <td>
-                        <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $model->id }}"><i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i></a>
-                        <a href="#" data-bs-toggle="modal" data-bs-target="#delete{{ $model->id }}"><i style="color:red; font-size: 30px" class="mdi mdi-delete"></i></a>
+                    <td style="white-space: nowrap;">
+                        <a href="{{ route('ai-model.prices.index', $model) }}" title="Цены">
+                            <i class="mdi mdi-currency-usd" style="font-size: 30px"></i>
+                        </a>
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#edit{{ $model->id }}" title="Изменить">
+                            <i class="mdi mdi-pencil-box-outline" style="font-size: 30px"></i>
+                        </a>
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#delete{{ $model->id }}" title="Удалить">
+                            <i style="color:red; font-size: 30px" class="mdi mdi-delete"></i>
+                        </a>
                     </td>
                 </tr>
 
@@ -74,14 +77,6 @@
                                                 <option value="{{ $key }}" {{ $model->provider === $key ? 'selected' : '' }}>{{ $label }}</option>
                                             @endforeach
                                         </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Цена вход / 1M токенов <span class="text-danger">*</span></label>
-                                        <input type="text" inputmode="decimal" class="form-control" name="cost_per_1m_input" value="{{ $model->cost_per_1m_input }}" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Цена выход / 1M токенов <span class="text-danger">*</span></label>
-                                        <input type="text" inputmode="decimal" class="form-control" name="cost_per_1m_output" value="{{ $model->cost_per_1m_output }}" required>
                                     </div>
                                     <div class="form-group">
                                         <input type="checkbox" class="form-check-inline custom-checkbox" name="is_active" value="1" id="editActive{{ $model->id }}" {{ $model->is_active ? 'checked' : '' }} style="width: 20px; height: 20px">
@@ -118,7 +113,11 @@
                         </form>
                     </div>
                 </div>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">Модели не добавлены</td>
+                </tr>
+            @endforelse
             </tbody>
         </table>
     </div>
@@ -152,21 +151,10 @@
                         @error('provider')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
-                        <label>Цена вход / 1M токенов <span class="text-danger">*</span></label>
-                        <input type="text" inputmode="decimal" class="form-control @error('cost_per_1m_input') is-invalid @enderror"
-                               name="cost_per_1m_input" value="{{ old('cost_per_1m_input', '0') }}" required>
-                        @error('cost_per_1m_input')<span class="text-danger">{{ $message }}</span>@enderror
-                    </div>
-                    <div class="form-group">
-                        <label>Цена выход / 1M токенов <span class="text-danger">*</span></label>
-                        <input type="text" inputmode="decimal" class="form-control @error('cost_per_1m_output') is-invalid @enderror"
-                               name="cost_per_1m_output" value="{{ old('cost_per_1m_output', '0') }}" required>
-                        @error('cost_per_1m_output')<span class="text-danger">{{ $message }}</span>@enderror
-                    </div>
-                    <div class="form-group">
                         <input type="checkbox" class="form-check-inline custom-checkbox" name="is_active" value="1" id="createIsActive" checked style="width: 20px; height: 20px">
                         <label for="createIsActive" class="ms-1">Активна</label>
                     </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>

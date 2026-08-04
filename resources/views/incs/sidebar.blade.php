@@ -23,6 +23,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="{{ route('ai-subscription.index') }}">
+            <i class="mdi mdi-brain menu-icon"></i>
+            <span class="menu-title">ИИ-Клиенты</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="{{ route('organization_v2.demo') }}">
             <i class="mdi mdi-contacts menu-icon"></i>
             <span class="menu-title">Демо</span>
@@ -132,12 +138,7 @@
             <span class="menu-title">ИИ-Тарифы</span>
         </a>
     </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ route('ai-subscription.index') }}">
-            <i class="mdi mdi-brain menu-icon"></i>
-            <span class="menu-title">ИИ-Клиенты</span>
-        </a>
-    </li>
+
 {{--    <li class="nav-item">--}}
 {{--        <a class="nav-link collapsed" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">--}}
 {{--            <i class="mdi mdi-settings menu-icon"></i>--}}

@@ -50,6 +50,7 @@ class AiTariffPlanPrice extends Model
                     ->orWhere('end_date', '9999-12-31')
                     ->orWhere('end_date', '>=', $today);
             })
-            ->orderByDesc('start_date');
+            ->orderByDesc('start_date')
+            ->orderByDesc('id');
     }
 }

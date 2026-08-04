@@ -40,12 +40,13 @@ class AiTariffPlan extends Model
         return $this->hasMany(AiTariffPlanPrice::class, 'plan_id')->orderByDesc('start_date');
     }
 
-    /** Текущая актуальная цена */
+    /** Текущая актуальная цена (при дублях на одну дату — последняя по id) */
     public function currentPrice(): HasOne
     {
         return $this->hasOne(AiTariffPlanPrice::class, 'plan_id')
             ->current()
-            ->latest('start_date');
+            ->orderByDesc('start_date')
+            ->orderByDesc('id');
     }
 
     public function aiModel(): BelongsTo
@@ -60,7 +61,7 @@ class AiTariffPlan extends Model
 
     /**
      * Monthly limit (= price_monthly from current price row).
-     * Falls back to legacy column if still present.
+     * Без актуальной цены — ошибка (нельзя подставлять legacy/0).
      */
     public function monthlyLimit(): float
     {
@@ -68,28 +69,31 @@ class AiTariffPlan extends Model
             ? $this->currentPrice
             : $this->currentPrice()->first();
 
-        if ($price && (float) $price->price_monthly > 0) {
-            return (float) $price->price_monthly;
+        if (! $price || (float) $price->price_monthly <= 0) {
+            throw new \RuntimeException(
+                "AI plan #{$this->id} ({$this->name}) has no current monthly price."
+            );
         }
 
-        return (float) ($this->getAttribute('included_limit_balance') ?? 0);
+        return (float) $price->price_monthly;
     }
 
     /**
      * Currency of the current tariff price.
+     * Без актуальной цены — ошибка (нельзя брать legacy currency_id).
      */
-    public function currencyId(): ?int
+    public function currencyId(): int
     {
         $price = $this->relationLoaded('currentPrice')
             ? $this->currentPrice
             : $this->currentPrice()->first();
 
-        if ($price?->currency_id) {
-            return (int) $price->currency_id;
+        if (! $price?->currency_id) {
+            throw new \RuntimeException(
+                "AI plan #{$this->id} ({$this->name}) has no current price currency."
+            );
         }
 
-        $legacy = $this->getAttribute('currency_id');
-
-        return $legacy !== null ? (int) $legacy : null;
+        return (int) $price->currency_id;
     }
 }

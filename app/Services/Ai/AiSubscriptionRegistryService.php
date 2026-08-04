@@ -131,15 +131,10 @@ class AiSubscriptionRegistryService
 
     private function ensureBalance(int $orgId, AiTariffPlan $plan): AiBalance
     {
-        $currencyId = $plan->currencyId();
-        if (! $currencyId) {
-            throw new \RuntimeException("AI plan #{$plan->id} has no current price/currency.");
-        }
-
         return AiBalance::query()->firstOrCreate(
             ['organization_id' => $orgId],
             [
-                'currency_id' => $currencyId,
+                'currency_id' => $plan->currencyId(),
                 'limited_balance' => 0,
                 'ai_balance' => 0,
                 'is_agent_enabled' => false,
@@ -150,19 +145,16 @@ class AiSubscriptionRegistryService
     private function creditPaidAmount(AiBalance $balance, CommercialOfferAiItem $aiItem, AiTariffPlan $plan): void
     {
         $periodMonths = max(1, (int) $aiItem->period_months);
-        $monthlyLimit = $plan->monthlyLimit();
-        $fromPlan = round($monthlyLimit * $periodMonths, 4);
-        $fromItem = (float) $aiItem->original_price;
-
-        $amount = $fromItem > 0 ? $fromItem : $fromPlan;
-
+        // Кошелёк пополняем по снапшоту КП (original_price = без скидки периода).
+        // Без суммы в КП — ошибка, не подставляем «примерно» из текущего прайса.
+        $amount = round((float) $aiItem->original_price, 4);
         if ($amount <= 0) {
-            Log::warning('AiSubscriptionRegistryService: zero credit amount', [
-                'organization_id' => $balance->organization_id,
-                'plan_id' => $plan->id,
-            ]);
-            return;
+            throw new \RuntimeException(
+                "AI item for offer has empty original_price; cannot credit wallet (plan #{$plan->id}, months={$periodMonths})."
+            );
         }
+        // Сверка с актуальным прайсом тарифа — если прайса нет, monthlyLimit() бросит.
+        $plan->monthlyLimit();
 
         $balance->increment('ai_balance', $amount);
         $balance->refresh();
@@ -189,10 +181,10 @@ class AiSubscriptionRegistryService
         $daysInMonth = (int) $now->daysInMonth;
         $dayOfMonth = (int) $now->day;
         $daysLeft = $daysInMonth - $dayOfMonth + 1;
-        $fullCost = $plan->monthlyLimit();
+        $fullCost = $plan->monthlyLimit(); // throws if no current price
 
-        if ($fullCost <= 0 || $daysInMonth <= 0) {
-            return false;
+        if ($daysInMonth <= 0) {
+            throw new \RuntimeException('Invalid daysInMonth while granting prorated AI limit.');
         }
 
         $cost = round(($fullCost / $daysInMonth) * $daysLeft, 4);

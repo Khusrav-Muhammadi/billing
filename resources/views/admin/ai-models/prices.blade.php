@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title') Цены тарифа: {{ $aiTariff->name }} @endsection
+@section('title') Цены модели: {{ $aiModel->name }} @endsection
 
 @section('content')
 
@@ -16,13 +16,13 @@
 <div class="card-body">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
-            <h4 class="card-title mb-0">Цены тарифа: {{ $aiTariff->name }}</h4>
-            @if($aiTariff->model)
-                <div class="text-muted" style="font-size: 13px;">Модель: <code>{{ $aiTariff->model }}</code></div>
-            @endif
+            <h4 class="card-title mb-0">Цены модели: <code>{{ $aiModel->name }}</code></h4>
+            <div class="text-muted" style="font-size: 13px;">
+                {{ \App\Models\Ai\AiModel::$providers[$aiModel->provider] ?? $aiModel->provider }}
+            </div>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('ai-tariff.index') }}" class="btn btn-light">Назад</a>
+            <a href="{{ route('ai-model.index') }}" class="btn btn-light">Назад</a>
             <a href="#" data-bs-toggle="modal" data-bs-target="#createPriceModal" class="btn btn-primary">Добавить цену</a>
         </div>
     </div>
@@ -35,7 +35,8 @@
                 <th>Дата начала</th>
                 <th>Дата завершения</th>
                 <th>Валюта</th>
-                <th>Цена / мес</th>
+                <th>Вход / 1M</th>
+                <th>Выход / 1M</th>
                 <th>Добавил</th>
                 <th>Действие</th>
             </tr>
@@ -55,11 +56,12 @@
                     </td>
                     <td>{{ $price->currency?->name }}</td>
                     <td>
-                        <strong>{{ number_format($price->price_monthly, 2) }}</strong>
+                        <strong>{{ number_format($price->price_per_1m_input, 4) }}</strong>
                         @if($isCurrent)
                             <span class="badge bg-success ms-1">Текущая</span>
                         @endif
                     </td>
+                    <td><strong>{{ number_format($price->price_per_1m_output, 4) }}</strong></td>
                     <td>{{ $price->creator?->name ?? '—' }}</td>
                     <td>
                         <a href="#" data-bs-toggle="modal" data-bs-target="#editPrice{{ $price->id }}">
@@ -71,10 +73,9 @@
                     </td>
                 </tr>
 
-                {{-- Модал редактирования --}}
                 <div class="modal fade" id="editPrice{{ $price->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog">
-                        <form action="{{ route('ai-tariff.prices.update', $price) }}" method="POST">
+                        <form action="{{ route('ai-model.prices.update', $price) }}" method="POST">
                             @csrf @method('PATCH')
                             <div class="modal-content">
                                 <div class="modal-header">
@@ -92,8 +93,12 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label>Цена в месяц <span class="text-danger">*</span></label>
-                                        <input type="text" inputmode="decimal" class="form-control" name="price_monthly" value="{{ $price->price_monthly }}" required>
+                                        <label>Цена вход / 1M токенов <span class="text-danger">*</span></label>
+                                        <input type="text" inputmode="decimal" class="form-control" name="price_per_1m_input" value="{{ $price->price_per_1m_input }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Цена выход / 1M токенов <span class="text-danger">*</span></label>
+                                        <input type="text" inputmode="decimal" class="form-control" name="price_per_1m_output" value="{{ $price->price_per_1m_output }}" required>
                                     </div>
                                     <div class="form-group">
                                         <label>Дата начала <span class="text-danger">*</span></label>
@@ -115,17 +120,17 @@
                     </div>
                 </div>
 
-                {{-- Модал удаления --}}
                 <div class="modal fade" id="deletePrice{{ $price->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog">
-                        <form action="{{ route('ai-tariff.prices.destroy', $price) }}" method="POST">
+                        <form action="{{ route('ai-model.prices.destroy', $price) }}" method="POST">
                             @csrf @method('DELETE')
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title">Удалить цену</h5>
                                 </div>
                                 <div class="modal-body">
-                                    Удалить цену <strong>{{ number_format($price->price_monthly, 2) }} {{ $price->currency?->name }}</strong>?
+                                    Удалить цену
+                                    <strong>{{ number_format($price->price_per_1m_input, 4) }} / {{ number_format($price->price_per_1m_output, 4) }} {{ $price->currency?->name }}</strong>?
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -137,7 +142,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">Цены не добавлены</td>
+                    <td colspan="8" class="text-center text-muted py-4">Цены не добавлены</td>
                 </tr>
             @endforelse
             </tbody>
@@ -145,14 +150,13 @@
     </div>
 </div>
 
-{{-- Модал создания --}}
 <div class="modal fade" id="createPriceModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <form action="{{ route('ai-tariff.prices.store', $aiTariff) }}" method="POST">
+        <form action="{{ route('ai-model.prices.store', $aiModel) }}" method="POST">
             @csrf
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Добавить цену — {{ $aiTariff->name }}</h5>
+                    <h5 class="modal-title">Добавить цену — <code>{{ $aiModel->name }}</code></h5>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -168,11 +172,16 @@
                         @error('currency_id')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
-                        <label>Цена в месяц <span class="text-danger">*</span></label>
-                        <input type="text" inputmode="decimal" class="form-control @error('price_monthly') is-invalid @enderror"
-                               name="price_monthly" value="{{ old('price_monthly') }}" required>
-                        <small class="text-muted">Эта сумма = лимит-баланс, начисляемый клиенту в месяц</small>
-                        @error('price_monthly')<span class="text-danger">{{ $message }}</span>@enderror
+                        <label>Цена вход / 1M токенов <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" class="form-control @error('price_per_1m_input') is-invalid @enderror"
+                               name="price_per_1m_input" value="{{ old('price_per_1m_input') }}" required>
+                        @error('price_per_1m_input')<span class="text-danger">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="form-group">
+                        <label>Цена выход / 1M токенов <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" class="form-control @error('price_per_1m_output') is-invalid @enderror"
+                               name="price_per_1m_output" value="{{ old('price_per_1m_output') }}" required>
+                        @error('price_per_1m_output')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
                         <label>Дата начала <span class="text-danger">*</span></label>

@@ -27,11 +27,7 @@ class AiScheduledActivationService
 
         $now = Carbon::now('Asia/Dushanbe');
         $daysInMonth = (int) $now->daysInMonth;
-        $dailyRate = $plan->monthlyLimit() / max(1, $daysInMonth);
-
-        if ($dailyRate <= 0) {
-            return null;
-        }
+        $dailyRate = $plan->monthlyLimit() / max(1, $daysInMonth); // throws if no price
 
         $daysCovered = (int) floor($aiBalance / $dailyRate);
         if ($daysCovered <= 0) {
@@ -60,81 +56,88 @@ class AiScheduledActivationService
             ->whereNotNull('scheduled_activation_at')
             ->where('is_agent_enabled', false)
             ->each(function (AiBalance $balance) use ($today): void {
-                DB::transaction(function () use ($balance, $today): void {
-                    $balance = AiBalance::query()
-                        ->where('id', $balance->id)
-                        ->lockForUpdate()
-                        ->first();
+                try {
+                    DB::transaction(function () use ($balance, $today): void {
+                        $balance = AiBalance::query()
+                            ->where('id', $balance->id)
+                            ->lockForUpdate()
+                            ->first();
 
-                    if (! $balance || $balance->is_agent_enabled) {
-                        return;
-                    }
+                        if (! $balance || $balance->is_agent_enabled) {
+                            return;
+                        }
 
-                    if (Carbon::parse($balance->scheduled_activation_at)->gt($today)) {
-                        return;
-                    }
+                        if (Carbon::parse($balance->scheduled_activation_at)->gt($today)) {
+                            return;
+                        }
 
-                    $subscription = AiSubscription::query()
-                        ->where('organization_id', $balance->organization_id)
-                        ->active()
-                        ->where('expires_at', '>=', $today)
-                        ->orderByDesc('id')
-                        ->with('plan.currentPrice')
-                        ->first();
+                        $subscription = AiSubscription::query()
+                            ->where('organization_id', $balance->organization_id)
+                            ->active()
+                            ->where('expires_at', '>=', $today)
+                            ->orderByDesc('id')
+                            ->with('plan.currentPrice')
+                            ->first();
 
-                    if (! $subscription || ! $subscription->plan) {
-                        return;
-                    }
+                        if (! $subscription || ! $subscription->plan) {
+                            return;
+                        }
 
-                    $now = Carbon::now('Asia/Dushanbe');
-                    $daysInMonth = (int) $now->daysInMonth;
-                    $dayOfMonth = (int) $today->day;
-                    $daysLeft = $daysInMonth - $dayOfMonth + 1;
-                    $fullCost = $subscription->plan->monthlyLimit();
-                    $cost = round(($fullCost / max(1, $daysInMonth)) * $daysLeft, 4);
-                    $ai = (float) $balance->ai_balance;
+                        $now = Carbon::now('Asia/Dushanbe');
+                        $daysInMonth = (int) $now->daysInMonth;
+                        $dayOfMonth = (int) $today->day;
+                        $daysLeft = $daysInMonth - $dayOfMonth + 1;
+                        $fullCost = $subscription->plan->monthlyLimit(); // throws if no price
+                        $cost = round(($fullCost / max(1, $daysInMonth)) * $daysLeft, 4);
+                        $ai = (float) $balance->ai_balance;
 
-                    if ($fullCost <= 0 || $ai < $cost) {
-                        $this->recalculate($balance);
-                        return;
-                    }
+                        if ($ai < $cost) {
+                            $this->recalculate($balance);
+                            return;
+                        }
 
-                    $balance->ai_balance = round($ai - $cost, 4);
-                    $balance->is_agent_enabled = true;
-                    $balance->scheduled_activation_at = null;
-                    $balance->save();
+                        $balance->ai_balance = round($ai - $cost, 4);
+                        $balance->is_agent_enabled = true;
+                        $balance->scheduled_activation_at = null;
+                        $balance->save();
 
-                    AiBalanceTransaction::query()->create([
+                        AiBalanceTransaction::query()->create([
+                            'organization_id' => $balance->organization_id,
+                            'currency_id' => $balance->currency_id,
+                            'type' => AiBalanceTransaction::TYPE_MONTHLY_PURCHASE,
+                            'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+                            'amount' => $cost,
+                            'description' => "Покупка пропорционального лимита при отложенной активации ({$daysLeft}/{$daysInMonth} дней)",
+                        ]);
+
+                        $balance->increment('limited_balance', $cost);
+
+                        AiBalanceTransaction::query()->create([
+                            'organization_id' => $balance->organization_id,
+                            'currency_id' => $balance->currency_id,
+                            'type' => AiBalanceTransaction::TYPE_TARIFF_GRANT_PRORATED,
+                            'target_balance' => AiBalanceTransaction::TARGET_LIMITED,
+                            'amount' => $cost,
+                            'description' => "Начисление лимита при активации: {$daysLeft} из {$daysInMonth} дней",
+                        ]);
+
+                        AiAgentToggleJob::dispatchSync(
+                            organizationId: (int) $balance->organization_id,
+                            enabled: true
+                        );
+
+                        Log::info('AiScheduledActivationService: agent activated, prorated limit granted', [
+                            'organization_id' => $balance->organization_id,
+                            'cost' => $cost,
+                            'days_left' => $daysLeft,
+                        ]);
+                    });
+                } catch (\Throwable $e) {
+                    Log::error('AiScheduledActivationService: activation failed', [
                         'organization_id' => $balance->organization_id,
-                        'currency_id' => $balance->currency_id,
-                        'type' => AiBalanceTransaction::TYPE_MONTHLY_PURCHASE,
-                        'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
-                        'amount' => $cost,
-                        'description' => "Покупка пропорционального лимита при отложенной активации ({$daysLeft}/{$daysInMonth} дней)",
+                        'error' => $e->getMessage(),
                     ]);
-
-                    $balance->increment('limited_balance', $cost);
-
-                    AiBalanceTransaction::query()->create([
-                        'organization_id' => $balance->organization_id,
-                        'currency_id' => $balance->currency_id,
-                        'type' => AiBalanceTransaction::TYPE_TARIFF_GRANT_PRORATED,
-                        'target_balance' => AiBalanceTransaction::TARGET_LIMITED,
-                        'amount' => $cost,
-                        'description' => "Начисление лимита при активации: {$daysLeft} из {$daysInMonth} дней",
-                    ]);
-
-                    AiAgentToggleJob::dispatchSync(
-                        organizationId: (int) $balance->organization_id,
-                        enabled: true
-                    );
-
-                    Log::info('AiScheduledActivationService: agent activated, prorated limit granted', [
-                        'organization_id' => $balance->organization_id,
-                        'cost' => $cost,
-                        'days_left' => $daysLeft,
-                    ]);
-                });
+                }
             });
     }
 

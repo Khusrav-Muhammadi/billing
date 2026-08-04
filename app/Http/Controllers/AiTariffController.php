@@ -21,7 +21,7 @@ class AiTariffController extends Controller
     public function index()
     {
         $plans = AiTariffPlan::query()
-            ->with(['activePeriods', 'currentPrice.currency', 'aiModel'])
+            ->with(['activePeriods', 'aiModel'])
             ->orderBy('name')
             ->get();
 
@@ -79,10 +79,28 @@ class AiTariffController extends Controller
 
     public function pricesIndex(AiTariffPlan $aiTariff)
     {
-        $prices    = $aiTariff->prices()->with('currency', 'creator')->get();
+        $prices = $aiTariff->prices()->with('currency', 'creator')->get();
         $currencies = Currency::query()->orderBy('name')->get();
 
-        return view('admin.ai-tariffs.prices', compact('aiTariff', 'prices', 'currencies'));
+        // Дубли не трогаем: «Текущая» — только последняя по id на валюту.
+        $currentPriceIds = $prices
+            ->filter(function (AiTariffPlanPrice $price) {
+                $today = now()->toDateString();
+                $start = $price->start_date?->toDateString();
+                $end = $price->end_date?->toDateString();
+                if (! $start || $start > $today) {
+                    return false;
+                }
+
+                return $end === null || $end === '9999-12-31' || $end >= $today;
+            })
+            ->groupBy('currency_id')
+            ->map(fn ($group) => $group->sortByDesc('id')->first()?->id)
+            ->filter()
+            ->values()
+            ->all();
+
+        return view('admin.ai-tariffs.prices', compact('aiTariff', 'prices', 'currencies', 'currentPriceIds'));
     }
 
     public function pricesStore(Request $request, AiTariffPlan $aiTariff): RedirectResponse
@@ -95,7 +113,7 @@ class AiTariffController extends Controller
         ]);
 
         DB::transaction(function () use ($aiTariff, $data): void {
-            // Закрываем предыдущую открытую цену той же валюты
+            // Закрываем только более ранние открытые цены той же валюты (ничего не удаляем).
             AiTariffPlanPrice::query()
                 ->where('plan_id', $aiTariff->id)
                 ->where('currency_id', $data['currency_id'])
@@ -116,7 +134,7 @@ class AiTariffController extends Controller
                 'created_by'    => Auth::id(),
             ]);
 
-            // Синхронизируем price_total активных периодов
+            // Синхронизируем price_total активных периодов по последней цене
             $monthly = (float) $data['price_monthly'];
             AiTariffPlanPeriod::query()
                 ->where('plan_id', $aiTariff->id)

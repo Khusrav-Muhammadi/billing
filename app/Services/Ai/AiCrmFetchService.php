@@ -2,12 +2,14 @@
 
 namespace App\Services\Ai;
 
+use App\Models\Ai\AiModel;
 use App\Models\Ai\AiSubscription;
-use App\Models\Ai\AiTokenPricing;
 use App\Models\Ai\AiUsageRawLog;
 use App\Services\IntegrationActionLogService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class AiCrmFetchService
 {
@@ -187,31 +189,12 @@ class AiCrmFetchService
             $completionTokens = (int) ($log['completion_tokens'] ?? 0);
             $createdAt = $log['created_at'] ?? now()->toDateTimeString();
 
-            $pricing = AiTokenPricing::query()
-                ->current($modelName)
-                ->where('is_active', true)
-                ->first();
+            // Без актуальной цены — стоп. Нельзя писать cost=0 (бесплатное использование).
+            $resolved = $this->resolveTokenPricing($modelName, $createdAt);
 
-            $calculatedCost = 0.0;
-            $costCurrencyId = null;
-            $inputSnapshot = null;
-            $outputSnapshot = null;
-            $marginSnapshot = null;
-
-            if ($pricing) {
-                $inputCost = (($promptTokens + $cacheHitTokens) / 1_000_000) * (float) $pricing->price_per_1m_input;
-                $outputCost = ($completionTokens / 1_000_000) * (float) $pricing->price_per_1m_output;
-                $calculatedCost = round($inputCost + $outputCost, 6);
-                $costCurrencyId = $pricing->price_currency_id;
-                $inputSnapshot = $pricing->price_per_1m_input;
-                $outputSnapshot = $pricing->price_per_1m_output;
-                $marginSnapshot = $pricing->margin_percent;
-            } else {
-                Log::warning('AiCrmFetchService: no pricing found for model', [
-                    'model_name' => $modelName,
-                    'organization_id' => $orgId,
-                ]);
-            }
+            $inputCost = (($promptTokens + $cacheHitTokens) / 1_000_000) * (float) $resolved['price_per_1m_input'];
+            $outputCost = ($completionTokens / 1_000_000) * (float) $resolved['price_per_1m_output'];
+            $calculatedCost = round($inputCost + $outputCost, 6);
 
             try {
                 AiUsageRawLog::query()->insertOrIgnore([[
@@ -222,10 +205,10 @@ class AiCrmFetchService
                     'prompt_cache_hit_tokens' => $cacheHitTokens,
                     'completion_tokens' => $completionTokens,
                     'calculated_cost' => $calculatedCost,
-                    'cost_currency_id' => $costCurrencyId,
-                    'price_per_1m_input_snapshot' => $inputSnapshot,
-                    'price_per_1m_output_snapshot' => $outputSnapshot,
-                    'margin_percent_snapshot' => $marginSnapshot,
+                    'cost_currency_id' => $resolved['currency_id'],
+                    'price_per_1m_input_snapshot' => $resolved['price_per_1m_input'],
+                    'price_per_1m_output_snapshot' => $resolved['price_per_1m_output'],
+                    'margin_percent_snapshot' => null,
                     'processed' => false,
                     'created_at' => $createdAt,
                     'fetched_at' => now(),
@@ -236,7 +219,48 @@ class AiCrmFetchService
                     'crm_log_id' => $crmLogId,
                     'error' => $e->getMessage(),
                 ]);
+                throw $e;
             }
         }
+    }
+
+    /**
+     * Актуальная цена токенов на дату лога из ai_model_prices.
+     * Без цены — RuntimeException (никаких fallback на ai_token_pricing / 0).
+     *
+     * @return array{price_per_1m_input: float, price_per_1m_output: float, currency_id: int}
+     */
+    private function resolveTokenPricing(string $modelName, string $at): array
+    {
+        $modelName = trim($modelName);
+        if ($modelName === '') {
+            throw new RuntimeException('AI usage log has empty model_key; cannot price tokens.');
+        }
+
+        $onDate = Carbon::parse($at)->toDateString();
+
+        $aiModel = AiModel::query()
+            ->where('name', $modelName)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $aiModel) {
+            throw new RuntimeException(
+                "AI model [{$modelName}] not found or inactive; cannot price tokens."
+            );
+        }
+
+        $price = $aiModel->resolvePriceAt($onDate);
+        if (! $price || (int) $price->currency_id <= 0) {
+            throw new RuntimeException(
+                "AI model [{$modelName}] has no price for date {$onDate}; cannot price tokens."
+            );
+        }
+
+        return [
+            'price_per_1m_input'  => (float) $price->price_per_1m_input,
+            'price_per_1m_output' => (float) $price->price_per_1m_output,
+            'currency_id'         => (int) $price->currency_id,
+        ];
     }
 }

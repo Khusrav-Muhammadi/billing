@@ -193,7 +193,17 @@ class AiBillingService
         foreach ($costByGroup as $currencyId => $cost) {
             $cost = (float) $cost;
 
-            if ((int) $currencyId === $balanceCurrencyId || $currencyId === null) {
+            // Без валюты стоимости нельзя считать — иначе сумма уйдёт в чужой валюте.
+            if ($currencyId === null || $currencyId === '' || (int) $currencyId <= 0) {
+                Log::error('AiBillingService: usage cost without currency_id, billing deferred', [
+                    'to_currency_id' => $balanceCurrencyId,
+                    'cost' => $cost,
+                    'date' => $date->toDateTimeString(),
+                ]);
+                return null;
+            }
+
+            if ((int) $currencyId === $balanceCurrencyId) {
                 $total += $cost;
                 continue;
             }

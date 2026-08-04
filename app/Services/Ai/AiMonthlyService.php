@@ -6,6 +6,7 @@ use App\Jobs\Ai\AiAgentToggleJob;
 use App\Models\Ai\AiBalance;
 use App\Models\Ai\AiBalanceTransaction;
 use App\Models\Ai\AiSubscription;
+use App\Models\Ai\AiTariffPlan;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -78,31 +79,39 @@ class AiMonthlyService
         AiBalance::query()
             ->with(['organization'])
             ->each(function (AiBalance $balance): void {
-                DB::transaction(function () use ($balance): void {
-                    $balance = AiBalance::query()
-                        ->where('id', $balance->id)
-                        ->lockForUpdate()
-                        ->first();
+                try {
+                    DB::transaction(function () use ($balance): void {
+                        $balance = AiBalance::query()
+                            ->where('id', $balance->id)
+                            ->lockForUpdate()
+                            ->first();
 
-                    if (! $balance) {
-                        return;
-                    }
+                        if (! $balance) {
+                            return;
+                        }
 
-                    $this->coverDebt($balance);
+                        $this->coverDebt($balance);
 
-                    $subscription = AiSubscription::query()
-                        ->where('organization_id', $balance->organization_id)
-                        ->active()
-                        ->where('started_at', '<=', now())
-                        ->where('expires_at', '>=', now())
-                        ->with('plan.currentPrice')
-                        ->orderByDesc('id')
-                        ->first();
+                        $subscription = AiSubscription::query()
+                            ->where('organization_id', $balance->organization_id)
+                            ->active()
+                            ->where('started_at', '<=', now())
+                            ->where('expires_at', '>=', now())
+                            ->with('plan.currentPrice')
+                            ->orderByDesc('id')
+                            ->first();
 
-                    if ($subscription) {
-                        $this->grantStartOfMonthLimit($balance, $subscription);
-                    }
-                });
+                        if ($subscription) {
+                            $this->grantStartOfMonthLimit($balance, $subscription);
+                        }
+                    });
+                } catch (\Throwable $e) {
+                    // Не продолжаем с нулём/фолбеком — фиксируем ошибку и идём к следующей org.
+                    Log::error('AiMonthlyService: start of month failed', [
+                        'organization_id' => $balance->organization_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             });
     }
 
@@ -117,16 +126,8 @@ class AiMonthlyService
             return;
         }
 
-        $fullCost = $plan->monthlyLimit();
+        $fullCost = $plan->monthlyLimit(); // throws if no current price
         $ai = (float) $balance->ai_balance;
-
-        if ($fullCost <= 0) {
-            Log::warning('AiMonthlyService: plan has zero monthly limit', [
-                'organization_id' => $balance->organization_id,
-                'plan_id' => $plan->id,
-            ]);
-            return;
-        }
 
         if ($ai < $fullCost) {
             app(AiScheduledActivationService::class)->recalculate($balance);
@@ -189,11 +190,9 @@ class AiMonthlyService
         ]);
     }
 
-    public function grantMonthlyLimit(AiBalance $balance, $plan, bool $prorated): void
+    public function grantMonthlyLimit(AiBalance $balance, AiTariffPlan $plan, bool $prorated): void
     {
-        $fullCost = method_exists($plan, 'monthlyLimit')
-            ? $plan->monthlyLimit()
-            : (float) ($plan->included_limit_balance ?? 0);
+        $fullCost = $plan->monthlyLimit(); // throws if no current price
 
         if ($prorated) {
             $now = Carbon::now('Asia/Dushanbe');

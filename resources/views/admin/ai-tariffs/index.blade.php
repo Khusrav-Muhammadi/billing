@@ -23,7 +23,6 @@
                 <th>№</th>
                 <th>Название</th>
                 <th>Модель</th>
-                <th>Цена / мес</th>
                 <th>Активные периоды</th>
                 <th>Статус</th>
                 <th>Действие</th>
@@ -40,14 +39,6 @@
                             <small class="text-muted">{{ \App\Models\Ai\AiModel::$providers[$plan->aiModel->provider] ?? $plan->aiModel->provider }}</small>
                         @elseif($plan->model)
                             <code>{{ $plan->model }}</code>
-                        @else
-                            <span class="text-muted">—</span>
-                        @endif
-                    </td>
-                    <td>
-                        @if($plan->currentPrice)
-                            <strong>{{ number_format($plan->currentPrice->price_monthly, 2) }}</strong>
-                            {{ $plan->currentPrice->currency?->name }}
                         @else
                             <span class="text-muted">—</span>
                         @endif
@@ -149,7 +140,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">Нет тарифных планов</td>
+                    <td colspan="6" class="text-center text-muted py-4">Нет тарифных планов</td>
                 </tr>
             @endforelse
             </tbody>

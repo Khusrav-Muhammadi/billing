@@ -329,6 +329,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/store', [\App\Http\Controllers\AiModelController::class, 'store'])->name('ai-model.store');
         Route::patch('/update/{aiModel}', [\App\Http\Controllers\AiModelController::class, 'update'])->name('ai-model.update');
         Route::delete('/delete/{aiModel}', [\App\Http\Controllers\AiModelController::class, 'destroy'])->name('ai-model.destroy');
+
+        // Цены модели (как у тарифов ИИ)
+        Route::get('/{aiModel}/prices', [\App\Http\Controllers\AiModelController::class, 'pricesIndex'])->name('ai-model.prices.index');
+        Route::post('/{aiModel}/prices', [\App\Http\Controllers\AiModelController::class, 'pricesStore'])->name('ai-model.prices.store');
+        Route::patch('/prices/{price}', [\App\Http\Controllers\AiModelController::class, 'pricesUpdate'])->name('ai-model.prices.update');
+        Route::delete('/prices/{price}', [\App\Http\Controllers\AiModelController::class, 'pricesDestroy'])->name('ai-model.prices.destroy');
     });
 
     // ── AI Token Pricing ────────────────────────────────────────────────

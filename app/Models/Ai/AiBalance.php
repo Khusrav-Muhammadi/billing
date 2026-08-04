@@ -63,10 +63,8 @@ class AiBalance extends Model
             return 0.0;
         }
 
+        // monthlyLimit() бросает, если нет актуальной цены — лучше ошибка, чем нулевой резерв.
         $monthly = $subscription->plan->monthlyLimit();
-        if ($monthly <= 0) {
-            return 0.0;
-        }
 
         $now = Carbon::now('Asia/Dushanbe');
         $nextMonthStart = $now->copy()->addMonthNoOverflow()->startOfMonth()->startOfDay();
