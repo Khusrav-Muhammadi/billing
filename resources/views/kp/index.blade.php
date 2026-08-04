@@ -793,6 +793,24 @@
                     </div>
                 </div>
 
+                <div id="aiBalanceTopupRow" style="display:none;margin-top:20px;">
+                    <div class="kp-setting-group">
+                        <div class="kp-setting-label">Запас на ИИ-баланс</div>
+                        <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
+                            Рекомендуемая сумма, чтобы агент не отключился до конца месяца. Можно изменить.
+                        </p>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value="0"
+                                   style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+                            <span id="aiBalanceTopupCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
+                            <button type="button" id="aiBalanceTopupResetBtn" class="action-btn secondary" style="padding:8px 12px;font-size:13px;">
+                                По рекомендации
+                            </button>
+                        </div>
+                        <div id="aiBalanceTopupHint" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
+                    </div>
+                </div>
+
                 {{-- ИИ-Агент отображается в общем итого --}}
             </div>
         </div>
@@ -894,22 +912,28 @@
         let selectedPlanId = null;
         let selectedMonths = null;
 
-        // ── Получить цену плана в валюте клиента ──
+        // ── Цена только в валюте клиента; нет цены — 0 (без конвертации) ──
         const getAiPrice = (plan) => {
             const cpg = window.cpGenerator;
-            const cur = cpg ? (cpg.state?.currency || '').toUpperCase() : '';
-            const byC = plan.prices_by_currency || {};
-            if (cur && Object.prototype.hasOwnProperty.call(byC, cur)) return byC[cur];
-            const first = Object.values(byC)[0];
-            return first != null ? first : 0;
+            const cur = cpg
+                ? (typeof cpg.normalizeCurrencyCode === 'function'
+                    ? cpg.normalizeCurrencyCode(cpg.state?.currency)
+                    : String(cpg.state?.currency || '').toUpperCase())
+                : '';
+            if (!cur) return 0;
+            const byC = plan?.prices_by_currency || {};
+            const direct = byC[cur] ?? byC[String(cur).toLowerCase()] ?? byC[String(cur).toUpperCase()];
+            const amount = Number(direct);
+            return Number.isFinite(amount) && amount > 0 ? amount : 0;
         };
 
-        const getAiCurrency = (plan) => {
+        const getAiCurrency = (_plan) => {
             const cpg = window.cpGenerator;
-            const cur = cpg ? (cpg.state?.currency || '').toUpperCase() : '';
-            const byC = plan.prices_by_currency || {};
-            if (cur && Object.prototype.hasOwnProperty.call(byC, cur)) return cur;
-            return Object.keys(byC)[0] || '';
+            if (!cpg) return '';
+            if (typeof cpg.normalizeCurrencyCode === 'function') {
+                return cpg.normalizeCurrencyCode(cpg.state?.currency) || '';
+            }
+            return String(cpg.state?.currency || '').toUpperCase();
         };
 
         // ── Обновление цен на карточках при смене валюты ──
@@ -927,6 +951,10 @@
                     ? `<div class="tariff-price"><span class="price-value">${p}</span><span class="price-period"> ${cur}/мес ${disc}</span></div>`
                     : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
             });
+            // Пересобрать CP_AI_ITEM без updateSummary (иначе стек переполнится).
+            if (checkbox.checked && selectedPlanId && selectedMonths) {
+                setAiItem({ refreshSummary: false });
+            }
         };
 
         // Хук для cpGenerator чтобы обновлять цены при updateSummary
@@ -1014,7 +1042,45 @@
         }
 
         // ── Итог ──
-        function setAiItem() {
+        let aiTopupManual = false;
+        const topupRow = document.getElementById('aiBalanceTopupRow');
+        const topupInput = document.getElementById('aiBalanceTopupInput');
+        const topupCurrency = document.getElementById('aiBalanceTopupCurrency');
+        const topupHint = document.getElementById('aiBalanceTopupHint');
+        const topupResetBtn = document.getElementById('aiBalanceTopupResetBtn');
+
+        function suggestTopup(unitPrice) {
+            const price = Number(unitPrice) || 0;
+            if (price <= 0) return 0;
+            const now = new Date();
+            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
+            return +(price * (daysLeft / daysInMonth)).toFixed(2);
+        }
+
+        function syncTopupUi(unit, cur, force) {
+            if (!topupRow || !topupInput) return;
+            topupRow.style.display = 'block';
+            if (topupCurrency) topupCurrency.textContent = cur || '';
+            const suggested = suggestTopup(unit);
+            if (force || !aiTopupManual) {
+                topupInput.value = suggested;
+                aiTopupManual = false;
+            }
+            if (topupHint) {
+                topupHint.textContent = 'Рекомендация: ' + suggested + ' ' + (cur || '') + ' (по оставшимся дням месяца).';
+            }
+        }
+
+        if (topupInput) {
+            topupInput.addEventListener('input', () => { aiTopupManual = true; setAiItem(); });
+        }
+        if (topupResetBtn) {
+            topupResetBtn.addEventListener('click', () => { aiTopupManual = false; setAiItem(); });
+        }
+
+        function setAiItem(options = {}) {
+            const refreshSummary = options.refreshSummary !== false;
             if (checkbox.checked && selectedPlanId && selectedMonths) {
                 const plan        = plans.find(p => p.id === selectedPlanId);
                 const per         = plan?.periods.find(p => p.months === selectedMonths);
@@ -1022,30 +1088,34 @@
                 const cur         = getAiCurrency(plan);
                 const discountPct = per?.discount_percent ?? 0;
                 const original    = +(unit * selectedMonths).toFixed(4);
-                // Recalculate from discount_percent — price_total is a snapshot in original currency
                 const total       = +(original * (1 - discountPct / 100)).toFixed(4);
                 const cpg         = window.cpGenerator;
                 const partnerPct  = cpg && typeof cpg.getPartnerPackPercent === 'function'
                     ? cpg.getPartnerPackPercent() : 0;
+                syncTopupUi(unit, cur, false);
+                const topup = Math.max(0, +(Number(topupInput?.value) || 0).toFixed(4));
                 window.CP_AI_ITEM = {
                     plan_id:          selectedPlanId,
+                    plan_name:        plan?.name || '',
                     period_months:    selectedMonths,
                     unit_price:       unit,
                     discount_percent: discountPct,
                     partner_percent:  partnerPct,
                     original_price:   original,
                     total_price:      total,
+                    balance_topup:    topup,
                     currency:         cur,
                 };
             } else {
                 window.CP_AI_ITEM = null;
+                if (topupRow) topupRow.style.display = 'none';
             }
-            if (window.cpGenerator && typeof window.cpGenerator.updateSummary === 'function') {
+            if (refreshSummary && window.cpGenerator && typeof window.cpGenerator.updateSummary === 'function') {
                 window.cpGenerator.updateSummary();
             }
         }
 
-        function renderSummary() { setAiItem(); }
+        function renderSummary() { setAiItem({ refreshSummary: true }); }
     })();
     </script>
 

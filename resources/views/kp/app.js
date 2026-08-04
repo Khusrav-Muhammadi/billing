@@ -582,6 +582,11 @@ class CPGenerator {
     // Update Summary
     // ========================================
     updateSummary() {
+        // Обновить цены AI при смене валюты (без рекурсии: refresh не дергает updateSummary).
+        if (typeof this._refreshAiCardPrices === 'function') {
+            this._refreshAiCardPrices();
+        }
+
         const summaryItems = document.getElementById('summaryItems');
         summaryItems.innerHTML = '';
 
@@ -687,7 +692,6 @@ class CPGenerator {
             });
 
             if (aiItem) {
-                const aiCur = aiItem.plan_name ? '' : '';
                 tableHTML += `<tr><th colspan="3" class="section-header">ИИ-Агент</th></tr>`;
                 tableHTML += `
                     <tr>
@@ -696,13 +700,24 @@ class CPGenerator {
                         <td>${this.formatPrice(aiItem.total_price)}</td>
                     </tr>
                 `;
+                if ((Number(aiItem.balance_topup) || 0) > 0) {
+                    tableHTML += `
+                    <tr>
+                        <td>Запас на ИИ-баланс</td>
+                        <td>—</td>
+                        <td>${this.formatPrice(aiItem.balance_topup)}</td>
+                    </tr>
+                    `;
+                }
             }
 
             tableHTML += '</tbody></table>';
             summaryItems.innerHTML += tableHTML;
         }
 
-        const aiTotal = aiItem ? (aiItem.total_price || 0) : 0;
+        const aiTotal = aiItem
+            ? ((Number(aiItem.total_price) || 0) + (Number(aiItem.balance_topup) || 0))
+            : 0;
         const periodTotal = monthlyTotal * this.state.periodMonths;
         const grandTotal  = periodTotal + aiTotal;
 

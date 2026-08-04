@@ -22,6 +22,7 @@ class AiFetchAndBillCommand extends Command
 
         $orgIds = AiSubscription::query()
             ->active()
+            ->where('expires_at', '>=', now())
             ->distinct()
             ->pluck('organization_id');
 

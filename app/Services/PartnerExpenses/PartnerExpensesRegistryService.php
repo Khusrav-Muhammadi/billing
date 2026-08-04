@@ -28,7 +28,7 @@ class PartnerExpensesRegistryService
             return;
         }
 
-        $offer->loadMissing(['items.tariff:id,is_external,is_one_time']);
+        $offer->loadMissing(['items.tariff:id,is_external,is_one_time', 'aiItem']);
 
         DB::transaction(function () use ($offer, $status, $requestType) {
 
@@ -76,7 +76,56 @@ class PartnerExpensesRegistryService
 
                 PartnerExpense::query()->updateOrCreate($attributes, $attributes);
             }
+
+            $this->registerAiPartnerExpense($offer, $status, $requestType);
         });
+    }
+
+    private function registerAiPartnerExpense(CommercialOffer $offer, CommercialOfferStatus $status, string $requestType): void
+    {
+        $aiItem = $offer->aiItem;
+        if (! $aiItem) {
+            return;
+        }
+
+        $partnerPercent = round(max(0, (float) $aiItem->partner_percent), 2);
+        if ($partnerPercent <= 0) {
+            return;
+        }
+
+        // Запас на ИИ-баланс (balance_topup) партнёру не режется — только подписка AI.
+        $originalAmount = round((float) $aiItem->total_price, 4);
+        if ($originalAmount <= 0) {
+            return;
+        }
+
+        $partnerAmount = round(max(0, $originalAmount * ($partnerPercent / 100)), 4);
+        if ($partnerAmount <= 0) {
+            return;
+        }
+
+        // partner_expenses.tariff_id is required by existing unique key shape —
+        // привязываем к основному тарифу КП, если он есть.
+        $resolvedTariffId = $offer->tariff_id ? (int) $offer->tariff_id : null;
+        if ($resolvedTariffId === null) {
+            return;
+        }
+
+        $currencyId = CurrencyResolver::idFromCode((string) $offer->currency);
+
+        $attributes = [
+            'partner_id' => (int) $offer->partner_id,
+            'client_id' => (int) $offer->organization_id,
+            'date' => RegistryDateTimeResolver::resolve($offer, $status),
+            'tariff_id' => $resolvedTariffId,
+            'partner_amount' => $partnerAmount,
+            'original_amount' => $originalAmount,
+            'partner_percent' => $partnerPercent,
+            'currency_id' => $currencyId,
+            'request_type' => $requestType . '_ai',
+        ];
+
+        PartnerExpense::query()->updateOrCreate($attributes, $attributes);
     }
 
     private function resolveDiscountedAmount($item): float

@@ -347,6 +347,7 @@ class ApplicationController extends Controller
                         'partner_percent'  => (float) ($aiItemData['partner_percent'] ?? 0),
                         'original_price'   => (float) ($aiItemData['original_price'] ?? 0),
                         'total_price'      => (float) ($aiItemData['total_price'] ?? 0),
+                        'balance_topup'    => max(0, (float) ($aiItemData['balance_topup'] ?? 0)),
                     ]
                 );
             } else {
@@ -1108,6 +1109,7 @@ class ApplicationController extends Controller
                 'partner_percent'  => (float)$offer->aiItem->partner_percent,
                 'original_price'   => (float)$offer->aiItem->original_price,
                 'total_price'      => (float)$offer->aiItem->total_price,
+                'balance_topup'    => (float)($offer->aiItem->balance_topup ?? 0),
                 'currency'         => '',
             ] : null,
         ];

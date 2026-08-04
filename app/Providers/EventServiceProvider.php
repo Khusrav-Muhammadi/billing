@@ -20,6 +20,10 @@ use App\Models\Partner;
 use App\Observers\ClientObserver;
 use App\Observers\OrganizationObserver;
 use App\Observers\PartnerObserver;
+use App\Models\Ai\AiTariffPlan;
+use App\Models\Ai\AiTokenPricing;
+use App\Observers\AiTariffPlanObserver;
+use App\Observers\AiTokenPricingObserver;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -70,6 +74,8 @@ class EventServiceProvider extends ServiceProvider
         Client::observe(ClientObserver::class);
         Organization::observe(OrganizationObserver::class);
         Partner::observe(PartnerObserver::class);
+        AiTariffPlan::observe(AiTariffPlanObserver::class);
+        AiTokenPricing::observe(AiTokenPricingObserver::class);
     }
 
     /**

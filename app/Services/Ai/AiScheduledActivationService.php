@@ -15,7 +15,7 @@ class AiScheduledActivationService
 {
     /**
      * Calculate the date on which the agent should auto-activate
-     * when the org has no active subscription but has ai_balance > 0.
+     * when org has ai_balance but not enough for a full remaining-month purchase yet.
      */
     public function calculateScheduledActivation(AiBalance $balance, AiTariffPlan $plan): ?Carbon
     {
@@ -27,19 +27,22 @@ class AiScheduledActivationService
 
         $now = Carbon::now('Asia/Dushanbe');
         $daysInMonth = (int) $now->daysInMonth;
-        $dailyRate = (float) $plan->included_limit_balance / $daysInMonth;
+        $dailyRate = $plan->monthlyLimit() / max(1, $daysInMonth);
 
         if ($dailyRate <= 0) {
             return null;
         }
 
         $daysCovered = (int) floor($aiBalance / $dailyRate);
+        if ($daysCovered <= 0) {
+            return null;
+        }
+
         $endOfMonth = $now->copy()->endOfMonth()->startOfDay();
+        $activationDate = $endOfMonth->copy()->subDays($daysCovered - 1);
 
-        $activationDate = $endOfMonth->subDays($daysCovered - 1);
-
-        if ($activationDate->lte($now->startOfDay())) {
-            return $now->startOfDay();
+        if ($activationDate->lte($now->copy()->startOfDay())) {
+            return $now->copy()->startOfDay();
         }
 
         return $activationDate;
@@ -47,8 +50,6 @@ class AiScheduledActivationService
 
     /**
      * Check all balances with a scheduled activation date and activate those due today.
-     * On activation: purchase the prorated limit for the remaining days of the month
-     * from ai_balance, then enable the agent.
      */
     public function checkAndActivate(): void
     {
@@ -78,54 +79,49 @@ class AiScheduledActivationService
                         ->active()
                         ->where('expires_at', '>=', $today)
                         ->orderByDesc('id')
-                        ->with('plan')
+                        ->with('plan.currentPrice')
                         ->first();
 
                     if (! $subscription || ! $subscription->plan) {
                         return;
                     }
 
-                    // Calculate cost for remaining days in this month
-                    $now         = Carbon::now('Asia/Dushanbe');
+                    $now = Carbon::now('Asia/Dushanbe');
                     $daysInMonth = (int) $now->daysInMonth;
-                    $dayOfMonth  = (int) $today->day;
-                    $daysLeft    = $daysInMonth - $dayOfMonth + 1;
-                    $fullCost    = (float) $subscription->plan->included_limit_balance;
-                    $cost        = round(($fullCost / $daysInMonth) * $daysLeft, 4);
-                    $ai          = (float) $balance->ai_balance;
+                    $dayOfMonth = (int) $today->day;
+                    $daysLeft = $daysInMonth - $dayOfMonth + 1;
+                    $fullCost = $subscription->plan->monthlyLimit();
+                    $cost = round(($fullCost / max(1, $daysInMonth)) * $daysLeft, 4);
+                    $ai = (float) $balance->ai_balance;
 
-                    if ($ai < $cost) {
-                        // Still not enough — recalculate for a later date
+                    if ($fullCost <= 0 || $ai < $cost) {
                         $this->recalculate($balance);
                         return;
                     }
 
-                    // Deduct from ai_balance
-                    $balance->ai_balance              = round($ai - $cost, 4);
-                    $balance->is_agent_enabled        = true;
+                    $balance->ai_balance = round($ai - $cost, 4);
+                    $balance->is_agent_enabled = true;
                     $balance->scheduled_activation_at = null;
                     $balance->save();
 
-                    // Record purchase
-                    \App\Models\Ai\AiBalanceTransaction::query()->create([
+                    AiBalanceTransaction::query()->create([
                         'organization_id' => $balance->organization_id,
-                        'currency_id'     => $balance->currency_id,
-                        'type'            => \App\Models\Ai\AiBalanceTransaction::TYPE_MONTHLY_PURCHASE,
-                        'target_balance'  => \App\Models\Ai\AiBalanceTransaction::TARGET_AI_BALANCE,
-                        'amount'          => $cost,
-                        'description'     => "Покупка пропорционального лимита при отложенной активации ({$daysLeft}/{$daysInMonth} дней)",
+                        'currency_id' => $balance->currency_id,
+                        'type' => AiBalanceTransaction::TYPE_MONTHLY_PURCHASE,
+                        'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+                        'amount' => $cost,
+                        'description' => "Покупка пропорционального лимита при отложенной активации ({$daysLeft}/{$daysInMonth} дней)",
                     ]);
 
-                    // Grant limited_balance
                     $balance->increment('limited_balance', $cost);
 
-                    \App\Models\Ai\AiBalanceTransaction::query()->create([
+                    AiBalanceTransaction::query()->create([
                         'organization_id' => $balance->organization_id,
-                        'currency_id'     => $balance->currency_id,
-                        'type'            => \App\Models\Ai\AiBalanceTransaction::TYPE_TARIFF_GRANT_PRORATED,
-                        'target_balance'  => \App\Models\Ai\AiBalanceTransaction::TARGET_LIMITED,
-                        'amount'          => $cost,
-                        'description'     => "Начисление лимита при активации: {$daysLeft} из {$daysInMonth} дней",
+                        'currency_id' => $balance->currency_id,
+                        'type' => AiBalanceTransaction::TYPE_TARIFF_GRANT_PRORATED,
+                        'target_balance' => AiBalanceTransaction::TARGET_LIMITED,
+                        'amount' => $cost,
+                        'description' => "Начисление лимита при активации: {$daysLeft} из {$daysInMonth} дней",
                     ]);
 
                     AiAgentToggleJob::dispatchSync(
@@ -135,26 +131,21 @@ class AiScheduledActivationService
 
                     Log::info('AiScheduledActivationService: agent activated, prorated limit granted', [
                         'organization_id' => $balance->organization_id,
-                        'cost'            => $cost,
-                        'days_left'       => $daysLeft,
+                        'cost' => $cost,
+                        'days_left' => $daysLeft,
                     ]);
                 });
             });
     }
 
     /**
-     * Recalculate and persist the scheduled activation date for an organization.
-     * Call this when ai_balance is topped up or subscription changes.
+     * Recalculate and persist the scheduled activation date.
+     * Works both with and without an active subscription.
      */
     public function recalculate(AiBalance $balance): void
     {
-        $hasActiveSubscription = AiSubscription::query()
-            ->where('organization_id', $balance->organization_id)
-            ->active()
-            ->where('expires_at', '>=', now())
-            ->exists();
-
-        if ($hasActiveSubscription) {
+        // Уже есть рабочий лимит — расписание не нужно.
+        if ((float) $balance->limited_balance > 0 || $balance->is_agent_enabled) {
             if ($balance->scheduled_activation_at !== null) {
                 $balance->scheduled_activation_at = null;
                 $balance->save();
@@ -162,18 +153,34 @@ class AiScheduledActivationService
             return;
         }
 
-        $lastSubscription = AiSubscription::query()
+        $subscription = AiSubscription::query()
             ->where('organization_id', $balance->organization_id)
+            ->active()
+            ->where('expires_at', '>=', now())
+            ->with('plan.currentPrice')
             ->orderByDesc('id')
-            ->with('plan')
             ->first();
 
-        if (! $lastSubscription || ! $lastSubscription->plan) {
+        $plan = $subscription?->plan;
+
+        if (! $plan) {
+            $lastSubscription = AiSubscription::query()
+                ->where('organization_id', $balance->organization_id)
+                ->orderByDesc('id')
+                ->with('plan.currentPrice')
+                ->first();
+            $plan = $lastSubscription?->plan;
+        }
+
+        if (! $plan) {
+            if ($balance->scheduled_activation_at !== null) {
+                $balance->scheduled_activation_at = null;
+                $balance->save();
+            }
             return;
         }
 
-        $activationDate = $this->calculateScheduledActivation($balance, $lastSubscription->plan);
-
+        $activationDate = $this->calculateScheduledActivation($balance, $plan);
         $balance->scheduled_activation_at = $activationDate?->toDateString();
         $balance->save();
     }

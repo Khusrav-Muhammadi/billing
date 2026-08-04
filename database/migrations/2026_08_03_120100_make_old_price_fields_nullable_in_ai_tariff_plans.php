@@ -8,20 +8,30 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('ai_tariff_plans', function (Blueprint $table): void {
-            // Эти поля устарели — цены вынесены в ai_tariff_plan_prices
-            $table->decimal('price_monthly', 12, 2)->nullable()->change();
-            $table->decimal('included_limit_balance', 12, 2)->nullable()->change();
-            $table->unsignedBigInteger('currency_id')->nullable()->change();
+        $toNullable = array_values(array_filter(
+            ['price_monthly', 'included_limit_balance', 'currency_id'],
+            static fn (string $column): bool => Schema::hasColumn('ai_tariff_plans', $column)
+        ));
+
+        if ($toNullable === []) {
+            return;
+        }
+
+        Schema::table('ai_tariff_plans', function (Blueprint $table) use ($toNullable): void {
+            if (in_array('price_monthly', $toNullable, true)) {
+                $table->decimal('price_monthly', 12, 2)->nullable()->change();
+            }
+            if (in_array('included_limit_balance', $toNullable, true)) {
+                $table->decimal('included_limit_balance', 12, 2)->nullable()->change();
+            }
+            if (in_array('currency_id', $toNullable, true)) {
+                $table->unsignedBigInteger('currency_id')->nullable()->change();
+            }
         });
     }
 
     public function down(): void
     {
-        Schema::table('ai_tariff_plans', function (Blueprint $table): void {
-            $table->decimal('price_monthly', 12, 2)->nullable(false)->change();
-            $table->decimal('included_limit_balance', 12, 2)->nullable(false)->change();
-            $table->unsignedBigInteger('currency_id')->nullable(false)->change();
-        });
+        // no-op: колонки либо отсутствуют, либо уже nullable по дизайну
     }
 };

@@ -1313,9 +1313,24 @@ class ConnectedClientServiceController extends Controller
      */
     private function buildAiTariffPlans(): \Illuminate\Support\Collection
     {
+        $today = now()->toDateString();
+
         return \App\Models\Ai\AiTariffPlan::query()
             ->where('is_active', true)
-            ->with(['activePeriods', 'prices.currency', 'aiModel'])
+            ->with([
+                'activePeriods',
+                'aiModel',
+                'prices' => function ($q) use ($today) {
+                    $q->with('currency')
+                        ->where('start_date', '<=', $today)
+                        ->where(function ($qq) use ($today) {
+                            $qq->whereNull('end_date')
+                                ->orWhere('end_date', '9999-12-31')
+                                ->orWhere('end_date', '>=', $today);
+                        })
+                        ->orderByDesc('start_date');
+                },
+            ])
             ->orderBy('name')
             ->get()
             ->map(function ($p) {
@@ -1323,9 +1338,11 @@ class ConnectedClientServiceController extends Controller
                 $pricesByCurrency = [];
                 foreach ($p->prices as $priceRow) {
                     $code = $priceRow->currency?->symbol_code;
-                    if (!$code) continue;
+                    if (!$code) {
+                        continue;
+                    }
                     $code = strtoupper(trim($code));
-                    // Only keep the most recent active price per currency
+                    // First row wins — already ordered by start_date DESC
                     if (!isset($pricesByCurrency[$code])) {
                         $pricesByCurrency[$code] = (float) $priceRow->price_monthly;
                     }
@@ -1342,6 +1359,11 @@ class ConnectedClientServiceController extends Controller
                         'price_total'      => (float) $per->price_total,
                     ])->values(),
                 ];
-            });
+            })
+            ->filter(function (array $plan) {
+                // В КП показываем только тарифы, у которых есть хотя бы одна цена и период
+                return !empty($plan['prices_by_currency']) && $plan['periods']->count() > 0;
+            })
+            ->values();
     }
 }

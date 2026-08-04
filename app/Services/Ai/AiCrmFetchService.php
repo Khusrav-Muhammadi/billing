@@ -24,6 +24,7 @@ class AiCrmFetchService
         $subscriptions = AiSubscription::query()
             ->with(['organization.client'])
             ->active()
+            ->where('expires_at', '>=', now())
             ->get();
 
         foreach ($subscriptions as $subscription) {
@@ -51,16 +52,42 @@ class AiCrmFetchService
         $domain = config('services.sham.domain');
         $url = "https://{$client->sub_domain}-back.{$domain}/api/ai/token-logs";
 
-        $params = [];
+        $params = [
+            'b_organization_id' => (int) $organization->id,
+            'limit' => 1000,
+        ];
         if ($subscription->last_crm_fetch_at) {
             $params['since'] = $subscription->last_crm_fetch_at->toIso8601String();
         }
 
-        try {
-            $response = Http::withHeaders([
-                'Accept' => 'application/json',
-            ])->get($url, $params);
-        } catch (\Throwable $e) {
+        $allLogs = [];
+        $afterId = null;
+        $pages = 0;
+
+        // Пагинация по after_id на случай большого объёма.
+        do {
+            $pages++;
+            if ($afterId) {
+                $params['after_id'] = $afterId;
+            }
+
+            try {
+                $response = Http::withHeaders([
+                    'Accept' => 'application/json',
+                ])->get($url, $params);
+            } catch (\Throwable $e) {
+                $this->logService->logApiResponse(
+                    organizationId: (int) $organization->id,
+                    clientId: (int) $client->id,
+                    action: 'ai_token_logs_fetch',
+                    method: 'GET',
+                    url: $url,
+                    payload: $params,
+                    error: $e->getMessage()
+                );
+                return;
+            }
+
             $this->logService->logApiResponse(
                 organizationId: (int) $organization->id,
                 clientId: (int) $client->id,
@@ -68,38 +95,76 @@ class AiCrmFetchService
                 method: 'GET',
                 url: $url,
                 payload: $params,
-                error: $e->getMessage()
+                response: $response
             );
-            return;
+
+            if (! $response->successful()) {
+                Log::warning('AiCrmFetchService: non-200 response', [
+                    'subscription_id' => $subscription->id,
+                    'status' => $response->status(),
+                ]);
+                return;
+            }
+
+            $logs = $this->extractLogsPayload($response->json());
+            if ($logs === []) {
+                break;
+            }
+
+            $allLogs = array_merge($allLogs, $logs);
+            $last = end($logs);
+            $afterId = (int) ($last['id'] ?? 0) ?: null;
+
+            // Если пришло меньше limit — данных больше нет.
+            if (count($logs) < (int) $params['limit'] || ! $afterId || $pages >= 50) {
+                break;
+            }
+        } while (true);
+
+        if ($allLogs !== []) {
+            $this->persistLogs($subscription, $allLogs);
         }
-
-        $this->logService->logApiResponse(
-            organizationId: (int) $organization->id,
-            clientId: (int) $client->id,
-            action: 'ai_token_logs_fetch',
-            method: 'GET',
-            url: $url,
-            payload: $params,
-            response: $response
-        );
-
-        if (! $response->successful()) {
-            Log::warning('AiCrmFetchService: non-200 response', [
-                'subscription_id' => $subscription->id,
-                'status' => $response->status(),
-            ]);
-            return;
-        }
-
-        $logs = $response->json('data') ?? $response->json() ?? [];
-
-        if (! is_array($logs)) {
-            return;
-        }
-
-        $this->persistLogs($subscription, $logs);
 
         $subscription->update(['last_crm_fetch_at' => now()]);
+    }
+
+    /**
+     * CRM ApiResponse wraps payload as { result: ..., errors: null }.
+     * Also accept { data: ... } for compatibility.
+     */
+    private function extractLogsPayload(mixed $json): array
+    {
+        if (! is_array($json)) {
+            return [];
+        }
+
+        $logs = $json['result'] ?? $json['data'] ?? $json;
+
+        // result may itself be { data: [...] }
+        if (is_array($logs) && array_key_exists('data', $logs) && is_array($logs['data'])) {
+            $logs = $logs['data'];
+        }
+
+        if (! is_array($logs)) {
+            return [];
+        }
+
+        // Associative single object → wrap
+        if ($logs !== [] && $this->isAssoc($logs) && isset($logs['id'])) {
+            return [$logs];
+        }
+
+        // List of logs
+        if ($logs !== [] && $this->isAssoc($logs) && ! isset($logs[0])) {
+            return [];
+        }
+
+        return array_values($logs);
+    }
+
+    private function isAssoc(array $arr): bool
+    {
+        return array_keys($arr) !== range(0, count($arr) - 1);
     }
 
     private function persistLogs(AiSubscription $subscription, array $logs): void
@@ -107,6 +172,10 @@ class AiCrmFetchService
         $orgId = $subscription->organization_id;
 
         foreach ($logs as $log) {
+            if (! is_array($log)) {
+                continue;
+            }
+
             $crmLogId = (int) ($log['id'] ?? 0);
             if (! $crmLogId) {
                 continue;

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Продление без изменений</title>
-    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260506_02">
+    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260804_ai_topup_v4">
 </head>
 <body>
     <div class="app-container">
@@ -181,6 +181,50 @@
 	                </div>
 	            </section>
 
+	            <!-- ИИ-Агент -->
+	            <section class="ai-agent-section" id="aiAgentSection">
+	                <div class="section-header-with-button" style="margin-bottom:12px;">
+	                    <h2 class="section-title" style="margin:0;">ИИ-Агент</h2>
+	                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;">
+	            	            <input type="checkbox" id="aiEnabledCheckbox" style="width:16px;height:16px;accent-color:#2B4BFF;">
+	            	            Подключить
+	                    </label>
+	                </div>
+	                <p style="font-size:13px;color:#6b7280;margin:0 0 16px;">Подключите ИИ-агента к тарифу — необязательно</p>
+
+	                <div id="aiTariffBody" style="display:none;">
+	                    <div class="setting-label" style="margin-bottom:12px;">Выберите ИИ-тарифный план</div>
+	                    <div class="tariffs-grid" id="aiPlansGrid"></div>
+
+	                    <div id="aiPeriodRow" style="display:none;margin-top:20px;">
+	            	            <div class="setting-group">
+	            	                <label class="setting-label">Период подписки</label>
+	            	                <div class="period-selector" id="aiPeriodSelector"></div>
+	            	            </div>
+	                    </div>
+
+                    <!-- Запас на ИИ-баланс -->
+                    <div id="aiBalanceTopupRow" style="display:none;margin-top:20px;">
+                        <div class="setting-group">
+                            <label class="setting-label">Запас на ИИ-баланс</label>
+                            <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
+                                Рекомендуемая сумма, чтобы агент не отключился до конца месяца при подключении не с 1-го числа. Можно изменить.
+                            </p>
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                                <input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value="0"
+                                       style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+                                <span id="aiBalanceTopupCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
+                                <button type="button" id="aiBalanceTopupResetBtn" class="action-btn secondary" style="padding:8px 12px;font-size:13px;">
+                                    По рекомендации
+                                </button>
+                            </div>
+                            <div id="aiBalanceTopupHint" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
+                        </div>
+                    </div>
+
+	                </div>
+	            </section>
+
 	            <section class="summary-section">
 	                <div class="summary-card">
 	                    <h2 class="summary-title">Итого</h2>
@@ -268,6 +312,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-	    <script src="/kp_generator_renewal_no_changes/app.js?v=20260520_partner_tariffs"></script>
+	    <script src="/kp_generator_renewal_no_changes/app.js?v=20260804_ai_topup_v4"></script>
 	</body>
 	</html>

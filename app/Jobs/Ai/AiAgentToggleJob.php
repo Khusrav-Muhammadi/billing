@@ -32,6 +32,13 @@ class AiAgentToggleJob implements ShouldQueue
         }
 
         $client = $organization->client;
+        if (! $client || ! $client->sub_domain) {
+            Log::warning('AiAgentToggleJob: client/sub_domain missing', [
+                'organization_id' => $this->organizationId,
+            ]);
+            return;
+        }
+
         $domain = config('services.sham.domain');
         $url = "https://{$client->sub_domain}-back.{$domain}/api/ai/agent-toggle";
 
@@ -47,7 +54,7 @@ class AiAgentToggleJob implements ShouldQueue
         } catch (\Throwable $e) {
             app(IntegrationActionLogService::class)->logApiResponse(
                 organizationId: $this->organizationId,
-                clientId: (int) ($client->id ?? 0),
+                clientId: (int) $client->id,
                 action: 'ai_agent_toggle',
                 method: 'POST',
                 url: $url,
@@ -60,7 +67,7 @@ class AiAgentToggleJob implements ShouldQueue
 
         app(IntegrationActionLogService::class)->logApiResponse(
             organizationId: $this->organizationId,
-            clientId: (int) ($client->id ?? 0),
+            clientId: (int) $client->id,
             action: 'ai_agent_toggle',
             method: 'POST',
             url: $url,

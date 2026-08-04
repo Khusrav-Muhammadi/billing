@@ -20,6 +20,7 @@ class CommercialOfferAiItem extends Model
         'partner_percent',
         'original_price',
         'total_price',
+        'balance_topup',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class CommercialOfferAiItem extends Model
         'partner_percent' => 'decimal:2',
         'original_price' => 'decimal:4',
         'total_price' => 'decimal:4',
+        'balance_topup' => 'decimal:4',
     ];
 
     public function commercialOffer(): BelongsTo
@@ -38,5 +40,11 @@ class CommercialOfferAiItem extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(AiTariffPlan::class, 'plan_id');
+    }
+
+    /** Сумма к оплате по AI-блоку: период + запас на баланс */
+    public function chargedTotal(): float
+    {
+        return round((float) $this->total_price + (float) $this->balance_topup, 4);
     }
 }

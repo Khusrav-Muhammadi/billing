@@ -94,14 +94,42 @@ class AiTariffController extends Controller
             'end_date'      => 'nullable|date|after_or_equal:start_date',
         ]);
 
-        AiTariffPlanPrice::query()->create([
-            'plan_id'       => $aiTariff->id,
-            'currency_id'   => $data['currency_id'],
-            'price_monthly' => $data['price_monthly'],
-            'start_date'    => $data['start_date'],
-            'end_date'      => $data['end_date'] ?? null,
-            'created_by'    => Auth::id(),
-        ]);
+        DB::transaction(function () use ($aiTariff, $data): void {
+            // Закрываем предыдущую открытую цену той же валюты
+            AiTariffPlanPrice::query()
+                ->where('plan_id', $aiTariff->id)
+                ->where('currency_id', $data['currency_id'])
+                ->where(function ($q) {
+                    $q->whereNull('end_date')->orWhere('end_date', '9999-12-31');
+                })
+                ->where('start_date', '<', $data['start_date'])
+                ->update([
+                    'end_date' => \Illuminate\Support\Carbon::parse($data['start_date'])->subDay()->toDateString(),
+                ]);
+
+            AiTariffPlanPrice::query()->create([
+                'plan_id'       => $aiTariff->id,
+                'currency_id'   => $data['currency_id'],
+                'price_monthly' => $data['price_monthly'],
+                'start_date'    => $data['start_date'],
+                'end_date'      => $data['end_date'] ?? null,
+                'created_by'    => Auth::id(),
+            ]);
+
+            // Синхронизируем price_total активных периодов
+            $monthly = (float) $data['price_monthly'];
+            AiTariffPlanPeriod::query()
+                ->where('plan_id', $aiTariff->id)
+                ->whereNull('valid_to')
+                ->each(function (AiTariffPlanPeriod $period) use ($monthly): void {
+                    $period->updateQuietly([
+                        'price_total' => round(
+                            $monthly * (int) $period->months * (1 - (float) $period->discount_percent / 100),
+                            4
+                        ),
+                    ]);
+                });
+        });
 
         return redirect()->route('ai-tariff.prices.index', $aiTariff)->with('success', 'Цена добавлена.');
     }

@@ -1333,6 +1333,7 @@ class CPGenerator {
                     partner_percent:  payload.ai_item.partner_percent || 0,
                     original_price:   payload.ai_item.original_price || 0,
                     total_price:      payload.ai_item.total_price || 0,
+                    balance_topup:    payload.ai_item.balance_topup || 0,
                     currency:         payload.ai_item.currency || '',
                 };
                 // Синхронизировать UI AI-блока с загруженными данными
@@ -2077,7 +2078,8 @@ class CPGenerator {
     }
 
     getPartnerPercentForPaymentItem(item, tariffPercent, packPercent) {
-        if (item?.is_external || this.isImplementationPaymentItem(item)) {
+        // Запас на ИИ-баланс полностью компании — партнёру 0%.
+        if (item?.is_ai_balance_topup || item?.is_external || this.isImplementationPaymentItem(item)) {
             return 0;
         }
 
@@ -2319,17 +2321,31 @@ class CPGenerator {
         const items = [];
         if (!this.state.selectedTariff) {
             // No tariff but may have AI-only item
-            if (this.state.aiItem && (Number(this.state.aiItem.total_price) || 0) > 0) {
+            if (this.state.aiItem && this.getAiChargeTotal(this.state.aiItem) > 0) {
                 const ai = this.state.aiItem;
-                items.push({
-                    service_key: `ai-plan-${ai.plan_id}`,
-                    name: `ИИ-Агент «${ai.plan_name || ''}» (${ai.period_months} мес)`,
-                    quantity: 1,
-                    pricing_kind: 'pack',
-                    unit_price: this.roundMoney(ai.unit_price || 0),
-                    price: this.roundMoney(ai.total_price || 0),
-                    is_ai_agent: true,
-                });
+                if ((Number(ai.total_price) || 0) > 0) {
+                    items.push({
+                        service_key: `ai-plan-${ai.plan_id}`,
+                        name: `ИИ-Агент «${ai.plan_name || ''}» (${ai.period_months} мес)`,
+                        quantity: 1,
+                        pricing_kind: 'pack',
+                        unit_price: this.roundMoney(ai.unit_price || 0),
+                        price: this.roundMoney(ai.total_price || 0),
+                        is_ai_agent: true,
+                    });
+                }
+                if ((Number(ai.balance_topup) || 0) > 0) {
+                    items.push({
+                        service_key: `ai-balance-topup-${ai.plan_id}`,
+                        name: `Запас на ИИ-баланс`,
+                        quantity: 1,
+                        pricing_kind: 'pack',
+                        unit_price: this.roundMoney(ai.balance_topup || 0),
+                        price: this.roundMoney(ai.balance_topup || 0),
+                        is_ai_agent: true,
+                        is_ai_balance_topup: true,
+                    });
+                }
             }
             return items;
         }
@@ -2512,17 +2528,31 @@ class CPGenerator {
         });
 
         // ── ИИ-Агент ──
-        if (this.state.aiItem && (Number(this.state.aiItem.total_price) || 0) > 0) {
+        if (this.state.aiItem && this.getAiChargeTotal(this.state.aiItem) > 0) {
             const ai = this.state.aiItem;
-            items.push({
-                service_key: `ai-plan-${ai.plan_id}`,
-                name: `ИИ-Агент «${ai.plan_name || ''}» (${ai.period_months} мес)`,
-                quantity: 1,
-                pricing_kind: 'pack',
-                unit_price: this.roundMoney(ai.unit_price || 0),
-                price: this.roundMoney(ai.total_price || 0),
-                is_ai_agent: true,
-            });
+            if ((Number(ai.total_price) || 0) > 0) {
+                items.push({
+                    service_key: `ai-plan-${ai.plan_id}`,
+                    name: `ИИ-Агент «${ai.plan_name || ''}» (${ai.period_months} мес)`,
+                    quantity: 1,
+                    pricing_kind: 'pack',
+                    unit_price: this.roundMoney(ai.unit_price || 0),
+                    price: this.roundMoney(ai.total_price || 0),
+                    is_ai_agent: true,
+                });
+            }
+            if ((Number(ai.balance_topup) || 0) > 0) {
+                items.push({
+                    service_key: `ai-balance-topup-${ai.plan_id}`,
+                    name: `Запас на ИИ-баланс`,
+                    quantity: 1,
+                    pricing_kind: 'pack',
+                    unit_price: this.roundMoney(ai.balance_topup || 0),
+                    price: this.roundMoney(ai.balance_topup || 0),
+                    is_ai_agent: true,
+                    is_ai_balance_topup: true,
+                });
+            }
         }
 
         // Remove zero/negative lines
@@ -3958,11 +3988,14 @@ class CPGenerator {
 
         // ── AI-агент: добавляем в итог ──
         const aiItem = this.state.aiItem;
-        const aiTotal = aiItem ? this.roundMoney(aiItem.total_price || 0) : 0;
-        const aiOriginal = aiItem ? this.roundMoney(aiItem.original_price || 0) : 0;
-        const aiDiscount = aiItem ? this.roundMoney(aiOriginal - aiTotal) : 0;
+        const aiSubTotal = aiItem ? this.roundMoney(aiItem.total_price || 0) : 0;
+        const aiTopup = aiItem ? this.roundMoney(aiItem.balance_topup || 0) : 0;
+        const aiTotal = this.roundMoney(aiSubTotal + aiTopup);
+        const aiOriginal = aiItem ? this.roundMoney((aiItem.original_price || 0) + aiTopup) : 0;
+        const aiDiscount = aiItem ? this.roundMoney((aiItem.original_price || 0) - aiSubTotal) : 0;
         const aiPartnerPct = aiItem ? (Number(aiItem.partner_percent) || 0) : 0;
-        const aiPartnerShare = aiItem ? this.roundMoney(aiTotal * (aiPartnerPct / 100)) : 0;
+        // Доля партнёра только с подписки AI (без запаса на баланс).
+        const aiPartnerShare = aiItem ? this.roundMoney(aiSubTotal * (aiPartnerPct / 100)) : 0;
 
         const totalSum = recurringTotalSum + oneTimeTotalSum + aiOriginal;
         const totalDiscount = recurringTotalDiscount + oneTimeTotalDiscount + aiDiscount;
@@ -4029,6 +4062,9 @@ class CPGenerator {
             // ── ИИ-Агент строка ──
             if (aiItem) {
                 const aiMonths = aiItem.period_months || 1;
+                const aiSubOriginal = this.roundMoney(aiItem.original_price || 0);
+                const aiSubPartnerShare = this.roundMoney(aiSubTotal * (aiPartnerPct / 100));
+                const aiTopupPartnerShare = 0;
                 tableHTML += `<tr><th colspan="9" class="section-header">ИИ-Агент</th></tr>`;
                 tableHTML += `
                     <tr>
@@ -4036,13 +4072,28 @@ class CPGenerator {
                         <td>1</td>
                         <td>${this.formatServicePrice(aiItem.unit_price)}</td>
                         <td>${aiMonths}</td>
-                        <td>${this.formatTotalPrice(aiOriginal)}</td>
+                        <td>${this.formatTotalPrice(aiSubOriginal)}</td>
                         <td>${this.formatTotalPrice(aiDiscount)} (${aiItem.discount_percent}%)</td>
-                        <td>${this.formatTotalPrice(aiTotal)}</td>
+                        <td>${this.formatTotalPrice(aiSubTotal)}</td>
                         <td>${aiPartnerPct}%</td>
-                        <td>${this.formatTotalPrice(aiPartnerShare)}</td>
+                        <td>${this.formatTotalPrice(aiSubPartnerShare)}</td>
                     </tr>
                 `;
+                if (aiTopup > 0) {
+                    tableHTML += `
+                    <tr>
+                        <td>Запас на ИИ-баланс</td>
+                        <td>1</td>
+                        <td>${this.formatServicePrice(aiTopup)}</td>
+                        <td>—</td>
+                        <td>${this.formatTotalPrice(aiTopup)}</td>
+                        <td>${this.formatTotalPrice(0)} (0%)</td>
+                        <td>${this.formatTotalPrice(aiTopup)}</td>
+                        <td>0%</td>
+                        <td>${this.formatTotalPrice(aiTopupPartnerShare)}</td>
+                    </tr>
+                    `;
+                }
             }
 
             const partnerTotalLabel = tariffPartnerPercent === packPartnerPercent
@@ -5230,7 +5281,7 @@ class CPGenerator {
         const monthlyToPay = (monthlyTariffBase * periodMultiplier) + monthlyPacks;
         const periodToPay = monthlyToPay * months;
         const oneTimeToPay = this.calculateOneTimeTotal() + oneTimePacks;
-        const aiTotal = this.roundMoney(Number(this.state.aiItem?.total_price) || 0);
+        const aiTotal = this.getAiChargeTotal(this.state.aiItem);
 
         return {
             monthly: monthlyToPay,
@@ -5360,9 +5411,11 @@ class CPGenerator {
             this.calculateOneTimeTotal()
             + this.applyPartnerShare(oneTimePacks, packPercent)
         );
-        const aiTotal = this.roundMoney(Number(this.state.aiItem?.total_price) || 0);
+        // Партнёрский % только с подписки AI; запас на баланс — полностью нам.
+        const aiSub = this.state.aiItem ? (Number(this.state.aiItem.total_price) || 0) : 0;
+        const aiTopup = this.state.aiItem ? (Number(this.state.aiItem.balance_topup) || 0) : 0;
         const aiNet = this.roundMoney(
-            aiTotal > 0 ? this.applyPartnerShare(aiTotal, packPercent) : 0
+            this.applyPartnerShare(aiSub, packPercent) + Math.max(0, aiTopup)
         );
 
         return {
@@ -6367,57 +6420,118 @@ class CPGenerator {
         document.getElementById(modalId).classList.remove('active');
     }
 
+
+    /** Полная сумма AI к оплате: период + запас на баланс */
+    getAiChargeTotal(aiItem = this.state.aiItem) {
+        if (!aiItem) return 0;
+        return this.roundMoney((Number(aiItem.total_price) || 0) + (Number(aiItem.balance_topup) || 0));
+    }
+
+    /**
+     * Рекомендуемый запас = цена_месяца × оставшиеся_дни / дней_в_месяце
+     * (по дате прайса / операции).
+     */
+    suggestAiBalanceTopup(unitPrice) {
+        const price = Number(unitPrice) || 0;
+        if (price <= 0) return 0;
+        const raw = this.state.pricingDate || this.state.operationStartDate || this.getTodayYmd();
+        const parts = String(raw).slice(0, 10).split('-').map(Number);
+        if (parts.length < 3 || !parts[0]) return this.roundMoney(price);
+        const [y, m, day] = parts;
+        const daysInMonth = new Date(y, m, 0).getDate();
+        const daysLeft = Math.max(1, daysInMonth - day + 1);
+        return this.roundMoney(price * (daysLeft / daysInMonth));
+    }
+
     // ── ИИ-Агент блок ─────────────────────────────────────────────────────────
     initAiAgentBlock() {
         const plans = this.aiTariffPlans || [];
         const section = document.getElementById('aiAgentSection');
         if (!section) return;
 
-        if (!plans.length) {
-            section.style.display = 'none';
-            return;
-        }
-
-        const checkbox       = document.getElementById('aiEnabledCheckbox');
         const body           = document.getElementById('aiTariffBody');
+        const checkbox       = document.getElementById('aiEnabledCheckbox');
         const plansGrid      = document.getElementById('aiPlansGrid');
         const periodRow      = document.getElementById('aiPeriodRow');
         const periodSelector = document.getElementById('aiPeriodSelector');
+        const topupRow       = document.getElementById('aiBalanceTopupRow');
+        const topupInput     = document.getElementById('aiBalanceTopupInput');
+        const topupCurrency  = document.getElementById('aiBalanceTopupCurrency');
+        const topupHint      = document.getElementById('aiBalanceTopupHint');
+        const topupResetBtn  = document.getElementById('aiBalanceTopupResetBtn');
+
+        if (!plans.length) {
+            if (checkbox && body) {
+                checkbox.addEventListener('change', () => {
+                    body.style.display = checkbox.checked ? 'block' : 'none';
+                    if (checkbox.checked) {
+                        body.innerHTML = '<div style="color:#b91c1c;font-size:13px;padding:8px 0;">Нет активных ИИ-тарифов с ценами. Создайте тариф и цену в разделе «ИИ-тарифы».</div>';
+                    }
+                    this.state.aiItem = null;
+                    this.updateSummary();
+                });
+            } else {
+                section.style.display = 'none';
+            }
+            return;
+        }
 
         if (!checkbox || !body || !plansGrid || !periodRow || !periodSelector) return;
 
         let selectedPlanId = null;
         let selectedMonths = null;
+        this._aiTopupManual = false;
 
+        // Цена только из prices_by_currency для валюты клиента. Нет цены — 0 (без конвертации).
         const getAiPrice = (plan) => {
-            const cur = (this.state.currency || '').toUpperCase();
-            const byC = plan.prices_by_currency || {};
-            if (cur && Object.prototype.hasOwnProperty.call(byC, cur)) return byC[cur];
-            // fallback: first available
-            const first = Object.values(byC)[0];
-            return first != null ? first : 0;
+            const cur = this.normalizeCurrencyCode(this.state.currency) || '';
+            const byC = plan?.prices_by_currency || {};
+            if (!cur) return 0;
+            const direct = byC[cur] ?? byC[cur.toLowerCase()] ?? byC[cur.toUpperCase()];
+            const amount = Number(direct);
+            return Number.isFinite(amount) && amount > 0 ? amount : 0;
         };
 
-        const getAiCurrency = (plan) => {
-            const cur = (this.state.currency || '').toUpperCase();
-            const byC = plan.prices_by_currency || {};
-            if (cur && Object.prototype.hasOwnProperty.call(byC, cur)) return cur;
-            return Object.keys(byC)[0] || '';
+        const getAiCurrency = (_plan) => {
+            return this.normalizeCurrencyCode(this.state.currency) || '';
         };
 
-        const applyAiItem = () => {
+        const syncTopupUi = (unitPrice, currency, forceSuggest = false) => {
+            if (!topupRow || !topupInput) return;
+            topupRow.style.display = 'block';
+            if (topupCurrency) topupCurrency.textContent = currency || '';
+            const suggested = this.suggestAiBalanceTopup(unitPrice);
+            if (forceSuggest || !this._aiTopupManual) {
+                topupInput.value = suggested;
+                this._aiTopupManual = false;
+            }
+            if (topupHint) {
+                topupHint.textContent = `Рекомендация на сегодня: ${suggested} ${currency || ''} (пропорция оставшихся дней месяца).`;
+            }
+        };
+
+        const readTopup = () => {
+            if (!topupInput) return 0;
+            const v = Number(topupInput.value);
+            return Number.isFinite(v) && v > 0 ? this.roundMoney(v) : 0;
+        };
+
+        const applyAiItem = (options = {}) => {
+            const refreshSummary = options.refreshSummary !== false;
             if (checkbox.checked && selectedPlanId && selectedMonths) {
                 const plan           = plans.find(p => p.id === selectedPlanId);
                 const per            = plan?.periods.find(p => p.months === selectedMonths);
                 const unitPrice      = getAiPrice(plan);
                 const currency       = getAiCurrency(plan);
                 const discountPct    = per?.discount_percent ?? 0;
-                const original       = +(unitPrice * selectedMonths).toFixed(4);
-                // Always recalculate from discount_percent — price_total stores a snapshot
-                // in the period's original currency and cannot be used across currencies
-                const total          = +(original * (1 - discountPct / 100)).toFixed(4);
+                const original       = this.roundMoney(unitPrice * selectedMonths);
+                const total          = this.roundMoney(original * (1 - discountPct / 100));
                 const partnerPct     = typeof this.getPartnerPackPercent === 'function'
                     ? this.getPartnerPackPercent() : 0;
+
+                syncTopupUi(unitPrice, currency, false);
+                const topup = readTopup();
+
                 this.state.aiItem = {
                     plan_id:          selectedPlanId,
                     plan_name:        plan.name,
@@ -6427,22 +6541,26 @@ class CPGenerator {
                     partner_percent:  partnerPct,
                     original_price:   original,
                     total_price:      total,
+                    balance_topup:    topup,
                     currency:         currency,
                 };
             } else {
                 this.state.aiItem = null;
+                if (topupRow) topupRow.style.display = 'none';
             }
-            this.updateSummary();
+            // Важно: не вызывать updateSummary из _refreshAiCardPrices (иначе бесконечная рекурсия).
+            if (refreshSummary) {
+                this.updateSummary();
+            }
         };
 
-        const renderSummary = () => {
-            applyAiItem();
-        };
+        const renderSummary = () => applyAiItem({ refreshSummary: true });
 
         const renderPeriods = (plan) => {
             periodSelector.innerHTML = '';
             if (!plan.periods || !plan.periods.length) {
                 periodRow.style.display = 'none';
+                if (topupRow) topupRow.style.display = 'none';
                 return;
             }
             periodRow.style.display = 'block';
@@ -6460,6 +6578,7 @@ class CPGenerator {
                     periodSelector.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     selectedMonths = per.months;
+                    // смена периода — обновить рекомендацию, если не ручной ввод
                     renderSummary();
                 });
                 periodSelector.appendChild(btn);
@@ -6481,15 +6600,24 @@ class CPGenerator {
             }
         };
 
-        // Register price refresh hook so updateSummary can call it on currency change
         this._refreshAiCardPrices = () => {
             plansGrid.querySelectorAll('.tariff-card').forEach(card => {
                 const plan = plans.find(p => String(p.id) === String(card.dataset.planId));
                 if (plan) renderCardPrice(card, plan);
             });
+            // Только пересобрать aiItem под текущую валюту, без updateSummary.
+            if (checkbox.checked && selectedPlanId && selectedMonths) {
+                const plan = plans.find(p => p.id === selectedPlanId);
+                if (plan && !this._aiTopupManual) {
+                    syncTopupUi(getAiPrice(plan), getAiCurrency(plan), true);
+                } else if (plan && topupCurrency) {
+                    topupCurrency.textContent = getAiCurrency(plan) || '';
+                }
+                applyAiItem({ refreshSummary: false });
+            }
         };
 
-        // Рендер карточек планов
+        plansGrid.innerHTML = '';
         plans.forEach(plan => {
             const card = document.createElement('div');
             card.className = 'tariff-card';
@@ -6498,7 +6626,6 @@ class CPGenerator {
             const bestPeriod = (plan.periods || []).slice().sort((a, b) => b.discount_percent - a.discount_percent)[0];
             const discountHtml = bestPeriod && bestPeriod.discount_percent > 0
                 ? `<span class="discount-badge" style="margin-left:6px;">-${bestPeriod.discount_percent}%</span>` : '';
-
             const displayPrice = getAiPrice(plan);
             const displayCur   = getAiCurrency(plan);
             const priceDisplay = displayPrice > 0
@@ -6515,6 +6642,7 @@ class CPGenerator {
                 card.classList.add('selected');
                 selectedPlanId = plan.id;
                 selectedMonths = null;
+                this._aiTopupManual = false;
                 renderPeriods(plan);
                 renderSummary();
             });
@@ -6522,48 +6650,61 @@ class CPGenerator {
             plansGrid.appendChild(card);
         });
 
-        // Тумблер вкл/выкл
+        if (topupInput) {
+            topupInput.addEventListener('input', () => {
+                this._aiTopupManual = true;
+                applyAiItem();
+            });
+        }
+        if (topupResetBtn) {
+            topupResetBtn.addEventListener('click', () => {
+                this._aiTopupManual = false;
+                applyAiItem();
+            });
+        }
+
         checkbox.addEventListener('change', () => {
             body.style.display = checkbox.checked ? 'block' : 'none';
             if (!checkbox.checked) {
                 selectedPlanId = null;
                 selectedMonths = null;
                 periodRow.style.display = 'none';
+                if (topupRow) topupRow.style.display = 'none';
                 plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
                 this.state.aiItem = null;
+                this._aiTopupManual = false;
                 this.updateSummary();
             }
         });
 
-        // Восстановить UI если КП загружено с AI-item
         const pending = this._pendingAiItem;
         if (pending && pending.plan_id) {
             const plan = plans.find(p => p.id === pending.plan_id);
             if (plan) {
-                // Включить тумблер
                 checkbox.checked = true;
                 body.style.display = 'block';
-
-                // Выбрать карточку тарифа
                 const targetCard = plansGrid.querySelector(`[data-plan-id="${plan.id}"]`);
                 if (targetCard) {
                     plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
                     targetCard.classList.add('selected');
                 }
-
                 selectedPlanId = plan.id;
                 renderPeriods(plan);
-
-                // Выбрать период
                 const targetBtn = periodSelector.querySelector(`[data-months="${pending.period_months}"]`);
                 if (targetBtn) {
                     periodSelector.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
                     targetBtn.classList.add('active');
                     selectedMonths = pending.period_months;
                 }
-
-                // Применить сохранённый aiItem как есть (не пересчитывать — данные уже точные)
-                this.state.aiItem = pending;
+                const topup = Number(pending.balance_topup) || 0;
+                this._aiTopupManual = true;
+                if (topupInput) topupInput.value = topup;
+                syncTopupUi(getAiPrice(plan), pending.currency || getAiCurrency(plan), false);
+                if (topupInput) topupInput.value = topup;
+                this.state.aiItem = {
+                    ...pending,
+                    balance_topup: topup,
+                };
                 this.updateSummary();
             }
             this._pendingAiItem = null;

@@ -5,7 +5,6 @@ namespace App\Services\Ai;
 use App\Jobs\Ai\AiAgentToggleJob;
 use App\Models\Ai\AiBalance;
 use App\Models\Ai\AiBalanceTransaction;
-use App\Models\Ai\AiSubscription;
 use App\Models\Ai\AiUsageLog;
 use App\Models\Ai\AiUsageRawLog;
 use App\Models\ExchangeRate;
@@ -86,16 +85,27 @@ class AiBillingService
                 'created_at' => now(),
             ]);
 
-            if ($fromLimited > 0 || $fromAi > 0) {
+            $timeRange = $periodStart->format('H:i') . '–' . $periodEnd->format('H:i');
+
+            if ($fromLimited > 0) {
                 AiBalanceTransaction::query()->create([
                     'organization_id' => $orgId,
                     'currency_id' => $balance->currency_id,
                     'type' => AiBalanceTransaction::TYPE_DEDUCTION,
-                    'target_balance' => $fromAi > 0
-                        ? AiBalanceTransaction::TARGET_AI_BALANCE
-                        : AiBalanceTransaction::TARGET_LIMITED,
-                    'amount' => $totalCostInBalanceCurrency,
-                    'description' => "Списание за использование ИИ ({$periodStart->format('H:i')}–{$periodEnd->format('H:i')})",
+                    'target_balance' => AiBalanceTransaction::TARGET_LIMITED,
+                    'amount' => $fromLimited,
+                    'description' => "Списание с лимита за использование ИИ ({$timeRange})",
+                ]);
+            }
+
+            if ($fromAi > 0) {
+                AiBalanceTransaction::query()->create([
+                    'organization_id' => $orgId,
+                    'currency_id' => $balance->currency_id,
+                    'type' => AiBalanceTransaction::TYPE_DEDUCTION,
+                    'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+                    'amount' => $fromAi,
+                    'description' => "Списание со свободного ИИ-баланса за использование ИИ ({$timeRange})",
                 ]);
             }
 
@@ -106,40 +116,63 @@ class AiBillingService
     }
 
     /**
-     * Deduct token usage cost ONLY from limited_balance.
-     *
-     * ai_balance is a prepaid wallet reserved for purchasing future monthly limits
-     * and must NEVER be touched by the 30-minute token billing cycle.
-     * If limited_balance runs out, it goes into technical overdraft (negative),
-     * and the agent will be disabled by checkAndToggleAgent().
+     * Deduct token usage:
+     *  1) limited_balance
+     *  2) spendable part of ai_balance (top-ups / leftovers)
+     *     — NEVER touch reserved money for future prepaid months
+     *  3) leftover → technical overdraft on limited_balance
      *
      * Returns ['limited' => float, 'ai_balance' => float].
      */
     public function distributeDeduction(AiBalance $balance, float $amount): array
     {
-        $balance->limited_balance = round((float) $balance->limited_balance - $amount, 4);
+        $remaining = round($amount, 6);
+        $fromLimited = 0.0;
+        $fromAi = 0.0;
 
-        return ['limited' => $amount, 'ai_balance' => 0.0];
+        $limited = (float) $balance->limited_balance;
+        if ($limited > 0 && $remaining > 0) {
+            $take = min($limited, $remaining);
+            $balance->limited_balance = round($limited - $take, 4);
+            $fromLimited = $take;
+            $remaining = round($remaining - $take, 6);
+        }
+
+        if ($remaining > 0) {
+            $spendable = $balance->spendableWalletAmount();
+            if ($spendable > 0) {
+                $take = min($spendable, $remaining);
+                $balance->ai_balance = round((float) $balance->ai_balance - $take, 4);
+                $fromAi = $take;
+                $remaining = round($remaining - $take, 6);
+            }
+        }
+
+        // Usage already happened — leftover goes to technical overdraft on limited.
+        if ($remaining > 0) {
+            $balance->limited_balance = round((float) $balance->limited_balance - $remaining, 4);
+            $fromLimited = round($fromLimited + $remaining, 4);
+        }
+
+        return ['limited' => $fromLimited, 'ai_balance' => $fromAi];
     }
 
     /**
-     * Enable or disable the AI agent based on limited_balance only.
-     *
-     * ai_balance is reserved for future month purchases and must not influence
-     * whether the agent can process tokens right now.
+     * Agent stays on while there is limited OR spendable wallet left.
+     * Reserved prepaid months do not keep the agent online.
      */
     public function checkAndToggleAgent(AiBalance $balance, bool $wasPreviouslyEnabled): void
     {
-        $limited = (float) $balance->limited_balance;
+        $available = $balance->availableForUsageAmount();
 
-        if ($limited <= 0 && $wasPreviouslyEnabled) {
+        if ($available <= 0 && $wasPreviouslyEnabled) {
             $balance->is_agent_enabled = false;
             $balance->saveQuietly();
             AiAgentToggleJob::dispatchSync(
                 organizationId: (int) $balance->organization_id,
                 enabled: false
             );
-        } elseif ($limited > 0 && ! $wasPreviouslyEnabled) {
+        } elseif ($available > 0 && ! $wasPreviouslyEnabled) {
             $balance->is_agent_enabled = true;
             $balance->saveQuietly();
             AiAgentToggleJob::dispatchSync(

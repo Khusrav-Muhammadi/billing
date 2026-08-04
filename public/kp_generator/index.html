@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Коммерческое предложение</title>
-    <link rel="stylesheet" href="styles.css?v=20260506_02">
+    <link rel="stylesheet" href="styles.css?v=20260804_ai_topup_v4">
 </head>
 <body>
     <div class="app-container">
@@ -204,6 +204,26 @@
                         </div>
                     </div>
 
+					<!-- Запас на ИИ-баланс -->
+					<div id="aiBalanceTopupRow" style="display:none;margin-top:20px;">
+						<div class="setting-group">
+							<label class="setting-label">Запас на ИИ-баланс</label>
+							<p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
+								Рекомендуемая сумма, чтобы агент не отключился до конца месяца при подключении не с 1-го числа. Можно изменить.
+							</p>
+							<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+								<input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value="0"
+									   style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+								<span id="aiBalanceTopupCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
+								<button type="button" id="aiBalanceTopupResetBtn" class="action-btn secondary" style="padding:8px 12px;font-size:13px;">
+									По рекомендации
+								</button>
+							</div>
+							<div id="aiBalanceTopupHint" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
+						</div>
+					</div>
+
+
                     <!-- AI-выбор отображается в общем итого -->
                 </div>
             </section>
@@ -303,6 +323,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-	    <script src="app.js?v=20260802_ai_agent_v5"></script>
+	    <script src="app.js?v=20260804_ai_topup_v4"></script>
 	</body>
 	</html>
