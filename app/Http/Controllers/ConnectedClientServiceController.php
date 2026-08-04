@@ -90,10 +90,13 @@ class ConnectedClientServiceController extends Controller
         // Персональные цены по организациям — { organization_id: { tariff_key: { currency: price } } }
         $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, $asOfTs);
 
+        $aiTariffPlans = $this->buildAiTariffPlans();
+
         return view('kp.index', [
-            'config'       => $config,
-            'clientPrices' => $clientPrices,
-            'clients'      => $clients->map(fn($c) => [
+            'config'        => $config,
+            'clientPrices'  => $clientPrices,
+            'aiTariffPlans' => $aiTariffPlans,
+            'clients'       => $clients->map(fn($c) => [
                 'id'       => $c->id,
                 'name'     => $c->name,
                 'email'    => $c->email ?? '',
@@ -181,9 +184,12 @@ class ConnectedClientServiceController extends Controller
         $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, $asOfTs, null);
         $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, $asOfTs);
 
+        $aiTariffPlansForConfig = $this->buildAiTariffPlans();
+
         return response()->json([
-            'config'        => $config,
-            'client_prices' => $clientPrices,
+            'config'           => $config,
+            'client_prices'    => $clientPrices,
+            'ai_tariff_plans'  => $aiTariffPlansForConfig,
             // Keep key name "clients" for backward-compatibility, but items are organizations.
             'clients'       => $organizations->map(fn($o) => [
                 'id'          => $o->id,
@@ -1299,5 +1305,43 @@ class ConnectedClientServiceController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Build AI tariff plans payload for КП.
+     * Returns prices_by_currency so the frontend can pick the right price for the client's currency.
+     */
+    private function buildAiTariffPlans(): \Illuminate\Support\Collection
+    {
+        return \App\Models\Ai\AiTariffPlan::query()
+            ->where('is_active', true)
+            ->with(['activePeriods', 'prices.currency', 'aiModel'])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($p) {
+                // Build prices_by_currency: { "USD": 100.00, "TJS": 1090.00, ... }
+                $pricesByCurrency = [];
+                foreach ($p->prices as $priceRow) {
+                    $code = $priceRow->currency?->symbol_code;
+                    if (!$code) continue;
+                    $code = strtoupper(trim($code));
+                    // Only keep the most recent active price per currency
+                    if (!isset($pricesByCurrency[$code])) {
+                        $pricesByCurrency[$code] = (float) $priceRow->price_monthly;
+                    }
+                }
+
+                return [
+                    'id'                 => $p->id,
+                    'name'               => $p->name,
+                    'model_name'         => $p->aiModel?->name ?? null,
+                    'prices_by_currency' => $pricesByCurrency,
+                    'periods'            => $p->activePeriods->map(fn ($per) => [
+                        'months'           => (int) $per->months,
+                        'discount_percent' => (float) $per->discount_percent,
+                        'price_total'      => (float) $per->price_total,
+                    ])->values(),
+                ];
+            });
     }
 }

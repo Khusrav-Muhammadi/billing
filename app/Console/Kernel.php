@@ -20,6 +20,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:notify-client')->dailyAt('09:00')->withoutOverlapping();
         $schedule->command('app:mark-unpartnered-organizations-without-connection')->dailyAt('00:05')->withoutOverlapping();
         $schedule->command('app:create-day-closing')->dailyAt('23:50')->withoutOverlapping();
+
+        // AI Billing
+        $schedule->command('app:ai-fetch-and-bill')->everyThirtyMinutes()->withoutOverlapping();
+        $schedule->command('app:ai-end-of-month')->dailyAt('23:59')->withoutOverlapping();
+        $schedule->command('app:ai-start-of-month')->dailyAt('00:01')->withoutOverlapping();
+        $schedule->command('app:ai-check-scheduled')->dailyAt('09:00')->withoutOverlapping();
     }
 
     /**

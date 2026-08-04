@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Ai\AiBalance;
+use App\Models\Ai\AiSubscription;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -82,6 +84,21 @@ class Organization extends Model
     public function latestConnection()
     {
         return $this->hasOne(OrganizationConnectionStatus::class, 'organization_id')->latestOfMany('status_date');
+    }
+
+    public function aiBalance()
+    {
+        return $this->hasOne(AiBalance::class, 'organization_id');
+    }
+
+    public function aiSubscriptions()
+    {
+        return $this->hasMany(AiSubscription::class, 'organization_id');
+    }
+
+    public function activeAiSubscription()
+    {
+        return $this->hasOne(AiSubscription::class, 'organization_id')->where('status', true)->latestOfMany('id');
     }
 
     public function getAppTariffAttribute()

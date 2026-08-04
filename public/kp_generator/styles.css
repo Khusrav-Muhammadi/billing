@@ -722,6 +722,14 @@ body {
     margin-bottom: 32px;
 }
 
+.ai-agent-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+}
+
 .one-time-item {
     margin-bottom: 12px;
 }

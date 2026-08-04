@@ -120,6 +120,24 @@
             <span class="menu-title">Закрытие дня</span>
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('ai-model.index') }}">
+            <i class="mdi mdi-chip menu-icon"></i>
+            <span class="menu-title">ИИ-Модели</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('ai-tariff.index') }}">
+            <i class="mdi mdi-robot menu-icon"></i>
+            <span class="menu-title">ИИ-Тарифы</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ route('ai-subscription.index') }}">
+            <i class="mdi mdi-brain menu-icon"></i>
+            <span class="menu-title">ИИ-Клиенты</span>
+        </a>
+    </li>
 {{--    <li class="nav-item">--}}
 {{--        <a class="nav-link collapsed" data-toggle="collapse" href="#ui-basic" aria-expanded="false" aria-controls="ui-basic">--}}
 {{--            <i class="mdi mdi-settings menu-icon"></i>--}}

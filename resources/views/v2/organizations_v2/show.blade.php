@@ -146,6 +146,76 @@
             </div>
         </div>
 
+        @php
+            $aiSubscriptions = \App\Models\Ai\AiSubscription::query()
+                ->where('organization_id', $organization->id)
+                ->with(['plan', 'aiBalance'])
+                ->orderByDesc('started_at')
+                ->get();
+        @endphp
+        <div class="card mb-4 p-3">
+            <h4 class="card-title mb-3">Подключённые ИИ услуги</h4>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>№</th>
+                        <th>Тариф</th>
+                        <th>Период</th>
+                        <th>Дата подключения</th>
+                        <th>Дата окончания</th>
+                        <th>Сумма оплачена</th>
+                        <th>Агент</th>
+                        <th>Активность</th>
+                        <th>Детали</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @forelse($aiSubscriptions as $aiSub)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td>{{ $aiSub->plan?->name ?? ('Тариф #' . $aiSub->plan_id) }}</td>
+                            <td>{{ $aiSub->period_months }} мес.</td>
+                            <td>{{ optional($aiSub->started_at)->format('d.m.Y H:i') ?: '—' }}</td>
+                            <td>
+                                {{ optional($aiSub->expires_at)->format('d.m.Y H:i') ?: '—' }}
+                                @if($aiSub->expires_at && $aiSub->expires_at->isPast())
+                                    <span class="badge bg-danger ms-1">Истекла</span>
+                                @elseif($aiSub->expires_at && $aiSub->expires_at->diffInDays(now()) <= 7)
+                                    <span class="badge bg-warning text-dark ms-1">Скоро</span>
+                                @endif
+                            </td>
+                            <td>{{ $aiSub->price_paid ? number_format((float) $aiSub->price_paid, 2, '.', ' ') : '—' }}</td>
+                            <td>
+                                @if($aiSub->aiBalance?->is_agent_enabled)
+                                    <span class="badge badge-success">Вкл</span>
+                                @else
+                                    <span class="badge badge-secondary">Выкл</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($aiSub->status)
+                                    <span class="badge badge-success">Активна</span>
+                                @else
+                                    <span class="badge badge-danger">Неактивна</span>
+                                @endif
+                            </td>
+                            <td>
+                                <a href="{{ route('ai-subscription.show', $aiSub->id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="mdi mdi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="text-center">Подключённые ИИ услуги не найдены</td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="card mb-4 p-3">
             <h4 class="card-title mb-3">История подключения</h4>
             <div class="table-responsive">
@@ -420,6 +490,69 @@
             </div>
         </div>
     </div>
+
+    {{-- ── AI-Тариф карточка ── --}}
+    @if(isset($aiBalance) || isset($aiSubscription))
+    <div class="card mb-4 p-3">
+        <h5 class="card-title mb-3">
+            <i class="mdi mdi-robot"></i> ИИ-Тариф
+            @if(isset($aiSubscription) && $aiSubscription)
+                <a href="{{ route('ai-subscription.show', $aiSubscription->id) }}" class="btn btn-sm btn-outline-primary ms-2">Подробнее</a>
+            @endif
+        </h5>
+        <div class="row">
+            <div class="col-md-3 mb-2">
+                <strong>Тариф:</strong><br>
+                {{ $aiSubscription?->plan?->name ?? '—' }}
+            </div>
+            <div class="col-md-2 mb-2">
+                <strong>Статус подписки:</strong><br>
+                @if($aiSubscription?->status)
+                    <span class="badge bg-success">Активна</span>
+                @elseif(isset($aiSubscription) && $aiSubscription)
+                    <span class="badge bg-secondary">Неактивна</span>
+                @else
+                    <span class="text-muted">—</span>
+                @endif
+            </div>
+            <div class="col-md-3 mb-2">
+                <strong>Действует до:</strong><br>
+                {{ $aiSubscription?->expires_at?->format('d.m.Y') ?? '—' }}
+                @if($aiSubscription?->expires_at && $aiSubscription->expires_at->isPast())
+                    <span class="badge bg-danger ms-1">Истекла</span>
+                @elseif($aiSubscription?->expires_at)
+                    @php $daysLeft = (int) now()->diffInDays($aiSubscription->expires_at, false); @endphp
+                    @if($daysLeft >= 0 && $daysLeft <= 14)
+                        <span class="badge bg-warning text-dark ms-1">{{ $daysLeft }} дн.</span>
+                    @endif
+                @endif
+            </div>
+            <div class="col-md-2 mb-2">
+                <strong>Агент:</strong><br>
+                @if(isset($aiBalance) && $aiBalance?->is_agent_enabled)
+                    <span class="badge bg-success">Включён</span>
+                @else
+                    <span class="badge bg-secondary">Выключен</span>
+                @endif
+            </div>
+            @if(isset($aiBalance) && $aiBalance)
+            <div class="col-md-2 mb-2">
+                <strong>Баланс:</strong><br>
+                <span class="text-primary">Лим: {{ number_format($aiBalance->limited_balance, 2) }}</span><br>
+                <span class="text-secondary">ИИ: {{ number_format($aiBalance->ai_balance, 2) }}</span>
+                {{ $aiBalance->currency?->symbol_code }}
+            </div>
+            @endif
+        </div>
+        @if(isset($aiBalance) && $aiBalance?->scheduled_activation_at)
+        <div class="alert alert-info py-1 mt-2 mb-0 small">
+            <i class="mdi mdi-clock-outline"></i>
+            Отложенная активация: <strong>{{ $aiBalance->scheduled_activation_at->format('d.m.Y') }}</strong>
+        </div>
+        @endif
+    </div>
+    @endif
+
 @endsection
 
 @section('script')

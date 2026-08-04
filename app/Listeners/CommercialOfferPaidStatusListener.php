@@ -11,6 +11,7 @@ use App\Services\ConnectedClientServices\ConnectedClientServicesRegistryService;
 use App\Services\DiscountExpenses\DiscountExpensesRegistryService;
 use App\Services\ImplementationCurrencyRegistries\ImplementationCurrencyRegistryService;
 use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
+use App\Services\Ai\AiSubscriptionRegistryService;
 use App\Services\PartnerExpenses\PartnerExpensesRegistryService;
 
 class CommercialOfferPaidStatusListener
@@ -24,7 +25,8 @@ class CommercialOfferPaidStatusListener
         private ImplementationCurrencyRegistryService $implementationCurrencyRegistryService,
         private OrganizationConnectionStatusRegistryService $organizationConnectionStatusRegistryService,
         private CommercialOfferProvisioningService $commercialOfferProvisioningService,
-        private CommercialOfferPaymentNotificationService $paymentNotificationService
+        private CommercialOfferPaymentNotificationService $paymentNotificationService,
+        private AiSubscriptionRegistryService $aiSubscriptionRegistryService
     ) {
     }
 
@@ -41,5 +43,6 @@ class CommercialOfferPaidStatusListener
         $this->organizationConnectionStatusRegistryService->registerConnected($offer, $event->status);
         $this->commercialOfferProvisioningService->provisionConnection($offer);
         $this->paymentNotificationService->send($offer, $event->status);
+        $this->aiSubscriptionRegistryService->register($offer, $event->status);
     }
 }

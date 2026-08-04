@@ -180,6 +180,34 @@
                 </div>
             </section>
 
+            <!-- ИИ-Агент -->
+            <section class="ai-agent-section" id="aiAgentSection">
+                <div class="section-header-with-button" style="margin-bottom:12px;">
+                    <h2 class="section-title" style="margin:0;">ИИ-Агент</h2>
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;">
+                        <input type="checkbox" id="aiEnabledCheckbox" style="width:16px;height:16px;accent-color:#2B4BFF;">
+                        Подключить
+                    </label>
+                </div>
+                <p style="font-size:13px;color:#6b7280;margin:0 0 16px;">Подключите ИИ-агента к тарифу — необязательно</p>
+
+                <div id="aiTariffBody" style="display:none;">
+                    <!-- Карточки тарифов AI -->
+                    <div class="setting-label" style="margin-bottom:12px;">Выберите ИИ-тарифный план</div>
+                    <div class="tariffs-grid" id="aiPlansGrid"></div>
+
+                    <!-- Период -->
+                    <div id="aiPeriodRow" style="display:none;margin-top:20px;">
+                        <div class="setting-group">
+                            <label class="setting-label">Период подписки</label>
+                            <div class="period-selector" id="aiPeriodSelector"></div>
+                        </div>
+                    </div>
+
+                    <!-- AI-выбор отображается в общем итого -->
+                </div>
+            </section>
+
             <!-- Summary -->
             <section class="summary-section">
                 <div class="summary-card">
@@ -275,6 +303,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-	    <script src="app.js?v=20260520_partner_tariffs"></script>
+	    <script src="app.js?v=20260802_ai_agent_v5"></script>
 	</body>
 	</html>

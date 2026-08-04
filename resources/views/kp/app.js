@@ -665,7 +665,10 @@ class CPGenerator {
             }
         });
 
-        if (monthlyPayments.length > 0) {
+        // ── ИИ-Агент ──
+        const aiItem = window.CP_AI_ITEM || null;
+
+        if (monthlyPayments.length > 0 || aiItem) {
             let tableHTML = '<table class="payments-table">';
             tableHTML += '<thead>';
             tableHTML += '<tr><th colspan="3" class="section-header">Месячные платежи</th></tr>';
@@ -683,12 +686,25 @@ class CPGenerator {
                 `;
             });
 
+            if (aiItem) {
+                const aiCur = aiItem.plan_name ? '' : '';
+                tableHTML += `<tr><th colspan="3" class="section-header">ИИ-Агент</th></tr>`;
+                tableHTML += `
+                    <tr>
+                        <td>ИИ-Агент × ${aiItem.period_months} мес${aiItem.discount_percent > 0 ? ' (скидка ' + aiItem.discount_percent + '%)' : ''}</td>
+                        <td>${this.formatPrice(aiItem.unit_price)}</td>
+                        <td>${this.formatPrice(aiItem.total_price)}</td>
+                    </tr>
+                `;
+            }
+
             tableHTML += '</tbody></table>';
             summaryItems.innerHTML += tableHTML;
         }
 
+        const aiTotal = aiItem ? (aiItem.total_price || 0) : 0;
         const periodTotal = monthlyTotal * this.state.periodMonths;
-        const grandTotal  = periodTotal;
+        const grandTotal  = periodTotal + aiTotal;
 
         const periodDetailsEl = document.getElementById('periodDetails');
         if (periodDetailsEl && this.state.selectedTariff) {

@@ -9,6 +9,7 @@ use App\Services\CommercialOffers\CommercialOfferPaymentNotificationService;
 use App\Services\DiscountExpenses\DiscountExpensesRegistryService;
 use App\Services\ImplementationCurrencyRegistries\ImplementationCurrencyRegistryService;
 use App\Services\OrganizationConnectionStatuses\OrganizationConnectionStatusRegistryService;
+use App\Services\Ai\AiSubscriptionRegistryService;
 use App\Services\PartnerExpenses\PartnerExpensesRegistryService;
 
 class CommercialOfferRenewalNoChangePaidStatusListener
@@ -20,7 +21,8 @@ class CommercialOfferRenewalNoChangePaidStatusListener
         private ClientBalanceRegistryService $clientBalanceRegistryService,
         private ImplementationCurrencyRegistryService $implementationCurrencyRegistryService,
         private OrganizationConnectionStatusRegistryService $organizationConnectionStatusRegistryService,
-        private CommercialOfferPaymentNotificationService $paymentNotificationService
+        private CommercialOfferPaymentNotificationService $paymentNotificationService,
+        private AiSubscriptionRegistryService $aiSubscriptionRegistryService
     ) {
     }
 
@@ -33,5 +35,6 @@ class CommercialOfferRenewalNoChangePaidStatusListener
         $this->implementationCurrencyRegistryService->register($event->offer, $event->status);
         $this->organizationConnectionStatusRegistryService->registerConnected($event->offer, $event->status);
         $this->paymentNotificationService->send($event->offer, $event->status);
+        $this->aiSubscriptionRegistryService->register($event->offer, $event->status);
     }
 }

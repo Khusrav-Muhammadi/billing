@@ -130,13 +130,26 @@ class OrganizationV2Controller extends Controller
             ->limit(100)
             ->get();
 
+        $aiBalance = \App\Models\Ai\AiBalance::query()
+            ->where('organization_id', $organization->id)
+            ->with('currency')
+            ->first();
+
+        $aiSubscription = \App\Models\Ai\AiSubscription::query()
+            ->where('organization_id', $organization->id)
+            ->with('plan')
+            ->orderByDesc('id')
+            ->first();
+
         return view('v2.organizations_v2.show', compact(
             'organization',
             'connectedServices',
             'connectionStatusHistory',
             'balanceOperations',
             'realBalance',
-            'integrationLogs'
+            'integrationLogs',
+            'aiBalance',
+            'aiSubscription'
         ));
     }
 

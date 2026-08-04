@@ -304,6 +304,45 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{user}', [ProfileController::class, 'update'])->name('profile.update');
     });
 
+    // ── AI Billing ──────────────────────────────────────────────────────
+    Route::group(['prefix' => 'ai-tariff'], function () {
+        Route::get('/', [\App\Http\Controllers\AiTariffController::class, 'index'])->name('ai-tariff.index');
+        Route::post('/store', [\App\Http\Controllers\AiTariffController::class, 'store'])->name('ai-tariff.store');
+        Route::patch('/update/{aiTariff}', [\App\Http\Controllers\AiTariffController::class, 'update'])->name('ai-tariff.update');
+        Route::delete('/delete/{aiTariff}', [\App\Http\Controllers\AiTariffController::class, 'destroy'])->name('ai-tariff.destroy');
+
+        // Цены тарифа (история цен / SCD)
+        Route::get('/{aiTariff}/prices', [\App\Http\Controllers\AiTariffController::class, 'pricesIndex'])->name('ai-tariff.prices.index');
+        Route::post('/{aiTariff}/prices', [\App\Http\Controllers\AiTariffController::class, 'pricesStore'])->name('ai-tariff.prices.store');
+        Route::patch('/prices/{price}', [\App\Http\Controllers\AiTariffController::class, 'pricesUpdate'])->name('ai-tariff.prices.update');
+        Route::delete('/prices/{price}', [\App\Http\Controllers\AiTariffController::class, 'pricesDestroy'])->name('ai-tariff.prices.destroy');
+
+        // Периоды / скидки (история скидок / SCD)
+        Route::get('/{aiTariff}/periods', [\App\Http\Controllers\AiTariffController::class, 'periodsIndex'])->name('ai-tariff.periods.index');
+        Route::post('/{aiTariff}/periods', [\App\Http\Controllers\AiTariffController::class, 'periodsStore'])->name('ai-tariff.periods.store');
+        Route::delete('/periods/{period}', [\App\Http\Controllers\AiTariffController::class, 'periodsDestroy'])->name('ai-tariff.periods.destroy');
+    });
+
+    // ── AI Models ───────────────────────────────────────────────────────
+    Route::group(['prefix' => 'ai-model'], function () {
+        Route::get('/', [\App\Http\Controllers\AiModelController::class, 'index'])->name('ai-model.index');
+        Route::post('/store', [\App\Http\Controllers\AiModelController::class, 'store'])->name('ai-model.store');
+        Route::patch('/update/{aiModel}', [\App\Http\Controllers\AiModelController::class, 'update'])->name('ai-model.update');
+        Route::delete('/delete/{aiModel}', [\App\Http\Controllers\AiModelController::class, 'destroy'])->name('ai-model.destroy');
+    });
+
+    // ── AI Token Pricing ────────────────────────────────────────────────
+    Route::group(['prefix' => 'ai-token-pricing'], function () {
+        Route::get('/', [\App\Http\Controllers\AiTokenPricingController::class, 'index'])->name('ai-token-pricing.index');
+        Route::post('/store', [\App\Http\Controllers\AiTokenPricingController::class, 'store'])->name('ai-token-pricing.store');
+        Route::patch('/update/{aiTokenPricing}', [\App\Http\Controllers\AiTokenPricingController::class, 'update'])->name('ai-token-pricing.update');
+    });
+
+    Route::group(['prefix' => 'ai-subscription'], function () {
+        Route::get('/', [\App\Http\Controllers\AiSubscriptionController::class, 'index'])->name('ai-subscription.index');
+        Route::get('/{aiSubscription}', [\App\Http\Controllers\AiSubscriptionController::class, 'show'])->name('ai-subscription.show');
+    });
+
 });
 
 require __DIR__ . '/auth.php';

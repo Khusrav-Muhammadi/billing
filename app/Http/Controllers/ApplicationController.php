@@ -334,6 +334,27 @@ class ApplicationController extends Controller
                 $offer->offerStatuses()->delete();
             }
 
+            // AI-item: сохраняем если пришёл из KP
+            $aiItemData = data_get($payload, 'ai_item');
+            if (is_array($aiItemData) && !empty($aiItemData['plan_id'])) {
+                \App\Models\Ai\CommercialOfferAiItem::query()->updateOrCreate(
+                    ['commercial_offer_id' => $offer->id],
+                    [
+                        'plan_id'          => (int) $aiItemData['plan_id'],
+                        'period_months'    => (int) ($aiItemData['period_months'] ?? 1),
+                        'unit_price'       => (float) ($aiItemData['unit_price'] ?? 0),
+                        'discount_percent' => (float) ($aiItemData['discount_percent'] ?? 0),
+                        'partner_percent'  => (float) ($aiItemData['partner_percent'] ?? 0),
+                        'original_price'   => (float) ($aiItemData['original_price'] ?? 0),
+                        'total_price'      => (float) ($aiItemData['total_price'] ?? 0),
+                    ]
+                );
+            } else {
+                \App\Models\Ai\CommercialOfferAiItem::query()
+                    ->where('commercial_offer_id', $offer->id)
+                    ->delete();
+            }
+
             return $offer;
         });
 
@@ -440,6 +461,7 @@ class ApplicationController extends Controller
             'organization:id,name,phone,email',
             'partner:id,name,phone,email,payment_methods',
             'payment:id,payment_type',
+            'aiItem.plan',
             'latestOfferStatus' => function ($query) {
                 $query->select([
                     'commercial_offer_statuses.id',
@@ -750,6 +772,7 @@ class ApplicationController extends Controller
             'items.tariff:id,name,is_tariff,is_extra_user,can_increase',
             'tariff:id,name',
             'tariff.includedServices:id,can_increase',
+            'aiItem.plan',
         ]);
 
         return response()->json([
@@ -1076,6 +1099,17 @@ class ApplicationController extends Controller
                 ])
                 ->values()
                 ->all(),
+            'ai_item' => $offer->aiItem ? [
+                'plan_id'          => (int)$offer->aiItem->plan_id,
+                'plan_name'        => (string)($offer->aiItem->plan?->name ?? ''),
+                'period_months'    => (int)$offer->aiItem->period_months,
+                'unit_price'       => (float)$offer->aiItem->unit_price,
+                'discount_percent' => (float)$offer->aiItem->discount_percent,
+                'partner_percent'  => (float)$offer->aiItem->partner_percent,
+                'original_price'   => (float)$offer->aiItem->original_price,
+                'total_price'      => (float)$offer->aiItem->total_price,
+                'currency'         => '',
+            ] : null,
         ];
     }
 

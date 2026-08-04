@@ -14,6 +14,7 @@
             csrfToken:   "{{ csrf_token() }}",
             saveUrl:     "{{ route('application.kp.store') }}",
         };
+        window.AI_TARIFF_PLANS = @json($aiTariffPlans ?? []);
     </script>
 
     <link rel="stylesheet" href="{{ asset('kp/styles.css') }}?v=2">
@@ -767,6 +768,35 @@
             </div>
         </div>
 
+        {{-- ИИ-Агент --}}
+        <div class="kp-card" id="aiTariffCard">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+                <div class="kp-section-title" style="margin-bottom:0;">ИИ-Агент</div>
+                <label class="service-toggle" style="margin-bottom:0;">
+                    <input type="checkbox" id="aiEnabledCheckbox">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <p style="font-size:13px;color:#6b7280;margin:6px 0 0;">Подключите ИИ-агента к тарифу — необязательно</p>
+
+            <div id="aiTariffBody" style="display:none;margin-top:20px;">
+
+                {{-- Карточки планов --}}
+                <div class="kp-setting-label" style="margin-bottom:12px;">Выберите ИИ-тарифный план</div>
+                <div class="tariffs-grid" id="aiPlansGrid"></div>
+
+                {{-- Период --}}
+                <div id="aiPeriodRow" style="display:none;margin-top:20px;">
+                    <div class="kp-setting-group">
+                        <div class="kp-setting-label">Период подписки</div>
+                        <div class="period-selector" id="aiPeriodSelector"></div>
+                    </div>
+                </div>
+
+                {{-- ИИ-Агент отображается в общем итого --}}
+            </div>
+        </div>
+
         {{-- Итого --}}
         <div class="summary-card">
             <div class="summary-title">Итого</div>
@@ -843,5 +873,180 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="{{ asset('kp/app.js') }}?v={{ time() }}"></script>
+
+    <script>
+    // ── ИИ-Агент блок ──────────────────────────────────────────────────────
+    (function () {
+        const plans = window.AI_TARIFF_PLANS || [];
+        const card  = document.getElementById('aiTariffCard');
+
+        if (!plans.length) {
+            if (card) card.style.display = 'none';
+            return;
+        }
+
+        const checkbox       = document.getElementById('aiEnabledCheckbox');
+        const body           = document.getElementById('aiTariffBody');
+        const plansGrid      = document.getElementById('aiPlansGrid');
+        const periodRow      = document.getElementById('aiPeriodRow');
+        const periodSelector = document.getElementById('aiPeriodSelector');
+
+        let selectedPlanId = null;
+        let selectedMonths = null;
+
+        // ── Получить цену плана в валюте клиента ──
+        const getAiPrice = (plan) => {
+            const cpg = window.cpGenerator;
+            const cur = cpg ? (cpg.state?.currency || '').toUpperCase() : '';
+            const byC = plan.prices_by_currency || {};
+            if (cur && Object.prototype.hasOwnProperty.call(byC, cur)) return byC[cur];
+            const first = Object.values(byC)[0];
+            return first != null ? first : 0;
+        };
+
+        const getAiCurrency = (plan) => {
+            const cpg = window.cpGenerator;
+            const cur = cpg ? (cpg.state?.currency || '').toUpperCase() : '';
+            const byC = plan.prices_by_currency || {};
+            if (cur && Object.prototype.hasOwnProperty.call(byC, cur)) return cur;
+            return Object.keys(byC)[0] || '';
+        };
+
+        // ── Обновление цен на карточках при смене валюты ──
+        const refreshCardPrices = () => {
+            plansGrid.querySelectorAll('.tariff-card').forEach(c => {
+                const plan = plans.find(p => String(p.id) === String(c.dataset.planId));
+                if (!plan) return;
+                const bestPer = (plan.periods || []).slice().sort((a, b) => b.discount_percent - a.discount_percent)[0];
+                const disc = bestPer && bestPer.discount_percent > 0
+                    ? `<span class="discount-badge" style="margin-left:6px;">-${bestPer.discount_percent}%</span>` : '';
+                const p = getAiPrice(plan), cur = getAiCurrency(plan);
+                const el = c.querySelector('.ai-price-area');
+                if (!el) return;
+                el.innerHTML = p > 0
+                    ? `<div class="tariff-price"><span class="price-value">${p}</span><span class="price-period"> ${cur}/мес ${disc}</span></div>`
+                    : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
+            });
+        };
+
+        // Хук для cpGenerator чтобы обновлять цены при updateSummary
+        if (window.cpGenerator) {
+            window.cpGenerator._refreshAiCardPrices = refreshCardPrices;
+        } else {
+            document.addEventListener('DOMContentLoaded', () => {
+                if (window.cpGenerator) window.cpGenerator._refreshAiCardPrices = refreshCardPrices;
+            });
+        }
+
+        // ── Рендер карточек тарифов ──
+        plans.forEach(plan => {
+            const c = document.createElement('div');
+            c.className = 'tariff-card';
+            c.dataset.planId = plan.id;
+
+            const bestPer = (plan.periods || []).slice().sort((a, b) => b.discount_percent - a.discount_percent)[0];
+            const disc = bestPer && bestPer.discount_percent > 0
+                ? `<span class="discount-badge" style="margin-left:6px;">-${bestPer.discount_percent}%</span>` : '';
+            const p = getAiPrice(plan), cur = getAiCurrency(plan);
+            const priceHtml = p > 0
+                ? `<div class="tariff-price"><span class="price-value">${p}</span><span class="price-period"> ${cur}/мес ${disc}</span></div>`
+                : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
+
+            c.innerHTML = `
+                <div class="tariff-select-indicator"></div>
+                <div class="tariff-name">${plan.name}</div>
+                <div class="ai-price-area">${priceHtml}</div>`;
+
+            c.addEventListener('click', () => {
+                plansGrid.querySelectorAll('.tariff-card').forEach(x => x.classList.remove('selected'));
+                c.classList.add('selected');
+                selectedPlanId = plan.id;
+                selectedMonths = null;
+                renderPeriods(plan);
+                renderSummary();
+            });
+
+            plansGrid.appendChild(c);
+        });
+
+        // ── Тумблер вкл/выкл ──
+        checkbox.addEventListener('change', () => {
+            body.style.display = checkbox.checked ? 'block' : 'none';
+            if (!checkbox.checked) {
+                selectedPlanId = null;
+                selectedMonths = null;
+                plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
+                periodRow.style.display = 'none';
+                window.CP_AI_ITEM = null;
+                if (window.cpGenerator && typeof window.cpGenerator.updateSummary === 'function') {
+                    window.cpGenerator.updateSummary();
+                }
+            }
+        });
+
+        // ── Рендер кнопок периода ──
+        function renderPeriods(plan) {
+            periodSelector.innerHTML = '';
+            if (!plan.periods || !plan.periods.length) {
+                periodRow.style.display = 'none';
+                return;
+            }
+            periodRow.style.display = 'block';
+            plan.periods.forEach(per => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'period-btn';
+                btn.dataset.months = per.months;
+                let label = per.months + ' мес';
+                if (per.discount_percent > 0) {
+                    label += ' <span class="discount-badge">-' + per.discount_percent + '%</span>';
+                }
+                btn.innerHTML = label;
+                btn.addEventListener('click', () => {
+                    periodSelector.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedMonths = per.months;
+                    renderSummary();
+                });
+                periodSelector.appendChild(btn);
+            });
+            periodSelector.querySelector('.period-btn')?.click();
+        }
+
+        // ── Итог ──
+        function setAiItem() {
+            if (checkbox.checked && selectedPlanId && selectedMonths) {
+                const plan        = plans.find(p => p.id === selectedPlanId);
+                const per         = plan?.periods.find(p => p.months === selectedMonths);
+                const unit        = getAiPrice(plan);
+                const cur         = getAiCurrency(plan);
+                const discountPct = per?.discount_percent ?? 0;
+                const original    = +(unit * selectedMonths).toFixed(4);
+                // Recalculate from discount_percent — price_total is a snapshot in original currency
+                const total       = +(original * (1 - discountPct / 100)).toFixed(4);
+                const cpg         = window.cpGenerator;
+                const partnerPct  = cpg && typeof cpg.getPartnerPackPercent === 'function'
+                    ? cpg.getPartnerPackPercent() : 0;
+                window.CP_AI_ITEM = {
+                    plan_id:          selectedPlanId,
+                    period_months:    selectedMonths,
+                    unit_price:       unit,
+                    discount_percent: discountPct,
+                    partner_percent:  partnerPct,
+                    original_price:   original,
+                    total_price:      total,
+                    currency:         cur,
+                };
+            } else {
+                window.CP_AI_ITEM = null;
+            }
+            if (window.cpGenerator && typeof window.cpGenerator.updateSummary === 'function') {
+                window.cpGenerator.updateSummary();
+            }
+        }
+
+        function renderSummary() { setAiItem(); }
+    })();
+    </script>
 
 @endsection
