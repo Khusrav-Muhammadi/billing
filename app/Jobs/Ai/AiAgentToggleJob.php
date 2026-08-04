@@ -10,7 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class AiAgentToggleJob implements ShouldQueue
 {
@@ -27,19 +27,23 @@ class AiAgentToggleJob implements ShouldQueue
         $organization = Organization::query()->find($this->organizationId);
 
         if (! $organization) {
-            Log::warning('AiAgentToggleJob: organization not found', ['id' => $this->organizationId]);
-            return;
+            throw new RuntimeException(
+                "AiAgentToggleJob: organization #{$this->organizationId} not found."
+            );
         }
 
         $client = $organization->client;
         if (! $client || ! $client->sub_domain) {
-            Log::warning('AiAgentToggleJob: client/sub_domain missing', [
-                'organization_id' => $this->organizationId,
-            ]);
-            return;
+            throw new RuntimeException(
+                "AiAgentToggleJob: client/sub_domain missing for organization #{$this->organizationId}."
+            );
         }
 
         $domain = config('services.sham.domain');
+        if (! is_string($domain) || trim($domain) === '') {
+            throw new RuntimeException('AiAgentToggleJob: services.sham.domain is not configured.');
+        }
+
         $url = "https://{$client->sub_domain}-back.{$domain}/api/ai/agent-toggle";
 
         $payload = [
@@ -62,7 +66,11 @@ class AiAgentToggleJob implements ShouldQueue
                 error: $e->getMessage()
             );
 
-            return;
+            throw new RuntimeException(
+                "AiAgentToggleJob: CRM toggle failed for org #{$this->organizationId} (enabled=" . ($this->enabled ? '1' : '0') . "): {$e->getMessage()}",
+                0,
+                $e
+            );
         }
 
         app(IntegrationActionLogService::class)->logApiResponse(
@@ -74,5 +82,11 @@ class AiAgentToggleJob implements ShouldQueue
             payload: $payload,
             response: $response
         );
+
+        if (! $response->successful()) {
+            throw new RuntimeException(
+                "AiAgentToggleJob: CRM toggle HTTP {$response->status()} for org #{$this->organizationId} (enabled=" . ($this->enabled ? '1' : '0') . "): {$response->body()}"
+            );
+        }
     }
 }

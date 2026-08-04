@@ -302,6 +302,76 @@
             background: #ffffff;
         }
 
+        /* ========== PAGE - AI AGENT (optional) ========== */
+        .page-ai-agent {
+            position: relative;
+            width: 100%;
+            min-height: 100vh;
+            padding: 40px 60px;
+            background: #ffffff;
+            page-break-before: always;
+        }
+
+        .ai-agent-intro {
+            font-size: 15px;
+            color: #5b6477;
+            line-height: 1.5;
+            margin: 0 0 28px;
+            max-width: 640px;
+        }
+
+        .ai-agent-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 28px;
+        }
+
+        .ai-agent-table th,
+        .ai-agent-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e8ecf3;
+            text-align: left;
+            font-size: 15px;
+            color: var(--text-secondary);
+            vertical-align: top;
+        }
+
+        .ai-agent-table th {
+            width: 42%;
+            color: #8b95aa;
+            font-weight: 500;
+        }
+
+        .ai-agent-table td {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .ai-agent-total-box {
+            max-width: 520px;
+            margin-top: 10px;
+            padding: 22px 26px;
+            border: 1px solid #e8ecf3;
+            border-radius: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .ai-agent-total-box .label {
+            font-size: 16px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .ai-agent-total-box .value {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--brand-blue);
+            white-space: nowrap;
+        }
+
         /* Avoid breaking inside sections - keeps tariff/modules/services together */
         .section-block {
             page-break-inside: avoid;
@@ -971,6 +1041,20 @@
                     <td>{{ formatPrice($calculations['one_time_total']) }} {{ $currency }}</td>
                 </tr>
                 @endif
+                @if(!empty($ai_item ?? null) && (($calculations['ai_total'] ?? 0) > 0))
+                <tr>
+                    <td>
+                        ИИ-Агент «{{ $ai_item['plan_name'] ?? '' }}»
+                        @if(!empty($ai_item['period_months']))
+                            ({{ (int) $ai_item['period_months'] }} мес.)
+                        @endif
+                        @if((float)($ai_item['balance_topup'] ?? 0) > 0)
+                            + запас на баланс
+                        @endif
+                    </td>
+                    <td>{{ formatPrice($calculations['ai_total']) }} {{ $currency }}</td>
+                </tr>
+                @endif
             </table>
             <div class="total-row">
                 <span>Итог:</span> {{ formatPrice($calculations['grand_total']) }} {{ $currency }}
@@ -1032,6 +1116,89 @@
         </div>
     </div>
 </div>
+
+@php
+    $showAiAgentPage = !empty($ai_item ?? null)
+        && is_array($ai_item)
+        && (($calculations['ai_total'] ?? 0) > 0 || !empty($ai_item['plan_name']));
+@endphp
+
+@if($showAiAgentPage)
+<!-- ========== PAGE - AI AGENT ========== -->
+<div class="page-ai-agent">
+    <div class="page-header">
+        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
+        <div class="page-link">*подробнее: <a href="https://shamcrm.com/price" target="_blank">shamcrm.com</a></div>
+    </div>
+
+    <h2 class="section-title">ИИ-Агент</h2>
+    <p class="ai-agent-intro">
+        Подключение ИИ-агента к тарифу. Ниже — выбранный тарифный план, период и стоимость.
+    </p>
+
+    @php
+        $aiPlanName = (string) ($ai_item['plan_name'] ?? '');
+        $aiMonths = (int) ($ai_item['period_months'] ?? 0);
+        $aiUnit = (float) ($ai_item['unit_price'] ?? 0);
+        $aiDiscountPct = (float) ($ai_item['discount_percent'] ?? 0);
+        $aiOriginal = (float) ($ai_item['original_price'] ?? 0);
+        $aiSubTotal = (float) ($ai_item['total_price'] ?? 0);
+        $aiTopup = (float) ($ai_item['balance_topup'] ?? 0);
+        $aiChargeTotal = (float) ($calculations['ai_total'] ?? ($aiSubTotal + $aiTopup));
+    @endphp
+
+    <table class="ai-agent-table">
+        <tr>
+            <th>Тарифный план</th>
+            <td>ИИ-Агент «{{ $aiPlanName }}»</td>
+        </tr>
+        @if($aiMonths > 0)
+        <tr>
+            <th>Период подписки</th>
+            <td>{{ $aiMonths }} {{ $aiMonths === 1 ? 'месяц' : ($aiMonths < 5 ? 'месяца' : 'месяцев') }}</td>
+        </tr>
+        @endif
+        @if($aiUnit > 0)
+        <tr>
+            <th>Стоимость в месяц</th>
+            <td>{{ formatPrice($aiUnit) }} {{ $currency }}</td>
+        </tr>
+        @endif
+        @if($aiOriginal > 0)
+        <tr>
+            <th>Сумма за период без скидки</th>
+            <td>{{ formatPrice($aiOriginal) }} {{ $currency }}</td>
+        </tr>
+        @endif
+        @if($aiDiscountPct > 0)
+        <tr>
+            <th>Скидка</th>
+            <td>
+                {{ rtrim(rtrim(number_format($aiDiscountPct, 2, ',', ' '), '0'), ',') }}%
+                @if($aiOriginal > $aiSubTotal)
+                    (−{{ formatPrice($aiOriginal - $aiSubTotal) }} {{ $currency }})
+                @endif
+            </td>
+        </tr>
+        @endif
+        <tr>
+            <th>Стоимость подписки ИИ</th>
+            <td>{{ formatPrice($aiSubTotal) }} {{ $currency }}</td>
+        </tr>
+        @if($aiTopup > 0)
+        <tr>
+            <th>Запас на ИИ-баланс</th>
+            <td>{{ formatPrice($aiTopup) }} {{ $currency }}</td>
+        </tr>
+        @endif
+    </table>
+
+    <div class="ai-agent-total-box">
+        <div class="label">Итого по ИИ-агенту:</div>
+        <div class="value">{{ formatPrice($aiChargeTotal) }} {{ $currency }}</div>
+    </div>
+</div>
+@endif
 
 </body>
 </html>

@@ -98,6 +98,15 @@ class CommercialOfferController extends Controller
             'contacts.website' => 'nullable|string|max:100',
             'contacts.telegram' => 'nullable|string|max:100',
 
+            'ai_item' => 'nullable|array',
+            'ai_item.plan_name' => 'nullable|string|max:255',
+            'ai_item.period_months' => 'nullable|integer|min:1|max:36',
+            'ai_item.unit_price' => 'nullable|numeric|min:0',
+            'ai_item.discount_percent' => 'nullable|numeric|min:0|max:100',
+            'ai_item.original_price' => 'nullable|numeric|min:0',
+            'ai_item.total_price' => 'nullable|numeric|min:0',
+            'ai_item.balance_topup' => 'nullable|numeric|min:0',
+
             'currency' => 'nullable|string|max:20', // сум, $, € и т.д.
             'validity_days' => 'nullable|integer|min:1|max:365',
         ]);
@@ -146,8 +155,17 @@ class CommercialOfferController extends Controller
             $modulesTotal += $price * $periodMonths;
         }
 
+        $aiItem = $validated['ai_item'] ?? null;
+        $aiTotal = 0.0;
+        if (is_array($aiItem)) {
+            $aiTotal = round(
+                (float) ($aiItem['total_price'] ?? 0) + (float) ($aiItem['balance_topup'] ?? 0),
+                4
+            );
+        }
+
         // Grand total
-        $grandTotal = $tariffTotal + $usersTotal + $modulesTotal + $oneTimeTotal;
+        $grandTotal = $tariffTotal + $usersTotal + $modulesTotal + $oneTimeTotal + $aiTotal;
 
         // Validity date
         $validityDays = $validated['validity_days'] ?? 30;
@@ -165,6 +183,7 @@ class CommercialOfferController extends Controller
             'modules' => $validated['modules'],
             'one_time_services' => $validated['one_time_services'] ?? [],
             'implementation' => $validated['implementation'] ?? [],
+            'ai_item' => is_array($aiItem) && $aiTotal > 0 ? $aiItem : null,
             'contacts' => $validated['contacts'],
             'currency' => $currency,
             'validity_date' => $validityDate,
@@ -173,6 +192,7 @@ class CommercialOfferController extends Controller
                 'users_total' => $usersTotal,
                 'modules_total' => $modulesTotal,
                 'one_time_total' => $oneTimeTotal,
+                'ai_total' => $aiTotal,
                 'grand_total' => $grandTotal,
             ],
         ];

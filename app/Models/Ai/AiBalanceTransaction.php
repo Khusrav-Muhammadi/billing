@@ -22,6 +22,7 @@ class AiBalanceTransaction extends Model
     const TYPE_TARIFF_GRANT      = 'tariff_grant';
     const TYPE_TARIFF_GRANT_PRORATED = 'tariff_grant_prorated';
     const TYPE_DEBT_COVER        = 'debt_cover';
+    const TYPE_REVERSAL          = 'reversal';          // clawback on cancel/edit of paid KP
 
     // Target balances
     const TARGET_LIMITED = 'limited';

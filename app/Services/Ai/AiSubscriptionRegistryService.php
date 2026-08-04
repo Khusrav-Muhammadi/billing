@@ -10,9 +10,11 @@ use App\Models\Ai\AiTariffPlan;
 use App\Models\Ai\CommercialOfferAiItem;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class AiSubscriptionRegistryService
 {
@@ -34,55 +36,188 @@ class AiSubscriptionRegistryService
             return;
         }
 
-        // Идемпотентность: повторный paid по тому же КП не должен дублировать кошелёк.
-        $alreadyRegistered = AiSubscription::query()
-            ->where('commercial_offer_id', $offer->id)
-            ->exists();
+        try {
+            DB::transaction(function () use ($offer, $aiItem): void {
+                // Идемпотентность внутри транзакции + row lock.
+                $alreadyRegistered = AiSubscription::query()
+                    ->where('commercial_offer_id', $offer->id)
+                    ->lockForUpdate()
+                    ->exists();
 
-        if ($alreadyRegistered) {
-            Log::info('AiSubscriptionRegistryService: already registered for offer', [
-                'commercial_offer_id' => $offer->id,
-            ]);
-            return;
+                if ($alreadyRegistered) {
+                    Log::info('AiSubscriptionRegistryService: already registered for offer', [
+                        'commercial_offer_id' => $offer->id,
+                    ]);
+                    return;
+                }
+
+                $plan = AiTariffPlan::query()
+                    ->with('currentPrice')
+                    ->findOrFail($aiItem->plan_id);
+                $orgId = (int) $offer->organization_id;
+
+                $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer->id);
+                $balance = $this->ensureBalance($orgId, $plan);
+
+                // 1. В кошелёк — полный лимит за оплаченные месяцы (без коммерческой скидки),
+                //    чтобы скидка в КП не уменьшала число доступных месяцев.
+                $this->creditPaidAmount($balance, $aiItem, $plan);
+
+                // 2. Купить пропорциональный лимит на остаток текущего месяца.
+                $granted = $this->grantProratedLimit($balance, $plan);
+
+                // 2b. Запас на ИИ-баланс (свободный кошелёк) — отдельно от оплаты периода.
+                $this->creditBalanceTopUp($balance, $aiItem);
+
+                // 3. Агент включаем только если limited реально начислен
+                //    ИЛИ есть свободный запас на балансе.
+                $balance->refresh();
+                if (($granted && (float) $balance->limited_balance > 0)
+                    || $balance->availableForUsageAmount() > 0) {
+                    $balance->is_agent_enabled = true;
+                    $balance->scheduled_activation_at = null;
+                    $balance->save();
+
+                    AiAgentToggleJob::dispatchSync(
+                        organizationId: $orgId,
+                        enabled: true
+                    );
+                } else {
+                    $balance->is_agent_enabled = false;
+                    $balance->save();
+                    $this->activationService->recalculate($balance);
+                }
+            });
+        } catch (QueryException $e) {
+            // UNIQUE(commercial_offer_id) — проигравший concurrent paid не должен кредитовать.
+            if ($this->isUniqueCommercialOfferViolation($e)) {
+                Log::info('AiSubscriptionRegistryService: concurrent register lost unique race', [
+                    'commercial_offer_id' => $offer->id,
+                ]);
+                return;
+            }
+            throw $e;
         }
+    }
 
-        DB::transaction(function () use ($offer, $aiItem): void {
-            $plan = AiTariffPlan::query()
-                ->with('currentPrice')
-                ->findOrFail($aiItem->plan_id);
+    /**
+     * Откат AI-регистрации при правке/отмене paid статуса КП.
+     * Снимает original_price + balance_topup с баланса и удаляет подписку по commercial_offer_id.
+     */
+    public function reverse(CommercialOffer $offer): void
+    {
+        DB::transaction(function () use ($offer): void {
+            /** @var AiSubscription|null $subscription */
+            $subscription = AiSubscription::query()
+                ->where('commercial_offer_id', $offer->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $subscription) {
+                return;
+            }
+
+            $aiItem = CommercialOfferAiItem::query()
+                ->where('commercial_offer_id', $offer->id)
+                ->first();
+
+            if (! $aiItem) {
+                throw new RuntimeException(
+                    "AiSubscriptionRegistryService::reverse: commercial_offer_ai_items missing for offer #{$offer->id}."
+                );
+            }
+
+            $originalPrice = round((float) $aiItem->original_price, 4);
+            $topUp = round(max(0, (float) ($aiItem->balance_topup ?? 0)), 4);
+            $clawback = round($originalPrice + $topUp, 4);
+
+            if ($clawback <= 0) {
+                throw new RuntimeException(
+                    "AiSubscriptionRegistryService::reverse: clawback amount empty for offer #{$offer->id}."
+                );
+            }
+
             $orgId = (int) $offer->organization_id;
 
-            $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer->id);
-            $balance = $this->ensureBalance($orgId, $plan);
+            /** @var AiBalance|null $balance */
+            $balance = AiBalance::query()
+                ->where('organization_id', $orgId)
+                ->lockForUpdate()
+                ->first();
 
-            // 1. В кошелёк — полный лимит за оплаченные месяцы (без коммерческой скидки),
-            //    чтобы скидка в КП не уменьшала число доступных месяцев.
-            $this->creditPaidAmount($balance, $aiItem, $plan);
-
-            // 2. Купить пропорциональный лимит на остаток текущего месяца.
-            $granted = $this->grantProratedLimit($balance, $plan);
-
-            // 2b. Запас на ИИ-баланс (свободный кошелёк) — отдельно от оплаты периода.
-            $this->creditBalanceTopUp($balance, $aiItem);
-
-            // 3. Агент включаем только если limited реально начислен
-            //    ИЛИ есть свободный запас на балансе.
-            $balance->refresh();
-            if (($granted && (float) $balance->limited_balance > 0)
-                || $balance->availableForUsageAmount() > 0) {
-                $balance->is_agent_enabled = true;
-                $balance->scheduled_activation_at = null;
-                $balance->save();
-
-                AiAgentToggleJob::dispatchSync(
-                    organizationId: $orgId,
-                    enabled: true
+            if (! $balance) {
+                throw new RuntimeException(
+                    "AiSubscriptionRegistryService::reverse: ai_balances missing for org #{$orgId} (offer #{$offer->id})."
                 );
-            } else {
+            }
+
+            if ((int) $balance->currency_id <= 0) {
+                throw new RuntimeException(
+                    "AiSubscriptionRegistryService::reverse: ai_balances has no currency_id (org #{$orgId})."
+                );
+            }
+
+            $remaining = $clawback;
+            $fromLimited = 0.0;
+            $fromAi = 0.0;
+
+            $limited = (float) $balance->limited_balance;
+            if ($limited > 0 && $remaining > 0) {
+                $take = min($limited, $remaining);
+                $balance->limited_balance = round($limited - $take, 4);
+                $fromLimited = $take;
+                $remaining = round($remaining - $take, 6);
+            }
+
+            if ($remaining > 0) {
+                $balance->ai_balance = round((float) $balance->ai_balance - $remaining, 4);
+                $fromAi = $remaining;
+            }
+
+            $wasEnabled = (bool) $balance->is_agent_enabled;
+            $balance->save();
+
+            if ($fromLimited > 0) {
+                AiBalanceTransaction::query()->create([
+                    'organization_id' => $orgId,
+                    'currency_id' => $balance->currency_id,
+                    'type' => AiBalanceTransaction::TYPE_REVERSAL,
+                    'target_balance' => AiBalanceTransaction::TARGET_LIMITED,
+                    'amount' => $fromLimited,
+                    'description' => "Откат ИИ-начисления с лимита (КП #{$offer->id})",
+                ]);
+            }
+
+            if ($fromAi > 0) {
+                AiBalanceTransaction::query()->create([
+                    'organization_id' => $orgId,
+                    'currency_id' => $balance->currency_id,
+                    'type' => AiBalanceTransaction::TYPE_REVERSAL,
+                    'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+                    'amount' => $fromAi,
+                    'description' => "Откат ИИ-начисления с кошелька (КП #{$offer->id})",
+                ]);
+            }
+
+            // Удаляем подписку, чтобы повторный paid мог зарегистрироваться снова.
+            $subscription->delete();
+
+            if ($wasEnabled && $balance->availableForUsageAmount() <= 0) {
                 $balance->is_agent_enabled = false;
                 $balance->save();
-                $this->activationService->recalculate($balance);
+                AiAgentToggleJob::dispatchSync(
+                    organizationId: $orgId,
+                    enabled: false
+                );
             }
+
+            Log::info('AiSubscriptionRegistryService: reversed AI registration', [
+                'commercial_offer_id' => $offer->id,
+                'organization_id' => $orgId,
+                'clawback' => $clawback,
+                'from_limited' => $fromLimited,
+                'from_ai_balance' => $fromAi,
+            ]);
         });
     }
 
@@ -96,6 +231,7 @@ class AiSubscriptionRegistryService
             ->where('organization_id', $orgId)
             ->where('status', true)
             ->orderByDesc('expires_at')
+            ->lockForUpdate()
             ->first();
 
         $today = Carbon::today('Asia/Dushanbe');
@@ -129,17 +265,54 @@ class AiSubscriptionRegistryService
         ]);
     }
 
+    /**
+     * Balance currency must match plan currency.
+     * Empty balance (0/0) may switch currency; non-zero mismatch → exception.
+     */
     private function ensureBalance(int $orgId, AiTariffPlan $plan): AiBalance
     {
-        return AiBalance::query()->firstOrCreate(
-            ['organization_id' => $orgId],
-            [
-                'currency_id' => $plan->currencyId(),
+        $planCurrencyId = $plan->currencyId();
+
+        /** @var AiBalance|null $balance */
+        $balance = AiBalance::query()
+            ->where('organization_id', $orgId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $balance) {
+            AiBalance::query()->create([
+                'organization_id' => $orgId,
+                'currency_id' => $planCurrencyId,
                 'limited_balance' => 0,
                 'ai_balance' => 0,
                 'is_agent_enabled' => false,
-            ]
-        );
+            ]);
+
+            $balance = AiBalance::query()
+                ->where('organization_id', $orgId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            return $balance;
+        }
+
+        if ((int) $balance->currency_id !== $planCurrencyId) {
+            $hasFunds = abs((float) $balance->limited_balance) > 0.0001
+                || abs((float) $balance->ai_balance) > 0.0001;
+
+            if ($hasFunds) {
+                throw new RuntimeException(
+                    "AiSubscriptionRegistryService: currency mismatch for org #{$orgId}: "
+                    . "balance currency_id={$balance->currency_id}, plan currency_id={$planCurrencyId}. "
+                    . "Cannot credit into a different currency while balance is non-zero."
+                );
+            }
+
+            $balance->currency_id = $planCurrencyId;
+            $balance->save();
+        }
+
+        return $balance;
     }
 
     private function creditPaidAmount(AiBalance $balance, CommercialOfferAiItem $aiItem, AiTariffPlan $plan): void
@@ -149,7 +322,7 @@ class AiSubscriptionRegistryService
         // Без суммы в КП — ошибка, не подставляем «примерно» из текущего прайса.
         $amount = round((float) $aiItem->original_price, 4);
         if ($amount <= 0) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 "AI item for offer has empty original_price; cannot credit wallet (plan #{$plan->id}, months={$periodMonths})."
             );
         }
@@ -184,7 +357,7 @@ class AiSubscriptionRegistryService
         $fullCost = $plan->monthlyLimit(); // throws if no current price
 
         if ($daysInMonth <= 0) {
-            throw new \RuntimeException('Invalid daysInMonth while granting prorated AI limit.');
+            throw new RuntimeException('Invalid daysInMonth while granting prorated AI limit.');
         }
 
         $cost = round(($fullCost / $daysInMonth) * $daysLeft, 4);
@@ -232,7 +405,6 @@ class AiSubscriptionRegistryService
         return true;
     }
 
-
     /**
      * Credit optional balance_topup into free ai_balance (TYPE_TOPUP).
      */
@@ -259,5 +431,13 @@ class AiSubscriptionRegistryService
             'organization_id' => $balance->organization_id,
             'amount' => $amount,
         ]);
+    }
+
+    private function isUniqueCommercialOfferViolation(QueryException $e): bool
+    {
+        $message = $e->getMessage();
+
+        return str_contains($message, 'ai_subscriptions_commercial_offer_id_unique')
+            || (str_contains($message, 'commercial_offer_id') && str_contains($message, 'Duplicate'));
     }
 }

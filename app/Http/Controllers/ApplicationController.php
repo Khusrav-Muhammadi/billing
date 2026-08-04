@@ -616,6 +616,9 @@ class ApplicationController extends Controller
                 ->where('client_id', $offer->organization_id)
                 ->where('date', $oldDate)
                 ->delete();
+
+            // Откат AI-кошелька / подписки — иначе повторный paid задвоит начисление.
+            app(\App\Services\Ai\AiSubscriptionRegistryService::class)->reverse($offer);
         }
 
         $status->update([

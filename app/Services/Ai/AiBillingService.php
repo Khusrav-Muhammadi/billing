@@ -7,10 +7,10 @@ use App\Models\Ai\AiBalance;
 use App\Models\Ai\AiBalanceTransaction;
 use App\Models\Ai\AiUsageLog;
 use App\Models\Ai\AiUsageRawLog;
-use App\Models\ExchangeRate;
+use App\Models\CurrencyRate;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class AiBillingService
 {
@@ -20,7 +20,7 @@ class AiBillingService
     public function processOrganization(int $orgId): void
     {
         DB::transaction(function () use ($orgId): void {
-            /** @var AiBalance $balance */
+            /** @var AiBalance|null $balance */
             $balance = AiBalance::query()
                 ->where('organization_id', $orgId)
                 ->lockForUpdate()
@@ -30,14 +30,30 @@ class AiBillingService
                 return;
             }
 
+            if ((int) $balance->currency_id <= 0) {
+                throw new RuntimeException(
+                    "AiBillingService: ai_balances #{$balance->id} has no currency_id (org #{$orgId})."
+                );
+            }
+
             $periodStart = now()->subMinutes(30);
             $periodEnd = now();
 
-            $rawQuery = AiUsageRawLog::query()
+            // Фиксируем конкретные строки до SUM/UPDATE — иначе логи, вставленные
+            // между агрегацией и mark processed, «сгорают» без списания.
+            $rawIds = AiUsageRawLog::query()
                 ->where('organization_id', $orgId)
-                ->unprocessed();
+                ->unprocessed()
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->pluck('id');
 
-            $rawCostByGroup = $rawQuery->clone()
+            if ($rawIds->isEmpty()) {
+                return;
+            }
+
+            $rawCostByGroup = AiUsageRawLog::query()
+                ->whereIn('id', $rawIds)
                 ->selectRaw('cost_currency_id, SUM(calculated_cost) as total')
                 ->groupBy('cost_currency_id')
                 ->pluck('total', 'cost_currency_id')
@@ -53,15 +69,10 @@ class AiBillingService
                 $periodEnd
             );
 
-            if ($totalCostInBalanceCurrency === null) {
-                Log::error('AiBillingService: exchange rate not found, billing deferred', [
-                    'organization_id' => $orgId,
-                ]);
-                return;
-            }
-
             if ($totalCostInBalanceCurrency <= 0) {
-                $rawQuery->update(['processed' => true]);
+                AiUsageRawLog::query()
+                    ->whereIn('id', $rawIds)
+                    ->update(['processed' => true]);
                 return;
             }
 
@@ -72,7 +83,9 @@ class AiBillingService
                 $totalCostInBalanceCurrency
             );
 
-            $rawQuery->update(['processed' => true]);
+            AiUsageRawLog::query()
+                ->whereIn('id', $rawIds)
+                ->update(['processed' => true]);
 
             AiUsageLog::query()->create([
                 'organization_id' => $orgId,
@@ -115,15 +128,6 @@ class AiBillingService
         });
     }
 
-    /**
-     * Deduct token usage:
-     *  1) limited_balance
-     *  2) spendable part of ai_balance (top-ups / leftovers)
-     *     — NEVER touch reserved money for future prepaid months
-     *  3) leftover → technical overdraft on limited_balance
-     *
-     * Returns ['limited' => float, 'ai_balance' => float].
-     */
     public function distributeDeduction(AiBalance $balance, float $amount): array
     {
         $remaining = round($amount, 6);
@@ -184,46 +188,57 @@ class AiBillingService
 
     /**
      * Convert a map of {currency_id => cost} to the balance currency.
-     * Returns null if any required exchange rate is missing.
+     * Missing currency / rate → RuntimeException (no silent defer / fallback).
      */
-    private function convertToBalanceCurrency(array $costByGroup, int $balanceCurrencyId, Carbon $date): ?float
+    private function convertToBalanceCurrency(array $costByGroup, int $balanceCurrencyId, Carbon $date): float
     {
+        if ($balanceCurrencyId <= 0) {
+            throw new RuntimeException('AiBillingService: balance currency_id is required for FX conversion.');
+        }
+
         $total = 0.0;
 
         foreach ($costByGroup as $currencyId => $cost) {
             $cost = (float) $cost;
 
-            // Без валюты стоимости нельзя считать — иначе сумма уйдёт в чужой валюте.
             if ($currencyId === null || $currencyId === '' || (int) $currencyId <= 0) {
-                Log::error('AiBillingService: usage cost without currency_id, billing deferred', [
-                    'to_currency_id' => $balanceCurrencyId,
-                    'cost' => $cost,
-                    'date' => $date->toDateTimeString(),
-                ]);
-                return null;
+                throw new RuntimeException(
+                    "AiBillingService: usage cost without cost_currency_id (cost={$cost}, to_currency_id={$balanceCurrencyId})."
+                );
             }
 
-            if ((int) $currencyId === $balanceCurrencyId) {
+            $fromCurrencyId = (int) $currencyId;
+
+            if ($fromCurrencyId === $balanceCurrencyId) {
                 $total += $cost;
                 continue;
             }
 
-            $rate = ExchangeRate::query()
-                ->where('currency_id', $currencyId)
-                ->where('created_at', '<=', $date)
-                ->orderByDesc('created_at')
-                ->value('kurs');
+            $rateDate = $date->toDateString();
+
+            $rate = CurrencyRate::query()
+                ->where('base_currency_id', $fromCurrencyId)
+                ->where('quote_currency_id', $balanceCurrencyId)
+                ->whereNotNull('rate_date')
+                ->whereDate('rate_date', '<=', $rateDate)
+                ->orderByDesc('rate_date')
+                ->orderByDesc('id')
+                ->value('rate');
 
             if ($rate === null) {
-                Log::error('AiBillingService: no exchange rate found', [
-                    'from_currency_id' => $currencyId,
-                    'to_currency_id' => $balanceCurrencyId,
-                    'date' => $date->toDateTimeString(),
-                ]);
-                return null;
+                throw new RuntimeException(
+                    "AiBillingService: no currency_rates row for {$fromCurrencyId} → {$balanceCurrencyId} on {$rateDate}."
+                );
             }
 
-            $total += $cost * (float) $rate;
+            $rate = (float) $rate;
+            if ($rate <= 0) {
+                throw new RuntimeException(
+                    "AiBillingService: invalid currency rate ({$rate}) for {$fromCurrencyId} → {$balanceCurrencyId} on {$rateDate}."
+                );
+            }
+
+            $total += $cost * $rate;
         }
 
         return round($total, 6);

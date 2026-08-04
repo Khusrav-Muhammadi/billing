@@ -163,6 +163,9 @@ class CommercialFooferController extends Controller
             'organization_id' => $organizationId > 0 ? $organizationId : null,
             'config' => $config,
             'client_prices' => $clientPrices,
+            'ai_tariff_plans' => app(\App\Services\Ai\AiTariffPlanCatalogService::class)->forCommercialOffer(
+                $asOfTs > 0 ? date('Y-m-d', $asOfTs) : null
+            ),
         ]);
     }
 

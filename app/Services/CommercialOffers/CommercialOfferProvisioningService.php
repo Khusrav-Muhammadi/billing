@@ -9,42 +9,51 @@ use App\Models\Client;
 use App\Models\CommercialOffer;
 use App\Models\Organization;
 use App\Models\OrganizationConnectionStatus;
-use App\Models\OrganizationPack;
-use App\Models\Pack;
 use App\Models\Tariff;
-use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class CommercialOfferProvisioningService
 {
     public function provisionConnection(CommercialOffer $offer): void
     {
         $context = $this->resolveContext($offer);
-        if (!$context) {
-            return;
+        if (! $context) {
+            throw new RuntimeException(
+                "CommercialOfferProvisioningService: cannot provision connection for offer #{$offer->id} (organization/client/sub_domain missing)."
+            );
         }
 
-        $this->dispatchTariff($offer, $offer->organization);
-        $this->dispatchPackUpdates($offer, $context['organization'], $context['client']);
+        $this->dispatchTariff($offer, $context['organization']);
+        // Только паки этого КП (CRM add-pack — additive).
+        $this->dispatchPackUpdates($offer, $context['organization']);
     }
 
     public function provisionConnectionExtraServices(CommercialOffer $offer): void
     {
         $context = $this->resolveContext($offer);
-        if (!$context) {
-            return;
+        if (! $context) {
+            throw new RuntimeException(
+                "CommercialOfferProvisioningService: cannot provision extra services for offer #{$offer->id} (organization/client/sub_domain missing)."
+            );
         }
 
-        $this->dispatchPackUpdates($offer, $context['organization'], $context['client']);
+        // Только новые паки этого доп.КП — не пересылать уже выданные.
+        $this->dispatchPackUpdates($offer, $context['organization']);
     }
 
     public function provisionRenewal(CommercialOffer $offer): void
     {
         $context = $this->resolveContext($offer);
-        if (!$context) {
-            return;
+        if (! $context) {
+            throw new RuntimeException(
+                "CommercialOfferProvisioningService: cannot provision renewal for offer #{$offer->id} (organization/client/sub_domain missing)."
+            );
         }
 
-        $this->dispatchTariffUpdate($offer, $offer->organization);
+        // Продление: update-tariff + только ПРИРОСТ паков (CRM add-pack additive).
+        // Повторная отправка тех же воронок/юзеров/каналов удваивала бы их на CRM.
+        $this->dispatchTariffUpdate($offer, $context['organization']);
+        $this->dispatchPackIncreases($offer, $context['organization']);
     }
 
     /**
@@ -61,9 +70,9 @@ class CommercialOfferProvisioningService
 
         $organization = $offer->organization;
         $client = $organization?->client;
-        $subDomain = trim((string)($client?->sub_domain ?? ''));
+        $subDomain = trim((string) ($client?->sub_domain ?? ''));
 
-        if (!$organization || !$client || $subDomain === '') {
+        if (! $organization || ! $client || $subDomain === '') {
             return null;
         }
 
@@ -76,50 +85,71 @@ class CommercialOfferProvisioningService
     private function dispatchTariff(CommercialOffer $offer, Organization $organization): void
     {
         $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
-        if (!$organizationConnectionStatus) return;
-        $tariffId = (int)($offer->tariff_id ?? 0);
+        if (! $organizationConnectionStatus) {
+            return;
+        }
+
+        $tariffId = (int) ($offer->tariff_id ?? 0);
         if ($tariffId <= 0) {
             return;
         }
 
         $client = $organization->client;
 
-        ConnectionJob::dispatchSync($organization, $tariffId, (string)$client->sub_domain);
+        ConnectionJob::dispatchSync($organization, $tariffId, (string) $client->sub_domain);
     }
 
     private function dispatchTariffUpdate(CommercialOffer $offer, Organization $organization): void
     {
         $organizationConnectionStatus = OrganizationConnectionStatus::where('commercial_offer_id', $offer->id)->first();
-        if (!$organizationConnectionStatus) return;
-        $tariffId = (int)($offer->tariff_id ?? 0);
+        if (! $organizationConnectionStatus) {
+            return;
+        }
+
+        $tariffId = (int) ($offer->tariff_id ?? 0);
         if ($tariffId <= 0) {
             return;
         }
 
         $client = $organization->client;
 
-        UpdateTariffJob::dispatchSync($organization, $tariffId, (string)$client->sub_domain);
-        AddPackJob::dispatchSync($organization, (string)$client->sub_domain, (int)$offer->id);
+        UpdateTariffJob::dispatchSync($organization, $tariffId, (string) $client->sub_domain);
     }
 
     private function dispatchPackUpdates(CommercialOffer $offer, Organization $organization): void
     {
         $client = $organization->client;
 
-        AddPackJob::dispatchSync($organization, (string)$client->sub_domain, (int)$offer->id);
+        AddPackJob::dispatchSync(
+            $organization,
+            (string) $client->sub_domain,
+            (int) $offer->id,
+            false
+        );
+    }
 
+    private function dispatchPackIncreases(CommercialOffer $offer, Organization $organization): void
+    {
+        $client = $organization->client;
+
+        AddPackJob::dispatchSync(
+            $organization,
+            (string) $client->sub_domain,
+            (int) $offer->id,
+            true
+        );
     }
 
     private function isPackLikeTariff(?Tariff $tariff): bool
     {
-        if (!$tariff) {
+        if (! $tariff) {
             return false;
         }
 
-        if ((bool)$tariff->is_extra_user) {
+        if ((bool) $tariff->is_extra_user) {
             return true;
         }
 
-        return !(bool)$tariff->is_tariff;
+        return ! (bool) $tariff->is_tariff;
     }
 }

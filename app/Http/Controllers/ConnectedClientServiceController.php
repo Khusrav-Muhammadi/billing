@@ -90,7 +90,9 @@ class ConnectedClientServiceController extends Controller
         // Персональные цены по организациям — { organization_id: { tariff_key: { currency: price } } }
         $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, $asOfTs);
 
-        $aiTariffPlans = $this->buildAiTariffPlans();
+        $aiTariffPlans = app(\App\Services\Ai\AiTariffPlanCatalogService::class)->forCommercialOffer(
+            $asOfTs > 0 ? date('Y-m-d', $asOfTs) : null
+        );
 
         return view('kp.index', [
             'config'        => $config,
@@ -184,7 +186,9 @@ class ConnectedClientServiceController extends Controller
         $config = $this->buildConfig($currencies, $tariffs, $services, $extraUserServicesByTariffId, $asOfTs, null);
         $clientPrices = $this->buildClientPrices($tariffs, $services, $extraUserServicesByTariffId, $asOfTs);
 
-        $aiTariffPlansForConfig = $this->buildAiTariffPlans();
+        $aiTariffPlansForConfig = app(\App\Services\Ai\AiTariffPlanCatalogService::class)->forCommercialOffer(
+            $asOfTs > 0 ? date('Y-m-d', $asOfTs) : null
+        );
 
         return response()->json([
             'config'           => $config,
@@ -1305,65 +1309,5 @@ class ConnectedClientServiceController extends Controller
         }
 
         return $result;
-    }
-
-    /**
-     * Build AI tariff plans payload for КП.
-     * Returns prices_by_currency so the frontend can pick the right price for the client's currency.
-     */
-    private function buildAiTariffPlans(): \Illuminate\Support\Collection
-    {
-        $today = now()->toDateString();
-
-        return \App\Models\Ai\AiTariffPlan::query()
-            ->where('is_active', true)
-            ->with([
-                'activePeriods',
-                'aiModel',
-                'prices' => function ($q) use ($today) {
-                    $q->with('currency')
-                        ->where('start_date', '<=', $today)
-                        ->where(function ($qq) use ($today) {
-                            $qq->whereNull('end_date')
-                                ->orWhere('end_date', '9999-12-31')
-                                ->orWhere('end_date', '>=', $today);
-                        })
-                        ->orderByDesc('start_date');
-                },
-            ])
-            ->orderBy('name')
-            ->get()
-            ->map(function ($p) {
-                // Build prices_by_currency: { "USD": 100.00, "TJS": 1090.00, ... }
-                $pricesByCurrency = [];
-                foreach ($p->prices as $priceRow) {
-                    $code = $priceRow->currency?->symbol_code;
-                    if (!$code) {
-                        continue;
-                    }
-                    $code = strtoupper(trim($code));
-                    // First row wins — already ordered by start_date DESC
-                    if (!isset($pricesByCurrency[$code])) {
-                        $pricesByCurrency[$code] = (float) $priceRow->price_monthly;
-                    }
-                }
-
-                return [
-                    'id'                 => $p->id,
-                    'name'               => $p->name,
-                    'model_name'         => $p->aiModel?->name ?? null,
-                    'prices_by_currency' => $pricesByCurrency,
-                    'periods'            => $p->activePeriods->map(fn ($per) => [
-                        'months'           => (int) $per->months,
-                        'discount_percent' => (float) $per->discount_percent,
-                        'price_total'      => (float) $per->price_total,
-                    ])->values(),
-                ];
-            })
-            ->filter(function (array $plan) {
-                // В КП показываем только тарифы, у которых есть хотя бы одна цена и период
-                return !empty($plan['prices_by_currency']) && $plan['periods']->count() > 0;
-            })
-            ->values();
     }
 }
