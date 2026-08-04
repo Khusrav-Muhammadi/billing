@@ -306,13 +306,17 @@
         .page-ai-agent {
             position: relative;
             width: 100%;
-            min-height: 100vh;
-            padding: 40px 0;
+            padding: 40px 0 20px;
             background: #ffffff;
             page-break-before: always;
-            page-break-after: always;
             break-before: page;
-            break-after: page;
+            page-break-after: avoid;
+            break-after: avoid;
+        }
+
+        .page-totals {
+            page-break-before: always;
+            break-before: page;
         }
 
         .ai-agent-intro {
@@ -1069,7 +1073,7 @@
     @endif
 
     <!-- TOTAL SECTION (последняя страница) -->
-    <div class="section-block" style="margin-top: 40px;">
+    <div class="section-block {{ $showAiAgentPage ? 'page-totals' : '' }}" style="margin-top: 40px;">
         <h2 class="section-title">Итоговая стоимость</h2>
 
         <div class="total-section">
