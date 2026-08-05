@@ -13,15 +13,11 @@ class AiModel extends Model
     protected $fillable = [
         'name',
         'provider',
-        'cost_per_1m_input',
-        'cost_per_1m_output',
         'is_active',
     ];
 
     protected $casts = [
-        'cost_per_1m_input'  => 'decimal:6',
-        'cost_per_1m_output' => 'decimal:6',
-        'is_active'          => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public static array $providers = [

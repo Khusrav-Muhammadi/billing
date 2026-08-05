@@ -208,7 +208,7 @@ class AiCrmFetchService
                     'cost_currency_id' => $resolved['currency_id'],
                     'price_per_1m_input_snapshot' => $resolved['price_per_1m_input'],
                     'price_per_1m_output_snapshot' => $resolved['price_per_1m_output'],
-                    'margin_percent_snapshot' => null,
+                    'margin_percent_snapshot' => $resolved['margin_percent'],
                     'processed' => false,
                     'created_at' => $createdAt,
                     'fetched_at' => now(),
@@ -226,9 +226,10 @@ class AiCrmFetchService
 
     /**
      * Актуальная цена токенов на дату лога из ai_model_prices.
-     * Без цены — RuntimeException (никаких fallback на ai_token_pricing / 0).
+     * Без цены — RuntimeException (никаких fallback / 0).
+     * Актуальный прайс только из ai_model_prices.
      *
-     * @return array{price_per_1m_input: float, price_per_1m_output: float, currency_id: int}
+     * @return array{price_per_1m_input: float, price_per_1m_output: float, margin_percent: float, currency_id: int}
      */
     private function resolveTokenPricing(string $modelName, string $at): array
     {
@@ -257,10 +258,12 @@ class AiCrmFetchService
             );
         }
 
+        // Списание по продажной цене (cost / (1 - margin/100)), уже в price_per_1m_*.
         return [
-            'price_per_1m_input'  => (float) $price->price_per_1m_input,
+            'price_per_1m_input' => (float) $price->price_per_1m_input,
             'price_per_1m_output' => (float) $price->price_per_1m_output,
-            'currency_id'         => (int) $price->currency_id,
+            'margin_percent' => (float) $price->margin_percent,
+            'currency_id' => (int) $price->currency_id,
         ];
     }
 }

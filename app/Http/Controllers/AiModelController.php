@@ -87,11 +87,12 @@ class AiModelController extends Controller
     public function pricesStore(Request $request, AiModel $aiModel): RedirectResponse
     {
         $data = $request->validate([
-            'currency_id'          => 'required|integer|exists:currencies,id',
-            'price_per_1m_input'   => 'required|numeric|min:0',
-            'price_per_1m_output'  => 'required|numeric|min:0',
-            'start_date'           => 'required|date',
-            'end_date'             => 'nullable|date|after_or_equal:start_date',
+            'currency_id' => 'required|integer|exists:currencies,id',
+            'cost_per_1m_input' => 'required|numeric|min:0',
+            'cost_per_1m_output' => 'required|numeric|min:0',
+            'margin_percent' => 'required|numeric|min:0|max:99.99',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         DB::transaction(function () use ($aiModel, $data): void {
@@ -108,13 +109,14 @@ class AiModelController extends Controller
                 ]);
 
             AiModelPrice::query()->create([
-                'ai_model_id'         => $aiModel->id,
-                'currency_id'         => $data['currency_id'],
-                'price_per_1m_input'  => $data['price_per_1m_input'],
-                'price_per_1m_output' => $data['price_per_1m_output'],
-                'start_date'          => $data['start_date'],
-                'end_date'            => $data['end_date'] ?? null,
-                'created_by'          => Auth::id(),
+                'ai_model_id' => $aiModel->id,
+                'currency_id' => $data['currency_id'],
+                'cost_per_1m_input' => $data['cost_per_1m_input'],
+                'cost_per_1m_output' => $data['cost_per_1m_output'],
+                'margin_percent' => $data['margin_percent'],
+                'start_date' => $data['start_date'],
+                'end_date' => $data['end_date'] ?? null,
+                'created_by' => Auth::id(),
             ]);
         });
 
@@ -124,19 +126,21 @@ class AiModelController extends Controller
     public function pricesUpdate(Request $request, AiModelPrice $price): RedirectResponse
     {
         $data = $request->validate([
-            'currency_id'          => 'required|integer|exists:currencies,id',
-            'price_per_1m_input'   => 'required|numeric|min:0',
-            'price_per_1m_output'  => 'required|numeric|min:0',
-            'start_date'           => 'required|date',
-            'end_date'             => 'nullable|date|after_or_equal:start_date',
+            'currency_id' => 'required|integer|exists:currencies,id',
+            'cost_per_1m_input' => 'required|numeric|min:0',
+            'cost_per_1m_output' => 'required|numeric|min:0',
+            'margin_percent' => 'required|numeric|min:0|max:99.99',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         $price->update([
-            'currency_id'         => $data['currency_id'],
-            'price_per_1m_input'  => $data['price_per_1m_input'],
-            'price_per_1m_output' => $data['price_per_1m_output'],
-            'start_date'          => $data['start_date'],
-            'end_date'            => $data['end_date'] ?? null,
+            'currency_id' => $data['currency_id'],
+            'cost_per_1m_input' => $data['cost_per_1m_input'],
+            'cost_per_1m_output' => $data['cost_per_1m_output'],
+            'margin_percent' => $data['margin_percent'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'] ?? null,
         ]);
 
         return redirect()->route('ai-model.prices.index', $price->ai_model_id)->with('success', 'Цена обновлена.');

@@ -337,13 +337,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/prices/{price}', [\App\Http\Controllers\AiModelController::class, 'pricesDestroy'])->name('ai-model.prices.destroy');
     });
 
-    // ── AI Token Pricing ────────────────────────────────────────────────
-    Route::group(['prefix' => 'ai-token-pricing'], function () {
-        Route::get('/', [\App\Http\Controllers\AiTokenPricingController::class, 'index'])->name('ai-token-pricing.index');
-        Route::post('/store', [\App\Http\Controllers\AiTokenPricingController::class, 'store'])->name('ai-token-pricing.store');
-        Route::patch('/update/{aiTokenPricing}', [\App\Http\Controllers\AiTokenPricingController::class, 'update'])->name('ai-token-pricing.update');
-    });
-
     Route::group(['prefix' => 'ai-subscription'], function () {
         Route::get('/', [\App\Http\Controllers\AiSubscriptionController::class, 'index'])->name('ai-subscription.index');
         Route::get('/{aiSubscription}', [\App\Http\Controllers\AiSubscriptionController::class, 'show'])->name('ai-subscription.show');

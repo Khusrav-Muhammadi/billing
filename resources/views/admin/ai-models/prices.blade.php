@@ -19,6 +19,7 @@
             <h4 class="card-title mb-0">Цены модели: <code>{{ $aiModel->name }}</code></h4>
             <div class="text-muted" style="font-size: 13px;">
                 {{ \App\Models\Ai\AiModel::$providers[$aiModel->provider] ?? $aiModel->provider }}
+                · продажа = себестоимость / (1 − маржа/100)
             </div>
         </div>
         <div class="d-flex gap-2">
@@ -35,8 +36,11 @@
                 <th>Дата начала</th>
                 <th>Дата завершения</th>
                 <th>Валюта</th>
-                <th>Вход / 1M</th>
-                <th>Выход / 1M</th>
+                <th>Себест. вход / 1M</th>
+                <th>Себест. выход / 1M</th>
+                <th>Маржа %</th>
+                <th>Продажа вход / 1M</th>
+                <th>Продажа выход / 1M</th>
                 <th>Добавил</th>
                 <th>Действие</th>
             </tr>
@@ -55,6 +59,9 @@
                         @endif
                     </td>
                     <td>{{ $price->currency?->name }}</td>
+                    <td>{{ number_format($price->cost_per_1m_input, 4) }}</td>
+                    <td>{{ number_format($price->cost_per_1m_output, 4) }}</td>
+                    <td>{{ number_format($price->margin_percent, 2) }}%</td>
                     <td>
                         <strong>{{ number_format($price->price_per_1m_input, 4) }}</strong>
                         @if($isCurrent)
@@ -75,7 +82,7 @@
 
                 <div class="modal fade" id="editPrice{{ $price->id }}" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog">
-                        <form action="{{ route('ai-model.prices.update', $price) }}" method="POST">
+                        <form action="{{ route('ai-model.prices.update', $price) }}" method="POST" class="js-price-form">
                             @csrf @method('PATCH')
                             <div class="modal-content">
                                 <div class="modal-header">
@@ -93,12 +100,21 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
-                                        <label>Цена вход / 1M токенов <span class="text-danger">*</span></label>
-                                        <input type="text" inputmode="decimal" class="form-control" name="price_per_1m_input" value="{{ $price->price_per_1m_input }}" required>
+                                        <label>Себестоимость вход / 1M <span class="text-danger">*</span></label>
+                                        <input type="text" inputmode="decimal" class="form-control js-cost-in" name="cost_per_1m_input" value="{{ $price->cost_per_1m_input }}" required>
                                     </div>
                                     <div class="form-group">
-                                        <label>Цена выход / 1M токенов <span class="text-danger">*</span></label>
-                                        <input type="text" inputmode="decimal" class="form-control" name="price_per_1m_output" value="{{ $price->price_per_1m_output }}" required>
+                                        <label>Себестоимость выход / 1M <span class="text-danger">*</span></label>
+                                        <input type="text" inputmode="decimal" class="form-control js-cost-out" name="cost_per_1m_output" value="{{ $price->cost_per_1m_output }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Маржа % <span class="text-danger">*</span></label>
+                                        <input type="text" inputmode="decimal" class="form-control js-margin" name="margin_percent" value="{{ $price->margin_percent }}" required>
+                                        <small class="text-muted">Пример: 90 → продажа = себестоимость / 0.1</small>
+                                    </div>
+                                    <div class="alert alert-light border py-2 mb-3">
+                                        Продажа вход: <strong class="js-sell-in">{{ number_format($price->price_per_1m_input, 4) }}</strong>
+                                        · выход: <strong class="js-sell-out">{{ number_format($price->price_per_1m_output, 4) }}</strong>
                                     </div>
                                     <div class="form-group">
                                         <label>Дата начала <span class="text-danger">*</span></label>
@@ -130,7 +146,10 @@
                                 </div>
                                 <div class="modal-body">
                                     Удалить цену
-                                    <strong>{{ number_format($price->price_per_1m_input, 4) }} / {{ number_format($price->price_per_1m_output, 4) }} {{ $price->currency?->name }}</strong>?
+                                    продажа <strong>{{ number_format($price->price_per_1m_input, 4) }} / {{ number_format($price->price_per_1m_output, 4) }}</strong>
+                                    (себест. {{ number_format($price->cost_per_1m_input, 4) }} / {{ number_format($price->cost_per_1m_output, 4) }},
+                                    маржа {{ number_format($price->margin_percent, 2) }}%)
+                                    {{ $price->currency?->name }}?
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -142,7 +161,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-4">Цены не добавлены</td>
+                    <td colspan="11" class="text-center text-muted py-4">Цены не добавлены</td>
                 </tr>
             @endforelse
             </tbody>
@@ -152,7 +171,7 @@
 
 <div class="modal fade" id="createPriceModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <form action="{{ route('ai-model.prices.store', $aiModel) }}" method="POST">
+        <form action="{{ route('ai-model.prices.store', $aiModel) }}" method="POST" class="js-price-form">
             @csrf
             <div class="modal-content">
                 <div class="modal-header">
@@ -172,16 +191,27 @@
                         @error('currency_id')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
-                        <label>Цена вход / 1M токенов <span class="text-danger">*</span></label>
-                        <input type="text" inputmode="decimal" class="form-control @error('price_per_1m_input') is-invalid @enderror"
-                               name="price_per_1m_input" value="{{ old('price_per_1m_input') }}" required>
-                        @error('price_per_1m_input')<span class="text-danger">{{ $message }}</span>@enderror
+                        <label>Себестоимость вход / 1M <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" class="form-control js-cost-in @error('cost_per_1m_input') is-invalid @enderror"
+                               name="cost_per_1m_input" value="{{ old('cost_per_1m_input') }}" required>
+                        @error('cost_per_1m_input')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
-                        <label>Цена выход / 1M токенов <span class="text-danger">*</span></label>
-                        <input type="text" inputmode="decimal" class="form-control @error('price_per_1m_output') is-invalid @enderror"
-                               name="price_per_1m_output" value="{{ old('price_per_1m_output') }}" required>
-                        @error('price_per_1m_output')<span class="text-danger">{{ $message }}</span>@enderror
+                        <label>Себестоимость выход / 1M <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" class="form-control js-cost-out @error('cost_per_1m_output') is-invalid @enderror"
+                               name="cost_per_1m_output" value="{{ old('cost_per_1m_output') }}" required>
+                        @error('cost_per_1m_output')<span class="text-danger">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="form-group">
+                        <label>Маржа % <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" class="form-control js-margin @error('margin_percent') is-invalid @enderror"
+                               name="margin_percent" value="{{ old('margin_percent', '0') }}" required>
+                        <small class="text-muted">Пример: 90 → продажа = себестоимость / 0.1</small>
+                        @error('margin_percent')<span class="text-danger">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="alert alert-light border py-2 mb-3">
+                        Продажа вход: <strong class="js-sell-in">—</strong>
+                        · выход: <strong class="js-sell-out">—</strong>
                     </div>
                     <div class="form-group">
                         <label>Дата начала <span class="text-danger">*</span></label>
@@ -204,4 +234,47 @@
     </div>
 </div>
 
+@endsection
+
+@section('script')
+<script>
+(function () {
+    function parseNum(v) {
+        if (v == null) return NaN;
+        return parseFloat(String(v).replace(',', '.').trim());
+    }
+
+    function formatNum(n) {
+        if (!isFinite(n)) return '—';
+        return n.toFixed(4);
+    }
+
+    function recalc(form) {
+        var costInEl = form.querySelector('.js-cost-in');
+        var costOutEl = form.querySelector('.js-cost-out');
+        var marginEl = form.querySelector('.js-margin');
+        var costIn = parseNum(costInEl && costInEl.value);
+        var costOut = parseNum(costOutEl && costOutEl.value);
+        var margin = parseNum(marginEl && marginEl.value);
+        var sellInEl = form.querySelector('.js-sell-in');
+        var sellOutEl = form.querySelector('.js-sell-out');
+        if (!sellInEl || !sellOutEl) return;
+
+        if (!isFinite(costIn) || !isFinite(costOut) || !isFinite(margin) || margin < 0 || margin >= 100) {
+            sellInEl.textContent = '—';
+            sellOutEl.textContent = '—';
+            return;
+        }
+
+        var divisor = 1 - (margin / 100);
+        sellInEl.textContent = formatNum(costIn / divisor);
+        sellOutEl.textContent = formatNum(costOut / divisor);
+    }
+
+    document.querySelectorAll('.js-price-form').forEach(function (form) {
+        form.addEventListener('input', function () { recalc(form); });
+        recalc(form);
+    });
+})();
+</script>
 @endsection
