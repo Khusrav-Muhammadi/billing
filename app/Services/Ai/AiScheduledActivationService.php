@@ -27,7 +27,7 @@ class AiScheduledActivationService
 
         $now = Carbon::now('Asia/Dushanbe');
         $daysInMonth = (int) $now->daysInMonth;
-        $dailyRate = $plan->monthlyLimit() / max(1, $daysInMonth); // throws if no price
+        $dailyRate = $plan->monthlyLimitForCurrency((int) $balance->currency_id) / max(1, $daysInMonth);
 
         $daysCovered = (int) floor($aiBalance / $dailyRate);
         if ($daysCovered <= 0) {
@@ -87,7 +87,7 @@ class AiScheduledActivationService
                         $daysInMonth = (int) $now->daysInMonth;
                         $dayOfMonth = (int) $today->day;
                         $daysLeft = $daysInMonth - $dayOfMonth + 1;
-                        $fullCost = $subscription->plan->monthlyLimit(); // throws if no price
+                        $fullCost = $subscription->plan->monthlyLimitForCurrency((int) $balance->currency_id);
                         $cost = round(($fullCost / max(1, $daysInMonth)) * $daysLeft, 4);
                         $ai = (float) $balance->ai_balance;
 

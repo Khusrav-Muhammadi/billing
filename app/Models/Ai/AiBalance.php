@@ -63,8 +63,8 @@ class AiBalance extends Model
             return 0.0;
         }
 
-        // monthlyLimit() бросает, если нет актуальной цены — лучше ошибка, чем нулевой резерв.
-        $monthly = $subscription->plan->monthlyLimit();
+        // Прайс строго в валюте баланса — без FX / fallback.
+        $monthly = $subscription->plan->monthlyLimitForCurrency((int) $this->currency_id);
 
         $now = Carbon::now('Asia/Dushanbe');
         $nextMonthStart = $now->copy()->addMonthNoOverflow()->startOfMonth()->startOfDay();

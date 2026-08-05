@@ -65,8 +65,43 @@ class AiTariffPlan extends Model
     }
 
     /**
-     * Monthly limit (= price_monthly from current price row).
-     * Без актуальной цены — ошибка (нельзя подставлять legacy/0).
+     * Текущая цена тарифа строго в указанной валюте.
+     * Без прайса в этой валюте — null (никакого FX / fallback на другую валюту).
+     */
+    public function currentPriceForCurrency(int $currencyId): ?AiTariffPlanPrice
+    {
+        if ($currencyId <= 0) {
+            return null;
+        }
+
+        return $this->prices()
+            ->current()
+            ->where('currency_id', $currencyId)
+            ->orderByDesc('start_date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * Monthly limit (= price_monthly) в указанной валюте.
+     * Без актуальной цены в этой валюте — ошибка.
+     */
+    public function monthlyLimitForCurrency(int $currencyId): float
+    {
+        $price = $this->currentPriceForCurrency($currencyId);
+
+        if (! $price || (float) $price->price_monthly <= 0) {
+            throw new \RuntimeException(
+                "AI plan #{$this->id} ({$this->name}) has no current monthly price "
+                . "in currency_id={$currencyId} (no FX)."
+            );
+        }
+
+        return (float) $price->price_monthly;
+    }
+
+    /**
+     * @deprecated Используйте monthlyLimitForCurrency($currencyId) — без валюты прайс неоднозначен.
      */
     public function monthlyLimit(): float
     {
@@ -84,8 +119,7 @@ class AiTariffPlan extends Model
     }
 
     /**
-     * Currency of the current tariff price.
-     * Без актуальной цены — ошибка (нельзя брать legacy currency_id).
+     * @deprecated Используйте валюту КП / баланса, не «любой» прайс тарифа.
      */
     public function currencyId(): int
     {

@@ -126,7 +126,7 @@ class AiMonthlyService
             return;
         }
 
-        $fullCost = $plan->monthlyLimit(); // throws if no current price
+        $fullCost = $plan->monthlyLimitForCurrency((int) $balance->currency_id);
         $ai = (float) $balance->ai_balance;
 
         if ($ai < $fullCost) {
@@ -192,7 +192,7 @@ class AiMonthlyService
 
     public function grantMonthlyLimit(AiBalance $balance, AiTariffPlan $plan, bool $prorated): void
     {
-        $fullCost = $plan->monthlyLimit(); // throws if no current price
+        $fullCost = $plan->monthlyLimitForCurrency((int) $balance->currency_id);
 
         if ($prorated) {
             $now = Carbon::now('Asia/Dushanbe');

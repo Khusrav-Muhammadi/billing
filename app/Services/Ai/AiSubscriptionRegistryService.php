@@ -10,6 +10,7 @@ use App\Models\Ai\AiTariffPlan;
 use App\Models\Ai\CommercialOfferAiItem;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
+use App\Models\Currency;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -51,13 +52,16 @@ class AiSubscriptionRegistryService
                     return;
                 }
 
-                $plan = AiTariffPlan::query()
-                    ->with('currentPrice')
-                    ->findOrFail($aiItem->plan_id);
+                $plan = AiTariffPlan::query()->findOrFail($aiItem->plan_id);
                 $orgId = (int) $offer->organization_id;
 
+                // Валюта ИИ-баланса = валюта КП (не «любой» прайс тарифа).
+                $offerCurrencyId = $this->resolveOfferCurrencyId($offer);
+                // Прайс тарифа должен быть именно в этой валюте — иначе ошибка, без FX.
+                $plan->monthlyLimitForCurrency($offerCurrencyId);
+
                 $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer->id);
-                $balance = $this->ensureBalance($orgId, $plan);
+                $balance = $this->ensureBalance($orgId, $offerCurrencyId);
 
                 // 1. В кошелёк — полный лимит за оплаченные месяцы (без коммерческой скидки),
                 //    чтобы скидка в КП не уменьшала число доступных месяцев.
@@ -276,12 +280,41 @@ class AiSubscriptionRegistryService
     }
 
     /**
-     * Balance currency must match plan currency.
+     * Валюта КП → currencies.id. Нет кода / нет записи — ошибка (без fallback).
+     */
+    private function resolveOfferCurrencyId(CommercialOffer $offer): int
+    {
+        $code = strtoupper(trim((string) ($offer->payable_currency ?: $offer->currency ?: '')));
+        if ($code === '') {
+            throw new RuntimeException(
+                "AiSubscriptionRegistryService: offer #{$offer->id} has empty currency/payable_currency."
+            );
+        }
+
+        $currencyId = Currency::query()
+            ->whereRaw('UPPER(TRIM(symbol_code)) = ?', [$code])
+            ->value('id');
+
+        if (! $currencyId) {
+            throw new RuntimeException(
+                "AiSubscriptionRegistryService: currency [{$code}] not found for offer #{$offer->id}."
+            );
+        }
+
+        return (int) $currencyId;
+    }
+
+    /**
+     * Balance currency = offer currency.
      * Empty balance (0/0) may switch currency; non-zero mismatch → exception.
      */
-    private function ensureBalance(int $orgId, AiTariffPlan $plan): AiBalance
+    private function ensureBalance(int $orgId, int $currencyId): AiBalance
     {
-        $planCurrencyId = $plan->currencyId();
+        if ($currencyId <= 0) {
+            throw new RuntimeException(
+                "AiSubscriptionRegistryService: invalid currency_id for org #{$orgId}."
+            );
+        }
 
         /** @var AiBalance|null $balance */
         $balance = AiBalance::query()
@@ -292,7 +325,7 @@ class AiSubscriptionRegistryService
         if (! $balance) {
             AiBalance::query()->create([
                 'organization_id' => $orgId,
-                'currency_id' => $planCurrencyId,
+                'currency_id' => $currencyId,
                 'limited_balance' => 0,
                 'ai_balance' => 0,
                 'is_agent_enabled' => false,
@@ -306,19 +339,19 @@ class AiSubscriptionRegistryService
             return $balance;
         }
 
-        if ((int) $balance->currency_id !== $planCurrencyId) {
+        if ((int) $balance->currency_id !== $currencyId) {
             $hasFunds = abs((float) $balance->limited_balance) > 0.0001
                 || abs((float) $balance->ai_balance) > 0.0001;
 
             if ($hasFunds) {
                 throw new RuntimeException(
                     "AiSubscriptionRegistryService: currency mismatch for org #{$orgId}: "
-                    . "balance currency_id={$balance->currency_id}, plan currency_id={$planCurrencyId}. "
+                    . "balance currency_id={$balance->currency_id}, offer currency_id={$currencyId}. "
                     . "Cannot credit into a different currency while balance is non-zero."
                 );
             }
 
-            $balance->currency_id = $planCurrencyId;
+            $balance->currency_id = $currencyId;
             $balance->save();
         }
 
@@ -336,8 +369,8 @@ class AiSubscriptionRegistryService
                 "AI item for offer has empty original_price; cannot credit wallet (plan #{$plan->id}, months={$periodMonths})."
             );
         }
-        // Сверка с актуальным прайсом тарифа — если прайса нет, monthlyLimit() бросит.
-        $plan->monthlyLimit();
+        // Прайс тарифа в валюте баланса обязан существовать.
+        $plan->monthlyLimitForCurrency((int) $balance->currency_id);
 
         $balance->increment('ai_balance', $amount);
         $balance->refresh();
@@ -369,8 +402,8 @@ class AiSubscriptionRegistryService
         $dayOfMonth = (int) $now->day;
         $daysLeft = $daysInMonth - $dayOfMonth + 1;
 
-        // Прайса тарифа всё равно должен существовать (валюта/актуальность).
-        $planMonthly = $plan->monthlyLimit();
+        // Прайс тарифа в валюте баланса обязан существовать (валюта/актуальность).
+        $planMonthly = $plan->monthlyLimitForCurrency((int) $balance->currency_id);
         $fullCost = $monthlyOverride !== null && $monthlyOverride > 0
             ? round($monthlyOverride, 4)
             : $planMonthly;
