@@ -88,23 +88,44 @@
                 </thead>
                 <tbody>
                 @forelse($transactions as $t)
+                    @php
+                        $typeColors = [
+                            'topup' => 'success',
+                            'payment' => 'success',
+                            'monthly_purchase' => 'warning',
+                            'tariff_grant' => 'primary',
+                            'tariff_grant_prorated' => 'info',
+                            'deduction' => 'warning',
+                            'overdraft_cover' => 'danger',
+                            'expired_profit' => 'secondary',
+                            'debt_cover' => 'dark',
+                            'reversal' => 'danger',
+                        ];
+                        $typeLabels = [
+                            'topup' => 'Пополнение',
+                            'payment' => 'Оплата тарифа',
+                            'monthly_purchase' => 'Покупка лимита',
+                            'tariff_grant' => 'Начисление лимита',
+                            'tariff_grant_prorated' => 'Пропорц. начисление лимита',
+                            'deduction' => 'Списание за использование',
+                            'overdraft_cover' => 'Покрытие овердрафта',
+                            'expired_profit' => 'Сгорание лимита',
+                            'debt_cover' => 'Покрытие долга',
+                            'reversal' => 'Отмена / возврат',
+                        ];
+                        $accountLabels = [
+                            'limited' => 'Лимит',
+                            'ai_balance' => 'Кошелёк ИИ',
+                        ];
+                    @endphp
                     <tr>
-                        <td class="small">{{ $t->created_at?->format('d.m.Y H:i') }}</td>
+                        <td class="small">{{ $t->created_at?->format('d.m.Y H:i:s') }}</td>
                         <td>
-                            @php
-                                $typeColors = [
-                                    'topup' => 'success',
-                                    'tariff_grant' => 'primary',
-                                    'tariff_grant_prorated' => 'info',
-                                    'deduction' => 'warning',
-                                    'overdraft_cover' => 'danger',
-                                    'expired_profit' => 'secondary',
-                                    'debt_cover' => 'dark',
-                                ];
-                            @endphp
-                            <span class="badge bg-{{ $typeColors[$t->type] ?? 'secondary' }}">{{ $t->type }}</span>
+                            <span class="badge bg-{{ $typeColors[$t->type] ?? 'secondary' }}">
+                                {{ $typeLabels[$t->type] ?? $t->type }}
+                            </span>
                         </td>
-                        <td><code>{{ $t->target_balance }}</code></td>
+                        <td>{{ $accountLabels[$t->target_balance] ?? $t->target_balance }}</td>
                         <td>{{ number_format($t->amount, 4) }} {{ $t->currency?->symbol_code }}</td>
                         <td class="small text-muted">{{ $t->description }}</td>
                     </tr>

@@ -59,6 +59,11 @@ class AiTariffPlan extends Model
         return $this->hasMany(AiSubscription::class, 'plan_id');
     }
 
+    public function commercialOfferItems(): HasMany
+    {
+        return $this->hasMany(CommercialOfferAiItem::class, 'plan_id');
+    }
+
     /**
      * Monthly limit (= price_monthly from current price row).
      * Без актуальной цены — ошибка (нельзя подставлять legacy/0).

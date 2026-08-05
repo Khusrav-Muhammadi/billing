@@ -320,6 +320,7 @@ Route::middleware('auth')->group(function () {
         // Периоды / скидки (история скидок / SCD)
         Route::get('/{aiTariff}/periods', [\App\Http\Controllers\AiTariffController::class, 'periodsIndex'])->name('ai-tariff.periods.index');
         Route::post('/{aiTariff}/periods', [\App\Http\Controllers\AiTariffController::class, 'periodsStore'])->name('ai-tariff.periods.store');
+        Route::patch('/periods/{period}', [\App\Http\Controllers\AiTariffController::class, 'periodsUpdate'])->name('ai-tariff.periods.update');
         Route::delete('/periods/{period}', [\App\Http\Controllers\AiTariffController::class, 'periodsDestroy'])->name('ai-tariff.periods.destroy');
     });
 

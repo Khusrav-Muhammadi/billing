@@ -70,6 +70,22 @@ class AiTariffController extends Controller
 
     public function destroy(AiTariffPlan $aiTariff): RedirectResponse
     {
+        $offerItemsCount = $aiTariff->commercialOfferItems()->count();
+        if ($offerItemsCount > 0) {
+            return redirect()->route('ai-tariff.index')->with(
+                'error',
+                "Нельзя удалить тариф «{$aiTariff->name}»: он используется в {$offerItemsCount} коммерческих предложениях. Деактивируйте план вместо удаления."
+            );
+        }
+
+        $subscriptionsCount = $aiTariff->subscriptions()->count();
+        if ($subscriptionsCount > 0) {
+            return redirect()->route('ai-tariff.index')->with(
+                'error',
+                "Нельзя удалить тариф «{$aiTariff->name}»: есть {$subscriptionsCount} подписок. Деактивируйте план вместо удаления."
+            );
+        }
+
         $aiTariff->delete();
 
         return redirect()->route('ai-tariff.index')->with('success', 'Тарифный план удалён.');
@@ -216,6 +232,45 @@ class AiTariffController extends Controller
             ->update(['valid_from' => $data['valid_from']]);
 
         return redirect()->route('ai-tariff.periods.index', $aiTariff)->with('success', 'Период / скидка добавлены.');
+    }
+
+    public function periodsUpdate(Request $request, AiTariffPlanPeriod $period): RedirectResponse
+    {
+        $data = $request->validate([
+            'months'           => 'required|integer|min:1|max:120',
+            'discount_percent' => 'required|numeric|min:0|max:99.99',
+            'price_total'      => 'required|numeric|min:0',
+            'valid_from'       => 'required|date',
+        ]);
+
+        $months = (int) $data['months'];
+
+        // Не допускаем два активных периода с одинаковым числом месяцев
+        if ($period->valid_to === null) {
+            $duplicateActive = AiTariffPlanPeriod::query()
+                ->where('plan_id', $period->plan_id)
+                ->where('months', $months)
+                ->whereNull('valid_to')
+                ->where('id', '!=', $period->id)
+                ->exists();
+
+            if ($duplicateActive) {
+                return redirect()
+                    ->route('ai-tariff.periods.index', $period->plan_id)
+                    ->with('error', "Активный период на {$months} мес. уже существует.");
+            }
+        }
+
+        $period->update([
+            'months'           => $months,
+            'discount_percent' => $data['discount_percent'],
+            'price_total'      => $data['price_total'],
+            'valid_from'       => $data['valid_from'],
+        ]);
+
+        return redirect()
+            ->route('ai-tariff.periods.index', $period->plan_id)
+            ->with('success', 'Период / скидка обновлены.');
     }
 
     public function periodsDestroy(AiTariffPlanPeriod $period): RedirectResponse

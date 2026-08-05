@@ -795,7 +795,7 @@
                     <div class="kp-setting-group">
                         <div class="kp-setting-label">Запас на ИИ-баланс</div>
                         <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
-                            Рекомендуемая сумма, чтобы агент не отключился до конца месяца. Можно изменить.
+                            Рекомендуемая сумма, чтобы агент не отключился до конца месяца.
                         </p>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                             <input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value="0"
