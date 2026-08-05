@@ -777,7 +777,7 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
-            <p style="font-size:13px;color:#6b7280;margin:6px 0 0;">Подключите ИИ-агента к тарифу — необязательно</p>
+            <p style="font-size:13px;color:#6b7280;margin:6px 0 0;"> ИИ-агент </p>
 
             <div id="aiTariffBody" style="display:none;margin-top:20px;">
 

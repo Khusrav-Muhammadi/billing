@@ -17,10 +17,7 @@
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
             <h4 class="card-title mb-0">Цены модели: <code>{{ $aiModel->name }}</code></h4>
-            <div class="text-muted" style="font-size: 13px;">
-                {{ \App\Models\Ai\AiModel::$providers[$aiModel->provider] ?? $aiModel->provider }}
-                · продажа = себестоимость / (1 − маржа/100)
-            </div>
+
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('ai-model.index') }}" class="btn btn-light">Назад</a>
@@ -124,7 +121,7 @@
                                         <label>Дата завершения</label>
                                         <input type="date" class="form-control" name="end_date"
                                                value="{{ ($price->end_date && $price->end_date->format('Y-m-d') !== '9999-12-31') ? $price->end_date->format('Y-m-d') : '' }}">
-                                        <small class="text-muted">Оставьте пустым для бессрочной цены</small>
+                                        <small class="text-muted"> </small>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -222,7 +219,7 @@
                     <div class="form-group">
                         <label>Дата завершения</label>
                         <input type="date" class="form-control" name="end_date" value="{{ old('end_date') }}">
-                        <small class="text-muted">Оставьте пустым для бессрочной цены</small>
+                        <small class="text-muted"> </small>
                     </div>
                 </div>
                 <div class="modal-footer">

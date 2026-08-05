@@ -103,7 +103,7 @@
                                         <label>Дата завершения</label>
                                         <input type="date" class="form-control" name="end_date"
                                                value="{{ ($price->end_date && $price->end_date->format('Y-m-d') !== '9999-12-31') ? $price->end_date->format('Y-m-d') : '' }}">
-                                        <small class="text-muted">Оставьте пустым для бессрочной цены</small>
+                                        <small class="text-muted"> </small>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -183,7 +183,7 @@
                     <div class="form-group">
                         <label>Дата завершения</label>
                         <input type="date" class="form-control" name="end_date" value="{{ old('end_date') }}">
-                        <small class="text-muted">Оставьте пустым для бессрочной цены</small>
+                        <small class="text-muted"> </small>
                     </div>
                 </div>
                 <div class="modal-footer">

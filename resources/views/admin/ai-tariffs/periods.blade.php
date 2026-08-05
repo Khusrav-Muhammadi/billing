@@ -17,13 +17,7 @@
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
             <h4 class="card-title mb-0">Периоды и скидки: {{ $aiTariff->name }}</h4>
-            @if($currentPrice)
-                <div class="text-muted" style="font-size: 13px;">
-                    Текущая цена: <strong>{{ number_format($currentPrice->price_monthly, 2) }} {{ $currentPrice->currency?->name }}</strong> / мес
-                </div>
-            @else
-                <div class="text-warning" style="font-size: 13px;">Цена тарифа не задана — итоговая стоимость периодов не рассчитается</div>
-            @endif
+
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('ai-tariff.index') }}" class="btn btn-light">Назад</a>
@@ -151,14 +145,7 @@
                         <label>Итоговая цена</label>
                         <input type="text" name="price_total" id="periodPriceTotal" class="form-control @error('price_total') is-invalid @enderror"
                                value="{{ old('price_total', 0) }}" readonly>
-                        @if($currentPrice)
-                            <small class="text-muted">
-                                Рассчитывается: цена/мес × месяцев × (1 − скидка%).
-                                Базовая цена: {{ number_format($currentPrice->price_monthly, 2) }} {{ $currentPrice->currency?->name }}
-                            </small>
-                        @else
-                            <small class="text-warning">Задайте цену тарифа для автоматического расчёта</small>
-                        @endif
+
                         @error('price_total')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
