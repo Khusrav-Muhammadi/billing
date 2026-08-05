@@ -63,16 +63,26 @@ class AiSubscriptionRegistryService
                 //    чтобы скидка в КП не уменьшала число доступных месяцев.
                 $this->creditPaidAmount($balance, $aiItem, $plan);
 
-                // 2. Купить пропорциональный лимит на остаток текущего месяца.
-                $granted = $this->grantProratedLimit($balance, $plan);
+                // 2. Купить пропорциональный лимит на остаток текущего месяца
+                //    из оплаченной суммы КП (original_price / months), не из «другого» прайса тарифа.
+                $periodMonths = max(1, (int) $aiItem->period_months);
+                $monthlyFromPayment = round((float) $aiItem->original_price / $periodMonths, 4);
+                $granted = $this->grantProratedLimit($balance, $plan, $monthlyFromPayment);
+
+                if (! $granted) {
+                    throw new RuntimeException(
+                        "AiSubscriptionRegistryService: failed to grant prorated limit for org #{$orgId}, "
+                        . "plan #{$plan->id}, monthly_from_payment={$monthlyFromPayment}, "
+                        . "ai_balance={$balance->ai_balance}."
+                    );
+                }
 
                 // 2b. Запас на ИИ-баланс (свободный кошелёк) — отдельно от оплаты периода.
                 $this->creditBalanceTopUp($balance, $aiItem);
 
-                // 3. Агент включаем только если limited реально начислен
-                //    ИЛИ есть свободный запас на балансе.
+                // 3. Агент включаем: limited уже начислен (или есть spendable после topup).
                 $balance->refresh();
-                if (($granted && (float) $balance->limited_balance > 0)
+                if ((float) $balance->limited_balance > 0
                     || $balance->availableForUsageAmount() > 0) {
                     $balance->is_agent_enabled = true;
                     $balance->scheduled_activation_at = null;
@@ -347,14 +357,23 @@ class AiSubscriptionRegistryService
         ]);
     }
 
-    /** @return bool true if limited_balance was granted */
-    private function grantProratedLimit(AiBalance $balance, AiTariffPlan $plan): bool
+    /**
+     * @param  float|null  $monthlyOverride  Месячная база из КП (original_price/months).
+     *                                       Если null — текущий прайс тарифа.
+     * @return bool true if limited_balance was granted
+     */
+    private function grantProratedLimit(AiBalance $balance, AiTariffPlan $plan, ?float $monthlyOverride = null): bool
     {
         $now = Carbon::now('Asia/Dushanbe');
         $daysInMonth = (int) $now->daysInMonth;
         $dayOfMonth = (int) $now->day;
         $daysLeft = $daysInMonth - $dayOfMonth + 1;
-        $fullCost = $plan->monthlyLimit(); // throws if no current price
+
+        // Прайса тарифа всё равно должен существовать (валюта/актуальность).
+        $planMonthly = $plan->monthlyLimit();
+        $fullCost = $monthlyOverride !== null && $monthlyOverride > 0
+            ? round($monthlyOverride, 4)
+            : $planMonthly;
 
         if ($daysInMonth <= 0) {
             throw new RuntimeException('Invalid daysInMonth while granting prorated AI limit.');
@@ -369,6 +388,8 @@ class AiSubscriptionRegistryService
                 'organization_id' => $balance->organization_id,
                 'ai_balance' => $ai,
                 'required' => $cost,
+                'full_cost' => $fullCost,
+                'plan_monthly' => $planMonthly,
             ]);
             return false;
         }

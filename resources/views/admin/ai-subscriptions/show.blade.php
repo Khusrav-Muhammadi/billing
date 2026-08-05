@@ -189,10 +189,31 @@
                                 <div class="collapse" id="usageDetails{{ $u->id }}">
                                     <div class="p-3 bg-light">
                                         @php
-                                            $billCurrency = $u->rawLogs->first()?->costCurrency?->symbol_code
-                                                ?? $u->currency?->symbol_code
-                                                ?? '';
+                                            $priceCurrency = $u->rawLogs->first()?->costCurrency?->symbol_code ?? '';
+                                            $deductCurrency = $u->currency?->symbol_code ?? '';
+                                            $currencyMismatch = $priceCurrency !== '' && $deductCurrency !== ''
+                                                && strtoupper($priceCurrency) !== strtoupper($deductCurrency);
+
+                                            $totalInTokens = (int) $u->rawLogs->sum(fn ($r) => $r->inputTokens());
+                                            $totalOutTokens = (int) $u->rawLogs->sum('completion_tokens');
+                                            $avgPriceIn = $totalInTokens > 0
+                                                ? $u->rawLogs->sum(fn ($r) => (float) $r->price_per_1m_input_snapshot * $r->inputTokens()) / $totalInTokens
+                                                : null;
+                                            $avgPriceOut = $totalOutTokens > 0
+                                                ? $u->rawLogs->sum(fn ($r) => (float) $r->price_per_1m_output_snapshot * (int) $r->completion_tokens) / $totalOutTokens
+                                                : null;
+                                            $sumSellIn = $u->rawLogs->sum(fn ($r) => $r->sellInputAmount());
+                                            $sumSellOut = $u->rawLogs->sum(fn ($r) => $r->sellOutputAmount());
+                                            $sumSell = $u->rawLogs->sum(fn ($r) => $r->sellAmount());
+                                            $sumCost = $u->rawLogs->sum(fn ($r) => $r->costAmount());
                                         @endphp
+                                        @if($currencyMismatch)
+                                            <div class="alert alert-warning py-2 small mb-2">
+                                                Логи посчитаны в <strong>{{ $priceCurrency }}</strong> (старый режим),
+                                                а списание прошло в <strong>{{ $deductCurrency }}</strong>.
+                                                Новые запросы берутся только из прайса в валюте баланса, без конвертации.
+                                            </div>
+                                        @endif
                                         <div class="table-responsive">
                                             <table class="table table-sm table-bordered mb-0 bg-white">
                                                 <thead>
@@ -201,12 +222,12 @@
                                                         <th>Модель</th>
                                                         <th>Вход. токены</th>
                                                         <th>Вых. токены</th>
-                                                        <th>Цена вх. /1M <small class="text-muted">{{ $billCurrency }}</small></th>
-                                                        <th>Цена вых. /1M <small class="text-muted">{{ $billCurrency }}</small></th>
-                                                        <th>Продажа вх. <small class="text-muted">{{ $billCurrency }}</small></th>
-                                                        <th>Продажа вых. <small class="text-muted">{{ $billCurrency }}</small></th>
-                                                        <th>Продажа <small class="text-muted">{{ $billCurrency }}</small></th>
-                                                        <th>Себестоимость <small class="text-muted">{{ $billCurrency }}</small></th>
+                                                        <th>Цена вх. /1M <small class="text-muted">{{ $priceCurrency }}</small></th>
+                                                        <th>Цена вых. /1M <small class="text-muted">{{ $priceCurrency }}</small></th>
+                                                        <th>Продажа вх. <small class="text-muted">{{ $priceCurrency }}</small></th>
+                                                        <th>Продажа вых. <small class="text-muted">{{ $priceCurrency }}</small></th>
+                                                        <th>Продажа <small class="text-muted">{{ $priceCurrency }}</small></th>
+                                                        <th>Себестоимость <small class="text-muted">{{ $priceCurrency }}</small></th>
                                                         <th>Маржа %</th>
                                                     </tr>
                                                 </thead>
@@ -237,14 +258,28 @@
                                                 <tfoot>
                                                     <tr class="fw-semibold">
                                                         <td colspan="2">Итого</td>
-                                                        <td>{{ number_format($u->rawLogs->sum(fn ($r) => $r->inputTokens())) }}</td>
-                                                        <td>{{ number_format($u->rawLogs->sum('completion_tokens')) }}</td>
-                                                        <td class="small text-muted">—</td>
-                                                        <td class="small text-muted">—</td>
-                                                        <td>{{ number_format($u->rawLogs->sum(fn ($r) => $r->sellInputAmount()), 6) }} {{ $billCurrency }}</td>
-                                                        <td>{{ number_format($u->rawLogs->sum(fn ($r) => $r->sellOutputAmount()), 6) }} {{ $billCurrency }}</td>
-                                                        <td>{{ number_format($u->rawLogs->sum(fn ($r) => $r->sellAmount()), 6) }} {{ $billCurrency }}</td>
-                                                        <td>{{ number_format($u->rawLogs->sum(fn ($r) => $r->costAmount()), 6) }} {{ $billCurrency }}</td>
+                                                        <td>{{ number_format($totalInTokens) }}</td>
+                                                        <td>{{ number_format($totalOutTokens) }}</td>
+                                                        <td class="small">
+                                                            @if($avgPriceIn !== null)
+                                                                {{ number_format($avgPriceIn, 4) }}
+                                                                <div class="text-muted fw-normal">ср. /1M</div>
+                                                            @else
+                                                                —
+                                                            @endif
+                                                        </td>
+                                                        <td class="small">
+                                                            @if($avgPriceOut !== null)
+                                                                {{ number_format($avgPriceOut, 4) }}
+                                                                <div class="text-muted fw-normal">ср. /1M</div>
+                                                            @else
+                                                                —
+                                                            @endif
+                                                        </td>
+                                                        <td>{{ number_format($sumSellIn, 6) }} {{ $priceCurrency }}</td>
+                                                        <td>{{ number_format($sumSellOut, 6) }} {{ $priceCurrency }}</td>
+                                                        <td>{{ number_format($sumSell, 6) }} {{ $priceCurrency }}</td>
+                                                        <td>{{ number_format($sumCost, 6) }} {{ $priceCurrency }}</td>
                                                         <td></td>
                                                     </tr>
                                                 </tfoot>
