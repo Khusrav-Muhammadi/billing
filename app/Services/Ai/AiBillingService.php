@@ -83,11 +83,7 @@ class AiBillingService
                 $totalCostInBalanceCurrency
             );
 
-            AiUsageRawLog::query()
-                ->whereIn('id', $rawIds)
-                ->update(['processed' => true]);
-
-            AiUsageLog::query()->create([
+            $usageLog = AiUsageLog::query()->create([
                 'organization_id' => $orgId,
                 'currency_id' => $balance->currency_id,
                 'total_cost' => $totalCostInBalanceCurrency,
@@ -97,6 +93,13 @@ class AiBillingService
                 'period_end' => $periodEnd,
                 'created_at' => now(),
             ]);
+
+            AiUsageRawLog::query()
+                ->whereIn('id', $rawIds)
+                ->update([
+                    'processed' => true,
+                    'ai_usage_log_id' => $usageLog->id,
+                ]);
 
             $timeRange = $periodStart->format('H:i') . '–' . $periodEnd->format('H:i');
 

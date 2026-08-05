@@ -140,20 +140,36 @@
     {{-- История 30-мин расчётов --}}
     <div class="card mt-3 p-3">
         <h5 class="card-title">30-минутные расчёты</h5>
+        <p class="text-muted small mb-2">Нажмите на период, чтобы увидеть использование моделей за это время.</p>
         <div class="table-responsive">
-            <table class="table table-sm table-hover">
+            <table class="table table-sm table-hover align-middle">
                 <thead>
                     <tr>
+                        <th style="width: 2rem"></th>
                         <th>Период</th>
                         <th>Итого списано</th>
                         <th>С лимитированного</th>
                         <th>С ИИ-счёта</th>
                         <th>Валюта</th>
+                        <th>Записей</th>
                     </tr>
                 </thead>
                 <tbody>
                 @forelse($usageLogs as $u)
-                    <tr>
+                    @php $rawCount = $u->rawLogs->count(); @endphp
+                    <tr class="{{ $rawCount > 0 ? '' : 'text-muted' }}"
+                        @if($rawCount > 0)
+                            style="cursor: pointer"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#usageDetails{{ $u->id }}"
+                            aria-expanded="false"
+                        @endif
+                    >
+                        <td class="text-center">
+                            @if($rawCount > 0)
+                                <i class="mdi mdi-chevron-down"></i>
+                            @endif
+                        </td>
                         <td class="small">
                             {{ $u->period_start?->format('d.m.Y H:i') }} —
                             {{ $u->period_end?->format('H:i') }}
@@ -162,9 +178,79 @@
                         <td>{{ number_format($u->deducted_from_limited, 6) }}</td>
                         <td>{{ number_format($u->deducted_from_ai_balance, 6) }}</td>
                         <td>{{ $u->currency?->symbol_code }}</td>
+                        <td>{{ $rawCount }}</td>
                     </tr>
+                    @if($rawCount > 0)
+                        <tr>
+                            <td colspan="7" class="p-0 border-0">
+                                <div class="collapse" id="usageDetails{{ $u->id }}">
+                                    <div class="p-3 bg-light">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered mb-0 bg-white">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Время</th>
+                                                        <th>Модель</th>
+                                                        <th>Вход. токены</th>
+                                                        <th>Вых. токены</th>
+                                                        <th>Цена вх. /1M</th>
+                                                        <th>Цена вых. /1M</th>
+                                                        <th>Продажа</th>
+                                                        <th>Себестоимость</th>
+                                                        <th>Маржа %</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                @foreach($u->rawLogs as $raw)
+                                                    @php
+                                                        $currency = $raw->costCurrency?->symbol_code
+                                                            ?? $u->currency?->symbol_code
+                                                            ?? '';
+                                                    @endphp
+                                                    <tr>
+                                                        <td class="small text-nowrap">
+                                                            {{ $raw->created_at?->format('d.m.Y H:i:s') ?? '—' }}
+                                                        </td>
+                                                        <td><code>{{ $raw->model_name }}</code></td>
+                                                        <td>
+                                                            {{ number_format($raw->inputTokens()) }}
+                                                            @if((int) $raw->prompt_cache_hit_tokens > 0)
+                                                                <small class="text-muted">(cache {{ number_format($raw->prompt_cache_hit_tokens) }})</small>
+                                                            @endif
+                                                        </td>
+                                                        <td>{{ number_format((int) $raw->completion_tokens) }}</td>
+                                                        <td class="small">{{ number_format((float) $raw->price_per_1m_input_snapshot, 4) }}</td>
+                                                        <td class="small">{{ number_format((float) $raw->price_per_1m_output_snapshot, 4) }}</td>
+                                                        <td class="text-nowrap">
+                                                            {{ number_format($raw->sellAmount(), 6) }} {{ $currency }}
+                                                        </td>
+                                                        <td class="text-nowrap">
+                                                            {{ number_format($raw->costAmount(), 6) }} {{ $currency }}
+                                                        </td>
+                                                        <td>{{ number_format((float) $raw->margin_percent_snapshot, 2) }}%</td>
+                                                    </tr>
+                                                @endforeach
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="fw-semibold">
+                                                        <td colspan="2">Итого</td>
+                                                        <td>{{ number_format($u->rawLogs->sum(fn ($r) => $r->inputTokens())) }}</td>
+                                                        <td>{{ number_format($u->rawLogs->sum('completion_tokens')) }}</td>
+                                                        <td colspan="2"></td>
+                                                        <td>{{ number_format($u->rawLogs->sum(fn ($r) => $r->sellAmount()), 6) }}</td>
+                                                        <td>{{ number_format($u->rawLogs->sum(fn ($r) => $r->costAmount()), 6) }}</td>
+                                                        <td></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    @endif
                 @empty
-                    <tr><td colspan="5" class="text-center text-muted">Нет расчётов</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted">Нет расчётов</td></tr>
                 @endforelse
                 </tbody>
             </table>

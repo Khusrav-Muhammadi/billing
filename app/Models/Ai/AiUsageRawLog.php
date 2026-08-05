@@ -16,6 +16,7 @@ class AiUsageRawLog extends Model
 
     protected $fillable = [
         'organization_id',
+        'ai_usage_log_id',
         'crm_log_id',
         'model_name',
         'prompt_tokens',
@@ -46,6 +47,11 @@ class AiUsageRawLog extends Model
         return $this->belongsTo(Organization::class);
     }
 
+    public function usageLog(): BelongsTo
+    {
+        return $this->belongsTo(AiUsageLog::class, 'ai_usage_log_id');
+    }
+
     public function costCurrency(): BelongsTo
     {
         return $this->belongsTo(Currency::class, 'cost_currency_id');
@@ -54,5 +60,34 @@ class AiUsageRawLog extends Model
     public function scopeUnprocessed($query)
     {
         return $query->where('processed', false);
+    }
+
+    /** Входные токены (включая cache hit). */
+    public function inputTokens(): int
+    {
+        return (int) $this->prompt_tokens + (int) $this->prompt_cache_hit_tokens;
+    }
+
+    /** Продажная сумма (то, что списали с клиента). */
+    public function sellAmount(): float
+    {
+        return round((float) $this->calculated_cost, 6);
+    }
+
+    /**
+     * Себестоимость: sell = cost / (1 - margin/100)
+     * → cost = sell * (1 - margin/100).
+     */
+    public function costAmount(): float
+    {
+        $margin = (float) ($this->margin_percent_snapshot ?? 0);
+        if ($margin < 0) {
+            $margin = 0;
+        }
+        if ($margin >= 100) {
+            return 0.0;
+        }
+
+        return round((float) $this->calculated_cost * (1 - $margin / 100), 6);
     }
 }

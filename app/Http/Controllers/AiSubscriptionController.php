@@ -7,6 +7,7 @@ use App\Models\Ai\AiBalanceTransaction;
 use App\Models\Ai\AiSubscription;
 use App\Models\Ai\AiTariffPlan;
 use App\Models\Ai\AiUsageLog;
+use App\Models\Ai\AiUsageRawLog;
 use Illuminate\Http\Request;
 
 class AiSubscriptionController extends Controller
@@ -78,10 +79,12 @@ class AiSubscriptionController extends Controller
 
         $usageLogs = AiUsageLog::query()
             ->where('organization_id', $aiSubscription->organization_id)
-            ->with('currency')
+            ->with(['currency', 'rawLogs.costCurrency'])
             ->orderByDesc('period_start')
             ->limit(50)
             ->get();
+
+        $this->attachFallbackRawLogs($usageLogs, (int) $aiSubscription->organization_id);
 
         return view('admin.ai-subscriptions.show', compact(
             'aiSubscription',
@@ -89,5 +92,51 @@ class AiSubscriptionController extends Controller
             'transactions',
             'usageLogs'
         ));
+    }
+
+    /**
+     * Для старых 30-мин циклов без ai_usage_log_id — подтягиваем сырые логи по времени периода.
+     */
+    private function attachFallbackRawLogs($usageLogs, int $orgId): void
+    {
+        $needsFallback = $usageLogs->filter(fn (AiUsageLog $u) => $u->rawLogs->isEmpty());
+        if ($needsFallback->isEmpty()) {
+            return;
+        }
+
+        $minStart = $needsFallback->min('period_start');
+        $maxEnd = $needsFallback->max('period_end');
+        if (! $minStart || ! $maxEnd) {
+            return;
+        }
+
+        $orphanRaws = AiUsageRawLog::query()
+            ->where('organization_id', $orgId)
+            ->where('processed', true)
+            ->whereNull('ai_usage_log_id')
+            ->where(function ($q) use ($minStart, $maxEnd) {
+                $q->whereBetween('created_at', [$minStart, $maxEnd])
+                    ->orWhereBetween('fetched_at', [$minStart, $maxEnd]);
+            })
+            ->with('costCurrency')
+            ->orderBy('created_at')
+            ->get();
+
+        foreach ($needsFallback as $usageLog) {
+            $matched = $orphanRaws->filter(function (AiUsageRawLog $raw) use ($usageLog) {
+                $start = $usageLog->period_start;
+                $end = $usageLog->period_end;
+                if (! $start || ! $end) {
+                    return false;
+                }
+
+                $inCreated = $raw->created_at && $raw->created_at >= $start && $raw->created_at <= $end;
+                $inFetched = $raw->fetched_at && $raw->fetched_at >= $start && $raw->fetched_at <= $end;
+
+                return $inCreated || $inFetched;
+            })->values();
+
+            $usageLog->setRelation('rawLogs', $matched);
+        }
     }
 }

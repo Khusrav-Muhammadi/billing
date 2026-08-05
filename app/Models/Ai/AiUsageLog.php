@@ -7,6 +7,7 @@ use App\Models\Organization;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AiUsageLog extends Model
 {
@@ -44,5 +45,10 @@ class AiUsageLog extends Model
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class);
+    }
+
+    public function rawLogs(): HasMany
+    {
+        return $this->hasMany(AiUsageRawLog::class, 'ai_usage_log_id')->orderBy('created_at');
     }
 }
