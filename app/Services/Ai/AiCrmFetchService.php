@@ -212,9 +212,12 @@ class AiCrmFetchService
             // Цена строго в валюте баланса. Нет прайса — ошибка, без FX.
             $resolved = $this->resolveTokenPricing($modelName, $createdAt, $balanceCurrencyId);
 
-            $inputCost = ($promptTokens / 1_000_000) * (float) $resolved['price_per_1m_input'];
+            // prompt включает cache: miss по цене входа, hit — по цене cache.
+            $nonCachedTokens = $promptTokens - $cacheHitTokens;
+            $inputCost = ($nonCachedTokens / 1_000_000) * (float) $resolved['price_per_1m_input'];
+            $cacheCost = ($cacheHitTokens / 1_000_000) * (float) $resolved['price_per_1m_cache'];
             $outputCost = ($completionTokens / 1_000_000) * (float) $resolved['price_per_1m_output'];
-            $calculatedCost = round($inputCost + $outputCost, 6);
+            $calculatedCost = round($inputCost + $cacheCost + $outputCost, 6);
 
             try {
                 AiUsageRawLog::query()->insertOrIgnore([[
@@ -227,6 +230,7 @@ class AiCrmFetchService
                     'calculated_cost' => $calculatedCost,
                     'cost_currency_id' => $resolved['currency_id'],
                     'price_per_1m_input_snapshot' => $resolved['price_per_1m_input'],
+                    'price_per_1m_cache_snapshot' => $resolved['price_per_1m_cache'],
                     'price_per_1m_output_snapshot' => $resolved['price_per_1m_output'],
                     'margin_percent_snapshot' => $resolved['margin_percent'],
                     'processed' => false,
@@ -248,7 +252,13 @@ class AiCrmFetchService
      * Цена токенов на дату лога из ai_model_prices строго в currency_id баланса.
      * Нет прайса в этой валюте — RuntimeException (никакого FX / USD-fallback / 0).
      *
-     * @return array{price_per_1m_input: float, price_per_1m_output: float, margin_percent: float, currency_id: int}
+     * @return array{
+     *     price_per_1m_input: float,
+     *     price_per_1m_cache: float,
+     *     price_per_1m_output: float,
+     *     margin_percent: float,
+     *     currency_id: int
+     * }
      */
     private function resolveTokenPricing(string $modelName, string $at, int $currencyId): array
     {
@@ -282,9 +292,17 @@ class AiCrmFetchService
             );
         }
 
+        if ($price->price_per_1m_cache === null) {
+            throw new RuntimeException(
+                "AI model [{$modelName}] price #{$price->id} has no price_per_1m_cache; "
+                . 'add cache token price.'
+            );
+        }
+
         // Списание по продажной цене (cost / (1 - margin/100)), уже в price_per_1m_*.
         return [
             'price_per_1m_input' => (float) $price->price_per_1m_input,
+            'price_per_1m_cache' => (float) $price->price_per_1m_cache,
             'price_per_1m_output' => (float) $price->price_per_1m_output,
             'margin_percent' => (float) $price->margin_percent,
             'currency_id' => (int) $price->currency_id,

@@ -14,9 +14,11 @@ class AiModelPrice extends Model
         'ai_model_id',
         'currency_id',
         'cost_per_1m_input',
+        'cost_per_1m_cache',
         'cost_per_1m_output',
         'margin_percent',
         'price_per_1m_input',
+        'price_per_1m_cache',
         'price_per_1m_output',
         'start_date',
         'end_date',
@@ -25,9 +27,11 @@ class AiModelPrice extends Model
 
     protected $casts = [
         'cost_per_1m_input' => 'decimal:6',
+        'cost_per_1m_cache' => 'decimal:6',
         'cost_per_1m_output' => 'decimal:6',
         'margin_percent' => 'decimal:2',
         'price_per_1m_input' => 'decimal:6',
+        'price_per_1m_cache' => 'decimal:6',
         'price_per_1m_output' => 'decimal:6',
         'start_date' => 'date',
         'end_date' => 'date',
@@ -57,6 +61,7 @@ class AiModelPrice extends Model
         }
 
         $this->price_per_1m_input = round((float) $this->cost_per_1m_input / $divisor, 6);
+        $this->price_per_1m_cache = round((float) $this->cost_per_1m_cache / $divisor, 6);
         $this->price_per_1m_output = round((float) $this->cost_per_1m_output / $divisor, 6);
     }
 

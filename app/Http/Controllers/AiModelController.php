@@ -89,6 +89,7 @@ class AiModelController extends Controller
         $data = $request->validate([
             'currency_id' => 'required|integer|exists:currencies,id',
             'cost_per_1m_input' => 'required|numeric|min:0',
+            'cost_per_1m_cache' => 'required|numeric|min:0',
             'cost_per_1m_output' => 'required|numeric|min:0',
             'margin_percent' => 'required|numeric|min:0|max:99.99',
             'start_date' => 'required|date',
@@ -112,6 +113,7 @@ class AiModelController extends Controller
                 'ai_model_id' => $aiModel->id,
                 'currency_id' => $data['currency_id'],
                 'cost_per_1m_input' => $data['cost_per_1m_input'],
+                'cost_per_1m_cache' => $data['cost_per_1m_cache'],
                 'cost_per_1m_output' => $data['cost_per_1m_output'],
                 'margin_percent' => $data['margin_percent'],
                 'start_date' => $data['start_date'],
@@ -128,6 +130,7 @@ class AiModelController extends Controller
         $data = $request->validate([
             'currency_id' => 'required|integer|exists:currencies,id',
             'cost_per_1m_input' => 'required|numeric|min:0',
+            'cost_per_1m_cache' => 'required|numeric|min:0',
             'cost_per_1m_output' => 'required|numeric|min:0',
             'margin_percent' => 'required|numeric|min:0|max:99.99',
             'start_date' => 'required|date',
@@ -137,6 +140,7 @@ class AiModelController extends Controller
         $price->update([
             'currency_id' => $data['currency_id'],
             'cost_per_1m_input' => $data['cost_per_1m_input'],
+            'cost_per_1m_cache' => $data['cost_per_1m_cache'],
             'cost_per_1m_output' => $data['cost_per_1m_output'],
             'margin_percent' => $data['margin_percent'],
             'start_date' => $data['start_date'],

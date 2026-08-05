@@ -17,7 +17,6 @@
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
             <h4 class="card-title mb-0">Цены модели: <code>{{ $aiModel->name }}</code></h4>
-
         </div>
         <div class="d-flex gap-2">
             <a href="{{ route('ai-model.index') }}" class="btn btn-light">Назад</a>
@@ -34,9 +33,11 @@
                 <th>Дата завершения</th>
                 <th>Валюта</th>
                 <th>Себест. вход / 1M</th>
+                <th>Себест. cache / 1M</th>
                 <th>Себест. выход / 1M</th>
                 <th>Маржа %</th>
                 <th>Продажа вход / 1M</th>
+                <th>Продажа cache / 1M</th>
                 <th>Продажа выход / 1M</th>
                 <th>Добавил</th>
                 <th>Действие</th>
@@ -57,6 +58,7 @@
                     </td>
                     <td>{{ $price->currency?->name }}</td>
                     <td>{{ number_format($price->cost_per_1m_input, 4) }}</td>
+                    <td>{{ number_format($price->cost_per_1m_cache, 4) }}</td>
                     <td>{{ number_format($price->cost_per_1m_output, 4) }}</td>
                     <td>{{ number_format($price->margin_percent, 2) }}%</td>
                     <td>
@@ -65,6 +67,7 @@
                             <span class="badge bg-success ms-1">Текущая</span>
                         @endif
                     </td>
+                    <td><strong>{{ number_format($price->price_per_1m_cache, 4) }}</strong></td>
                     <td><strong>{{ number_format($price->price_per_1m_output, 4) }}</strong></td>
                     <td>{{ $price->creator?->name ?? '—' }}</td>
                     <td>
@@ -101,6 +104,11 @@
                                         <input type="text" inputmode="decimal" class="form-control js-cost-in" name="cost_per_1m_input" value="{{ $price->cost_per_1m_input }}" required>
                                     </div>
                                     <div class="form-group">
+                                        <label>Себестоимость cache / 1M <span class="text-danger">*</span></label>
+                                        <input type="text" inputmode="decimal" class="form-control js-cost-cache" name="cost_per_1m_cache" value="{{ $price->cost_per_1m_cache }}" required>
+                                        <small class="text-muted">Cache-hit токены (часть prompt_tokens)</small>
+                                    </div>
+                                    <div class="form-group">
                                         <label>Себестоимость выход / 1M <span class="text-danger">*</span></label>
                                         <input type="text" inputmode="decimal" class="form-control js-cost-out" name="cost_per_1m_output" value="{{ $price->cost_per_1m_output }}" required>
                                     </div>
@@ -111,6 +119,7 @@
                                     </div>
                                     <div class="alert alert-light border py-2 mb-3">
                                         Продажа вход: <strong class="js-sell-in">{{ number_format($price->price_per_1m_input, 4) }}</strong>
+                                        · cache: <strong class="js-sell-cache">{{ number_format($price->price_per_1m_cache, 4) }}</strong>
                                         · выход: <strong class="js-sell-out">{{ number_format($price->price_per_1m_output, 4) }}</strong>
                                     </div>
                                     <div class="form-group">
@@ -121,7 +130,6 @@
                                         <label>Дата завершения</label>
                                         <input type="date" class="form-control" name="end_date"
                                                value="{{ ($price->end_date && $price->end_date->format('Y-m-d') !== '9999-12-31') ? $price->end_date->format('Y-m-d') : '' }}">
-                                        <small class="text-muted"> </small>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -143,8 +151,8 @@
                                 </div>
                                 <div class="modal-body">
                                     Удалить цену
-                                    продажа <strong>{{ number_format($price->price_per_1m_input, 4) }} / {{ number_format($price->price_per_1m_output, 4) }}</strong>
-                                    (себест. {{ number_format($price->cost_per_1m_input, 4) }} / {{ number_format($price->cost_per_1m_output, 4) }},
+                                    продажа <strong>{{ number_format($price->price_per_1m_input, 4) }} / {{ number_format($price->price_per_1m_cache, 4) }} / {{ number_format($price->price_per_1m_output, 4) }}</strong>
+                                    (себест. {{ number_format($price->cost_per_1m_input, 4) }} / {{ number_format($price->cost_per_1m_cache, 4) }} / {{ number_format($price->cost_per_1m_output, 4) }},
                                     маржа {{ number_format($price->margin_percent, 2) }}%)
                                     {{ $price->currency?->name }}?
                                 </div>
@@ -158,7 +166,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="11" class="text-center text-muted py-4">Цены не добавлены</td>
+                    <td colspan="13" class="text-center text-muted py-4">Цены не добавлены</td>
                 </tr>
             @endforelse
             </tbody>
@@ -194,6 +202,13 @@
                         @error('cost_per_1m_input')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
+                        <label>Себестоимость cache / 1M <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" class="form-control js-cost-cache @error('cost_per_1m_cache') is-invalid @enderror"
+                               name="cost_per_1m_cache" value="{{ old('cost_per_1m_cache') }}" required>
+                        <small class="text-muted">Обычно ~10% от входа (DeepSeek cache hit)</small>
+                        @error('cost_per_1m_cache')<span class="text-danger">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="form-group">
                         <label>Себестоимость выход / 1M <span class="text-danger">*</span></label>
                         <input type="text" inputmode="decimal" class="form-control js-cost-out @error('cost_per_1m_output') is-invalid @enderror"
                                name="cost_per_1m_output" value="{{ old('cost_per_1m_output') }}" required>
@@ -208,6 +223,7 @@
                     </div>
                     <div class="alert alert-light border py-2 mb-3">
                         Продажа вход: <strong class="js-sell-in">—</strong>
+                        · cache: <strong class="js-sell-cache">—</strong>
                         · выход: <strong class="js-sell-out">—</strong>
                     </div>
                     <div class="form-group">
@@ -219,7 +235,6 @@
                     <div class="form-group">
                         <label>Дата завершения</label>
                         <input type="date" class="form-control" name="end_date" value="{{ old('end_date') }}">
-                        <small class="text-muted"> </small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -247,24 +262,25 @@
     }
 
     function recalc(form) {
-        var costInEl = form.querySelector('.js-cost-in');
-        var costOutEl = form.querySelector('.js-cost-out');
-        var marginEl = form.querySelector('.js-margin');
-        var costIn = parseNum(costInEl && costInEl.value);
-        var costOut = parseNum(costOutEl && costOutEl.value);
-        var margin = parseNum(marginEl && marginEl.value);
+        var costIn = parseNum(form.querySelector('.js-cost-in') && form.querySelector('.js-cost-in').value);
+        var costCache = parseNum(form.querySelector('.js-cost-cache') && form.querySelector('.js-cost-cache').value);
+        var costOut = parseNum(form.querySelector('.js-cost-out') && form.querySelector('.js-cost-out').value);
+        var margin = parseNum(form.querySelector('.js-margin') && form.querySelector('.js-margin').value);
         var sellInEl = form.querySelector('.js-sell-in');
+        var sellCacheEl = form.querySelector('.js-sell-cache');
         var sellOutEl = form.querySelector('.js-sell-out');
-        if (!sellInEl || !sellOutEl) return;
+        if (!sellInEl || !sellCacheEl || !sellOutEl) return;
 
-        if (!isFinite(costIn) || !isFinite(costOut) || !isFinite(margin) || margin < 0 || margin >= 100) {
+        if (![costIn, costCache, costOut, margin].every(isFinite) || margin < 0 || margin >= 100) {
             sellInEl.textContent = '—';
+            sellCacheEl.textContent = '—';
             sellOutEl.textContent = '—';
             return;
         }
 
         var divisor = 1 - (margin / 100);
         sellInEl.textContent = formatNum(costIn / divisor);
+        sellCacheEl.textContent = formatNum(costCache / divisor);
         sellOutEl.textContent = formatNum(costOut / divisor);
     }
 

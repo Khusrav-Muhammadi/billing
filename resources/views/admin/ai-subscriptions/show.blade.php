@@ -223,6 +223,7 @@
                                                         <th>Вход. токены</th>
                                                         <th>Вых. токены</th>
                                                         <th>Цена вх. /1M <small class="text-muted">{{ $priceCurrency }}</small></th>
+                                                        <th>Цена cache /1M <small class="text-muted">{{ $priceCurrency }}</small></th>
                                                         <th>Цена вых. /1M <small class="text-muted">{{ $priceCurrency }}</small></th>
                                                         <th>Продажа вх. <small class="text-muted">{{ $priceCurrency }}</small></th>
                                                         <th>Продажа вых. <small class="text-muted">{{ $priceCurrency }}</small></th>
@@ -246,6 +247,11 @@
                                                         </td>
                                                         <td>{{ number_format((int) $raw->completion_tokens) }}</td>
                                                         <td class="small">{{ number_format((float) $raw->price_per_1m_input_snapshot, 4) }}</td>
+                                                        <td class="small">
+                                                            {{ $raw->price_per_1m_cache_snapshot !== null
+                                                                ? number_format((float) $raw->price_per_1m_cache_snapshot, 4)
+                                                                : '—' }}
+                                                        </td>
                                                         <td class="small">{{ number_format((float) $raw->price_per_1m_output_snapshot, 4) }}</td>
                                                         <td class="text-nowrap small">{{ number_format($raw->sellInputAmount(), 6) }}</td>
                                                         <td class="text-nowrap small">{{ number_format($raw->sellOutputAmount(), 6) }}</td>
@@ -268,6 +274,7 @@
                                                                 —
                                                             @endif
                                                         </td>
+                                                        <td class="small text-muted">—</td>
                                                         <td class="small">
                                                             @if($avgPriceOut !== null)
                                                                 {{ number_format($avgPriceOut, 4) }}

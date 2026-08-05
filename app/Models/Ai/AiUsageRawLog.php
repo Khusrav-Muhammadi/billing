@@ -25,6 +25,7 @@ class AiUsageRawLog extends Model
         'calculated_cost',
         'cost_currency_id',
         'price_per_1m_input_snapshot',
+        'price_per_1m_cache_snapshot',
         'price_per_1m_output_snapshot',
         'margin_percent_snapshot',
         'processed',
@@ -35,6 +36,7 @@ class AiUsageRawLog extends Model
     protected $casts = [
         'calculated_cost' => 'decimal:6',
         'price_per_1m_input_snapshot' => 'decimal:6',
+        'price_per_1m_cache_snapshot' => 'decimal:6',
         'price_per_1m_output_snapshot' => 'decimal:6',
         'margin_percent_snapshot' => 'decimal:2',
         'processed' => 'boolean',
@@ -77,11 +79,19 @@ class AiUsageRawLog extends Model
         return round((float) $this->calculated_cost, 6);
     }
 
-    /** Продажа только за входные токены (валюта прайса). */
+    /** Продажа за входные токены: miss по input, hit по cache. */
     public function sellInputAmount(): float
     {
+        $prompt = (int) $this->prompt_tokens;
+        $cache = min((int) $this->prompt_cache_hit_tokens, $prompt);
+        $nonCached = $prompt - $cache;
+        $priceIn = (float) $this->price_per_1m_input_snapshot;
+        $priceCache = $this->price_per_1m_cache_snapshot !== null
+            ? (float) $this->price_per_1m_cache_snapshot
+            : $priceIn;
+
         return round(
-            ($this->inputTokens() / 1_000_000) * (float) $this->price_per_1m_input_snapshot,
+            ($nonCached / 1_000_000) * $priceIn + ($cache / 1_000_000) * $priceCache,
             6
         );
     }
