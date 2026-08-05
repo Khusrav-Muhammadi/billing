@@ -6137,9 +6137,7 @@ class CPGenerator {
                 topupInput.value = suggested;
                 this._aiTopupManual = false;
             }
-            if (topupHint) {
-                topupHint.textContent = `Рекомендация на сегодня: ${suggested} ${currency || ''} (пропорция оставшихся дней месяца).`;
-            }
+
         };
 
         const readTopup = () => {

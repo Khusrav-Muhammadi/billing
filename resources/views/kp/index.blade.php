@@ -777,12 +777,10 @@
                     <span class="toggle-slider"></span>
                 </label>
             </div>
-            <p style="font-size:13px;color:#6b7280;margin:6px 0 0;"> ИИ-агент </p>
 
             <div id="aiTariffBody" style="display:none;margin-top:20px;">
 
                 {{-- Карточки планов --}}
-                <div class="kp-setting-label" style="margin-bottom:12px;">Выберите ИИ-тарифный план</div>
                 <div class="tariffs-grid" id="aiPlansGrid"></div>
 
                 {{-- Период --}}
@@ -804,7 +802,7 @@
                                    style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
                             <span id="aiBalanceTopupCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
                             <button type="button" id="aiBalanceTopupResetBtn" class="action-btn secondary" style="padding:8px 12px;font-size:13px;">
-                                По рекомендации
+                                По умолчанию
                             </button>
                         </div>
                         <div id="aiBalanceTopupHint" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>

@@ -171,7 +171,6 @@
                         <label>Цена в месяц <span class="text-danger">*</span></label>
                         <input type="text" inputmode="decimal" class="form-control @error('price_monthly') is-invalid @enderror"
                                name="price_monthly" value="{{ old('price_monthly') }}" required>
-                        <small class="text-muted">Эта сумма = лимит-баланс, начисляемый клиенту в месяц</small>
                         @error('price_monthly')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
