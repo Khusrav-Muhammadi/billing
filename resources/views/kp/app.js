@@ -317,7 +317,44 @@ class CPGenerator {
         this.renderServices();
         this.renderTariffs();
         this.updateOneTimePayments();
+        this.syncAiAgentAvailability();
         this.updateSummary();
+    }
+
+    normalizeText(value) {
+        return String(value || '').toLowerCase().replace(/ё/g, 'е').trim();
+    }
+
+    isBaseTariff(tariffKey = this.state.selectedTariff, tariff = null) {
+        const resolved = tariff || (tariffKey ? this.config?.tariffs?.[tariffKey] : null);
+        if (!resolved && !tariffKey) return false;
+        const name = this.normalizeText(resolved?.name);
+        const key = this.normalizeText(tariffKey);
+        return name === 'base' || name.includes('базов') || key === 'base' || key.includes('базов');
+    }
+
+    isAiAgentAllowedForSelectedTariff() {
+        if (!this.state.selectedTariff) return false;
+        return !this.isBaseTariff(this.state.selectedTariff);
+    }
+
+    syncAiAgentAvailability() {
+        const card = document.getElementById('aiTariffCard');
+        const section = document.getElementById('aiAgentSection');
+        const target = card || section;
+        if (!target) return;
+
+        const allowed = this.isAiAgentAllowedForSelectedTariff();
+        if (!allowed) {
+            target.style.display = 'none';
+            const checkbox = document.getElementById('aiEnabledCheckbox');
+            if (checkbox) checkbox.checked = false;
+            const body = document.getElementById('aiTariffBody');
+            if (body) body.style.display = 'none';
+            window.CP_AI_ITEM = null;
+            return;
+        }
+        target.style.display = '';
     }
 
     getTariffPrice(tariff) {
@@ -671,7 +708,10 @@ class CPGenerator {
         });
 
         // ── ИИ-Агент ──
-        const aiItem = window.CP_AI_ITEM || null;
+        const aiItem = (window.cpGenerator && typeof window.cpGenerator.isAiAgentAllowedForSelectedTariff === 'function'
+            && !window.cpGenerator.isAiAgentAllowedForSelectedTariff())
+            ? null
+            : (window.CP_AI_ITEM || null);
 
         if (monthlyPayments.length > 0 || aiItem) {
             let tableHTML = '<table class="payments-table">';
@@ -693,17 +733,28 @@ class CPGenerator {
 
             if (aiItem) {
                 tableHTML += `<tr><th colspan="3" class="section-header">ИИ-Агент</th></tr>`;
-                tableHTML += `
+                if ((Number(aiItem.current_month_amount) || 0) > 0) {
+                    tableHTML += `
                     <tr>
-                        <td>ИИ-Агент × ${aiItem.period_months} мес${aiItem.discount_percent > 0 ? ' (скидка ' + aiItem.discount_percent + '%)' : ''}</td>
+                        <td>Текущий месяц</td>
+                        <td>—</td>
+                        <td>${this.formatPrice(aiItem.current_month_amount)}</td>
+                    </tr>
+                    `;
+                }
+                if ((Number(aiItem.period_months) || 0) > 0 && (Number(aiItem.total_price) || 0) > 0) {
+                    tableHTML += `
+                    <tr>
+                        <td>ИИ-Агент (+${aiItem.period_months} мес)${aiItem.discount_percent > 0 ? ' (скидка ' + aiItem.discount_percent + '%)' : ''}</td>
                         <td>${this.formatPrice(aiItem.unit_price)}</td>
                         <td>${this.formatPrice(aiItem.total_price)}</td>
                     </tr>
-                `;
+                    `;
+                }
                 if ((Number(aiItem.balance_topup) || 0) > 0) {
                     tableHTML += `
                     <tr>
-                        <td>Запас на ИИ-баланс</td>
+                        <td>Баланс ИИ</td>
                         <td>—</td>
                         <td>${this.formatPrice(aiItem.balance_topup)}</td>
                     </tr>
@@ -716,7 +767,7 @@ class CPGenerator {
         }
 
         const aiTotal = aiItem
-            ? ((Number(aiItem.total_price) || 0) + (Number(aiItem.balance_topup) || 0))
+            ? ((Number(aiItem.current_month_amount) || 0) + (Number(aiItem.total_price) || 0) + (Number(aiItem.balance_topup) || 0))
             : 0;
         const periodTotal = monthlyTotal * this.state.periodMonths;
         const grandTotal  = periodTotal + aiTotal;

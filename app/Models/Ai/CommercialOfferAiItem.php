@@ -20,6 +20,7 @@ class CommercialOfferAiItem extends Model
         'partner_percent',
         'original_price',
         'total_price',
+        'current_month_amount',
         'balance_topup',
     ];
 
@@ -29,6 +30,7 @@ class CommercialOfferAiItem extends Model
         'partner_percent' => 'decimal:2',
         'original_price' => 'decimal:4',
         'total_price' => 'decimal:4',
+        'current_month_amount' => 'decimal:4',
         'balance_topup' => 'decimal:4',
     ];
 
@@ -42,9 +44,14 @@ class CommercialOfferAiItem extends Model
         return $this->belongsTo(AiTariffPlan::class, 'plan_id');
     }
 
-    /** Сумма к оплате по AI-блоку: период + запас на баланс */
+    /** Сумма к оплате по AI: текущий месяц + доп. месяцы + баланс ИИ */
     public function chargedTotal(): float
     {
-        return round((float) $this->total_price + (float) $this->balance_topup, 4);
+        return round(
+            (float) $this->current_month_amount
+            + (float) $this->total_price
+            + (float) $this->balance_topup,
+            4
+        );
     }
 }

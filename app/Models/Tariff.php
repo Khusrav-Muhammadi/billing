@@ -67,4 +67,19 @@ class Tariff extends Model
     {
         return $this->excludedOrganizations();
     }
+
+    /**
+     * Базовый тариф CRM (по имени). На нём ИИ-агент недоступен.
+     */
+    public static function isBaseTariffName(?string $name): bool
+    {
+        $normalized = mb_strtolower(str_replace('ё', 'е', trim((string) $name)), 'UTF-8');
+
+        return $normalized === 'base' || str_contains($normalized, 'базов');
+    }
+
+    public function isBaseTariff(): bool
+    {
+        return self::isBaseTariffName($this->name);
+    }
 }
