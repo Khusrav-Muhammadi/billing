@@ -8,6 +8,7 @@ use App\Models\Ai\AiSubscription;
 use App\Models\Ai\AiTariffPlan;
 use App\Models\Ai\AiUsageLog;
 use App\Models\Ai\AiUsageRawLog;
+use App\Models\CurrencyRate;
 use Illuminate\Http\Request;
 
 class AiSubscriptionController extends Controller
@@ -85,6 +86,7 @@ class AiSubscriptionController extends Controller
             ->get();
 
         $this->attachFallbackRawLogs($usageLogs, (int) $aiSubscription->organization_id);
+        $this->attachBilledAmounts($usageLogs);
 
         return view('admin.ai-subscriptions.show', compact(
             'aiSubscription',
@@ -138,5 +140,50 @@ class AiSubscriptionController extends Controller
 
             $usageLog->setRelation('rawLogs', $matched);
         }
+    }
+
+    /**
+     * Продажа/себестоимость в валюте списания (как в шапке периода), курс как при биллинге.
+     */
+    private function attachBilledAmounts($usageLogs): void
+    {
+        $rateCache = [];
+
+        foreach ($usageLogs as $usageLog) {
+            $toCurrencyId = (int) $usageLog->currency_id;
+            $rateDate = ($usageLog->period_end ?? $usageLog->created_at ?? now())->toDateString();
+
+            foreach ($usageLog->rawLogs as $raw) {
+                $fromCurrencyId = (int) ($raw->cost_currency_id ?: $toCurrencyId);
+                $cacheKey = $fromCurrencyId . ':' . $toCurrencyId . ':' . $rateDate;
+
+                if (! array_key_exists($cacheKey, $rateCache)) {
+                    $rateCache[$cacheKey] = $this->fxRate($fromCurrencyId, $toCurrencyId, $rateDate);
+                }
+
+                $rate = $rateCache[$cacheKey];
+                $raw->setAttribute('fx_rate', $rate);
+                $raw->setAttribute('sell_billed', round($raw->sellAmount() * $rate, 6));
+                $raw->setAttribute('cost_billed', round($raw->costAmount() * $rate, 6));
+            }
+        }
+    }
+
+    private function fxRate(int $fromCurrencyId, int $toCurrencyId, string $rateDate): float
+    {
+        if ($fromCurrencyId <= 0 || $toCurrencyId <= 0 || $fromCurrencyId === $toCurrencyId) {
+            return 1.0;
+        }
+
+        $rate = CurrencyRate::query()
+            ->where('base_currency_id', $fromCurrencyId)
+            ->where('quote_currency_id', $toCurrencyId)
+            ->whereNotNull('rate_date')
+            ->whereDate('rate_date', '<=', $rateDate)
+            ->orderByDesc('rate_date')
+            ->orderByDesc('id')
+            ->value('rate');
+
+        return $rate !== null && (float) $rate > 0 ? (float) $rate : 1.0;
     }
 }
