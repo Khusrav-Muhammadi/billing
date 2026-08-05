@@ -62,10 +62,13 @@ class AiUsageRawLog extends Model
         return $query->where('processed', false);
     }
 
-    /** Входные токены (включая cache hit). */
+    /**
+     * Входные токены для биллинга/отображения.
+     * prompt_tokens уже включает cache hits — cache отдельно не суммируем.
+     */
     public function inputTokens(): int
     {
-        return (int) $this->prompt_tokens + (int) $this->prompt_cache_hit_tokens;
+        return (int) $this->prompt_tokens;
     }
 
     /** Продажная сумма (то, что списали с клиента). */

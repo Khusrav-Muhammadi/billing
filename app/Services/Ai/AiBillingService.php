@@ -18,7 +18,6 @@ class AiBillingService
     public function processOrganization(int $orgId): void
     {
         DB::transaction(function () use ($orgId): void {
-            /** @var AiBalance|null $balance */
             $balance = AiBalance::query()
                 ->where('organization_id', $orgId)
                 ->lockForUpdate()
@@ -37,8 +36,6 @@ class AiBillingService
             $periodStart = now()->subMinutes(30);
             $periodEnd = now();
 
-            // Фиксируем конкретные строки до SUM/UPDATE — иначе логи, вставленные
-            // между агрегацией и mark processed, «сгорают» без списания.
             $rawIds = AiUsageRawLog::query()
                 ->where('organization_id', $orgId)
                 ->unprocessed()
@@ -52,7 +49,6 @@ class AiBillingService
 
             $balanceCurrencyId = (int) $balance->currency_id;
 
-            // Никакой FX: все сырые логи должны быть уже в валюте баланса.
             $wrongCurrencyIds = AiUsageRawLog::query()
                 ->whereIn('id', $rawIds)
                 ->where(function ($q) use ($balanceCurrencyId) {

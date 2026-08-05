@@ -67,7 +67,6 @@ class AiCrmFetchService
         $afterId = null;
         $pages = 0;
 
-        // Пагинация по after_id на случай большого объёма.
         do {
             $pages++;
             if ($afterId) {
@@ -202,10 +201,18 @@ class AiCrmFetchService
             $completionTokens = (int) ($log['completion_tokens'] ?? 0);
             $createdAt = $log['created_at'] ?? now()->toDateTimeString();
 
+            // prompt_tokens уже включает cache hits — не прибавляем cache второй раз.
+            if ($cacheHitTokens > $promptTokens) {
+                throw new RuntimeException(
+                    "AI usage crm_log_id={$crmLogId}: prompt_cache_hit_tokens ({$cacheHitTokens}) "
+                    . "> prompt_tokens ({$promptTokens})."
+                );
+            }
+
             // Цена строго в валюте баланса. Нет прайса — ошибка, без FX.
             $resolved = $this->resolveTokenPricing($modelName, $createdAt, $balanceCurrencyId);
 
-            $inputCost = (($promptTokens + $cacheHitTokens) / 1_000_000) * (float) $resolved['price_per_1m_input'];
+            $inputCost = ($promptTokens / 1_000_000) * (float) $resolved['price_per_1m_input'];
             $outputCost = ($completionTokens / 1_000_000) * (float) $resolved['price_per_1m_output'];
             $calculatedCost = round($inputCost + $outputCost, 6);
 
