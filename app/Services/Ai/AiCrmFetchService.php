@@ -2,6 +2,7 @@
 
 namespace App\Services\Ai;
 
+use App\Models\Ai\AiBalance;
 use App\Models\Ai\AiModel;
 use App\Models\Ai\AiSubscription;
 use App\Models\Ai\AiUsageRawLog;
@@ -173,6 +174,18 @@ class AiCrmFetchService
     {
         $orgId = $subscription->organization_id;
 
+        $balance = AiBalance::query()
+            ->where('organization_id', $orgId)
+            ->first();
+
+        if (! $balance || (int) $balance->currency_id <= 0) {
+            throw new RuntimeException(
+                "AiCrmFetchService: org #{$orgId} has no ai_balances.currency_id; cannot price tokens without balance currency."
+            );
+        }
+
+        $balanceCurrencyId = (int) $balance->currency_id;
+
         foreach ($logs as $log) {
             if (! is_array($log)) {
                 continue;
@@ -189,8 +202,8 @@ class AiCrmFetchService
             $completionTokens = (int) ($log['completion_tokens'] ?? 0);
             $createdAt = $log['created_at'] ?? now()->toDateTimeString();
 
-            // Без актуальной цены — стоп. Нельзя писать cost=0 (бесплатное использование).
-            $resolved = $this->resolveTokenPricing($modelName, $createdAt);
+            // Цена строго в валюте баланса. Нет прайса — ошибка, без FX.
+            $resolved = $this->resolveTokenPricing($modelName, $createdAt, $balanceCurrencyId);
 
             $inputCost = (($promptTokens + $cacheHitTokens) / 1_000_000) * (float) $resolved['price_per_1m_input'];
             $outputCost = ($completionTokens / 1_000_000) * (float) $resolved['price_per_1m_output'];
@@ -225,17 +238,20 @@ class AiCrmFetchService
     }
 
     /**
-     * Актуальная цена токенов на дату лога из ai_model_prices.
-     * Без цены — RuntimeException (никаких fallback / 0).
-     * Актуальный прайс только из ai_model_prices.
+     * Цена токенов на дату лога из ai_model_prices строго в currency_id баланса.
+     * Нет прайса в этой валюте — RuntimeException (никакого FX / USD-fallback / 0).
      *
      * @return array{price_per_1m_input: float, price_per_1m_output: float, margin_percent: float, currency_id: int}
      */
-    private function resolveTokenPricing(string $modelName, string $at): array
+    private function resolveTokenPricing(string $modelName, string $at, int $currencyId): array
     {
         $modelName = trim($modelName);
         if ($modelName === '') {
             throw new RuntimeException('AI usage log has empty model_key; cannot price tokens.');
+        }
+
+        if ($currencyId <= 0) {
+            throw new RuntimeException('AI token pricing requires balance currency_id.');
         }
 
         $onDate = Carbon::parse($at)->toDateString();
@@ -251,10 +267,11 @@ class AiCrmFetchService
             );
         }
 
-        $price = $aiModel->resolvePriceAt($onDate);
-        if (! $price || (int) $price->currency_id <= 0) {
+        $price = $aiModel->resolvePriceAt($onDate, $currencyId);
+        if (! $price || (int) $price->currency_id !== $currencyId) {
             throw new RuntimeException(
-                "AI model [{$modelName}] has no price for date {$onDate}; cannot price tokens."
+                "AI model [{$modelName}] has no price in currency_id={$currencyId} for date {$onDate}; "
+                . 'add price for this currency (no FX conversion).'
             );
         }
 

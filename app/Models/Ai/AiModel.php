@@ -51,38 +51,19 @@ class AiModel extends Model
     }
 
     /**
-     * Актуальная цена на дату (по умолчанию сегодня).
-     * При дублях — последняя по id; при нескольких валютах предпочитаем USD.
+     * Актуальная цена на дату строго в указанной валюте.
+     * Без currency_id / без прайса в этой валюте — null (никакого USD-fallback и FX).
      */
-    public function resolvePriceAt(?string $onDate = null, ?int $preferCurrencyId = null): ?AiModelPrice
+    public function resolvePriceAt(?string $onDate = null, ?int $currencyId = null): ?AiModelPrice
     {
-        $prices = $this->prices()
-            ->current($onDate)
-            ->with('currency')
-            ->orderByDesc('id')
-            ->get()
-            ->groupBy('currency_id')
-            ->map(fn ($group) => $group->sortByDesc('id')->first())
-            ->values();
-
-        if ($prices->isEmpty()) {
+        if (! $currencyId) {
             return null;
         }
 
-        if ($preferCurrencyId) {
-            $preferred = $prices->firstWhere('currency_id', $preferCurrencyId);
-            if ($preferred) {
-                return $preferred;
-            }
-        }
-
-        $usd = $prices->first(function (AiModelPrice $price) {
-            $name = strtoupper((string) ($price->currency?->name ?? ''));
-            $symbol = strtoupper((string) ($price->currency?->symbol_code ?? ''));
-
-            return $name === 'USD' || $symbol === 'USD' || $symbol === '$';
-        });
-
-        return $usd ?? $prices->sortByDesc('id')->first();
+        return $this->prices()
+            ->current($onDate)
+            ->where('currency_id', $currencyId)
+            ->orderByDesc('id')
+            ->first();
     }
 }

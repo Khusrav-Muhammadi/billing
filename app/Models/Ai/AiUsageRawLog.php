@@ -74,6 +74,24 @@ class AiUsageRawLog extends Model
         return round((float) $this->calculated_cost, 6);
     }
 
+    /** Продажа только за входные токены (валюта прайса). */
+    public function sellInputAmount(): float
+    {
+        return round(
+            ($this->inputTokens() / 1_000_000) * (float) $this->price_per_1m_input_snapshot,
+            6
+        );
+    }
+
+    /** Продажа только за выходные токены (валюта прайса). */
+    public function sellOutputAmount(): float
+    {
+        return round(
+            ((int) $this->completion_tokens / 1_000_000) * (float) $this->price_per_1m_output_snapshot,
+            6
+        );
+    }
+
     /**
      * Себестоимость: sell = cost / (1 - margin/100)
      * → cost = sell * (1 - margin/100).

@@ -7,8 +7,6 @@ use App\Models\Ai\AiBalance;
 use App\Models\Ai\AiBalanceTransaction;
 use App\Models\Ai\AiUsageLog;
 use App\Models\Ai\AiUsageRawLog;
-use App\Models\CurrencyRate;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -52,24 +50,33 @@ class AiBillingService
                 return;
             }
 
-            $rawCostByGroup = AiUsageRawLog::query()
-                ->whereIn('id', $rawIds)
-                ->selectRaw('cost_currency_id, SUM(calculated_cost) as total')
-                ->groupBy('cost_currency_id')
-                ->pluck('total', 'cost_currency_id')
-                ->toArray();
+            $balanceCurrencyId = (int) $balance->currency_id;
 
-            if (empty($rawCostByGroup)) {
-                return;
+            // Никакой FX: все сырые логи должны быть уже в валюте баланса.
+            $wrongCurrencyIds = AiUsageRawLog::query()
+                ->whereIn('id', $rawIds)
+                ->where(function ($q) use ($balanceCurrencyId) {
+                    $q->whereNull('cost_currency_id')
+                        ->orWhere('cost_currency_id', '!=', $balanceCurrencyId);
+                })
+                ->pluck('cost_currency_id')
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($wrongCurrencyIds !== []) {
+                throw new RuntimeException(
+                    "AiBillingService: org #{$orgId} has usage costs in currencies ["
+                    . implode(', ', array_map(static fn ($id) => $id ?? 'null', $wrongCurrencyIds))
+                    . "] but balance currency_id={$balanceCurrencyId}. No FX — price tokens in balance currency."
+                );
             }
 
-            $totalCostInBalanceCurrency = $this->convertToBalanceCurrency(
-                $rawCostByGroup,
-                (int) $balance->currency_id,
-                $periodEnd
-            );
+            $totalCost = (float) AiUsageRawLog::query()
+                ->whereIn('id', $rawIds)
+                ->sum('calculated_cost');
 
-            if ($totalCostInBalanceCurrency <= 0) {
+            if ($totalCost <= 0) {
                 AiUsageRawLog::query()
                     ->whereIn('id', $rawIds)
                     ->update(['processed' => true]);
@@ -80,13 +87,13 @@ class AiBillingService
 
             ['limited' => $fromLimited, 'ai_balance' => $fromAi] = $this->distributeDeduction(
                 $balance,
-                $totalCostInBalanceCurrency
+                $totalCost
             );
 
             $usageLog = AiUsageLog::query()->create([
                 'organization_id' => $orgId,
                 'currency_id' => $balance->currency_id,
-                'total_cost' => $totalCostInBalanceCurrency,
+                'total_cost' => $totalCost,
                 'deducted_from_limited' => $fromLimited,
                 'deducted_from_ai_balance' => $fromAi,
                 'period_start' => $periodStart,
@@ -187,63 +194,5 @@ class AiBillingService
                 enabled: true
             );
         }
-    }
-
-    /**
-     * Convert a map of {currency_id => cost} to the balance currency.
-     * Missing currency / rate → RuntimeException (no silent defer / fallback).
-     */
-    private function convertToBalanceCurrency(array $costByGroup, int $balanceCurrencyId, Carbon $date): float
-    {
-        if ($balanceCurrencyId <= 0) {
-            throw new RuntimeException('AiBillingService: balance currency_id is required for FX conversion.');
-        }
-
-        $total = 0.0;
-
-        foreach ($costByGroup as $currencyId => $cost) {
-            $cost = (float) $cost;
-
-            if ($currencyId === null || $currencyId === '' || (int) $currencyId <= 0) {
-                throw new RuntimeException(
-                    "AiBillingService: usage cost without cost_currency_id (cost={$cost}, to_currency_id={$balanceCurrencyId})."
-                );
-            }
-
-            $fromCurrencyId = (int) $currencyId;
-
-            if ($fromCurrencyId === $balanceCurrencyId) {
-                $total += $cost;
-                continue;
-            }
-
-            $rateDate = $date->toDateString();
-
-            $rate = CurrencyRate::query()
-                ->where('base_currency_id', $fromCurrencyId)
-                ->where('quote_currency_id', $balanceCurrencyId)
-                ->whereNotNull('rate_date')
-                ->whereDate('rate_date', '<=', $rateDate)
-                ->orderByDesc('rate_date')
-                ->orderByDesc('id')
-                ->value('rate');
-
-            if ($rate === null) {
-                throw new RuntimeException(
-                    "AiBillingService: no currency_rates row for {$fromCurrencyId} → {$balanceCurrencyId} on {$rateDate}."
-                );
-            }
-
-            $rate = (float) $rate;
-            if ($rate <= 0) {
-                throw new RuntimeException(
-                    "AiBillingService: invalid currency rate ({$rate}) for {$fromCurrencyId} → {$balanceCurrencyId} on {$rateDate}."
-                );
-            }
-
-            $total += $cost * $rate;
-        }
-
-        return round($total, 6);
     }
 }
