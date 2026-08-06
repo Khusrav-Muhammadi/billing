@@ -100,7 +100,7 @@ class CommercialOfferController extends Controller
 
             'ai_item' => 'nullable|array',
             'ai_item.plan_name' => 'nullable|string|max:255',
-            'ai_item.period_months' => 'nullable|integer|min:1|max:36',
+            'ai_item.period_months' => 'nullable|integer|min:0|max:36',
             'ai_item.unit_price' => 'nullable|numeric|min:0',
             'ai_item.discount_percent' => 'nullable|numeric|min:0|max:100',
             'ai_item.original_price' => 'nullable|numeric|min:0',

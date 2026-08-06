@@ -795,7 +795,7 @@
                     <div class="kp-setting-group">
                         <div class="kp-setting-label">Текущий месяц</div>
                         <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
-                            Пропорция за оставшиеся дни текущего месяца. Сумма фиксирована.
+                            Пропорция за оставшиеся дни текущего месяца.
                         </p>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                             <input type="number" id="aiCurrentMonthInput" min="0" step="0.01" value="0" readonly

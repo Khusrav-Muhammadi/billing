@@ -1147,7 +1147,7 @@
                         @if((float)($ai_item['current_month_amount'] ?? 0) > 0)
                             + текущий месяц
                         @endif
-                        @if(!empty($ai_item['period_months']))
+                        @if((int)($ai_item['period_months'] ?? 0) > 0)
                             +{{ (int) $ai_item['period_months'] }} мес.
                         @endif
                         @if((float)($ai_item['balance_topup'] ?? 0) > 0)
