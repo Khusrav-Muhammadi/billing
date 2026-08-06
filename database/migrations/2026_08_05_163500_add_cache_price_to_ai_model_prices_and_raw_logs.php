@@ -35,9 +35,6 @@ return new class extends Migration
                 ->pluck('id')
                 ->all();
 
-            // Backfill:
-            // - deepseek-v4-pro: ~0.09 при input 0.435 (как в CRM)
-            // - остальные: 10% от входной себестоимости (типичный DeepSeek cache hit)
             DB::table('ai_model_prices')->orderBy('id')->chunkById(200, function ($rows) use ($deepseekProIds): void {
                 foreach ($rows as $row) {
                     $margin = (float) $row->margin_percent;

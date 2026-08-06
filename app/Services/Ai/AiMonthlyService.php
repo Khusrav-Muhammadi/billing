@@ -76,6 +76,13 @@ class AiMonthlyService
      */
     public function processStartOfMonth(): void
     {
+        $now = Carbon::now('Asia/Dushanbe');
+
+        if (! $now->isFirstOfMonth()) {
+            Log::info('AiMonthlyService::processStartOfMonth called on non-first day, skipping.');
+            return;
+        }
+
         AiBalance::query()
             ->with(['organization'])
             ->each(function (AiBalance $balance): void {
