@@ -116,11 +116,6 @@ class AiSubscriptionRegistryService
         }
     }
 
-    /**
-     * Откат AI-регистрации при правке/отмене paid статуса КП.
-     * Снимает current_month_amount + original_price + balance_topup с баланса
-     * и удаляет подписку по commercial_offer_id.
-     */
     public function reverse(CommercialOffer $offer): void
     {
         DB::transaction(function () use ($offer): void {
@@ -217,7 +212,6 @@ class AiSubscriptionRegistryService
                 ]);
             }
 
-            // Удаляем подписку, чтобы повторный paid мог зарегистрироваться снова.
             $subscription->delete();
 
             if ($wasEnabled && $balance->availableForUsageAmount() <= 0) {
@@ -253,7 +247,6 @@ class AiSubscriptionRegistryService
             ->first();
 
         $today = Carbon::today('Asia/Dushanbe');
-        // period_months в КП = доп. месяцы (+N); календарь всегда включает текущий месяц.
         $extraMonths = max(0, (int) $aiItem->period_months);
         $calendarMonths = $extraMonths + 1;
 
@@ -263,7 +256,6 @@ class AiSubscriptionRegistryService
             $startedAt = $today->copy()->startOfDay();
         }
 
-        // Только текущий (0 доп.) → до конца этого месяца; +1 → до конца следующего и т.д.
         $expiresAt = $startedAt->copy()
             ->addMonthsNoOverflow($calendarMonths - 1)
             ->endOfMonth()
@@ -285,9 +277,7 @@ class AiSubscriptionRegistryService
         ]);
     }
 
-    /**
-     * Валюта КП → currencies.id. Нет кода / нет записи — ошибка (без fallback).
-     */
+
     private function resolveOfferCurrencyId(CommercialOffer $offer): int
     {
         $code = strtoupper(trim((string) ($offer->payable_currency ?: $offer->currency ?: '')));
@@ -310,10 +300,6 @@ class AiSubscriptionRegistryService
         return (int) $currencyId;
     }
 
-    /**
-     * Balance currency = offer currency.
-     * Empty balance (0/0) may switch currency; non-zero mismatch → exception.
-     */
     private function ensureBalance(int $orgId, int $currencyId): AiBalance
     {
         if ($currencyId <= 0) {
@@ -433,7 +419,7 @@ class AiSubscriptionRegistryService
             'type' => AiBalanceTransaction::TYPE_MONTHLY_PURCHASE,
             'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
             'amount' => $amount,
-            'description' => 'Списание за текущий месяц (пропорциональный лимит из КП)',
+            'description' => 'Списание за текущий месяц (пропорциональный лимит)',
         ]);
 
         $balance->increment('limited_balance', $amount);
@@ -453,11 +439,6 @@ class AiSubscriptionRegistryService
         ]);
     }
 
-    /**
-     * @param  float|null  $monthlyOverride  Месячная база из КП (original_price/months).
-     *                                       Если null — текущий прайс тарифа.
-     * @return bool true if limited_balance was granted
-     */
     private function grantProratedLimit(AiBalance $balance, AiTariffPlan $plan, ?float $monthlyOverride = null): bool
     {
         $now = Carbon::now('Asia/Dushanbe');
@@ -522,9 +503,6 @@ class AiSubscriptionRegistryService
         return true;
     }
 
-    /**
-     * Credit optional balance_topup into free ai_balance (TYPE_TOPUP).
-     */
     private function creditBalanceTopUp(AiBalance $balance, CommercialOfferAiItem $aiItem): void
     {
         $amount = max(0, (float) ($aiItem->balance_topup ?? 0));
@@ -544,10 +522,6 @@ class AiSubscriptionRegistryService
             'description' => 'Баланс ИИ при подключении ',
         ]);
 
-        Log::info('AiSubscriptionRegistryService: balance_topup credited', [
-            'organization_id' => $balance->organization_id,
-            'amount' => $amount,
-        ]);
     }
 
     private function isUniqueCommercialOfferViolation(QueryException $e): bool

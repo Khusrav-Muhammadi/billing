@@ -196,6 +196,7 @@ class CommercialFooferController extends Controller
                 'organization:id,name,phone,email,order_number',
                 'partner:id,name,phone,email,payment_methods',
                 'payment:id,payment_type',
+                'aiItem.plan:id,name',
                 'latestOfferStatus' => static function ($query) {
                     $query->select([
                         'commercial_offer_statuses.id',
@@ -340,6 +341,10 @@ class CommercialFooferController extends Controller
 
                 $serviceKey = (string)data_get($row, 'service_key', '');
                 $isImplementationLine = $this->isImplementationItemKey($serviceKey);
+                // Внедрение / доп. услуги / AI — только в snapshot/ai_item, не в commercial_offer_items.
+                if ($isImplementationLine || $this->isAiItemKey($serviceKey)) {
+                    continue;
+                }
                 $tariffId = $this->toNullableInt(data_get($row, 'tariff_id'));
                 if (!$tariffId) {
                     $tariffId = $this->extractTariffIdFromAnyKey($serviceKey);
@@ -390,6 +395,36 @@ class CommercialFooferController extends Controller
                 ]);
             }
 
+            // AI-item: сохраняем если пришёл из KP (на базовом тарифе — запрещено).
+            $aiItemData = data_get($payload, 'ai_item');
+            $isBaseTariff = $tariff && Tariff::isBaseTariffName($tariff->name);
+            if (is_array($aiItemData) && ! empty($aiItemData['plan_id'])) {
+                if ($isBaseTariff) {
+                    throw ValidationException::withMessages([
+                        'payload' => 'ИИ-агент недоступен на базовом тарифе.',
+                    ]);
+                }
+
+                \App\Models\Ai\CommercialOfferAiItem::query()->updateOrCreate(
+                    ['commercial_offer_id' => $offer->id],
+                    [
+                        'plan_id' => (int) $aiItemData['plan_id'],
+                        'period_months' => (int) ($aiItemData['period_months'] ?? 1),
+                        'unit_price' => (float) ($aiItemData['unit_price'] ?? 0),
+                        'discount_percent' => (float) ($aiItemData['discount_percent'] ?? 0),
+                        'partner_percent' => (float) ($aiItemData['partner_percent'] ?? 0),
+                        'original_price' => (float) ($aiItemData['original_price'] ?? 0),
+                        'total_price' => (float) ($aiItemData['total_price'] ?? 0),
+                        'current_month_amount' => max(0, (float) ($aiItemData['current_month_amount'] ?? 0)),
+                        'balance_topup' => max(0, (float) ($aiItemData['balance_topup'] ?? 0)),
+                    ]
+                );
+            } else {
+                \App\Models\Ai\CommercialOfferAiItem::query()
+                    ->where('commercial_offer_id', $offer->id)
+                    ->delete();
+            }
+
             return $offer;
         });
 
@@ -399,6 +434,7 @@ class CommercialFooferController extends Controller
             'tariff:id,name',
             'organization:id,name,phone,email,order_number',
             'partner:id,name,phone,email,payment_methods',
+            'aiItem.plan:id,name',
         ]);
 
         return response()->json([
@@ -2249,6 +2285,19 @@ class CommercialFooferController extends Controller
                 ])
                 ->values()
                 ->all(),
+            'ai_item' => $offer->aiItem ? [
+                'plan_id' => (int) $offer->aiItem->plan_id,
+                'plan_name' => (string) ($offer->aiItem->plan?->name ?? ''),
+                'period_months' => (int) $offer->aiItem->period_months,
+                'unit_price' => (float) $offer->aiItem->unit_price,
+                'discount_percent' => (float) $offer->aiItem->discount_percent,
+                'partner_percent' => (float) $offer->aiItem->partner_percent,
+                'original_price' => (float) $offer->aiItem->original_price,
+                'total_price' => (float) $offer->aiItem->total_price,
+                'current_month_amount' => (float) ($offer->aiItem->current_month_amount ?? 0),
+                'balance_topup' => (float) ($offer->aiItem->balance_topup ?? 0),
+                'currency' => '',
+            ] : null,
         ];
     }
 
@@ -2590,5 +2639,14 @@ class CommercialFooferController extends Controller
         return $raw === 'implementation'
             || str_starts_with($raw, 'implementation-extra-')
             || str_starts_with($raw, 'service-implementation-');
+    }
+
+    private function isAiItemKey($key): bool
+    {
+        $raw = trim((string)$key);
+
+        return str_starts_with($raw, 'ai-plan-')
+            || str_starts_with($raw, 'ai-current-month-')
+            || str_starts_with($raw, 'ai-balance-topup-');
     }
 }
