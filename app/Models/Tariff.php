@@ -74,8 +74,13 @@ class Tariff extends Model
     public static function isBaseTariffName(?string $name): bool
     {
         $normalized = mb_strtolower(str_replace('ё', 'е', trim((string) $name)), 'UTF-8');
+        $compact = preg_replace('/[^a-z0-9а-я]+/u', '', $normalized) ?: '';
 
-        return $normalized === 'base' || str_contains($normalized, 'базов');
+        return $compact === 'base'
+            || $compact === 'basic'
+            || str_contains($compact, 'базов')
+            || str_contains($compact, 'баз')
+            || str_contains($compact, 'base');
     }
 
     public function isBaseTariff(): bool

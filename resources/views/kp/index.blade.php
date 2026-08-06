@@ -769,7 +769,7 @@
         </div>
 
         {{-- ИИ-Агент --}}
-        <div class="kp-card" id="aiTariffCard">
+        <div class="kp-card" id="aiTariffCard" style="display:none;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
                 <div class="kp-section-title" style="margin-bottom:0;">ИИ-Агент</div>
                 <label class="service-toggle" style="margin-bottom:0;">
@@ -1141,10 +1141,18 @@
 
         function renderSummary() { setAiItem({ refreshSummary: true }); }
 
-        if (window.cpGenerator && typeof window.cpGenerator.syncAiAgentAvailability === 'function') {
-            window.cpGenerator.syncAiAgentAvailability();
+        function syncAiAgentGate() {
+            if (window.cpGenerator && typeof window.cpGenerator.syncAiAgentAvailability === 'function') {
+                window.cpGenerator.syncAiAgentAvailability();
+            }
         }
-
-ript>
+        syncAiAgentGate();
+        document.addEventListener('DOMContentLoaded', () => {
+            // cpGenerator создаётся на DOMContentLoaded — догоняем после его init.
+            setTimeout(syncAiAgentGate, 0);
+            setTimeout(syncAiAgentGate, 50);
+        });
+    })();
+    </script>
 
 @endsection

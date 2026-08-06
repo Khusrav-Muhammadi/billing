@@ -43,8 +43,14 @@ class CPGenerator {
     async init() {
         await this.loadConfig();
         this.parseQueryParams();
+        // Как в публичных генераторах: первый тариф выбран по умолчанию.
+        const tariffKeys = Object.keys(this.config?.tariffs || {});
+        if (!this.state.selectedTariff && tariffKeys.length) {
+            this.state.selectedTariff = tariffKeys[0];
+        }
         this.renderAll();
         this.bindEvents();
+        this.syncAiAgentAvailability();
     }
 
     // ========================================
@@ -152,6 +158,7 @@ class CPGenerator {
         this.updateExtraUsersSection();
         this.updateOneTimePayments();
         this.updateSummary();
+        this.syncAiAgentAvailability();
     }
 
     // ========================================
@@ -328,9 +335,14 @@ class CPGenerator {
     isBaseTariff(tariffKey = this.state.selectedTariff, tariff = null) {
         const resolved = tariff || (tariffKey ? this.config?.tariffs?.[tariffKey] : null);
         if (!resolved && !tariffKey) return false;
-        const name = this.normalizeText(resolved?.name);
-        const key = this.normalizeText(tariffKey);
-        return name === 'base' || name.includes('базов') || key === 'base' || key.includes('базов');
+        const name = this.normalizeText(resolved?.name).replace(/[^a-z0-9а-я]+/g, '');
+        const key = this.normalizeText(tariffKey).replace(/[^a-z0-9а-я]+/g, '');
+        return (
+            name === 'base' || name === 'basic'
+            || name.includes('базов') || name.includes('баз') || name.includes('base')
+            || key === 'base' || key === 'basic'
+            || key.includes('базов') || key.includes('баз') || key.includes('base')
+        );
     }
 
     isAiAgentAllowedForSelectedTariff() {

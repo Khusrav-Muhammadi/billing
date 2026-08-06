@@ -297,9 +297,14 @@ class CPGenerator {
         if (!resolved && !tariffKey) {
             return false;
         }
-        const name = this.normalizeText(resolved?.name);
-        const key = this.normalizeText(tariffKey);
-        return name === 'base' || name.includes('базов') || key === 'base' || key.includes('базов');
+        const name = this.normalizeText(resolved?.name).replace(/[^a-z0-9а-я]+/g, '');
+        const key = this.normalizeText(tariffKey).replace(/[^a-z0-9а-я]+/g, '');
+        return (
+            name === 'base' || name === 'basic'
+            || name.includes('базов') || name.includes('баз') || name.includes('base')
+            || key === 'base' || key === 'basic'
+            || key.includes('базов') || key.includes('баз') || key.includes('base')
+        );
     }
 
     isAiAgentAllowedForSelectedTariff() {
@@ -1603,6 +1608,7 @@ class CPGenerator {
             !this.isConnectionMode() || !this.state.connectionSelectionBlocked
         );
         this.updatePayButtonState();
+        this.syncAiAgentAvailability();
     }
 
     renderImplementationSection() {
@@ -3154,6 +3160,7 @@ class CPGenerator {
                 this.setConnectionCreateControlsEnabled(
                     !this.isConnectionMode() || !this.state.connectionSelectionBlocked
                 );
+                this.syncAiAgentAvailability();
             } else {
                 this.state.selectedPartnerId = item.id;
                 this.state.partnerName = item.name || 'Партнер';
@@ -3168,6 +3175,7 @@ class CPGenerator {
                         this.state.selectedTariff = standartKey;
                     }
                 }
+                this.syncAiAgentAvailability();
                 this.applyPartnerImplementationDefaults(item);
                 // Partner percent affects all prices, so rerender totals/cards.
                 this.normalizeSelectedServicesByVisibility();
@@ -3177,6 +3185,7 @@ class CPGenerator {
                 this.renderImplementationSection();
                 this.updateSummary();
                 this.applyPaymentMethodsUI();
+                this.syncAiAgentAvailability();
             }
 
             this.markOfferDirty();
