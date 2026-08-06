@@ -393,9 +393,6 @@ class AiSubscriptionRegistryService
         ]);
     }
 
-    /**
-     * Текущий месяц из КП: credit → limited ровно на current_month_amount.
-     */
     private function creditAndGrantCurrentMonth(AiBalance $balance, CommercialOfferAiItem $aiItem, AiTariffPlan $plan): void
     {
         $amount = round(max(0, (float) ($aiItem->current_month_amount ?? 0)), 4);
@@ -447,7 +444,7 @@ class AiSubscriptionRegistryService
             'type' => AiBalanceTransaction::TYPE_TARIFF_GRANT_PRORATED,
             'target_balance' => AiBalanceTransaction::TARGET_LIMITED,
             'amount' => $amount,
-            'description' => 'Начисление лимита за текущий месяц (из КП)',
+            'description' => 'Начисление лимита за текущий месяц',
         ]);
 
         Log::info('AiSubscriptionRegistryService: current month granted', [
@@ -544,7 +541,7 @@ class AiSubscriptionRegistryService
             'type' => AiBalanceTransaction::TYPE_TOPUP,
             'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
             'amount' => $amount,
-            'description' => 'Баланс ИИ при подключении (из КП)',
+            'description' => 'Баланс ИИ при подключении ',
         ]);
 
         Log::info('AiSubscriptionRegistryService: balance_topup credited', [
