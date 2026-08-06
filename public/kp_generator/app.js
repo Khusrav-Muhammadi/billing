@@ -84,22 +84,32 @@ class CPGenerator {
     }
 
     syncPeriodSelectorUI() {
-        const buttons = Array.from(document.querySelectorAll('.period-btn'));
-        if (!buttons.length) {
+        const selector = document.getElementById('periodSelector');
+        if (!selector) {
             return;
         }
 
+        this.enforceAllowedPaymentPeriod();
+        const allowed = new Set(this.getAllowedPaymentPeriodMonths());
         const months = this.normalizePeriodMonths(this.state.periodMonths);
-        this.state.periodMonths = months;
 
-        const matched = buttons.some((button) => Math.floor(Number(button.dataset.months)) === months);
-        if (!matched) {
-            return;
-        }
-
-        buttons.forEach((button) => {
+        Array.from(selector.querySelectorAll('.period-btn')).forEach((button) => {
             const buttonMonths = Math.floor(Number(button.dataset.months));
-            button.classList.toggle('active', buttonMonths === months);
+            const isAllowed = allowed.has(buttonMonths);
+            button.hidden = !isAllowed;
+            button.disabled = !isAllowed;
+            button.style.opacity = isAllowed ? '' : '0.5';
+            button.style.cursor = isAllowed ? '' : 'not-allowed';
+            button.classList.toggle('active', isAllowed && buttonMonths === months);
+
+            const badge = button.querySelector('.discount-badge');
+            if (badge && buttonMonths === 12) {
+                const discount = this.getPeriodDiscountPercentForMonths(12);
+                badge.hidden = discount <= 0;
+                if (discount > 0) {
+                    badge.textContent = `-${discount}%`;
+                }
+            }
         });
     }
 
@@ -313,6 +323,42 @@ class CPGenerator {
             return false;
         }
         return !this.isBaseTariff(this.state.selectedTariff);
+    }
+
+    isVipTariff(tariffKey = this.state.selectedTariff, tariff = null) {
+        const resolved = tariff || (tariffKey ? this.config?.tariffs?.[tariffKey] : null);
+        if (!resolved && !tariffKey) {
+            return false;
+        }
+        const name = this.normalizeText(resolved?.name).replace(/[^a-z0-9а-я]+/g, '');
+        const key = this.normalizeText(tariffKey).replace(/[^a-z0-9а-я]+/g, '');
+        return name === 'vip' || name.includes('вип') || key === 'vip' || key.includes('vip') || key.includes('вип');
+    }
+
+    getAllowedPaymentPeriodMonths() {
+        if (this.isVipTariff()) {
+            return [3, 6, 12];
+        }
+        return [6, 12];
+    }
+
+    getPeriodDiscountPercentForMonths(months) {
+        if (!this.shouldIncludeBaseTariffInPricing()) {
+            return 0;
+        }
+        if (Number(months) === 12) return 15;
+        if (Number(months) === 8) return 50;
+        return 0;
+    }
+
+    enforceAllowedPaymentPeriod() {
+        const allowed = this.getAllowedPaymentPeriodMonths();
+        const current = this.normalizePeriodMonths(this.state.periodMonths);
+        if (allowed.includes(current)) {
+            this.state.periodMonths = current;
+            return;
+        }
+        this.state.periodMonths = allowed.includes(6) ? 6 : (allowed[0] || 6);
     }
 
     /**
@@ -1595,6 +1641,7 @@ class CPGenerator {
         this.renderServices();
         this.renderImplementationSection();
         this.updateExtraUsersSection();
+        this.syncPeriodSelectorUI();
         this.updateSummary();
         this.applyPaymentMethodsUI();
         this.updateSelectedClientOrderNumberUI();
@@ -2121,12 +2168,7 @@ class CPGenerator {
     }
 
     getPeriodDiscountPercent() {
-        if (!this.shouldIncludeBaseTariffInPricing()) {
-            return 0;
-        }
-        if (this.state.periodMonths === 12) return 15;
-        if (this.state.periodMonths === 8) return 50;
-        return 0;
+        return this.getPeriodDiscountPercentForMonths(this.state.periodMonths);
     }
 
     getPeriodDiscountMultiplier() {
@@ -3248,7 +3290,7 @@ class CPGenerator {
                 <div class="tariff-price">
                     <span class="price-value">${this.formatPrice(price)}</span>
                     <span class="price-period">/мес</span>
-                    ${(this.state.periodMonths === 12 || this.state.periodMonths === 8) ? `<span class="original-price">${this.formatPrice(originalPrice)}</span>` : ''}
+                    ${(this.getPeriodDiscountPercent() > 0) ? `<span class="original-price">${this.formatPrice(originalPrice)}</span>` : ''}
                 </div>
             `;
 
@@ -3444,6 +3486,7 @@ class CPGenerator {
         this.renderServices();
         this.renderTariffs();
         this.renderImplementationSection();
+        this.syncPeriodSelectorUI();
         this.syncAiAgentAvailability();
         this.updateSummary();
     }
@@ -4310,14 +4353,9 @@ class CPGenerator {
             }
 
             const showTariffDiscount = this.shouldIncludeBaseTariffInPricing();
-            if (this.state.periodMonths === 12) {
-                detailsText += showTariffDiscount
-                    ? ` × ${this.state.periodMonths} мес (скидка 15% на тариф)`
-                    : ` × ${this.state.periodMonths} мес`;
-            } else if (this.state.periodMonths === 8) {
-                detailsText += showTariffDiscount
-                    ? ` × ${this.state.periodMonths} мес (скидка 50% на тариф)`
-                    : ` × ${this.state.periodMonths} мес`;
+            const periodDiscount = this.getPeriodDiscountPercent();
+            if (showTariffDiscount && periodDiscount > 0) {
+                detailsText += ` × ${this.state.periodMonths} мес (скидка ${periodDiscount}% на тариф)`;
             } else {
                 detailsText += ` × ${this.state.periodMonths} мес`;
             }
@@ -4591,12 +4629,19 @@ class CPGenerator {
             }
         });
 
-        document.querySelectorAll('.period-btn').forEach(btn => {
+        document.querySelectorAll('#periodSelector .period-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const button = e.target.closest('.period-btn');
-                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                if (!button || button.disabled || button.hidden) {
+                    return;
+                }
+                const months = parseInt(button.dataset.months, 10);
+                if (!this.getAllowedPaymentPeriodMonths().includes(months)) {
+                    return;
+                }
+                document.querySelectorAll('#periodSelector .period-btn').forEach(b => b.classList.remove('active'));
                 button.classList.add('active');
-                this.state.periodMonths = parseInt(button.dataset.months);
+                this.state.periodMonths = months;
                 this.markOfferDirty();
                 this.renderAll();
             });
@@ -4791,15 +4836,13 @@ class CPGenerator {
     generatePDFContent() {
         const date = new Date().toLocaleDateString('ru-RU');
         const currency = this.getCurrentCurrency();
-        let periodText = '6 месяцев';
-        if (this.state.periodMonths === 12) {
-            periodText = this.shouldIncludeBaseTariffInPricing()
-                ? '12 месяцев (скидка 15%)'
-                : '12 месяцев';
-        } else if (this.state.periodMonths === 8) {
-            periodText = this.shouldIncludeBaseTariffInPricing()
-                ? '8 месяцев (скидка 50%)'
-                : '8 месяцев';
+        let periodText = `${this.state.periodMonths} месяцев`;
+        if (this.state.periodMonths === 3) {
+            periodText = '3 месяца';
+        }
+        const pdfPeriodDiscount = this.getPeriodDiscountPercent();
+        if (pdfPeriodDiscount > 0) {
+            periodText = `${this.state.periodMonths} месяцев (скидка ${pdfPeriodDiscount}%)`;
         }
 
         if (!this.state.selectedTariff) {
