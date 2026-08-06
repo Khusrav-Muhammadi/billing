@@ -1015,8 +1015,9 @@
             $aiDiscountPct = (float) ($ai_item['discount_percent'] ?? 0);
             $aiOriginal = (float) ($ai_item['original_price'] ?? 0);
             $aiSubTotal = (float) ($ai_item['total_price'] ?? 0);
+            $aiCurrentMonth = (float) ($ai_item['current_month_amount'] ?? 0);
             $aiTopup = (float) ($ai_item['balance_topup'] ?? 0);
-            $aiChargeTotal = (float) ($calculations['ai_total'] ?? ($aiSubTotal + $aiTopup));
+            $aiChargeTotal = (float) ($calculations['ai_total'] ?? ($aiCurrentMonth + $aiSubTotal + $aiTopup));
         @endphp
 
         <table class="ai-agent-table">
@@ -1024,13 +1025,19 @@
                 <th>Тарифный план</th>
                 <td>ИИ-Агент «{{ $aiPlanName }}»</td>
             </tr>
-            @if($aiMonths > 0)
+            @if($aiCurrentMonth > 0)
             <tr>
-                <th>Период подписки</th>
-                <td>{{ $aiMonths }} {{ $aiMonths === 1 ? 'месяц' : ($aiMonths < 5 ? 'месяца' : 'месяцев') }}</td>
+                <th>Текущий месяц</th>
+                <td>{{ formatPrice($aiCurrentMonth) }} {{ $currency }}</td>
             </tr>
             @endif
-            @if($aiUnit > 0)
+            @if($aiMonths > 0)
+            <tr>
+                <th>Доп. период</th>
+                <td>+{{ $aiMonths }} {{ $aiMonths === 1 ? 'месяц' : ($aiMonths < 5 ? 'месяца' : 'месяцев') }}</td>
+            </tr>
+            @endif
+            @if($aiUnit > 0 && $aiMonths > 0)
             <tr>
                 <th>Стоимость в месяц</th>
                 <td>{{ formatPrice($aiUnit) }} {{ $currency }}</td>
@@ -1038,11 +1045,11 @@
             @endif
             @if($aiOriginal > 0)
             <tr>
-                <th>Сумма за период без скидки</th>
+                <th>Сумма за доп. период без скидки</th>
                 <td>{{ formatPrice($aiOriginal) }} {{ $currency }}</td>
             </tr>
             @endif
-            @if($aiDiscountPct > 0)
+            @if($aiDiscountPct > 0 && $aiMonths > 0)
             <tr>
                 <th>Скидка</th>
                 <td>
@@ -1053,13 +1060,15 @@
                 </td>
             </tr>
             @endif
+            @if($aiSubTotal > 0)
             <tr>
-                <th>Стоимость подписки ИИ</th>
+                <th>Стоимость доп. месяцев</th>
                 <td>{{ formatPrice($aiSubTotal) }} {{ $currency }}</td>
             </tr>
+            @endif
             @if($aiTopup > 0)
             <tr>
-                <th>Запас на ИИ-баланс</th>
+                <th>Баланс ИИ</th>
                 <td>{{ formatPrice($aiTopup) }} {{ $currency }}</td>
             </tr>
             @endif
@@ -1135,11 +1144,14 @@
                 <tr>
                     <td>
                         ИИ-Агент «{{ $ai_item['plan_name'] ?? '' }}»
+                        @if((float)($ai_item['current_month_amount'] ?? 0) > 0)
+                            + текущий месяц
+                        @endif
                         @if(!empty($ai_item['period_months']))
-                            ({{ (int) $ai_item['period_months'] }} мес.)
+                            +{{ (int) $ai_item['period_months'] }} мес.
                         @endif
                         @if((float)($ai_item['balance_topup'] ?? 0) > 0)
-                            + запас на баланс
+                            + баланс ИИ
                         @endif
                     </td>
                     <td>{{ formatPrice($calculations['ai_total']) }} {{ $currency }}</td>

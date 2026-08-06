@@ -334,20 +334,28 @@ class ApplicationController extends Controller
                 $offer->offerStatuses()->delete();
             }
 
-            // AI-item: сохраняем если пришёл из KP
+            // AI-item: сохраняем если пришёл из KP (на базовом тарифе — запрещено).
             $aiItemData = data_get($payload, 'ai_item');
-            if (is_array($aiItemData) && !empty($aiItemData['plan_id'])) {
+            $isBaseTariff = $tariff && Tariff::isBaseTariffName($tariff->name);
+            if (is_array($aiItemData) && ! empty($aiItemData['plan_id'])) {
+                if ($isBaseTariff) {
+                    throw ValidationException::withMessages([
+                        'payload' => 'ИИ-агент недоступен на базовом тарифе.',
+                    ]);
+                }
+
                 \App\Models\Ai\CommercialOfferAiItem::query()->updateOrCreate(
                     ['commercial_offer_id' => $offer->id],
                     [
-                        'plan_id'          => (int) $aiItemData['plan_id'],
-                        'period_months'    => (int) ($aiItemData['period_months'] ?? 1),
-                        'unit_price'       => (float) ($aiItemData['unit_price'] ?? 0),
+                        'plan_id' => (int) $aiItemData['plan_id'],
+                        'period_months' => (int) ($aiItemData['period_months'] ?? 1),
+                        'unit_price' => (float) ($aiItemData['unit_price'] ?? 0),
                         'discount_percent' => (float) ($aiItemData['discount_percent'] ?? 0),
-                        'partner_percent'  => (float) ($aiItemData['partner_percent'] ?? 0),
-                        'original_price'   => (float) ($aiItemData['original_price'] ?? 0),
-                        'total_price'      => (float) ($aiItemData['total_price'] ?? 0),
-                        'balance_topup'    => max(0, (float) ($aiItemData['balance_topup'] ?? 0)),
+                        'partner_percent' => (float) ($aiItemData['partner_percent'] ?? 0),
+                        'original_price' => (float) ($aiItemData['original_price'] ?? 0),
+                        'total_price' => (float) ($aiItemData['total_price'] ?? 0),
+                        'current_month_amount' => max(0, (float) ($aiItemData['current_month_amount'] ?? 0)),
+                        'balance_topup' => max(0, (float) ($aiItemData['balance_topup'] ?? 0)),
                     ]
                 );
             } else {
@@ -1112,6 +1120,7 @@ class ApplicationController extends Controller
                 'partner_percent'  => (float)$offer->aiItem->partner_percent,
                 'original_price'   => (float)$offer->aiItem->original_price,
                 'total_price'      => (float)$offer->aiItem->total_price,
+                'current_month_amount' => (float)($offer->aiItem->current_month_amount ?? 0),
                 'balance_topup'    => (float)($offer->aiItem->balance_topup ?? 0),
                 'currency'         => '',
             ] : null,

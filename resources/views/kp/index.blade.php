@@ -786,26 +786,37 @@
                 {{-- Период --}}
                 <div id="aiPeriodRow" style="display:none;margin-top:20px;">
                     <div class="kp-setting-group">
-                        <div class="kp-setting-label">Период подписки</div>
+                        <div class="kp-setting-label">Доп. месяцы (необязательно)</div>
                         <div class="period-selector" id="aiPeriodSelector"></div>
+                    </div>
+                </div>
+
+                <div id="aiCurrentMonthRow" style="display:none;margin-top:20px;">
+                    <div class="kp-setting-group">
+                        <div class="kp-setting-label">Текущий месяц</div>
+                        <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
+                            Пропорция за оставшиеся дни текущего месяца. Сумма фиксирована.
+                        </p>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <input type="number" id="aiCurrentMonthInput" min="0" step="0.01" value="0" readonly
+                                   style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#f3f4f6;color:#111827;">
+                            <span id="aiCurrentMonthCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
+                        </div>
                     </div>
                 </div>
 
                 <div id="aiBalanceTopupRow" style="display:none;margin-top:20px;">
                     <div class="kp-setting-group">
-                        <div class="kp-setting-label">Запас на ИИ-баланс</div>
+                        <div class="kp-setting-label">Баланс ИИ</div>
                         <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
-                            Рекомендуемая сумма, чтобы агент не отключился до конца месяца.
+                            Произвольное пополнение кошелька ИИ (необязательно).
                         </p>
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                            <input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value="0"
+                            <input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value=""
+                                   placeholder="0"
                                    style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
                             <span id="aiBalanceTopupCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
-                            <button type="button" id="aiBalanceTopupResetBtn" class="action-btn secondary" style="padding:8px 12px;font-size:13px;">
-                                По умолчанию
-                            </button>
                         </div>
-                        <div id="aiBalanceTopupHint" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
                     </div>
                 </div>
 
@@ -950,7 +961,7 @@
                     : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
             });
             // Пересобрать CP_AI_ITEM без updateSummary (иначе стек переполнится).
-            if (checkbox.checked && selectedPlanId && selectedMonths) {
+            if (checkbox.checked && selectedPlanId) {
                 setAiItem({ refreshSummary: false });
             }
         };
@@ -995,6 +1006,26 @@
             plansGrid.appendChild(c);
         });
 
+        const currentMonthRow = document.getElementById('aiCurrentMonthRow');
+        const currentMonthInput = document.getElementById('aiCurrentMonthInput');
+        const currentMonthCurrency = document.getElementById('aiCurrentMonthCurrency');
+        const topupRow = document.getElementById('aiBalanceTopupRow');
+        const topupInput = document.getElementById('aiBalanceTopupInput');
+        const topupCurrency = document.getElementById('aiBalanceTopupCurrency');
+
+        const suggestCurrentMonth = (unit) => {
+            const price = Number(unit) || 0;
+            if (price <= 0) return 0;
+            const cpg = window.cpGenerator;
+            if (cpg && typeof cpg.suggestAiBalanceTopup === 'function') {
+                return cpg.suggestAiBalanceTopup(price);
+            }
+            const now = new Date();
+            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
+            return +(price * (daysLeft / daysInMonth)).toFixed(2);
+        };
+
         // ── Тумблер вкл/выкл ──
         checkbox.addEventListener('change', () => {
             body.style.display = checkbox.checked ? 'block' : 'none';
@@ -1003,6 +1034,8 @@
                 selectedMonths = null;
                 plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
                 periodRow.style.display = 'none';
+                if (currentMonthRow) currentMonthRow.style.display = 'none';
+                if (topupRow) topupRow.style.display = 'none';
                 window.CP_AI_ITEM = null;
                 if (window.cpGenerator && typeof window.cpGenerator.updateSummary === 'function') {
                     window.cpGenerator.updateSummary();
@@ -1010,7 +1043,6 @@
             }
         });
 
-        // ── Рендер кнопок периода ──
         function renderPeriods(plan) {
             periodSelector.innerHTML = '';
             if (!plan.periods || !plan.periods.length) {
@@ -1023,89 +1055,83 @@
                 btn.type = 'button';
                 btn.className = 'period-btn';
                 btn.dataset.months = per.months;
-                let label = per.months + ' мес';
+                let label = '+' + per.months + ' мес';
                 if (per.discount_percent > 0) {
                     label += ' <span class="discount-badge">-' + per.discount_percent + '%</span>';
                 }
                 btn.innerHTML = label;
                 btn.addEventListener('click', () => {
+                    const already = btn.classList.contains('active');
                     periodSelector.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    selectedMonths = per.months;
+                    if (already) {
+                        selectedMonths = null;
+                    } else {
+                        btn.classList.add('active');
+                        selectedMonths = per.months;
+                    }
                     renderSummary();
                 });
                 periodSelector.appendChild(btn);
             });
-            periodSelector.querySelector('.period-btn')?.click();
-        }
-
-        // ── Итог ──
-        let aiTopupManual = false;
-        const topupRow = document.getElementById('aiBalanceTopupRow');
-        const topupInput = document.getElementById('aiBalanceTopupInput');
-        const topupCurrency = document.getElementById('aiBalanceTopupCurrency');
-        const topupHint = document.getElementById('aiBalanceTopupHint');
-        const topupResetBtn = document.getElementById('aiBalanceTopupResetBtn');
-
-        function suggestTopup(unitPrice) {
-            const price = Number(unitPrice) || 0;
-            if (price <= 0) return 0;
-            const now = new Date();
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
-            return +(price * (daysLeft / daysInMonth)).toFixed(2);
-        }
-
-        function syncTopupUi(unit, cur, force) {
-            if (!topupRow || !topupInput) return;
-            topupRow.style.display = 'block';
-            if (topupCurrency) topupCurrency.textContent = cur || '';
-            const suggested = suggestTopup(unit);
-            if (force || !aiTopupManual) {
-                topupInput.value = suggested;
-                aiTopupManual = false;
-            }
-            if (topupHint) {
-                topupHint.textContent = 'Рекомендация: ' + suggested + ' ' + (cur || '') + ' (по оставшимся дням месяца).';
-            }
         }
 
         if (topupInput) {
-            topupInput.addEventListener('input', () => { aiTopupManual = true; setAiItem(); });
-        }
-        if (topupResetBtn) {
-            topupResetBtn.addEventListener('click', () => { aiTopupManual = false; setAiItem(); });
+            topupInput.addEventListener('input', () => { setAiItem(); });
         }
 
         function setAiItem(options = {}) {
             const refreshSummary = options.refreshSummary !== false;
-            if (checkbox.checked && selectedPlanId && selectedMonths) {
-                const plan        = plans.find(p => p.id === selectedPlanId);
-                const per         = plan?.periods.find(p => p.months === selectedMonths);
-                const unit        = getAiPrice(plan);
-                const cur         = getAiCurrency(plan);
-                const discountPct = per?.discount_percent ?? 0;
-                const original    = +(unit * selectedMonths).toFixed(4);
-                const total       = +(original * (1 - discountPct / 100)).toFixed(4);
-                const cpg         = window.cpGenerator;
-                const partnerPct  = cpg && typeof cpg.getPartnerPackPercent === 'function'
-                    ? cpg.getPartnerPackPercent() : 0;
-                syncTopupUi(unit, cur, false);
+            const cpgGate = window.cpGenerator;
+            if (cpgGate && typeof cpgGate.isAiAgentAllowedForSelectedTariff === 'function'
+                && !cpgGate.isAiAgentAllowedForSelectedTariff()) {
+                window.CP_AI_ITEM = null;
+                if (checkbox) checkbox.checked = false;
+                if (body) body.style.display = 'none';
+                if (currentMonthRow) currentMonthRow.style.display = 'none';
+                if (topupRow) topupRow.style.display = 'none';
+                if (refreshSummary && cpgGate && typeof cpgGate.updateSummary === 'function') {
+                    cpgGate.updateSummary();
+                }
+                return;
+            }
+            if (checkbox.checked && selectedPlanId) {
+                const plan = plans.find(p => p.id === selectedPlanId);
+                const unit = getAiPrice(plan);
+                const cur = getAiCurrency(plan);
+                const currentMonth = suggestCurrentMonth(unit);
+                if (currentMonthRow) currentMonthRow.style.display = 'block';
+                if (topupRow) topupRow.style.display = 'block';
+                if (currentMonthInput) currentMonthInput.value = currentMonth;
+                if (currentMonthCurrency) currentMonthCurrency.textContent = cur || '';
+                if (topupCurrency) topupCurrency.textContent = cur || '';
+
+                const months = selectedMonths ? Number(selectedMonths) : 0;
+                let discountPct = 0, original = 0, total = 0;
+                if (months > 0) {
+                    const per = plan?.periods.find(p => Number(p.months) === months);
+                    discountPct = per?.discount_percent ?? 0;
+                    original = +(unit * months).toFixed(4);
+                    total = +(original * (1 - discountPct / 100)).toFixed(4);
+                }
+                const partnerPct = cpgGate && typeof cpgGate.getPartnerPackPercent === 'function'
+                    ? cpgGate.getPartnerPackPercent() : 0;
                 const topup = Math.max(0, +(Number(topupInput?.value) || 0).toFixed(4));
                 window.CP_AI_ITEM = {
-                    plan_id:          selectedPlanId,
-                    plan_name:        plan?.name || '',
-                    period_months:    selectedMonths,
-                    unit_price:       unit,
+                    plan_id: selectedPlanId,
+                    plan_name: plan?.name || '',
+                    period_months: months,
+                    unit_price: unit,
                     discount_percent: discountPct,
-                    partner_percent:  partnerPct,
-                    original_price:   original,
-                    total_price:      total,
-                    balance_topup:    topup,
-                    currency:         cur,
+                    partner_percent: partnerPct,
+                    original_price: original,
+                    total_price: total,
+                    current_month_amount: currentMonth,
+                    balance_topup: topup,
+                    currency: cur,
                 };
             } else {
                 window.CP_AI_ITEM = null;
+                if (currentMonthRow) currentMonthRow.style.display = 'none';
                 if (topupRow) topupRow.style.display = 'none';
             }
             if (refreshSummary && window.cpGenerator && typeof window.cpGenerator.updateSummary === 'function') {
@@ -1114,7 +1140,11 @@
         }
 
         function renderSummary() { setAiItem({ refreshSummary: true }); }
-    })();
-    </script>
+
+        if (window.cpGenerator && typeof window.cpGenerator.syncAiAgentAvailability === 'function') {
+            window.cpGenerator.syncAiAgentAvailability();
+        }
+
+ript>
 
 @endsection

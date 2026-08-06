@@ -93,8 +93,13 @@ class PartnerExpensesRegistryService
             return;
         }
 
-        // Запас на ИИ-баланс (balance_topup) партнёру не режется — только подписка AI.
-        $originalAmount = round((float) $aiItem->total_price, 4);
+        // Партнёр берёт % со всех AI-сумм: текущий месяц + доп. месяцы + баланс ИИ.
+        $originalAmount = round(
+            (float) ($aiItem->current_month_amount ?? 0)
+            + (float) $aiItem->total_price
+            + (float) ($aiItem->balance_topup ?? 0),
+            4
+        );
         if ($originalAmount <= 0) {
             return;
         }

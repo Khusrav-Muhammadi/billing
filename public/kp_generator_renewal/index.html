@@ -202,29 +202,40 @@
 
 	                    <div id="aiPeriodRow" style="display:none;margin-top:20px;">
 	            	            <div class="setting-group">
-	            	                <label class="setting-label">Период подписки</label>
+	            	                <label class="setting-label">Доп. месяцы (необязательно)</label>
 	            	                <div class="period-selector" id="aiPeriodSelector"></div>
 	            	            </div>
 	                    </div>
 
-                    <!-- Запас на ИИ-баланс -->
-                    <div id="aiBalanceTopupRow" style="display:none;margin-top:20px;">
-                        <div class="setting-group">
-                            <label class="setting-label">Запас на ИИ-баланс</label>
-                            <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
-                                Рекомендуемая сумма, чтобы агент не отключился до конца месяца при подключении не с 1-го числа.
-                            </p>
-                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                                <input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value="0"
-                                       style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
-                                <span id="aiBalanceTopupCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
-                                <button type="button" id="aiBalanceTopupResetBtn" class="action-btn secondary" style="padding:8px 12px;font-size:13px;">
-                                    По умолчанию
-                                </button>
-                            </div>
-                            <div id="aiBalanceTopupHint" style="font-size:12px;color:#6b7280;margin-top:6px;"></div>
-                        </div>
-                    </div>
+                    					<!-- Текущий месяц + Баланс ИИ -->
+					<div id="aiCurrentMonthRow" style="display:none;margin-top:20px;">
+						<div class="setting-group">
+							<label class="setting-label">Текущий месяц</label>
+							<p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
+								Пропорция за оставшиеся дни текущего месяца. Сумма фиксирована.
+							</p>
+							<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+								<input type="number" id="aiCurrentMonthInput" min="0" step="0.01" value="0" readonly
+									   style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#f3f4f6;color:#111827;">
+								<span id="aiCurrentMonthCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
+							</div>
+						</div>
+					</div>
+
+					<div id="aiBalanceTopupRow" style="display:none;margin-top:20px;">
+						<div class="setting-group">
+							<label class="setting-label">Баланс ИИ</label>
+							<p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
+								Произвольное пополнение кошелька ИИ (необязательно).
+							</p>
+							<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+								<input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value=""
+									   placeholder="0"
+									   style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+								<span id="aiBalanceTopupCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
+							</div>
+						</div>
+					</div>
 
 	                </div>
 	            </section>

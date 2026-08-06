@@ -11,6 +11,7 @@ use App\Models\Ai\CommercialOfferAiItem;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Models\Currency;
+use App\Models\Tariff;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,17 @@ class AiSubscriptionRegistryService
             ->first();
 
         if (! $aiItem) {
+            return;
+        }
+
+        $offer->loadMissing('tariff:id,name');
+        if ($offer->tariff && Tariff::isBaseTariffName($offer->tariff->name)) {
+            Log::warning('AiSubscriptionRegistryService: AI blocked on base tariff', [
+                'commercial_offer_id' => $offer->id,
+                'tariff_id' => $offer->tariff_id,
+                'tariff_name' => $offer->tariff->name,
+            ]);
+
             return;
         }
 
@@ -63,28 +75,18 @@ class AiSubscriptionRegistryService
                 $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer->id);
                 $balance = $this->ensureBalance($orgId, $offerCurrencyId);
 
-                // 1. В кошелёк — полный лимит за оплаченные месяцы (без коммерческой скидки),
-                //    чтобы скидка в КП не уменьшала число доступных месяцев.
-                $this->creditPaidAmount($balance, $aiItem, $plan);
+                // 1. Текущий месяц (пропорция) → кошелёк → limited.
+                $this->creditAndGrantCurrentMonth($balance, $aiItem, $plan);
 
-                // 2. Купить пропорциональный лимит на остаток текущего месяца
-                //    из оплаченной суммы КП (original_price / months), не из «другого» прайса тарифа.
-                $periodMonths = max(1, (int) $aiItem->period_months);
-                $monthlyFromPayment = round((float) $aiItem->original_price / $periodMonths, 4);
-                $granted = $this->grantProratedLimit($balance, $plan, $monthlyFromPayment);
-
-                if (! $granted) {
-                    throw new RuntimeException(
-                        "AiSubscriptionRegistryService: failed to grant prorated limit for org #{$orgId}, "
-                        . "plan #{$plan->id}, monthly_from_payment={$monthlyFromPayment}, "
-                        . "ai_balance={$balance->ai_balance}."
-                    );
+                // 2. Доп. месяцы (+N) → кошелёк (если выбраны).
+                if ((int) $aiItem->period_months > 0 && (float) $aiItem->original_price > 0) {
+                    $this->creditPaidAmount($balance, $aiItem, $plan);
                 }
 
-                // 2b. Запас на ИИ-баланс (свободный кошелёк) — отдельно от оплаты периода.
+                // 3. Произвольный «Баланс ИИ».
                 $this->creditBalanceTopUp($balance, $aiItem);
 
-                // 3. Агент включаем: limited уже начислен (или есть spendable после topup).
+                // 4. Агент включаем: limited уже начислен (или есть spendable после topup).
                 $balance->refresh();
                 if ((float) $balance->limited_balance > 0
                     || $balance->availableForUsageAmount() > 0) {
@@ -116,7 +118,8 @@ class AiSubscriptionRegistryService
 
     /**
      * Откат AI-регистрации при правке/отмене paid статуса КП.
-     * Снимает original_price + balance_topup с баланса и удаляет подписку по commercial_offer_id.
+     * Снимает current_month_amount + original_price + balance_topup с баланса
+     * и удаляет подписку по commercial_offer_id.
      */
     public function reverse(CommercialOffer $offer): void
     {
@@ -141,9 +144,10 @@ class AiSubscriptionRegistryService
                 );
             }
 
+            $currentMonth = round(max(0, (float) ($aiItem->current_month_amount ?? 0)), 4);
             $originalPrice = round((float) $aiItem->original_price, 4);
             $topUp = round(max(0, (float) ($aiItem->balance_topup ?? 0)), 4);
-            $clawback = round($originalPrice + $topUp, 4);
+            $clawback = round($currentMonth + $originalPrice + $topUp, 4);
 
             if ($clawback <= 0) {
                 throw new RuntimeException(
@@ -249,7 +253,9 @@ class AiSubscriptionRegistryService
             ->first();
 
         $today = Carbon::today('Asia/Dushanbe');
-        $periodMonths = max(1, (int) $aiItem->period_months);
+        // period_months в КП = доп. месяцы (+N); календарь всегда включает текущий месяц.
+        $extraMonths = max(0, (int) $aiItem->period_months);
+        $calendarMonths = $extraMonths + 1;
 
         if ($existing && $existing->expires_at && $existing->expires_at->gt($today)) {
             $startedAt = $existing->expires_at->copy()->addDay()->startOfDay();
@@ -257,9 +263,9 @@ class AiSubscriptionRegistryService
             $startedAt = $today->copy()->startOfDay();
         }
 
-        // Старт 4 авг, 3 мес → до 31 окт.
+        // Только текущий (0 доп.) → до конца этого месяца; +1 → до конца следующего и т.д.
         $expiresAt = $startedAt->copy()
-            ->addMonthsNoOverflow($periodMonths - 1)
+            ->addMonthsNoOverflow($calendarMonths - 1)
             ->endOfMonth()
             ->endOfDay();
 
@@ -271,8 +277,8 @@ class AiSubscriptionRegistryService
             'organization_id' => $orgId,
             'plan_id' => $plan->id,
             'status' => true,
-            'period_months' => $periodMonths,
-            'price_paid' => $aiItem->total_price,
+            'period_months' => $calendarMonths,
+            'price_paid' => $aiItem->chargedTotal(),
             'started_at' => $startedAt,
             'expires_at' => $expiresAt,
             'commercial_offer_id' => $offerId,
@@ -360,14 +366,11 @@ class AiSubscriptionRegistryService
 
     private function creditPaidAmount(AiBalance $balance, CommercialOfferAiItem $aiItem, AiTariffPlan $plan): void
     {
-        $periodMonths = max(1, (int) $aiItem->period_months);
-        // Кошелёк пополняем по снапшоту КП (original_price = без скидки периода).
-        // Без суммы в КП — ошибка, не подставляем «примерно» из текущего прайса.
+        $periodMonths = max(0, (int) $aiItem->period_months);
+        // Кошелёк пополняем по снапшоту КП (original_price = без скидки периода) только за +N мес.
         $amount = round((float) $aiItem->original_price, 4);
-        if ($amount <= 0) {
-            throw new RuntimeException(
-                "AI item for offer has empty original_price; cannot credit wallet (plan #{$plan->id}, months={$periodMonths})."
-            );
+        if ($amount <= 0 || $periodMonths <= 0) {
+            return;
         }
         // Прайс тарифа в валюте баланса обязан существовать.
         $plan->monthlyLimitForCurrency((int) $balance->currency_id);
@@ -381,10 +384,73 @@ class AiSubscriptionRegistryService
             'type' => AiBalanceTransaction::TYPE_PAYMENT,
             'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
             'amount' => $amount,
-            'description' => "Пополнение кошелька ИИ ({$periodMonths} мес., тариф «{$plan->name}»)",
+            'description' => "Пополнение кошелька ИИ (+{$periodMonths} мес., тариф «{$plan->name}»)",
         ]);
 
         Log::info('AiSubscriptionRegistryService: ai_balance credited', [
+            'organization_id' => $balance->organization_id,
+            'amount' => $amount,
+        ]);
+    }
+
+    /**
+     * Текущий месяц из КП: credit → limited ровно на current_month_amount.
+     */
+    private function creditAndGrantCurrentMonth(AiBalance $balance, CommercialOfferAiItem $aiItem, AiTariffPlan $plan): void
+    {
+        $amount = round(max(0, (float) ($aiItem->current_month_amount ?? 0)), 4);
+        if ($amount <= 0) {
+            throw new RuntimeException(
+                "AI item missing current_month_amount; cannot grant current-month limit (plan #{$plan->id})."
+            );
+        }
+
+        $plan->monthlyLimitForCurrency((int) $balance->currency_id);
+
+        $balance->increment('ai_balance', $amount);
+        $balance->refresh();
+
+        AiBalanceTransaction::query()->create([
+            'organization_id' => $balance->organization_id,
+            'currency_id' => $balance->currency_id,
+            'type' => AiBalanceTransaction::TYPE_PAYMENT,
+            'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+            'amount' => $amount,
+            'description' => "Оплата текущего месяца ИИ (пропорция, тариф «{$plan->name}»)",
+        ]);
+
+        $ai = (float) $balance->ai_balance;
+        if ($ai + 0.0001 < $amount) {
+            throw new RuntimeException(
+                "AiSubscriptionRegistryService: ai_balance insufficient for current month "
+                . "(have={$ai}, need={$amount}, org #{$balance->organization_id})."
+            );
+        }
+
+        $balance->ai_balance = round($ai - $amount, 4);
+        $balance->save();
+
+        AiBalanceTransaction::query()->create([
+            'organization_id' => $balance->organization_id,
+            'currency_id' => $balance->currency_id,
+            'type' => AiBalanceTransaction::TYPE_MONTHLY_PURCHASE,
+            'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+            'amount' => $amount,
+            'description' => 'Списание за текущий месяц (пропорциональный лимит из КП)',
+        ]);
+
+        $balance->increment('limited_balance', $amount);
+
+        AiBalanceTransaction::query()->create([
+            'organization_id' => $balance->organization_id,
+            'currency_id' => $balance->currency_id,
+            'type' => AiBalanceTransaction::TYPE_TARIFF_GRANT_PRORATED,
+            'target_balance' => AiBalanceTransaction::TARGET_LIMITED,
+            'amount' => $amount,
+            'description' => 'Начисление лимита за текущий месяц (из КП)',
+        ]);
+
+        Log::info('AiSubscriptionRegistryService: current month granted', [
             'organization_id' => $balance->organization_id,
             'amount' => $amount,
         ]);
@@ -478,7 +544,7 @@ class AiSubscriptionRegistryService
             'type' => AiBalanceTransaction::TYPE_TOPUP,
             'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
             'amount' => $amount,
-            'description' => 'Запас на ИИ-баланс при подключении (из КП)',
+            'description' => 'Баланс ИИ при подключении (из КП)',
         ]);
 
         Log::info('AiSubscriptionRegistryService: balance_topup credited', [
