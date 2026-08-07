@@ -61,13 +61,6 @@
                 <textarea name="address" cols="30" rows="10" class="form-control">{{ $organization->address }}</textarea>
             </div>
 
-            <div class="form-group form-check">
-                <input type="hidden" name="ai_gift_promo_used" value="0">
-                <input type="checkbox" class="form-check-input" id="ai_gift_promo_used" name="ai_gift_promo_used" value="1"
-                       {{ old('ai_gift_promo_used', $organization->ai_gift_promo_used) ? 'checked' : '' }}>
-                <label class="form-check-label" for="ai_gift_promo_used">Использовал акцию ИИ (подарочные месяцы)</label>
-            </div>
-
             <button type="submit" class="btn btn-primary mr-2"> Изменить </button>
 
         </form>

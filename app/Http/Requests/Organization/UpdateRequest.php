@@ -22,16 +22,6 @@ class UpdateRequest extends FormRequest
             'INN' => ['nullable'],
             'address' => ['required'],
             'business_type_id' => ['nullable', Rule::exists('business_types', 'id')],
-            'ai_gift_promo_used' => ['nullable', 'boolean'],
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if ($this->has('ai_gift_promo_used')) {
-            $this->merge([
-                'ai_gift_promo_used' => $this->boolean('ai_gift_promo_used'),
-            ]);
-        }
     }
 }

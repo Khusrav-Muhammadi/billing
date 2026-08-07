@@ -160,15 +160,6 @@ class OrganizationV2Controller extends Controller
         return redirect()->back();
     }
 
-    public function updateAiGiftPromo(Organization $organization, Request $request): RedirectResponse
-    {
-        $organization->update([
-            'ai_gift_promo_used' => $request->boolean('ai_gift_promo_used'),
-        ]);
-
-        return redirect()->back()->with('success', 'Флаг акции ИИ обновлён.');
-    }
-
     public function destroy(Organization $organization): RedirectResponse
     {
         $this->repository->destroy($organization);
