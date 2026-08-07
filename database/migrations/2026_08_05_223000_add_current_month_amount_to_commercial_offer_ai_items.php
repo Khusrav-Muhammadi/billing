@@ -4,10 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Отдельная сумма «Текущий месяц» (пропорция) в AI-блоке КП.
- * period_months теперь = доп. месяцы (0 допустимо); balance_topup = произвольный «Баланс ИИ».
- */
+
 return new class extends Migration
 {
     public function up(): void
