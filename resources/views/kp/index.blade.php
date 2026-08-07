@@ -172,8 +172,22 @@
             border-radius: 20px;
         }
 
+        .gift-badge {
+            background: #16a34a;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 20px;
+        }
+
         .period-btn.active .discount-badge {
             background: rgba(255,255,255,0.25);
+            color: #fff;
+        }
+
+        .period-btn.active .gift-badge {
+            background: rgba(255,255,255,0.3);
             color: #fff;
         }
 
@@ -1050,6 +1064,7 @@
                 return;
             }
             periodRow.style.display = 'block';
+            const cpg = window.cpGenerator;
             plan.periods.forEach(per => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
@@ -1058,6 +1073,11 @@
                 let label = '+' + per.months + ' мес';
                 if (per.discount_percent > 0) {
                     label += ' <span class="discount-badge">-' + per.discount_percent + '%</span>';
+                }
+                const giftMonths = cpg && typeof cpg.getAiGiftMonthsForPeriod === 'function'
+                    ? cpg.getAiGiftMonthsForPeriod(per.months) : 0;
+                if (giftMonths > 0) {
+                    label += ' <span class="gift-badge">+' + giftMonths + ' подарок</span>';
                 }
                 btn.innerHTML = label;
                 btn.addEventListener('click', () => {
@@ -1113,6 +1133,9 @@
                     original = +(unit * months).toFixed(4);
                     total = +(original * (1 - discountPct / 100)).toFixed(4);
                 }
+                const giftMonths = months > 0 && cpgGate && typeof cpgGate.getAiGiftMonthsForPeriod === 'function'
+                    ? cpgGate.getAiGiftMonthsForPeriod(months) : 0;
+                const giftOriginal = giftMonths > 0 ? +(unit * giftMonths).toFixed(4) : 0;
                 const partnerPct = cpgGate && typeof cpgGate.getPartnerPackPercent === 'function'
                     ? cpgGate.getPartnerPackPercent() : 0;
                 const topup = Math.max(0, +(Number(topupInput?.value) || 0).toFixed(4));
@@ -1120,6 +1143,8 @@
                     plan_id: selectedPlanId,
                     plan_name: plan?.name || '',
                     period_months: months,
+                    gift_months: giftMonths,
+                    gift_original_price: giftOriginal,
                     unit_price: unit,
                     discount_percent: discountPct,
                     partner_percent: partnerPct,

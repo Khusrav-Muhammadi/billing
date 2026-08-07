@@ -346,8 +346,23 @@ class CPGenerator {
     }
 
     isAiAgentAllowedForSelectedTariff() {
-        if (!this.state.selectedTariff) return false;
-        return !this.isBaseTariff(this.state.selectedTariff);
+        // ИИ доступен на любом выбранном тарифе, включая базовый.
+        return Boolean(this.state.selectedTariff);
+    }
+
+    isAiGiftPromoEligible() {
+        if (this.isBaseTariff()) return false;
+        const client = this.getSelectedClient ? this.getSelectedClient() : null;
+        if (client && Boolean(client.ai_gift_promo_used)) return false;
+        return true;
+    }
+
+    getAiGiftMonthsForPeriod(periodMonths) {
+        if (!this.isAiGiftPromoEligible()) return 0;
+        const months = Math.max(0, Number(periodMonths) || 0);
+        if (months >= 6) return 6;
+        if (months >= 3) return 3;
+        return 0;
     }
 
     syncAiAgentAvailability() {

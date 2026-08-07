@@ -1034,7 +1034,19 @@
             @if($aiMonths > 0)
             <tr>
                 <th>Доп. период</th>
-                <td>+{{ $aiMonths }} {{ $aiMonths === 1 ? 'месяц' : ($aiMonths < 5 ? 'месяца' : 'месяцев') }}</td>
+                <td>
+                    +{{ $aiMonths }} {{ $aiMonths === 1 ? 'месяц' : ($aiMonths < 5 ? 'месяца' : 'месяцев') }}
+                </td>
+            </tr>
+            @endif
+            @php $aiGiftMonths = (int) ($ai_item['gift_months'] ?? 0); @endphp
+            @if($aiGiftMonths > 0)
+            <tr>
+                <th>Подарок</th>
+                <td>
+                    +{{ $aiGiftMonths }} {{ $aiGiftMonths === 1 ? 'месяц' : ($aiGiftMonths < 5 ? 'месяца' : 'месяцев') }}
+                    <span style="color:#16a34a;">(скидка 100%)</span>
+                </td>
             </tr>
             @endif
             @if($aiUnit > 0 && $aiMonths > 0)
@@ -1047,6 +1059,17 @@
             <tr>
                 <th>Сумма за доп. период без скидки</th>
                 <td>{{ formatPrice($aiOriginal) }} {{ $currency }}</td>
+            </tr>
+            @endif
+            @if($aiGiftMonths > 0 && $aiUnit > 0)
+            @php $aiGiftOriginal = round($aiUnit * $aiGiftMonths, 4); @endphp
+            <tr>
+                <th>Сумма подарка без скидки</th>
+                <td>{{ formatPrice($aiGiftOriginal) }} {{ $currency }}</td>
+            </tr>
+            <tr>
+                <th>Скидка на подарок</th>
+                <td>100% (−{{ formatPrice($aiGiftOriginal) }} {{ $currency }})</td>
             </tr>
             @endif
             @if($aiDiscountPct > 0 && $aiMonths > 0)
@@ -1064,6 +1087,12 @@
             <tr>
                 <th>Стоимость доп. месяцев</th>
                 <td>{{ formatPrice($aiSubTotal) }} {{ $currency }}</td>
+            </tr>
+            @endif
+            @if($aiGiftMonths > 0)
+            <tr>
+                <th>Стоимость подарка</th>
+                <td>0 {{ $currency }}</td>
             </tr>
             @endif
             @if($aiTopup > 0)
@@ -1156,6 +1185,15 @@
                     </td>
                     <td>{{ formatPrice($calculations['ai_total']) }} {{ $currency }}</td>
                 </tr>
+                @if((int)($ai_item['gift_months'] ?? 0) > 0)
+                <tr>
+                    <td>
+                        ИИ-Агент «{{ $ai_item['plan_name'] ?? '' }}»
+                        +{{ (int) $ai_item['gift_months'] }} мес. в подарок (скидка 100%)
+                    </td>
+                    <td>0 {{ $currency }}</td>
+                </tr>
+                @endif
                 @endif
             </table>
             <div class="total-row">

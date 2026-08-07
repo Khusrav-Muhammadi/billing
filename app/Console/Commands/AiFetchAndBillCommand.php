@@ -30,7 +30,6 @@ class AiFetchAndBillCommand extends Command
             try {
                 $billingService->processOrganization((int) $orgId);
             } catch (\Throwable $e) {
-                // Не биллим «примерно» — логируем и идём дальше.
                 $this->error("Billing failed for org #{$orgId}: {$e->getMessage()}");
                 report($e);
             }

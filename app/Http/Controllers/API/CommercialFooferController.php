@@ -395,21 +395,23 @@ class CommercialFooferController extends Controller
                 ]);
             }
 
-            // AI-item: сохраняем если пришёл из KP (на базовом тарифе — запрещено).
+            // AI-item: сохраняем если пришёл из KP.
             $aiItemData = data_get($payload, 'ai_item');
             $isBaseTariff = $tariff && Tariff::isBaseTariffName($tariff->name);
             if (is_array($aiItemData) && ! empty($aiItemData['plan_id'])) {
-                if ($isBaseTariff) {
-                    throw ValidationException::withMessages([
-                        'payload' => 'ИИ-агент недоступен на базовом тарифе.',
-                    ]);
-                }
+                $aiPeriodMonths = max(0, (int) ($aiItemData['period_months'] ?? 0));
+                $aiGiftMonths = \App\Models\Ai\CommercialOfferAiItem::resolveGiftMonths(
+                    $aiPeriodMonths,
+                    $organization,
+                    (bool) $isBaseTariff
+                );
 
                 \App\Models\Ai\CommercialOfferAiItem::query()->updateOrCreate(
                     ['commercial_offer_id' => $offer->id],
                     [
                         'plan_id' => (int) $aiItemData['plan_id'],
-                        'period_months' => (int) ($aiItemData['period_months'] ?? 1),
+                        'period_months' => $aiPeriodMonths,
+                        'gift_months' => $aiGiftMonths,
                         'unit_price' => (float) ($aiItemData['unit_price'] ?? 0),
                         'discount_percent' => (float) ($aiItemData['discount_percent'] ?? 0),
                         'partner_percent' => (float) ($aiItemData['partner_percent'] ?? 0),
@@ -701,7 +703,7 @@ class CommercialFooferController extends Controller
         $organizationId = (int)$request->query('organization_id', 0);
 
         $organizations = Organization::query()
-            ->select('id', 'name', 'phone', 'client_id', 'order_number')
+            ->select('id', 'name', 'phone', 'client_id', 'order_number', 'ai_gift_promo_used')
             ->with(['client.country.currency'])
                         ->when($organizationId > 0, function (Builder $query) use ($organizationId) {
                 $query->whereKey($organizationId);
@@ -732,6 +734,7 @@ class CommercialFooferController extends Controller
                     'currency_id' => data_get($o, 'client.country.currency_id'),
                     'currency' => data_get($o, 'client.country.currency.symbol_code'),
                     'operation_start_date' => $operationStartDates[$organizationId] ?? null,
+                    'ai_gift_promo_used' => (bool) ($o->ai_gift_promo_used ?? false),
                 ];
             })
             ->values()
@@ -2289,6 +2292,7 @@ class CommercialFooferController extends Controller
                 'plan_id' => (int) $offer->aiItem->plan_id,
                 'plan_name' => (string) ($offer->aiItem->plan?->name ?? ''),
                 'period_months' => (int) $offer->aiItem->period_months,
+                'gift_months' => (int) ($offer->aiItem->gift_months ?? 0),
                 'unit_price' => (float) $offer->aiItem->unit_price,
                 'discount_percent' => (float) $offer->aiItem->discount_percent,
                 'partner_percent' => (float) $offer->aiItem->partner_percent,

@@ -12,9 +12,6 @@ use RuntimeException;
 
 class AiBillingService
 {
-    /**
-     * Run a 30-minute billing cycle for a single organization.
-     */
     public function processOrganization(int $orgId): void
     {
         DB::transaction(function () use ($orgId): void {
@@ -25,12 +22,6 @@ class AiBillingService
 
             if (! $balance) {
                 return;
-            }
-
-            if ((int) $balance->currency_id <= 0) {
-                throw new RuntimeException(
-                    "AiBillingService: ai_balances #{$balance->id} has no currency_id (org #{$orgId})."
-                );
             }
 
             $periodStart = now()->subMinutes(30);

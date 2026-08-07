@@ -334,21 +334,23 @@ class ApplicationController extends Controller
                 $offer->offerStatuses()->delete();
             }
 
-            // AI-item: сохраняем если пришёл из KP (на базовом тарифе — запрещено).
+            // AI-item: сохраняем если пришёл из KP.
             $aiItemData = data_get($payload, 'ai_item');
             $isBaseTariff = $tariff && Tariff::isBaseTariffName($tariff->name);
             if (is_array($aiItemData) && ! empty($aiItemData['plan_id'])) {
-                if ($isBaseTariff) {
-                    throw ValidationException::withMessages([
-                        'payload' => 'ИИ-агент недоступен на базовом тарифе.',
-                    ]);
-                }
+                $aiPeriodMonths = max(0, (int) ($aiItemData['period_months'] ?? 0));
+                $aiGiftMonths = \App\Models\Ai\CommercialOfferAiItem::resolveGiftMonths(
+                    $aiPeriodMonths,
+                    $organization,
+                    (bool) $isBaseTariff
+                );
 
                 \App\Models\Ai\CommercialOfferAiItem::query()->updateOrCreate(
                     ['commercial_offer_id' => $offer->id],
                     [
                         'plan_id' => (int) $aiItemData['plan_id'],
-                        'period_months' => (int) ($aiItemData['period_months'] ?? 1),
+                        'period_months' => $aiPeriodMonths,
+                        'gift_months' => $aiGiftMonths,
                         'unit_price' => (float) ($aiItemData['unit_price'] ?? 0),
                         'discount_percent' => (float) ($aiItemData['discount_percent'] ?? 0),
                         'partner_percent' => (float) ($aiItemData['partner_percent'] ?? 0),
@@ -1115,6 +1117,7 @@ class ApplicationController extends Controller
                 'plan_id'          => (int)$offer->aiItem->plan_id,
                 'plan_name'        => (string)($offer->aiItem->plan?->name ?? ''),
                 'period_months'    => (int)$offer->aiItem->period_months,
+                'gift_months'      => (int)($offer->aiItem->gift_months ?? 0),
                 'unit_price'       => (float)$offer->aiItem->unit_price,
                 'discount_percent' => (float)$offer->aiItem->discount_percent,
                 'partner_percent'  => (float)$offer->aiItem->partner_percent,

@@ -11,6 +11,7 @@ use App\Models\Ai\CommercialOfferAiItem;
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Models\Currency;
+use App\Models\Organization;
 use App\Models\Tariff;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
@@ -39,15 +40,7 @@ class AiSubscriptionRegistryService
         }
 
         $offer->loadMissing('tariff:id,name');
-        if ($offer->tariff && Tariff::isBaseTariffName($offer->tariff->name)) {
-            Log::warning('AiSubscriptionRegistryService: AI blocked on base tariff', [
-                'commercial_offer_id' => $offer->id,
-                'tariff_id' => $offer->tariff_id,
-                'tariff_name' => $offer->tariff->name,
-            ]);
-
-            return;
-        }
+        // Базовый тариф больше не блокирует ИИ — только акцию подарочных месяцев.
 
         try {
             DB::transaction(function () use ($offer, $aiItem): void {
@@ -72,8 +65,13 @@ class AiSubscriptionRegistryService
                 // Прайс тарифа должен быть именно в этой валюте — иначе ошибка, без FX.
                 $plan->monthlyLimitForCurrency($offerCurrencyId);
 
-                $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer->id);
+                $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer);
                 $balance = $this->ensureBalance($orgId, $offerCurrencyId);
+
+                // После любой успешной оплаты ИИ — акция больше недоступна.
+                Organization::query()
+                    ->whereKey($orgId)
+                    ->update(['ai_gift_promo_used' => true]);
 
                 // 1. Текущий месяц (пропорция) → кошелёк → limited.
                 $this->creditAndGrantCurrentMonth($balance, $aiItem, $plan);
@@ -82,6 +80,10 @@ class AiSubscriptionRegistryService
                 if ((int) $aiItem->period_months > 0 && (float) $aiItem->original_price > 0) {
                     $this->creditPaidAmount($balance, $aiItem, $plan);
                 }
+
+                // 2b. Подарочные месяцы → тоже в кошелёк (бесплатно),
+                // чтобы 1-го числа списание ai_balance → limited работало до expires_at.
+                $this->creditGiftMonths($balance, $aiItem, $plan);
 
                 // 3. Произвольный «Баланс ИИ».
                 $this->creditBalanceTopUp($balance, $aiItem);
@@ -141,8 +143,14 @@ class AiSubscriptionRegistryService
 
             $currentMonth = round(max(0, (float) ($aiItem->current_month_amount ?? 0)), 4);
             $originalPrice = round((float) $aiItem->original_price, 4);
+            $giftMonths = max(0, (int) ($aiItem->gift_months ?? 0));
+            $giftAmount = 0.0;
+            if ($giftMonths > 0) {
+                $unit = round((float) $aiItem->unit_price, 4);
+                $giftAmount = round($unit * $giftMonths, 4);
+            }
             $topUp = round(max(0, (float) ($aiItem->balance_topup ?? 0)), 4);
-            $clawback = round($currentMonth + $originalPrice + $topUp, 4);
+            $clawback = round($currentMonth + $originalPrice + $giftAmount + $topUp, 4);
 
             if ($clawback <= 0) {
                 throw new RuntimeException(
@@ -237,7 +245,7 @@ class AiSubscriptionRegistryService
         int $orgId,
         AiTariffPlan $plan,
         CommercialOfferAiItem $aiItem,
-        int $offerId
+        CommercialOffer $offer
     ): AiSubscription {
         $existing = AiSubscription::query()
             ->where('organization_id', $orgId)
@@ -248,6 +256,8 @@ class AiSubscriptionRegistryService
 
         $today = Carbon::today('Asia/Dushanbe');
         $extraMonths = max(0, (int) $aiItem->period_months);
+        // Срок из снапшота КП (gift_months уже посчитан при сохранении с учётом тарифа/акции).
+        $extraMonths += max(0, (int) ($aiItem->gift_months ?? 0));
         $calendarMonths = $extraMonths + 1;
 
         if ($existing && $existing->expires_at && $existing->expires_at->gt($today)) {
@@ -273,7 +283,7 @@ class AiSubscriptionRegistryService
             'price_paid' => $aiItem->chargedTotal(),
             'started_at' => $startedAt,
             'expires_at' => $expiresAt,
-            'commercial_offer_id' => $offerId,
+            'commercial_offer_id' => $offer->id,
         ]);
     }
 
@@ -375,6 +385,48 @@ class AiSubscriptionRegistryService
 
         Log::info('AiSubscriptionRegistryService: ai_balance credited', [
             'organization_id' => $balance->organization_id,
+            'amount' => $amount,
+        ]);
+    }
+
+    /**
+     * Подарочные месяцы кладём в кошелёк бесплатно (unit × gift_months),
+     * иначе start-of-month не сможет купить лимит и агент выключится.
+     */
+    private function creditGiftMonths(AiBalance $balance, CommercialOfferAiItem $aiItem, AiTariffPlan $plan): void
+    {
+        $giftMonths = max(0, (int) ($aiItem->gift_months ?? 0));
+        if ($giftMonths <= 0) {
+            return;
+        }
+
+        $unit = round((float) $aiItem->unit_price, 4);
+        if ($unit <= 0) {
+            $unit = round($plan->monthlyLimitForCurrency((int) $balance->currency_id), 4);
+        }
+
+        $amount = round($unit * $giftMonths, 4);
+        if ($amount <= 0) {
+            return;
+        }
+
+        $plan->monthlyLimitForCurrency((int) $balance->currency_id);
+
+        $balance->increment('ai_balance', $amount);
+        $balance->refresh();
+
+        AiBalanceTransaction::query()->create([
+            'organization_id' => $balance->organization_id,
+            'currency_id' => $balance->currency_id,
+            'type' => AiBalanceTransaction::TYPE_PAYMENT,
+            'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+            'amount' => $amount,
+            'description' => "Подарочные месяцы ИИ (+{$giftMonths} мес., тариф «{$plan->name}», скидка 100%)",
+        ]);
+
+        Log::info('AiSubscriptionRegistryService: gift months credited to ai_balance', [
+            'organization_id' => $balance->organization_id,
+            'gift_months' => $giftMonths,
             'amount' => $amount,
         ]);
     }

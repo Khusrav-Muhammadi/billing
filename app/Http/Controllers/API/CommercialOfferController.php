@@ -101,6 +101,7 @@ class CommercialOfferController extends Controller
             'ai_item' => 'nullable|array',
             'ai_item.plan_name' => 'nullable|string|max:255',
             'ai_item.period_months' => 'nullable|integer|min:0|max:36',
+            'ai_item.gift_months' => 'nullable|integer|min:0|max:36',
             'ai_item.unit_price' => 'nullable|numeric|min:0',
             'ai_item.discount_percent' => 'nullable|numeric|min:0|max:100',
             'ai_item.original_price' => 'nullable|numeric|min:0',
@@ -158,10 +159,6 @@ class CommercialOfferController extends Controller
 
         $aiItem = $validated['ai_item'] ?? null;
         $aiTotal = 0.0;
-        // На базовом тарифе ИИ-агент в КП не допускаем.
-        if (is_array($aiItem) && \App\Models\Tariff::isBaseTariffName((string) ($validated['tariff']['name'] ?? ''))) {
-            $aiItem = null;
-        }
         if (is_array($aiItem)) {
             $aiTotal = round(
                 (float) ($aiItem['current_month_amount'] ?? 0)

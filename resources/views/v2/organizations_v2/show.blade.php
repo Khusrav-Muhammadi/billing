@@ -91,6 +91,25 @@
                     {{ number_format((float) $realBalance, 2, '.', ' ') }}
                     {{ $organization->client?->country?->currency?->symbol_code ?? '' }}
                 </div>
+                <div class="col-md-6 mb-2">
+                    <form method="POST" action="{{ route('organization_v2.ai-gift-promo', $organization) }}" class="d-flex align-items-center gap-2 flex-wrap">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="ai_gift_promo_used" value="0">
+                        <div class="form-check mb-0">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="ai_gift_promo_used"
+                                   name="ai_gift_promo_used"
+                                   value="1"
+                                   {{ $organization->ai_gift_promo_used ? 'checked' : '' }}
+                                   onchange="this.form.submit()">
+                            <label class="form-check-label" for="ai_gift_promo_used">
+                                Использовал акцию ИИ (подарочные месяцы)
+                            </label>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 

@@ -14,13 +14,14 @@ class Organization extends Model
     use HasFactory;
 
     protected $fillable = ['name','INN','phone','email','address', 'client_id', 'has_access', 'business_type_id', 'reject_cause', 'balance', 'license_paid', 'sum_paid_for_license', 'order_number',
-        'legal_name', 'legal_address', 'director', 'has_implementation', 'implementation_sum'];
+        'legal_name', 'legal_address', 'director', 'has_implementation', 'implementation_sum', 'ai_gift_promo_used'];
 
     protected $casts = [
         'balance' => 'decimal:4',
         'sum_paid_for_license' => 'decimal:4',
         'implementation_sum' => 'decimal:4',
         'has_implementation' => 'boolean',
+        'ai_gift_promo_used' => 'boolean',
     ];
 
     protected static function booted(): void

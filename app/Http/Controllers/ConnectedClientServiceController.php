@@ -76,7 +76,7 @@ class ConnectedClientServiceController extends Controller
             ->groupBy('parent_tariff_id');
 
         $organizations = Organization::query()
-            ->select('id', 'name', 'phone', 'client_id', 'order_number')
+            ->select('id', 'name', 'phone', 'client_id', 'order_number', 'ai_gift_promo_used')
             ->with(['client.country.currency'])
             ->orderBy('name')
             ->get();
@@ -162,7 +162,7 @@ class ConnectedClientServiceController extends Controller
             ->groupBy('parent_tariff_id');
 
         $organizations = Organization::query()
-            ->select('id', 'name', 'phone', 'client_id', 'order_number')
+            ->select('id', 'name', 'phone', 'client_id', 'order_number', 'ai_gift_promo_used')
             ->with(['client.country.currency'])
             ->orderBy('name')
             ->get();
@@ -205,6 +205,7 @@ class ConnectedClientServiceController extends Controller
                 'country_id'  => $o->client?->country_id,
                 'currency_id' => $o->client?->country?->currency_id,
                 'currency'    => $o->client?->country?->currency?->symbol_code,
+                'ai_gift_promo_used' => (bool) ($o->ai_gift_promo_used ?? false),
             ]),
 	            'partners'      => $partners->map(fn($p) => [
 	                'id'    => $p->id,
@@ -229,7 +230,7 @@ class ConnectedClientServiceController extends Controller
         $search = trim((string) $request->query('search', ''));
 
         $organizations = Organization::query()
-            ->select('id', 'name', 'phone', 'client_id', 'order_number')
+            ->select('id', 'name', 'phone', 'client_id', 'order_number', 'ai_gift_promo_used')
             ->with(['client.country.currency'])
             ->when($search !== '', function ($query) use ($search) {
                 $like = '%' . $search . '%';
@@ -255,6 +256,7 @@ class ConnectedClientServiceController extends Controller
                 'country_id'  => $o->client?->country_id,
                 'currency_id' => $o->client?->country?->currency_id,
                 'currency'    => $o->client?->country?->currency?->symbol_code,
+                'ai_gift_promo_used' => (bool) ($o->ai_gift_promo_used ?? false),
             ]),
         ]);
     }

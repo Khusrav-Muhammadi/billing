@@ -137,6 +137,7 @@ Route::middleware('auth')->group(function () {
         Route::post('integration-log/{log}/retry', [OrganizationV2Controller::class, 'retryIntegrationLog'])->name('organization_v2.integration-log.retry');
         Route::get('edit/{organization}', [OrganizationV2Controller::class, 'edit'])->name('organization_v2.edit');
         Route::patch('update/{organization}', [OrganizationV2Controller::class, 'update'])->name('organization_v2.update');
+        Route::patch('ai-gift-promo/{organization}', [OrganizationV2Controller::class, 'updateAiGiftPromo'])->name('organization_v2.ai-gift-promo');
         Route::delete('/{organization}', [OrganizationV2Controller::class, 'destroy'])->name('organization_v2.destroy');
         Route::post('access/{organization}', [OrganizationV2Controller::class, 'access'])->name('organization_v2.access');
         Route::post('addPack/{organization}', [OrganizationV2Controller::class, 'addPack'])->name('organization_v2.addPack');
