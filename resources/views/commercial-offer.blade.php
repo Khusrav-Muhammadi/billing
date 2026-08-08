@@ -1062,16 +1062,7 @@
             </tr>
             @endif
             @if($aiGiftMonths > 0 && $aiUnit > 0)
-            @php $aiGiftOriginal = round($aiUnit * $aiGiftMonths, 4); @endphp
-            <tr>
-                <th>Сумма подарка без скидки</th>
-                <td>{{ formatPrice($aiGiftOriginal) }} {{ $currency }}</td>
-            </tr>
-            <tr>
-                <th>Скидка на подарок</th>
-                <td>100% (−{{ formatPrice($aiGiftOriginal) }} {{ $currency }})</td>
-            </tr>
-            @endif
+            
             @if($aiDiscountPct > 0 && $aiMonths > 0)
             <tr>
                 <th>Скидка</th>
@@ -1089,12 +1080,7 @@
                 <td>{{ formatPrice($aiSubTotal) }} {{ $currency }}</td>
             </tr>
             @endif
-            @if($aiGiftMonths > 0)
-            <tr>
-                <th>Стоимость подарка</th>
-                <td>0 {{ $currency }}</td>
-            </tr>
-            @endif
+
             @if($aiTopup > 0)
             <tr>
                 <th>Баланс ИИ</th>
