@@ -381,6 +381,30 @@ body {
     gap: 16px;
 }
 
+.ai-plans-by-model {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.ai-model-group-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 10px;
+}
+
+.ai-model-plans-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 16px;
+}
+
+.ai-model-plans-row .tariff-card {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
 .tariff-card {
     background: #fff;
     border: 1px solid #ddd;
@@ -1583,6 +1607,15 @@ body {
     
     .tariffs-grid {
         grid-template-columns: 1fr;
+    }
+
+    .ai-model-plans-row {
+        flex-wrap: wrap;
+    }
+
+    .ai-model-plans-row .tariff-card {
+        flex: 1 1 100%;
+        min-width: 0;
     }
     
     .services-grid {

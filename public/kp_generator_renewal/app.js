@@ -6602,36 +6602,75 @@ class CPGenerator {
         };
 
         plansGrid.innerHTML = '';
+        plansGrid.classList.add('ai-plans-by-model');
+
+        const modelGroups = new Map();
         plans.forEach(plan => {
-            const card = document.createElement('div');
-            card.className = 'tariff-card';
-            card.dataset.planId = plan.id;
+            const modelKey = String(plan.model_name || '').trim() || 'Прочие';
+            if (!modelGroups.has(modelKey)) {
+                modelGroups.set(modelKey, []);
+            }
+            modelGroups.get(modelKey).push(plan);
+        });
 
-            const bestPeriod = (plan.periods || []).slice().sort((a, b) => b.discount_percent - a.discount_percent)[0];
-            const discountHtml = bestPeriod && bestPeriod.discount_percent > 0
-                ? `<span class="discount-badge" style="margin-left:6px;">-${bestPeriod.discount_percent}%</span>` : '';
-            const displayPrice = getAiPrice(plan);
-            const displayCur   = getAiCurrency(plan);
-            const priceDisplay = displayPrice > 0
-                ? `<div class="tariff-price"><span class="price-value">${displayPrice}</span><span class="price-period">&nbsp;${displayCur}/мес${discountHtml}</span></div>`
-                : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
+        const sortedModelNames = Array.from(modelGroups.keys()).sort((a, b) => {
+            if (a === 'Прочие') return 1;
+            if (b === 'Прочие') return -1;
+            return a.localeCompare(b, 'ru', { sensitivity: 'base' });
+        });
 
-            card.innerHTML = `
-                <div class="tariff-select-indicator"></div>
-                <div class="tariff-name" style="margin-top:24px;">${plan.name}</div>
-                <div class="ai-price-area">${priceDisplay}</div>`;
-
-            card.addEventListener('click', () => {
-                plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedPlanId = plan.id;
-                selectedMonths = null;
-                this._aiTopupManual = false;
-                renderPeriods(plan);
-                renderSummary();
+        sortedModelNames.forEach(modelName => {
+            const groupPlans = modelGroups.get(modelName).slice().sort((a, b) => {
+                const priceDiff = getAiPrice(a) - getAiPrice(b);
+                if (priceDiff !== 0) return priceDiff;
+                return String(a.name || '').localeCompare(String(b.name || ''), 'ru', { sensitivity: 'base' });
             });
 
-            plansGrid.appendChild(card);
+            const groupEl = document.createElement('div');
+            groupEl.className = 'ai-model-group';
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'ai-model-group-title';
+            titleEl.textContent = modelName;
+            groupEl.appendChild(titleEl);
+
+            const rowEl = document.createElement('div');
+            rowEl.className = 'ai-model-plans-row';
+
+            groupPlans.forEach(plan => {
+                const card = document.createElement('div');
+                card.className = 'tariff-card';
+                card.dataset.planId = plan.id;
+
+                const bestPeriod = (plan.periods || []).slice().sort((a, b) => b.discount_percent - a.discount_percent)[0];
+                const discountHtml = bestPeriod && bestPeriod.discount_percent > 0
+                    ? `<span class="discount-badge" style="margin-left:6px;">-${bestPeriod.discount_percent}%</span>` : '';
+                const displayPrice = getAiPrice(plan);
+                const displayCur   = getAiCurrency(plan);
+                const priceDisplay = displayPrice > 0
+                    ? `<div class="tariff-price"><span class="price-value">${displayPrice}</span><span class="price-period">&nbsp;${displayCur}/мес${discountHtml}</span></div>`
+                    : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
+
+                card.innerHTML = `
+                    <div class="tariff-select-indicator"></div>
+                    <div class="tariff-name" style="margin-top:24px;">${plan.name}</div>
+                    <div class="ai-price-area">${priceDisplay}</div>`;
+
+                card.addEventListener('click', () => {
+                    plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedPlanId = plan.id;
+                    selectedMonths = null;
+                    this._aiTopupManual = false;
+                    renderPeriods(plan);
+                    renderSummary();
+                });
+
+                rowEl.appendChild(card);
+            });
+
+            groupEl.appendChild(rowEl);
+            plansGrid.appendChild(groupEl);
         });
 
         if (topupInput) {
