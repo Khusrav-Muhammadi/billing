@@ -80,10 +80,6 @@ class ApplicationController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'currency_id']);
 
-        $organizations = Organization::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
         $partners = User::query()
             ->where('role', 'partner')
             ->orderBy('name')
@@ -101,7 +97,6 @@ class ApplicationController extends Controller
             'accounts',
             'filters',
             'filterQuery',
-            'organizations',
             'partners',
             'tariffs',
             'requestTypes'
@@ -118,7 +113,6 @@ class ApplicationController extends Controller
     private function resolveListFilters(Request $request): array
     {
         return [
-            'organization_id' => (int) $request->query('organization_id', 0),
             'partner_id' => (int) $request->query('partner_id', 0),
             'request_type' => trim((string) $request->query('request_type', '')),
             'tariff_id' => (int) $request->query('tariff_id', 0),

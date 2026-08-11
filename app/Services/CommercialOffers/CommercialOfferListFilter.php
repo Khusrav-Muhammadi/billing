@@ -8,7 +8,6 @@ class CommercialOfferListFilter
 {
     public function apply(Builder $query, array $filters): Builder
     {
-        $organizationId = (int) ($filters['organization_id'] ?? 0);
         $partnerId = (int) ($filters['partner_id'] ?? 0);
         $requestType = trim((string) ($filters['request_type'] ?? ''));
         $tariffId = (int) ($filters['tariff_id'] ?? 0);
@@ -17,10 +16,6 @@ class CommercialOfferListFilter
         $dateTo = trim((string) ($filters['date_to'] ?? ''));
         $operationStatus = trim((string) ($filters['operation_status'] ?? ''));
         $search = trim((string) ($filters['search'] ?? ''));
-
-        if ($organizationId > 0) {
-            $query->where('organization_id', $organizationId);
-        }
 
         if ($partnerId > 0) {
             $query->where('partner_id', $partnerId);
@@ -55,7 +50,7 @@ class CommercialOfferListFilter
             $this->applyOperationStatus($query, $operationStatus);
         }
 
-        if ($search !== '' && $organizationId <= 0) {
+        if ($search !== '') {
             $query->whereHas('organization', function ($organizationQuery) use ($search) {
                 $organizationQuery->where('name', 'like', "%{$search}%")
                     ->orWhere('order_number', 'like', "%{$search}%");
@@ -70,7 +65,6 @@ class CommercialOfferListFilter
         $params = [];
 
         foreach ([
-            'organization_id',
             'partner_id',
             'request_type',
             'tariff_id',

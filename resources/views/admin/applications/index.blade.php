@@ -12,21 +12,6 @@
         <form id="filterForm" method="GET" action="{{ route('application.index') }}">
             <div class="row mb-3 align-items-end">
                 <div class="col-md-2">
-                    <label class="form-label">Организация</label>
-                    <input type="text"
-                           class="form-control mb-2 js-organization-search"
-                           placeholder="Поиск организации..."
-                           autocomplete="off">
-                    <select name="organization_id" class="form-control js-organization-select">
-                        <option value="">Организация</option>
-                        @foreach($organizations as $organization)
-                            <option value="{{ $organization->id }}" @selected((string)($filters['organization_id'] ?? '') === (string)$organization->id)>
-                                {{ $organization->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
                     <label class="form-label">Партнер</label>
                     <select name="partner_id" class="form-control">
                         <option value="">Партнер</option>
@@ -558,25 +543,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.js-organization-search').forEach(function (input) {
-                input.addEventListener('input', function () {
-                    const select = input.closest('.col-md-2, .form-group, div')?.querySelector('.js-organization-select')
-                        || document.querySelector('.js-organization-select');
-                    if (!select) {
-                        return;
-                    }
-
-                    const term = (input.value || '').trim().toLowerCase();
-                    Array.from(select.options).forEach(function (opt) {
-                        if (!opt.value) {
-                            return;
-                        }
-                        const text = (opt.textContent || '').toLowerCase();
-                        opt.hidden = term ? !text.includes(term) : false;
-                    });
-                });
-            });
-
             document.querySelectorAll('.offer-row').forEach(function (row) {
                 row.addEventListener('click', function (event) {
                     if (event.target.closest('a, button, input, select, textarea, label')) {
