@@ -60,14 +60,25 @@ class PaidOffersExcelExportService
                         ->orderByDesc('status_date')
                         ->orderByDesc('id');
                 },
-                'latestOfferStatus:id,commercial_offer_id,status,status_date',
+                'latestOfferStatus',
             ])
+            // whereHas(latestOfferStatus) + latestOfMany даёт ambiguous commercial_offer_id
             ->where(function ($query) {
-                $query->whereHas('latestOfferStatus', function ($statusQuery) {
-                    $statusQuery->where('status', 'paid');
+                $query->whereExists(function ($subQuery) {
+                    $subQuery->selectRaw('1')
+                        ->from('commercial_offer_statuses as paid_latest')
+                        ->whereColumn('paid_latest.commercial_offer_id', 'commercial_offers.id')
+                        ->where('paid_latest.status', 'paid')
+                        ->whereRaw(
+                            'paid_latest.id = (
+                                select max(cos_max.id)
+                                from commercial_offer_statuses as cos_max
+                                where cos_max.commercial_offer_id = commercial_offers.id
+                            )'
+                        );
                 })->orWhere(function ($statusQuery) {
-                    $statusQuery->where('status', 'paid')
-                        ->whereDoesntHave('latestOfferStatus');
+                    $statusQuery->where('commercial_offers.status', 'paid')
+                        ->whereDoesntHave('offerStatuses');
                 });
             })
             ->when($search !== '', function ($query) use ($search) {
