@@ -16,6 +16,7 @@ use App\Models\Organization;
 use App\Models\PartnerProcent;
 use App\Models\Tariff;
 use App\Models\User;
+use App\Services\CommercialOffers\CommercialOfferListFilter;
 use App\Services\CommercialOffers\PaidOffersExcelExportService;
 use App\Support\RegistryDateTimeResolver;
 use Illuminate\Http\JsonResponse;
@@ -39,7 +40,8 @@ class ApplicationController extends Controller
 
     public function index(Request $request)
     {
-        $search = trim((string)$request->query('search', ''));
+        $filters = $this->resolveListFilters($request);
+        $filterService = app(CommercialOfferListFilter::class);
 
         $offers = CommercialOffer::query()
             ->with([
@@ -64,12 +66,11 @@ class ApplicationController extends Controller
                 'offerStatuses.author:id,name',
                 'offerStatuses.account:id,name,currency_id',
                 'offerStatuses.account.currency:id,symbol_code,name',
-            ])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->whereHas('organization', function ($query) use ($search) {
-                    $query->where('name', 'like', "%{$search}%")->orWhere('order_number','like', "%{$search}%");
-                });
-            })
+            ]);
+
+        $filterService->apply($offers, $filters);
+
+        $offers = $offers
             ->orderByDesc('id')
             ->paginate(1000)
             ->withQueryString();
@@ -79,14 +80,53 @@ class ApplicationController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'currency_id']);
 
-        return view('admin.applications.index', compact('offers', 'accounts', 'search'));
+        $organizations = Organization::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $partners = User::query()
+            ->where('role', 'partner')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $tariffs = Tariff::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $requestTypes = self::REQUEST_TYPES;
+        $filterQuery = $filterService->activeQueryParams($filters);
+
+        return view('admin.applications.index', compact(
+            'offers',
+            'accounts',
+            'filters',
+            'filterQuery',
+            'organizations',
+            'partners',
+            'tariffs',
+            'requestTypes'
+        ));
     }
 
-    public function exportPaidExcel(Request $request, PaidOffersExcelExportService $exportService): StreamedResponse
-    {
-        $search = trim((string) $request->query('search', ''));
+    public function exportPaidExcel(
+        Request $request,
+        PaidOffersExcelExportService $exportService
+    ): StreamedResponse {
+        return $exportService->download($this->resolveListFilters($request));
+    }
 
-        return $exportService->download($search);
+    private function resolveListFilters(Request $request): array
+    {
+        return [
+            'organization_id' => (int) $request->query('organization_id', 0),
+            'partner_id' => (int) $request->query('partner_id', 0),
+            'request_type' => trim((string) $request->query('request_type', '')),
+            'tariff_id' => (int) $request->query('tariff_id', 0),
+            'period_months' => (int) $request->query('period_months', 0),
+            'date_from' => trim((string) $request->query('date_from', '')),
+            'date_to' => trim((string) $request->query('date_to', '')),
+            'search' => trim((string) $request->query('search', '')),
+        ];
     }
 
     public function create(Request $request)

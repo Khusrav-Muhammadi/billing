@@ -8,6 +8,82 @@
 @section('content')
     <div class="card-body">
         <h4 class="card-title">Оплата</h4>
+
+        <form id="filterForm" method="GET" action="{{ route('application.index') }}">
+            <div class="row mb-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label">Организация</label>
+                    <select name="organization_id" class="form-control">
+                        <option value="">Организация</option>
+                        @foreach($organizations as $organization)
+                            <option value="{{ $organization->id }}" @selected((string)($filters['organization_id'] ?? '') === (string)$organization->id)>
+                                {{ $organization->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Партнер</label>
+                    <select name="partner_id" class="form-control">
+                        <option value="">Партнер</option>
+                        @foreach($partners as $partner)
+                            <option value="{{ $partner->id }}" @selected((string)($filters['partner_id'] ?? '') === (string)$partner->id)>
+                                {{ $partner->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Тип подключения</label>
+                    <select name="request_type" class="form-control">
+                        <option value="">Тип подключения</option>
+                        @foreach($requestTypes as $typeValue => $typeLabel)
+                            <option value="{{ $typeValue }}" @selected(($filters['request_type'] ?? '') === $typeValue)>
+                                {{ $typeLabel }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Тариф</label>
+                    <select name="tariff_id" class="form-control">
+                        <option value="">Тариф</option>
+                        @foreach($tariffs as $tariff)
+                            <option value="{{ $tariff->id }}" @selected((string)($filters['tariff_id'] ?? '') === (string)$tariff->id)>
+                                {{ $tariff->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Период оплаты</label>
+                    <select name="period_months" class="form-control">
+                        <option value="">Период оплаты</option>
+                        <option value="6" @selected((string)($filters['period_months'] ?? '') === '6')>6 мес.</option>
+                        <option value="12" @selected((string)($filters['period_months'] ?? '') === '12')>12 мес.</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Дата от</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ $filters['date_from'] ?? '' }}">
+                </div>
+                <div class="col-md-2 mt-3">
+                    <label class="form-label">Дата до</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ $filters['date_to'] ?? '' }}">
+                </div>
+                <div class="col-md-12 mt-3 d-flex gap-2 align-items-center flex-wrap">
+                    <button type="submit" class="btn btn-primary">Фильтр</button>
+                    <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Сбросить</a>
+                    <a href="{{ route('application.export.excel', $filterQuery) }}"
+                       class="btn btn-outline-success d-inline-flex align-items-center justify-content-center"
+                       title="Скачать Excel (оплаченные подключения)"
+                       style="width: 42px; height: 38px; padding: 0;">
+                        <i class="mdi mdi-file-excel" style="font-size: 22px; line-height: 1;"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+
         <div class="mb-3">
             <div class="d-flex gap-2 align-items-center flex-wrap">
                 <div class="dropdown">
@@ -41,26 +117,6 @@
                         </li>
                     </ul>
                 </div>
-
-                <div style="margin-left: auto;"></div>
-
-                <form method="GET" action="{{ route('application.index') }}" class="d-flex gap-2 align-items-center flex-wrap">
-                    <input type="text"
-                           class="form-control"
-                           name="search"
-                           value="{{ $search }}"
-                           placeholder="Поиск по клиенту"
-                           style="width: 250px;">
-                    @if($search !== '')
-                        <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Сбросить</a>
-                    @endif
-                    <a href="{{ route('application.export.excel', array_filter(['search' => $search !== '' ? $search : null])) }}"
-                       class="btn btn-outline-success d-inline-flex align-items-center justify-content-center"
-                       title="Скачать Excel (оплаченные подключения)"
-                       style="width: 42px; height: 38px; padding: 0;">
-                        <i class="mdi mdi-file-excel" style="font-size: 22px; line-height: 1;"></i>
-                    </a>
-                </form>
             </div>
         </div>
         <div class="table-responsive">
@@ -195,7 +251,7 @@
                 @empty
                     <tr>
                         <td colspan="10" class="text-center">
-                            {{ $search !== '' ? 'По этому клиенту КП не найдены' : 'Пока нет сохраненных КП' }}
+                            {{ !empty($filterQuery) ? 'По выбранным фильтрам КП не найдены' : 'Пока нет сохраненных КП' }}
                         </td>
                     </tr>
                 @endforelse

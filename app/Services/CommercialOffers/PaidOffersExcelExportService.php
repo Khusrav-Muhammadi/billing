@@ -35,9 +35,9 @@ class PaidOffersExcelExportService
         'Доля партнера',
     ];
 
-    public function download(string $search = ''): StreamedResponse
+    public function download(array $filters = []): StreamedResponse
     {
-        $offers = $this->loadPaidOffers($search);
+        $offers = $this->loadPaidOffers($filters);
         $rows = $this->buildRows($offers);
         $filename = 'paid_connections_' . now()->format('Y-m-d_His') . '.xls';
 
@@ -48,9 +48,9 @@ class PaidOffersExcelExportService
         ]);
     }
 
-    private function loadPaidOffers(string $search): Collection
+    private function loadPaidOffers(array $filters): Collection
     {
-        return CommercialOffer::query()
+        $query = CommercialOffer::query()
             ->with([
                 'organization:id,name',
                 'items.tariff:id,name',
@@ -80,15 +80,11 @@ class PaidOffersExcelExportService
                     $statusQuery->where('commercial_offers.status', 'paid')
                         ->whereDoesntHave('offerStatuses');
                 });
-            })
-            ->when($search !== '', function ($query) use ($search) {
-                $query->whereHas('organization', function ($organizationQuery) use ($search) {
-                    $organizationQuery->where('name', 'like', "%{$search}%")
-                        ->orWhere('order_number', 'like', "%{$search}%");
-                });
-            })
-            ->orderByDesc('id')
-            ->get();
+            });
+
+        app(CommercialOfferListFilter::class)->apply($query, $filters);
+
+        return $query->orderByDesc('id')->get();
     }
 
     private function buildRows(Collection $offers): array
