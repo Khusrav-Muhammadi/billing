@@ -125,6 +125,7 @@ class ApplicationController extends Controller
             'period_months' => (int) $request->query('period_months', 0),
             'date_from' => trim((string) $request->query('date_from', '')),
             'date_to' => trim((string) $request->query('date_to', '')),
+            'operation_status' => trim((string) $request->query('operation_status', '')),
             'search' => trim((string) $request->query('search', '')),
         ];
     }

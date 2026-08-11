@@ -13,7 +13,11 @@
             <div class="row mb-3 align-items-end">
                 <div class="col-md-2">
                     <label class="form-label">Организация</label>
-                    <select name="organization_id" class="form-control">
+                    <input type="text"
+                           class="form-control mb-2 js-organization-search"
+                           placeholder="Поиск организации..."
+                           autocomplete="off">
+                    <select name="organization_id" class="form-control js-organization-select">
                         <option value="">Организация</option>
                         @foreach($organizations as $organization)
                             <option value="{{ $organization->id }}" @selected((string)($filters['organization_id'] ?? '') === (string)$organization->id)>
@@ -45,9 +49,9 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Тариф</label>
+                    <label class="form-label">Услуга</label>
                     <select name="tariff_id" class="form-control">
-                        <option value="">Тариф</option>
+                        <option value="">Услуга</option>
                         @foreach($tariffs as $tariff)
                             <option value="{{ $tariff->id }}" @selected((string)($filters['tariff_id'] ?? '') === (string)$tariff->id)>
                                 {{ $tariff->name }}
@@ -64,6 +68,15 @@
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label">Статус операции</label>
+                    <select name="operation_status" class="form-control">
+                        <option value="">Статус операции</option>
+                        <option value="draft" @selected(($filters['operation_status'] ?? '') === 'draft')>Черновик</option>
+                        <option value="paid" @selected(($filters['operation_status'] ?? '') === 'paid')>Оплачено</option>
+                        <option value="canceled" @selected(($filters['operation_status'] ?? '') === 'canceled')>Отменено</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label">Дата от</label>
                     <input type="date" name="date_from" class="form-control" value="{{ $filters['date_from'] ?? '' }}">
                 </div>
@@ -73,7 +86,7 @@
                 </div>
                 <div class="col-md-12 mt-3 d-flex gap-2 align-items-center flex-wrap">
                     <button type="submit" class="btn btn-primary">Фильтр</button>
-                    <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Сбросить</a>
+                    <a href="{{ route('application.index') }}" class="btn btn-outline-secondary ms-2">Сбросить</a>
                     <a href="{{ route('application.export.excel', $filterQuery) }}"
                        class="btn btn-outline-success d-inline-flex align-items-center justify-content-center"
                        title="Скачать Excel (оплаченные подключения)"
@@ -545,6 +558,25 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.js-organization-search').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    const select = input.closest('.col-md-2, .form-group, div')?.querySelector('.js-organization-select')
+                        || document.querySelector('.js-organization-select');
+                    if (!select) {
+                        return;
+                    }
+
+                    const term = (input.value || '').trim().toLowerCase();
+                    Array.from(select.options).forEach(function (opt) {
+                        if (!opt.value) {
+                            return;
+                        }
+                        const text = (opt.textContent || '').toLowerCase();
+                        opt.hidden = term ? !text.includes(term) : false;
+                    });
+                });
+            });
+
             document.querySelectorAll('.offer-row').forEach(function (row) {
                 row.addEventListener('click', function (event) {
                     if (event.target.closest('a, button, input, select, textarea, label')) {
