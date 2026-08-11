@@ -54,6 +54,12 @@
                     @if($search !== '')
                         <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Сбросить</a>
                     @endif
+                    <a href="{{ route('application.export.excel', array_filter(['search' => $search !== '' ? $search : null])) }}"
+                       class="btn btn-outline-success d-inline-flex align-items-center justify-content-center"
+                       title="Скачать Excel (оплаченные подключения)"
+                       style="width: 42px; height: 38px; padding: 0;">
+                        <i class="mdi mdi-file-excel" style="font-size: 22px; line-height: 1;"></i>
+                    </a>
                 </form>
             </div>
         </div>

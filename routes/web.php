@@ -145,6 +145,7 @@ Route::middleware('auth')->group(function () {
 
     Route::group(['prefix' => 'application'], function () {
         Route::get('/', [ApplicationController::class, 'index'])->name('application.index');
+        Route::get('/export/excel', [ApplicationController::class, 'exportPaidExcel'])->name('application.export.excel');
         Route::post('/store', [ApplicationController::class, 'store'])->name('application.store');
         Route::post('/{offer}/statuses', [ApplicationController::class, 'storeOfferStatus'])->name('application.status.store');
         Route::post('/status/{status}/edit', [ApplicationController::class, 'editOfferStatus'])->name('application.status.update');

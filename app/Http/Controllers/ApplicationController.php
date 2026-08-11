@@ -16,6 +16,7 @@ use App\Models\Organization;
 use App\Models\PartnerProcent;
 use App\Models\Tariff;
 use App\Models\User;
+use App\Services\CommercialOffers\PaidOffersExcelExportService;
 use App\Support\RegistryDateTimeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ApplicationController extends Controller
 {
@@ -78,6 +80,13 @@ class ApplicationController extends Controller
             ->get(['id', 'name', 'currency_id']);
 
         return view('admin.applications.index', compact('offers', 'accounts', 'search'));
+    }
+
+    public function exportPaidExcel(Request $request, PaidOffersExcelExportService $exportService): StreamedResponse
+    {
+        $search = trim((string) $request->query('search', ''));
+
+        return $exportService->download($search);
     }
 
     public function create(Request $request)
