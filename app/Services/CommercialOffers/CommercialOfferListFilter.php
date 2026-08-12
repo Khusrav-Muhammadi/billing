@@ -46,7 +46,7 @@ class CommercialOfferListFilter
             $query->whereDate('status_date', '<=', $dateTo);
         }
 
-        if (in_array($operationStatus, ['draft', 'paid', 'canceled'], true)) {
+        if (in_array($operationStatus, ['draft', 'paid', 'canceled', 'pending'], true)) {
             $this->applyOperationStatus($query, $operationStatus);
         }
 
