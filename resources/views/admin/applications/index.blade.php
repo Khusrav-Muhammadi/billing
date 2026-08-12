@@ -58,6 +58,7 @@
                         <option value="">Статус операции</option>
                         <option value="draft" @selected(($filters['operation_status'] ?? '') === 'draft')>Черновик</option>
                         <option value="paid" @selected(($filters['operation_status'] ?? '') === 'paid')>Оплачено</option>
+                        <option value="paid" @selected(($filters['operation_status'] ?? '') === 'pending')>В ожидании</option>
                         <option value="canceled" @selected(($filters['operation_status'] ?? '') === 'canceled')>Отменено</option>
                     </select>
                 </div>
