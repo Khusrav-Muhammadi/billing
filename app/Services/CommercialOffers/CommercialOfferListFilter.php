@@ -86,7 +86,69 @@ class CommercialOfferListFilter
 
     private function applyOperationStatus(Builder $query, string $status): void
     {
-        if (in_array($status, ['paid', 'canceled', 'pending'], true)) {
+        if ($status === 'pending') {
+            // Как на странице: latest=pending | status=pending | payment_link_generated | locked_at
+            // и при этом latest не paid/canceled.
+            $query->where(function ($pendingQuery) {
+                $pendingQuery->where(function ($matchQuery) {
+                    $matchQuery->whereExists(function ($subQuery) {
+                        $subQuery->selectRaw('1')
+                            ->from('commercial_offer_statuses as latest_status')
+                            ->whereColumn('latest_status.commercial_offer_id', 'commercial_offers.id')
+                            ->where('latest_status.status', 'pending')
+                            ->whereRaw(
+                                'latest_status.id = (
+                                    select max(cos_max.id)
+                                    from commercial_offer_statuses as cos_max
+                                    where cos_max.commercial_offer_id = commercial_offers.id
+                                )'
+                            );
+                    })->orWhere(function ($fallbackQuery) {
+                        $fallbackQuery->where('commercial_offers.status', 'pending')
+                            ->where(function ($noBlockingLatest) {
+                                $noBlockingLatest->whereDoesntHave('offerStatuses')
+                                    ->orWhereExists(function ($subQuery) {
+                                        $subQuery->selectRaw('1')
+                                            ->from('commercial_offer_statuses as latest_status')
+                                            ->whereColumn('latest_status.commercial_offer_id', 'commercial_offers.id')
+                                            ->whereNotIn('latest_status.status', ['paid', 'canceled'])
+                                            ->whereRaw(
+                                                'latest_status.id = (
+                                                    select max(cos_max.id)
+                                                    from commercial_offer_statuses as cos_max
+                                                    where cos_max.commercial_offer_id = commercial_offers.id
+                                                )'
+                                            );
+                                    });
+                            });
+                    })->orWhere(function ($linkQuery) {
+                        $linkQuery->where(function ($lockedOrLink) {
+                            $lockedOrLink->where('commercial_offers.status', 'payment_link_generated')
+                                ->orWhereNotNull('commercial_offers.locked_at');
+                        })->where(function ($noFinalLatest) {
+                            $noFinalLatest->whereDoesntHave('offerStatuses')
+                                ->orWhereExists(function ($subQuery) {
+                                    $subQuery->selectRaw('1')
+                                        ->from('commercial_offer_statuses as latest_status')
+                                        ->whereColumn('latest_status.commercial_offer_id', 'commercial_offers.id')
+                                        ->whereNotIn('latest_status.status', ['paid', 'canceled'])
+                                        ->whereRaw(
+                                            'latest_status.id = (
+                                                select max(cos_max.id)
+                                                from commercial_offer_statuses as cos_max
+                                                where cos_max.commercial_offer_id = commercial_offers.id
+                                            )'
+                                        );
+                                });
+                        });
+                    });
+                });
+            });
+
+            return;
+        }
+
+        if (in_array($status, ['paid', 'canceled'], true)) {
             $query->where(function ($statusQuery) use ($status) {
                 $statusQuery->whereExists(function ($subQuery) use ($status) {
                     $subQuery->selectRaw('1')
