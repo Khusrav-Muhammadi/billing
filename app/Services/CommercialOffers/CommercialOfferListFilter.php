@@ -86,7 +86,7 @@ class CommercialOfferListFilter
 
     private function applyOperationStatus(Builder $query, string $status): void
     {
-        if (in_array($status, ['paid', 'canceled'], true)) {
+        if (in_array($status, ['paid', 'canceled', 'pending'], true)) {
             $query->where(function ($statusQuery) use ($status) {
                 $statusQuery->whereExists(function ($subQuery) use ($status) {
                     $subQuery->selectRaw('1')
