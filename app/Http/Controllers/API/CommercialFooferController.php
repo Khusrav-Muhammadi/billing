@@ -17,6 +17,7 @@ use App\Models\PartnerProcent;
 use App\Models\Tariff;
 use App\Models\TariffCurrency;
 use App\Models\User;
+use App\Services\CommercialOffers\CommercialOfferListFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,10 +40,14 @@ class CommercialFooferController extends Controller
         $perPage = (int)$request->query('per_page', 20);
         $perPage = max(1, min(100, $perPage));
 
+        $filters = $this->resolveOfferListFilters($request);
+        $filterService = app(CommercialOfferListFilter::class);
+
         $query = $this->ownedOffersQuery()
             ->with([
                 'tariff:id,name',
                 'organization:id,name,phone,email,order_number',
+                'partner:id,name',
                 'latestOfferStatus' => static function ($query) {
                     $query->select([
                         'commercial_offer_statuses.id',
@@ -52,22 +57,36 @@ class CommercialFooferController extends Controller
                         'commercial_offer_statuses.payment_method',
                     ]);
                 },
-            ])
-            ->orderByDesc('id');
+            ]);
 
-        $search = trim((string)$request->query('search', ''));
+        // search обрабатываем отдельно — API-поиск шире, чем в admin filter
+        $filterService->apply($query, array_merge($filters, ['search' => '']));
+
+        $search = (string) ($filters['search'] ?? '');
         if ($search !== '') {
             $this->applyOfferSearch($query, $search);
         }
 
-        $requestType = trim((string)$request->query('request_type', ''));
-        if ($requestType !== '' && in_array($requestType, self::REQUEST_TYPES, true)) {
-            $query->where('request_type', $requestType);
-        }
-
-        $offers = $query->paginate($perPage);
+        $offers = $query
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return response()->json($offers);
+    }
+
+    private function resolveOfferListFilters(Request $request): array
+    {
+        return [
+            'partner_id' => (int) $request->query('partner_id', 0),
+            'request_type' => trim((string) $request->query('request_type', '')),
+            'tariff_id' => (int) $request->query('tariff_id', 0),
+            'period_months' => (int) $request->query('period_months', 0),
+            'date_from' => trim((string) $request->query('date_from', '')),
+            'date_to' => trim((string) $request->query('date_to', '')),
+            'operation_status' => trim((string) $request->query('operation_status', '')),
+            'search' => trim((string) $request->query('search', '')),
+        ];
     }
 
     private function applyOfferSearch(Builder $query, string $search): void

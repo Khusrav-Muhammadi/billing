@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\AiSubscriptionController;
 use App\Http\Controllers\API\CommercialOfferController;
 use App\Http\Controllers\API\CommercialFooferController;
 use App\Http\Controllers\API\ImplementationCatalogController;
@@ -94,6 +95,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('commercial-offers/connection-context/{organization}', [CommercialFooferController::class, 'connectionContext']);
     Route::get('commercial-offers/{commercialOffer}', [CommercialFooferController::class, 'show']);
     Route::patch('commercial-offers/{commercialOffer}', [CommercialFooferController::class, 'update']);
+
+    Route::get('ai-subscription', [AiSubscriptionController::class, 'index']);
+    Route::get('ai-subscription/{aiSubscription}', [AiSubscriptionController::class, 'show']);
 
     Route::get('dashboard', [\App\Http\Controllers\API\DashBoardController::class, 'index']);
 
