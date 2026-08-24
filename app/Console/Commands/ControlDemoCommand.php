@@ -6,7 +6,6 @@ use App\Jobs\ConnectionJob;
 use App\Jobs\TariffExtensionJob;
 use App\Models\IntegrationActionLog;
 use App\Models\Organization;
-use App\Services\Mailing\ResendMailService;
 use Illuminate\Console\Command;
 
 class ControlDemoCommand extends Command

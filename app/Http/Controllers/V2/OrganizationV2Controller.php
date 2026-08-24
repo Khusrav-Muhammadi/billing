@@ -18,6 +18,7 @@ use App\Models\OrganizationConnectionStatus;
 use App\Models\Tariff;
 use App\Models\User;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Services\Mailing\BrevoMailService;
 use App\Services\Organizations\OrganizationValidityService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -339,18 +340,35 @@ class OrganizationV2Controller extends Controller
             throw new \RuntimeException('Тело письма для повторной отправки не найдено');
         }
 
-        return Http::withHeaders([
-            'Authorization' => 'Bearer ' . config('services.resend.api-key'),
-            'Content-Type' => 'application/json',
-        ])->post('https://api.resend.com/emails', $payload);
+        $to = $log->recipient
+            ?: data_get($payload, 'to.0.email')
+            ?: data_get($payload, 'to.0');
+        $subject = $log->subject ?: data_get($payload, 'subject', '');
+        $html = data_get($log->payload, 'email_body.html')
+            ?: data_get($payload, 'htmlContent')
+            ?: data_get($payload, 'html');
+
+        if (!$to || !$html) {
+            throw new \RuntimeException('Недостаточно данных для повторной отправки письма');
+        }
+
+        return app(BrevoMailService::class)->sendRequest(
+            (string) $to,
+            (string) $subject,
+            (string) $html
+        );
     }
 
     private function fallbackRetryEmailViaMail(IntegrationActionLog $log): void
     {
         $payload = data_get($log->payload, 'request_body', []);
-        $to = $log->recipient ?: data_get($payload, 'to.0');
+        $to = $log->recipient
+            ?: data_get($payload, 'to.0.email')
+            ?: data_get($payload, 'to.0');
         $subject = $log->subject ?: ($payload['subject'] ?? '');
-        $html = $payload['html'] ?? data_get($log->payload, 'email_body.html');
+        $html = data_get($log->payload, 'email_body.html')
+            ?: data_get($payload, 'htmlContent')
+            ?: data_get($payload, 'html');
 
         if (!$to || !$html) {
             throw new \RuntimeException('Недостаточно данных для отправки через Mail');
@@ -373,7 +391,7 @@ class OrganizationV2Controller extends Controller
             'type' => $sourceLog->type,
             'action' => $sourceLog->action,
             'method' => $sourceLog->type === 'email' ? 'POST' : $sourceLog->method,
-            'url' => $sourceLog->type === 'email' ? 'https://api.resend.com/emails' : $sourceLog->url,
+            'url' => $sourceLog->type === 'email' ? BrevoMailService::ENDPOINT : $sourceLog->url,
             'recipient' => $sourceLog->recipient,
             'subject' => $sourceLog->subject,
             'status_code' => $successful && $response->failed() ? 200 : $response->status(),
@@ -394,7 +412,7 @@ class OrganizationV2Controller extends Controller
             'type' => $sourceLog->type,
             'action' => $sourceLog->action,
             'method' => $sourceLog->type === 'email' ? 'POST' : $sourceLog->method,
-            'url' => $sourceLog->type === 'email' ? 'https://api.resend.com/emails' : $sourceLog->url,
+            'url' => $sourceLog->type === 'email' ? BrevoMailService::ENDPOINT : $sourceLog->url,
             'recipient' => $sourceLog->recipient,
             'subject' => $sourceLog->subject,
             'successful' => false,

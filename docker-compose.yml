@@ -25,9 +25,9 @@ services:
         volumes:
             - ./tmp/db:/var/lib/mysql
         environment:
-            MYSQL_DATABASE: billing
+            MYSQL_DATABASE: crm_billing
             MYSQL_ROOT_PASSWORD: root
         ports:
             - 8104:3306
-        command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci --lower_case_table_names=0
+        command: mysqld --character-set-server=utf8 --collation-server=utf8_unicode_ci --lower_case_table_names=1
         container_name: billing_database

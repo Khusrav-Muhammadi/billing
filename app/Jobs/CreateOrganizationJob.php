@@ -7,7 +7,7 @@ use App\Models\Client;
 use App\Models\Organization;
 use App\Models\Tariff;
 use App\Services\IntegrationActionLogService;
-use App\Services\Mailing\ResendMailService;
+use App\Services\Mailing\BrevoMailService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -91,9 +91,9 @@ class CreateOrganizationJob implements ShouldQueue
     private function sendWelcomeEmail(): void
     {
         try {
-            $resend = new ResendMailService();
+            $brevo = app(BrevoMailService::class);
 
-            $sent = $resend->sendWithView(
+            $sent = $brevo->sendWithView(
                 to:      $this->client->email,
                 subject: 'Подключение к системе "shamCRM"',
                 view:    'mail.send_site_data',
@@ -113,7 +113,7 @@ class CreateOrganizationJob implements ShouldQueue
                 return;
             }
         } catch (\Throwable $e) {
-            Log::error('CreateOrganizationJob: Resend failed, falling back to Mail', [
+            Log::error('CreateOrganizationJob: Brevo failed, falling back to Mail', [
                 'client_id' => $this->client->id,
                 'email'     => $this->client->email,
                 'error'     => $e->getMessage(),

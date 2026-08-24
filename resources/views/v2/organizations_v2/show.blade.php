@@ -453,7 +453,7 @@
                                                 <pre style="white-space:pre-wrap; background:#f8f9fa; border:1px solid #e5e7eb; border-radius:6px; padding:12px; max-height:240px; overflow:auto;">{{ $emailText }}</pre>
                                             @endif
 
-                                            <h6>JSON данные / запрос к Resend</h6>
+                                            <h6>JSON данные / запрос к Brevo</h6>
                                         @else
                                             <h6>Тело запроса / данные письма</h6>
                                         @endif
