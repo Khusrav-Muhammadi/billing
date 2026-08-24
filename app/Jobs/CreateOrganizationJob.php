@@ -93,7 +93,7 @@ class CreateOrganizationJob implements ShouldQueue
         try {
             $resend = new ResendMailService();
 
-            $resend->sendWithView(
+            $sent = $resend->sendWithView(
                 to:      $this->client->email,
                 subject: 'Подключение к системе "shamCRM"',
                 view:    'mail.send_site_data',
@@ -109,6 +109,19 @@ class CreateOrganizationJob implements ShouldQueue
                 ]
             );
 
+            if ($sent) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            Log::error('CreateOrganizationJob: Resend failed, falling back to Mail', [
+                'client_id' => $this->client->id,
+                'email'     => $this->client->email,
+                'error'     => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            Mail::to($this->client->email)->send(new SendSiteDataMail($this->client, $this->password));
         } catch (\Throwable $e) {
             Log::error('CreateOrganizationJob: failed to send welcome email', [
                 'client_id' => $this->client->id,
