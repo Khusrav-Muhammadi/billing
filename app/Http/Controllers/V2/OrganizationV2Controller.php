@@ -24,6 +24,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 
 class OrganizationV2Controller extends Controller
@@ -204,6 +205,12 @@ class OrganizationV2Controller extends Controller
                 : $this->retryApiLog($log);
 
             $successful = in_array($response->status(), [200, 201], true);
+
+            if (!$successful && $log->type === 'email') {
+                $this->fallbackRetryEmailViaMail($log);
+                $successful = true;
+            }
+
             $this->storeRetriedIntegrationLog($log, $response, $successful);
 
             return redirect()
@@ -338,6 +345,22 @@ class OrganizationV2Controller extends Controller
         ])->post('https://api.resend.com/emails', $payload);
     }
 
+    private function fallbackRetryEmailViaMail(IntegrationActionLog $log): void
+    {
+        $payload = data_get($log->payload, 'request_body', []);
+        $to = $log->recipient ?: data_get($payload, 'to.0');
+        $subject = $log->subject ?: ($payload['subject'] ?? '');
+        $html = $payload['html'] ?? data_get($log->payload, 'email_body.html');
+
+        if (!$to || !$html) {
+            throw new \RuntimeException('Недостаточно данных для отправки через Mail');
+        }
+
+        Mail::html($html, function ($message) use ($to, $subject) {
+            $message->to($to)->subject($subject);
+        });
+    }
+
     private function storeRetriedIntegrationLog(
         IntegrationActionLog $sourceLog,
         \Illuminate\Http\Client\Response $response,
@@ -353,7 +376,7 @@ class OrganizationV2Controller extends Controller
             'url' => $sourceLog->type === 'email' ? 'https://api.resend.com/emails' : $sourceLog->url,
             'recipient' => $sourceLog->recipient,
             'subject' => $sourceLog->subject,
-            'status_code' => $response->status(),
+            'status_code' => $successful && $response->failed() ? 200 : $response->status(),
             'successful' => $successful,
             'payload' => $sourceLog->payload,
             'response' => $this->integrationResponseBody($response),

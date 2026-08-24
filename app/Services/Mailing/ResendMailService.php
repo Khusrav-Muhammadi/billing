@@ -5,6 +5,7 @@ namespace App\Services\Mailing;
 use App\Services\IntegrationActionLogService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ResendMailService
 {
@@ -62,21 +63,42 @@ class ResendMailService
     {
         $payload = $this->mailPayload($to, $subject, $html, strip_tags($html), $this->attachmentPayload($attachments));
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
-            'Content-Type'  => 'application/json',
-        ])->post('https://api.resend.com/emails', $payload);
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type'  => 'application/json',
+            ])->post('https://api.resend.com/emails', $payload);
 
-        if ($response->failed()) {
+            if (!$response->failed()) {
+                return true;
+            }
+
             Log::error('ResendMailService: failed to send email', [
                 'to'     => $to,
                 'status' => $response->status(),
                 'error'  => $response->json(),
             ]);
-            return false;
+        } catch (\Throwable $e) {
+            Log::error('ResendMailService: exception sending email', [
+                'to'    => $to,
+                'error' => $e->getMessage(),
+            ]);
         }
 
-        return true;
+        try {
+            Mail::html($html, function ($message) use ($to, $subject) {
+                $message->to($to)->subject($subject);
+            });
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('ResendMailService: Mail fallback failed', [
+                'to'    => $to,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     private function mailPayload(string $to, string $subject, string $html, string $text, array $attachments = []): array
