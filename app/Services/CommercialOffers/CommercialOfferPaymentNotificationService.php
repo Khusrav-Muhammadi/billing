@@ -7,13 +7,13 @@ use App\Models\CommercialOfferStatus;
 use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\ImplementationCurrencyRegistry;
-use App\Services\Mailing\ResendMailService;
+use App\Services\Mailing\BrevoMailService;
 use Illuminate\Support\Facades\Log;
 
 class CommercialOfferPaymentNotificationService
 {
     public function __construct(
-        private ResendMailService $mailService
+        private BrevoMailService $mailService
     ) {
     }
 
