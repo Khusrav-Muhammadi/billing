@@ -7,7 +7,7 @@ use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\Organization;
 use App\Models\OrganizationConnectionStatus;
-use App\Services\Mailing\ResendMailService;
+use App\Services\Mailing\BrevoMailService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -91,7 +91,7 @@ class NotifyClient extends Command
                         continue;
                     }
 
-                    app(ResendMailService::class)->sendWithView(
+                    app(BrevoMailService::class)->sendWithView(
                         to: $email,
                         subject: 'Баланс shamCRM скоро закончится',
                         view: 'mail.notify_client',

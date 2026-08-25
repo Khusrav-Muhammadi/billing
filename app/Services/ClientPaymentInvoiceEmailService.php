@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\CommercialOffer;
 use App\Models\Payment;
-use App\Services\Mailing\ResendMailService;
+use App\Services\Mailing\BrevoMailService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -12,7 +12,7 @@ use RuntimeException;
 class ClientPaymentInvoiceEmailService
 {
     public function __construct(
-        private ResendMailService $mailService
+        private BrevoMailService $mailService
     ) {
     }
 

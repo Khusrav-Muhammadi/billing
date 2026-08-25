@@ -15,7 +15,7 @@ use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Models\User;
 use App\Services\ClientPaymentInvoiceEmailService;
-use App\Services\Mailing\ResendMailService;
+use App\Services\Mailing\BrevoMailService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -726,7 +726,7 @@ class ClientPaymentController extends Controller
         }
 
         try {
-            app(ResendMailService::class)->sendWithView(
+            app(BrevoMailService::class)->sendWithView(
                 to: $email,
                 subject: 'Ссылка на оплату SHAMCRM',
                 view: 'mail.payment_checkout_link',

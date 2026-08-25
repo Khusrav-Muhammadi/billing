@@ -38,9 +38,10 @@ return [
         'folder_id' => env('GOOGLE_FOLDER_ID'),
     ],
 
-    'resend' => [
-        'mail_from' => 'noreply@shamcrm.com',
-        'api-key' => 're_8rvJ21cM_E54QeGRcoaRRxWrMu1LWBNqM'
+    'brevo' => [
+        'api_key' => env('BREVO_API_KEY'),
+        'mail_from' => env('BREVO_MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS')),
+        'mail_from_name' => env('BREVO_MAIL_FROM_NAME', env('MAIL_FROM_NAME', 'shamCRM')),
     ],
 
     'sham' => [

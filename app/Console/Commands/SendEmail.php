@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\TariffExtensionJob;
 use App\Models\IntegrationActionLog;
 use App\Models\Organization;
-use App\Services\Mailing\ResendMailService;
+use App\Services\Mailing\BrevoMailService;
 use Illuminate\Console\Command;
 
 class SendEmail extends Command
@@ -72,7 +72,7 @@ class SendEmail extends Command
             return 0;
         }
 
-        app(ResendMailService::class)->sendWithView(
+        app(BrevoMailService::class)->sendWithView(
             to: (string)$client->email,
             subject: $this->followUpSubject($daysAfterExpiration),
             view: 'mail.demo_expired_followup',
