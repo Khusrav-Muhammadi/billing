@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CommercialOfferRequest;
+use App\Models\Ai\AiTariffPlan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -99,7 +100,9 @@ class CommercialOfferController extends Controller
             'contacts.telegram' => 'nullable|string|max:100',
 
             'ai_item' => 'nullable|array',
+            'ai_item.plan_id' => 'nullable|integer',
             'ai_item.plan_name' => 'nullable|string|max:255',
+            'ai_item.category' => 'nullable|string|max:64',
             'ai_item.period_months' => 'nullable|integer|min:0|max:36',
             'ai_item.gift_months' => 'nullable|integer|min:0|max:36',
             'ai_item.unit_price' => 'nullable|numeric|min:0',
@@ -108,6 +111,19 @@ class CommercialOfferController extends Controller
             'ai_item.total_price' => 'nullable|numeric|min:0',
             'ai_item.current_month_amount' => 'nullable|numeric|min:0',
             'ai_item.balance_topup' => 'nullable|numeric|min:0',
+
+            'ai_items' => 'nullable|array',
+            'ai_items.*.plan_id' => 'nullable|integer',
+            'ai_items.*.plan_name' => 'nullable|string|max:255',
+            'ai_items.*.category' => 'nullable|string|max:64',
+            'ai_items.*.period_months' => 'nullable|integer|min:0|max:36',
+            'ai_items.*.gift_months' => 'nullable|integer|min:0|max:36',
+            'ai_items.*.unit_price' => 'nullable|numeric|min:0',
+            'ai_items.*.discount_percent' => 'nullable|numeric|min:0|max:100',
+            'ai_items.*.original_price' => 'nullable|numeric|min:0',
+            'ai_items.*.total_price' => 'nullable|numeric|min:0',
+            'ai_items.*.current_month_amount' => 'nullable|numeric|min:0',
+            'ai_items.*.balance_topup' => 'nullable|numeric|min:0',
 
             'currency' => 'nullable|string|max:20', // сум, $, € и т.д.
             'validity_days' => 'nullable|integer|min:1|max:365',
@@ -157,16 +173,9 @@ class CommercialOfferController extends Controller
             $modulesTotal += $price * $periodMonths;
         }
 
-        $aiItem = $validated['ai_item'] ?? null;
-        $aiTotal = 0.0;
-        if (is_array($aiItem)) {
-            $aiTotal = round(
-                (float) ($aiItem['current_month_amount'] ?? 0)
-                + (float) ($aiItem['total_price'] ?? 0)
-                + (float) ($aiItem['balance_topup'] ?? 0),
-                4
-            );
-        }
+        $aiItems = $this->normalizeAiItemsFromRequest($validated);
+        $aiTotal = round(array_sum(array_column($aiItems, 'charge_total')), 4);
+        $aiItem = $aiItems[0] ?? null;
 
         // Grand total
         $grandTotal = $tariffTotal + $usersTotal + $modulesTotal + $oneTimeTotal + $aiTotal;
@@ -187,7 +196,8 @@ class CommercialOfferController extends Controller
             'modules' => $validated['modules'],
             'one_time_services' => $validated['one_time_services'] ?? [],
             'implementation' => $validated['implementation'] ?? [],
-            'ai_item' => is_array($aiItem) && $aiTotal > 0 ? $aiItem : null,
+            'ai_item' => $aiItem,
+            'ai_items' => $aiItems,
             'contacts' => $validated['contacts'],
             'currency' => $currency,
             'validity_date' => $validityDate,
@@ -279,6 +289,80 @@ class CommercialOfferController extends Controller
     public function previewPage()
     {
         return view('commercial-offer', $this->getTestData());
+    }
+
+    /**
+     * @return list<array{
+     *     category: string,
+     *     label: string,
+     *     plan_name: string,
+     *     period_months: int,
+     *     gift_months: int,
+     *     unit_price: float,
+     *     discount_percent: float,
+     *     original_price: float,
+     *     total_price: float,
+     *     current_month_amount: float,
+     *     balance_topup: float,
+     *     charge_total: float
+     * }>
+     */
+    private function normalizeAiItemsFromRequest(array $validated): array
+    {
+        $rows = $validated['ai_items'] ?? [];
+        if (! is_array($rows) || $rows === []) {
+            $single = $validated['ai_item'] ?? null;
+            $rows = is_array($single) && ($single['plan_name'] ?? $single['plan_id'] ?? null)
+                ? [$single]
+                : [];
+        }
+
+        $order = [
+            AiTariffPlan::CATEGORY_CHAT => 0,
+            AiTariffPlan::CATEGORY_CALL_ANALYSE => 1,
+        ];
+        $labels = AiTariffPlan::categoryLabels();
+        $normalized = [];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $category = AiTariffPlan::normalizeCategory((string) ($row['category'] ?? 'chat'));
+            $isCallAnalyse = $category === AiTariffPlan::CATEGORY_CALL_ANALYSE;
+            $current = max(0, (float) ($row['current_month_amount'] ?? 0));
+            $total = max(0, (float) ($row['total_price'] ?? 0));
+            $topup = $isCallAnalyse ? 0.0 : max(0, (float) ($row['balance_topup'] ?? 0));
+            $gift = $isCallAnalyse ? 0 : max(0, (int) ($row['gift_months'] ?? 0));
+            $discount = $isCallAnalyse ? 0.0 : max(0, (float) ($row['discount_percent'] ?? 0));
+            $charge = round($current + $total + $topup, 4);
+
+            if ($charge <= 0 && $gift <= 0 && empty($row['plan_name'])) {
+                continue;
+            }
+
+            $normalized[] = [
+                'category' => $category,
+                'label' => $labels[$category] ?? 'ИИ-Агент',
+                'plan_name' => (string) ($row['plan_name'] ?? ''),
+                'period_months' => max(0, (int) ($row['period_months'] ?? 0)),
+                'gift_months' => $gift,
+                'unit_price' => max(0, (float) ($row['unit_price'] ?? 0)),
+                'discount_percent' => $discount,
+                'original_price' => max(0, (float) ($row['original_price'] ?? 0)),
+                'total_price' => $total,
+                'current_month_amount' => $current,
+                'balance_topup' => $topup,
+                'charge_total' => $charge,
+            ];
+        }
+
+        usort($normalized, static function (array $a, array $b) use ($order): int {
+            return ($order[$a['category']] ?? 99) <=> ($order[$b['category']] ?? 99);
+        });
+
+        return $normalized;
     }
 
     private function isOneTimeModule(array $module, array $selectedOneTimeServices): bool

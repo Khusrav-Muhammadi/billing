@@ -215,7 +215,7 @@ class CommercialFooferController extends Controller
                 'organization:id,name,phone,email,order_number',
                 'partner:id,name,phone,email,payment_methods',
                 'payment:id,payment_type',
-                'aiItem.plan:id,name',
+                'aiItems.plan:id,name,category',
                 'latestOfferStatus' => static function ($query) {
                     $query->select([
                         'commercial_offer_statuses.id',
@@ -414,37 +414,13 @@ class CommercialFooferController extends Controller
                 ]);
             }
 
-            // AI-item: сохраняем если пришёл из KP.
-            $aiItemData = data_get($payload, 'ai_item');
             $isBaseTariff = $tariff && Tariff::isBaseTariffName($tariff->name);
-            if (is_array($aiItemData) && ! empty($aiItemData['plan_id'])) {
-                $aiPeriodMonths = max(0, (int) ($aiItemData['period_months'] ?? 0));
-                $aiGiftMonths = \App\Models\Ai\CommercialOfferAiItem::resolveGiftMonths(
-                    $aiPeriodMonths,
-                    $organization,
-                    (bool) $isBaseTariff
-                );
-
-                \App\Models\Ai\CommercialOfferAiItem::query()->updateOrCreate(
-                    ['commercial_offer_id' => $offer->id],
-                    [
-                        'plan_id' => (int) $aiItemData['plan_id'],
-                        'period_months' => $aiPeriodMonths,
-                        'gift_months' => $aiGiftMonths,
-                        'unit_price' => (float) ($aiItemData['unit_price'] ?? 0),
-                        'discount_percent' => (float) ($aiItemData['discount_percent'] ?? 0),
-                        'partner_percent' => (float) ($aiItemData['partner_percent'] ?? 0),
-                        'original_price' => (float) ($aiItemData['original_price'] ?? 0),
-                        'total_price' => (float) ($aiItemData['total_price'] ?? 0),
-                        'current_month_amount' => max(0, (float) ($aiItemData['current_month_amount'] ?? 0)),
-                        'balance_topup' => max(0, (float) ($aiItemData['balance_topup'] ?? 0)),
-                    ]
-                );
-            } else {
-                \App\Models\Ai\CommercialOfferAiItem::query()
-                    ->where('commercial_offer_id', $offer->id)
-                    ->delete();
-            }
+            app(\App\Services\Ai\CommercialOfferAiItemsSync::class)->sync(
+                $offer,
+                $payload,
+                $organization,
+                (bool) $isBaseTariff
+            );
 
             return $offer;
         });
@@ -455,7 +431,7 @@ class CommercialFooferController extends Controller
             'tariff:id,name',
             'organization:id,name,phone,email,order_number',
             'partner:id,name,phone,email,payment_methods',
-            'aiItem.plan:id,name',
+            'aiItems.plan:id,name,category',
         ]);
 
         return response()->json([
@@ -1160,6 +1136,8 @@ class CommercialFooferController extends Controller
             $tariffsForJs['tariff-' . (int)$tariff->id] = [
                 'id' => (int)$tariff->id,
                 'name' => (string)$tariff->name,
+                'category' => $tariff->category !== null && $tariff->category !== '' ? (string)$tariff->category : null,
+                'isPublic' => (bool)($tariff->is_public ?? false),
                 'partnerId' => $tariff->partner_id ? (int)$tariff->partner_id : null,
                 'users' => (int)($tariff->user_count ?? 0),
                 'extraUserTariffId' => $extraUserTariffId,
@@ -1231,6 +1209,7 @@ class CommercialFooferController extends Controller
             $servicesForJs['service-' . (int)$service->id] = [
                 'id' => (int)$service->id,
                 'name' => (string)$service->name,
+                'category' => $service->category !== null && $service->category !== '' ? (string)$service->category : null,
                 'partnerId' => $service->partner_id ? (int)$service->partner_id : null,
                 'description' => '',
                 'type' => 'monthly',
@@ -1240,6 +1219,7 @@ class CommercialFooferController extends Controller
                 'isOneTime' => (bool)($service->is_one_time ?? false),
                 'oneTimeLabel' => (string)($service->one_time_label ?? ''),
                 'isExternal' => (bool)($service->is_external ?? false),
+                'isPublic' => (bool)($service->is_public ?? false),
                 'isAvailableOnDate' => true,
                 'excludedOrganizationIds' => [],
             ];
@@ -2307,20 +2287,8 @@ class CommercialFooferController extends Controller
                 ])
                 ->values()
                 ->all(),
-            'ai_item' => $offer->aiItem ? [
-                'plan_id' => (int) $offer->aiItem->plan_id,
-                'plan_name' => (string) ($offer->aiItem->plan?->name ?? ''),
-                'period_months' => (int) $offer->aiItem->period_months,
-                'gift_months' => (int) ($offer->aiItem->gift_months ?? 0),
-                'unit_price' => (float) $offer->aiItem->unit_price,
-                'discount_percent' => (float) $offer->aiItem->discount_percent,
-                'partner_percent' => (float) $offer->aiItem->partner_percent,
-                'original_price' => (float) $offer->aiItem->original_price,
-                'total_price' => (float) $offer->aiItem->total_price,
-                'current_month_amount' => (float) ($offer->aiItem->current_month_amount ?? 0),
-                'balance_topup' => (float) ($offer->aiItem->balance_topup ?? 0),
-                'currency' => '',
-            ] : null,
+            'ai_items' => $aiPayloadRows = app(\App\Services\Ai\CommercialOfferAiItemsSync::class)->toPayloadRows($offer),
+            'ai_item' => $aiPayloadRows[0] ?? null,
         ];
     }
 

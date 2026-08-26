@@ -60,6 +60,8 @@ class TariffController extends Controller
         $data['is_extra_user'] = (bool) ($data['is_extra_user'] ?? false);
         $data['can_increase'] = (bool) ($data['can_increase'] ?? false);
         $data['is_external'] = (bool) ($data['is_external'] ?? false);
+        $data['is_public'] = (bool) ($data['is_public'] ?? false);
+        $data['category'] = trim((string) ($data['category'] ?? '')) ?: null;
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
         $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
         $data['partner_id'] = $data['partner_id'] ?? null;
@@ -88,6 +90,8 @@ class TariffController extends Controller
         $data['is_extra_user'] = (bool) ($data['is_extra_user'] ?? false);
         $data['can_increase'] = (bool) ($data['can_increase'] ?? false);
         $data['is_external'] = (bool) ($data['is_external'] ?? false);
+        $data['is_public'] = (bool) ($data['is_public'] ?? false);
+        $data['category'] = trim((string) ($data['category'] ?? '')) ?: null;
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
         $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
         $data['partner_id'] = $data['partner_id'] ?? null;

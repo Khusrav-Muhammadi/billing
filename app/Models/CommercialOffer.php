@@ -104,6 +104,11 @@ class CommercialOffer extends Model
         return $this->hasOne(\App\Models\Ai\CommercialOfferAiItem::class);
     }
 
+    public function aiItems()
+    {
+        return $this->hasMany(\App\Models\Ai\CommercialOfferAiItem::class);
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

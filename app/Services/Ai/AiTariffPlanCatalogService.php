@@ -49,6 +49,7 @@ class AiTariffPlanCatalogService
                 return [
                     'id' => $p->id,
                     'name' => $p->name,
+                    'category' => AiTariffPlan::normalizeCategory((string) ($p->category ?? '')),
                     'model_name' => $p->aiModel?->name ?? null,
                     'prices_by_currency' => $pricesByCurrency,
                     'periods' => $p->activePeriods->map(fn ($per) => [

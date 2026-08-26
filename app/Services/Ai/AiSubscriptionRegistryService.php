@@ -31,11 +31,12 @@ class AiSubscriptionRegistryService
             return;
         }
 
-        $aiItem = CommercialOfferAiItem::query()
+        $aiItems = CommercialOfferAiItem::query()
             ->where('commercial_offer_id', $offer->id)
-            ->first();
+            ->orderBy('id')
+            ->get();
 
-        if (! $aiItem) {
+        if ($aiItems->isEmpty()) {
             return;
         }
 
@@ -43,52 +44,48 @@ class AiSubscriptionRegistryService
         // Базовый тариф больше не блокирует ИИ — только акцию подарочных месяцев.
 
         try {
-            DB::transaction(function () use ($offer, $aiItem): void {
-                // Идемпотентность внутри транзакции + row lock.
-                $alreadyRegistered = AiSubscription::query()
-                    ->where('commercial_offer_id', $offer->id)
-                    ->lockForUpdate()
-                    ->exists();
+            DB::transaction(function () use ($offer, $aiItems): void {
+                $orgId = (int) $offer->organization_id;
+                $offerCurrencyId = $this->resolveOfferCurrencyId($offer);
+                $balance = null;
 
-                if ($alreadyRegistered) {
-                    Log::info('AiSubscriptionRegistryService: already registered for offer', [
-                        'commercial_offer_id' => $offer->id,
-                    ]);
+                foreach ($aiItems as $aiItem) {
+                    $alreadyRegistered = AiSubscription::query()
+                        ->where('commercial_offer_id', $offer->id)
+                        ->where('plan_id', $aiItem->plan_id)
+                        ->lockForUpdate()
+                        ->exists();
+
+                    if ($alreadyRegistered) {
+                        continue;
+                    }
+
+                    $plan = AiTariffPlan::query()->findOrFail($aiItem->plan_id);
+                    $plan->monthlyLimitForCurrency($offerCurrencyId);
+
+                    $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer);
+                    $balance = $this->ensureBalance($orgId, $offerCurrencyId);
+
+                    if (AiTariffPlan::normalizeCategory((string) ($plan->category ?? '')) === AiTariffPlan::CATEGORY_CHAT) {
+                        Organization::query()
+                            ->whereKey($orgId)
+                            ->update(['ai_gift_promo_used' => true]);
+                    }
+
+                    $this->creditAndGrantCurrentMonth($balance, $aiItem, $plan);
+
+                    if ((int) $aiItem->period_months > 0 && (float) $aiItem->original_price > 0) {
+                        $this->creditPaidAmount($balance, $aiItem, $plan);
+                    }
+
+                    $this->creditGiftMonths($balance, $aiItem, $plan);
+                    $this->creditBalanceTopUp($balance, $aiItem);
+                }
+
+                if (! $balance) {
                     return;
                 }
 
-                $plan = AiTariffPlan::query()->findOrFail($aiItem->plan_id);
-                $orgId = (int) $offer->organization_id;
-
-                // Валюта ИИ-баланса = валюта КП (не «любой» прайс тарифа).
-                $offerCurrencyId = $this->resolveOfferCurrencyId($offer);
-                // Прайс тарифа должен быть именно в этой валюте — иначе ошибка, без FX.
-                $plan->monthlyLimitForCurrency($offerCurrencyId);
-
-                $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer);
-                $balance = $this->ensureBalance($orgId, $offerCurrencyId);
-
-                // После любой успешной оплаты ИИ — акция больше недоступна.
-                Organization::query()
-                    ->whereKey($orgId)
-                    ->update(['ai_gift_promo_used' => true]);
-
-                // 1. Текущий месяц (пропорция) → кошелёк → limited.
-                $this->creditAndGrantCurrentMonth($balance, $aiItem, $plan);
-
-                // 2. Доп. месяцы (+N) → кошелёк (если выбраны).
-                if ((int) $aiItem->period_months > 0 && (float) $aiItem->original_price > 0) {
-                    $this->creditPaidAmount($balance, $aiItem, $plan);
-                }
-
-                // 2b. Подарочные месяцы → тоже в кошелёк (бесплатно),
-                // чтобы 1-го числа списание ai_balance → limited работало до expires_at.
-                $this->creditGiftMonths($balance, $aiItem, $plan);
-
-                // 3. Произвольный «Баланс ИИ».
-                $this->creditBalanceTopUp($balance, $aiItem);
-
-                // 4. Агент включаем: limited уже начислен (или есть spendable после topup).
                 $balance->refresh();
                 if ((float) $balance->limited_balance > 0
                     || $balance->availableForUsageAmount() > 0) {
@@ -121,36 +118,39 @@ class AiSubscriptionRegistryService
     public function reverse(CommercialOffer $offer): void
     {
         DB::transaction(function () use ($offer): void {
-            /** @var AiSubscription|null $subscription */
-            $subscription = AiSubscription::query()
+            $subscriptions = AiSubscription::query()
                 ->where('commercial_offer_id', $offer->id)
                 ->lockForUpdate()
-                ->first();
+                ->get();
 
-            if (! $subscription) {
+            if ($subscriptions->isEmpty()) {
                 return;
             }
 
-            $aiItem = CommercialOfferAiItem::query()
+            $aiItems = CommercialOfferAiItem::query()
                 ->where('commercial_offer_id', $offer->id)
-                ->first();
+                ->get();
 
-            if (! $aiItem) {
+            if ($aiItems->isEmpty()) {
                 throw new RuntimeException(
                     "AiSubscriptionRegistryService::reverse: commercial_offer_ai_items missing for offer #{$offer->id}."
                 );
             }
 
-            $currentMonth = round(max(0, (float) ($aiItem->current_month_amount ?? 0)), 4);
-            $originalPrice = round((float) $aiItem->original_price, 4);
-            $giftMonths = max(0, (int) ($aiItem->gift_months ?? 0));
-            $giftAmount = 0.0;
-            if ($giftMonths > 0) {
-                $unit = round((float) $aiItem->unit_price, 4);
-                $giftAmount = round($unit * $giftMonths, 4);
+            $clawback = 0.0;
+            foreach ($aiItems as $aiItem) {
+                $currentMonth = round(max(0, (float) ($aiItem->current_month_amount ?? 0)), 4);
+                $originalPrice = round((float) $aiItem->original_price, 4);
+                $giftMonths = max(0, (int) ($aiItem->gift_months ?? 0));
+                $giftAmount = 0.0;
+                if ($giftMonths > 0) {
+                    $unit = round((float) $aiItem->unit_price, 4);
+                    $giftAmount = round($unit * $giftMonths, 4);
+                }
+                $topUp = round(max(0, (float) ($aiItem->balance_topup ?? 0)), 4);
+                $clawback += $currentMonth + $originalPrice + $giftAmount + $topUp;
             }
-            $topUp = round(max(0, (float) ($aiItem->balance_topup ?? 0)), 4);
-            $clawback = round($currentMonth + $originalPrice + $giftAmount + $topUp, 4);
+            $clawback = round($clawback, 4);
 
             if ($clawback <= 0) {
                 throw new RuntimeException(
@@ -220,7 +220,9 @@ class AiSubscriptionRegistryService
                 ]);
             }
 
-            $subscription->delete();
+            foreach ($subscriptions as $subscription) {
+                $subscription->delete();
+            }
 
             if ($wasEnabled && $balance->availableForUsageAmount() <= 0) {
                 $balance->is_agent_enabled = false;
@@ -249,6 +251,7 @@ class AiSubscriptionRegistryService
     ): AiSubscription {
         $existing = AiSubscription::query()
             ->where('organization_id', $orgId)
+            ->where('plan_id', $plan->id)
             ->where('status', true)
             ->orderByDesc('expires_at')
             ->lockForUpdate()
@@ -581,6 +584,7 @@ class AiSubscriptionRegistryService
         $message = $e->getMessage();
 
         return str_contains($message, 'ai_subscriptions_commercial_offer_id_unique')
+            || str_contains($message, 'ai_subscriptions_offer_plan_unique')
             || (str_contains($message, 'commercial_offer_id') && str_contains($message, 'Duplicate'));
     }
 }

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Подключение доп услуг</title>
-    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260808_ai_model_groups">
+    <link rel="stylesheet" href="/kp_generator/styles.css?v=20260826_ai_categories">
 </head>
 <body>
     <div class="app-container">
@@ -180,58 +180,10 @@
 	                </div>
 	            </section>
 
-	            <!-- ИИ-Агент -->
-	            <section class="ai-agent-section" id="aiAgentSection" style="display:none;">
-	                <div class="section-header-with-button" style="margin-bottom:12px;">
-	                    <h2 class="section-title" style="margin:0;">ИИ-Агент</h2>
-	                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;color:#374151;">
-	            	            <input type="checkbox" id="aiEnabledCheckbox" style="width:16px;height:16px;accent-color:#2B4BFF;">
-	            	            Подключить
-	                    </label>
-	                </div>
-
-	                <div id="aiTariffBody" style="display:none;">
-	                    <div class="ai-plans-by-model" id="aiPlansGrid"></div>
-
-	                    <div id="aiPeriodRow" style="display:none;margin-top:20px;">
-	            	            <div class="setting-group">
-	            	                <label class="setting-label">Доп. месяцы (необязательно)</label>
-	            	                <div class="period-selector" id="aiPeriodSelector"></div>
-	            	            </div>
-	                    </div>
-
-                    					<!-- Текущий месяц + Баланс ИИ -->
-					<div id="aiCurrentMonthRow" style="display:none;margin-top:20px;">
-						<div class="setting-group">
-							<label class="setting-label">Текущий месяц</label>
-							<p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
-								Пропорция за оставшиеся дни текущего месяца.
-							</p>
-							<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-								<input type="number" id="aiCurrentMonthInput" min="0" step="0.01" value="0" readonly
-									   style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#f3f4f6;color:#111827;">
-								<span id="aiCurrentMonthCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
-							</div>
-						</div>
-					</div>
-
-					<div id="aiBalanceTopupRow" style="display:none;margin-top:20px;">
-						<div class="setting-group">
-							<label class="setting-label">Баланс ИИ</label>
-							<p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
-								Произвольное пополнение кошелька ИИ (необязательно).
-							</p>
-							<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-								<input type="number" id="aiBalanceTopupInput" min="0" step="0.01" value=""
-									   placeholder="0"
-									   style="width:160px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
-								<span id="aiBalanceTopupCurrency" style="font-size:14px;color:#374151;font-weight:600;"></span>
-							</div>
-						</div>
-					</div>
-
-	                </div>
-	            </section>
+            <!-- ИИ-Агент -->
+            <section class="ai-agent-section" id="aiAgentSection" style="display:none;">
+                <div id="aiCategoriesRoot"></div>
+            </section>
 
 	            <section class="summary-section">
 	                <div class="summary-card">
@@ -320,6 +272,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-	    <script src="/kp_generator_extra/app.js?v=20260808_ai_model_groups"></script>
+    <script src="/kp_shared/ai-agent-block.js?v=20260826_ai_categories2"></script>
+	    <script src="/kp_generator_extra/app.js?v=20260826_ai_categories"></script>
 	</body>
 	</html>

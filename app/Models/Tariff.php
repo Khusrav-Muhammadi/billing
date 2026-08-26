@@ -23,6 +23,8 @@ class Tariff extends Model
         'end_date',
         'can_increase',
         'is_external',
+        'is_public',
+        'category',
         'is_one_time',
         'one_time_label',
         'type'
@@ -32,6 +34,7 @@ class Tariff extends Model
         'end_date' => 'date',
         'can_increase' => 'bool',
         'is_external' => 'bool',
+        'is_public' => 'bool',
         'is_one_time' => 'bool',
     ];
 

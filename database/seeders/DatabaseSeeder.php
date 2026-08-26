@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             PartnerStatusSeeder::class,
             PackSeeder::class,
             InvoiceStatusSeeder::class,
+            AiCallAnalyseTariffSeeder::class,
         ]);
 
     }

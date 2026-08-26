@@ -21,7 +21,9 @@
                     <th>Кол-во проектов</th>
                     <th>Тип</th>
                     <th>Партнер</th>
+                    <th>Категория</th>
                     <th>Внешняя</th>
+                    <th>Публичный</th>
                     <th>Разовая</th>
                     <th>Текст разовой</th>
                     <th>Действие</th>
@@ -43,7 +45,9 @@
                             @endif
                         </td>
                         <td>{{ $tariff->partner?->name ?: 'Все' }}</td>
+                        <td>{{ $tariff->category ?: '—' }}</td>
                         <td>{{ $tariff->is_external ? 'Да' : 'Нет' }}</td>
+                        <td>{{ $tariff->is_public ? 'Да' : 'Нет' }}</td>
                         <td>{{ $tariff->is_one_time ? 'Да' : 'Нет' }}</td>
                         <td>{{ $tariff->one_time_label ?: '—' }}</td>
                         <td>
@@ -98,9 +102,23 @@
                                         </div>
 
                                         <div class="form-group">
+                                            <label for="category">Категория</label>
+                                            <input type="text" class="form-control" name="category"
+                                                   value="{{ $tariff->category }}"
+                                                   placeholder="Например: чаты, звонки">
+                                        </div>
+
+                                        <div class="form-group">
                                             <label for="is_external">Внешняя услуга</label>
                                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                                    name="is_external" value="1" {{ $tariff->is_external ? 'checked' : '' }}
+                                                   style="width: 20px; height: 20px">
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="is_public">Публичный</label>
+                                            <input type="checkbox" class="form-check-inline custom-checkbox"
+                                                   name="is_public" value="1" {{ $tariff->is_public ? 'checked' : '' }}
                                                    style="width: 20px; height: 20px">
                                         </div>
 
@@ -231,9 +249,23 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="category">Категория</label>
+                            <input type="text" class="form-control" name="category"
+                                   value="{{ old('category') }}"
+                                   placeholder="Например: чаты, звонки">
+                        </div>
+
+                        <div class="form-group">
                             <label for="is_external">Внешняя услуга</label>
                             <input type="checkbox" class="form-check-inline custom-checkbox"
                                    name="is_external" value="1" {{ old('is_external') ? 'checked' : '' }}
+                                   style="width: 20px; height: 20px">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="is_public">Публичный</label>
+                            <input type="checkbox" class="form-check-inline custom-checkbox"
+                                   name="is_public" value="1" {{ old('is_public') ? 'checked' : '' }}
                                    style="width: 20px; height: 20px">
                         </div>
 

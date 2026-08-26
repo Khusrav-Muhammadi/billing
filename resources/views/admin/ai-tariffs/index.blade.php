@@ -25,6 +25,7 @@
             <tr>
                 <th>№</th>
                 <th>Название</th>
+                <th>Категория</th>
                 <th>Модель</th>
                 <th>Активные периоды</th>
                 <th>Статус</th>
@@ -36,6 +37,7 @@
                 <tr>
                     <td>{{ $loop->iteration }}</td>
                     <td>{{ $plan->name }}</td>
+                    <td>{{ \App\Models\Ai\AiTariffPlan::categoryLabels()[\App\Models\Ai\AiTariffPlan::normalizeCategory($plan->category)] ?? $plan->category }}</td>
                     <td>
                         @if($plan->aiModel)
                             <span class="badge bg-light text-dark border">{{ $plan->aiModel->name }}</span>
@@ -88,6 +90,15 @@
                                     <div class="form-group">
                                         <label>Название <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control" name="name" value="{{ $plan->name }}" required maxlength="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Категория</label>
+                                        @php $editCategory = \App\Models\Ai\AiTariffPlan::normalizeCategory($plan->category); @endphp
+                                        <select class="form-control" name="category">
+                                            @foreach(\App\Models\Ai\AiTariffPlan::categoryLabels() as $value => $label)
+                                                <option value="{{ $value }}" {{ $editCategory === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
                                     </div>
                                     <div class="form-group">
                                         <label>Модель ИИ</label>
@@ -143,7 +154,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">Нет тарифных планов</td>
+                    <td colspan="7" class="text-center text-muted py-4">Нет тарифных планов</td>
                 </tr>
             @endforelse
             </tbody>
@@ -166,6 +177,15 @@
                         <input type="text" class="form-control @error('name') is-invalid @enderror"
                                name="name" value="{{ old('name') }}" required maxlength="100">
                         @error('name')<span class="text-danger">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="form-group">
+                        <label>Категория</label>
+                        <select class="form-control @error('category') is-invalid @enderror" name="category">
+                            @foreach(\App\Models\Ai\AiTariffPlan::categoryLabels() as $value => $label)
+                                <option value="{{ $value }}" {{ old('category', 'chat') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('category')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
                         <label>Модель ИИ</label>

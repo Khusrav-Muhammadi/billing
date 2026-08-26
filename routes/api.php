@@ -108,6 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 Route::get('get/application-data', [CommercialFooferController::class, 'index']);
+Route::post('get/payment-link', [\App\Http\Controllers\API\SitePaymentController::class, 'createLink']);
 Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
 
 Route::options('/{any}', function (Request $request) {

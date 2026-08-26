@@ -38,12 +38,14 @@ class AiTariffController extends Controller
     {
         $data = $request->validate([
             'name'         => 'required|string|max:100|unique:ai_tariff_plans,name',
+            'category'     => ['nullable', 'string', Rule::in(array_keys(AiTariffPlan::categoryLabels()))],
             'ai_model_id'  => 'nullable|integer|exists:ai_models,id',
             'is_active'    => 'nullable|boolean',
         ]);
 
         AiTariffPlan::query()->create([
             'name'         => $data['name'],
+            'category'     => AiTariffPlan::normalizeCategory((string) ($data['category'] ?? '')),
             'ai_model_id'  => $data['ai_model_id'] ?? null,
             'is_active'    => (bool) ($data['is_active'] ?? true),
         ]);
@@ -55,12 +57,14 @@ class AiTariffController extends Controller
     {
         $data = $request->validate([
             'name'         => ['required', 'string', 'max:100', Rule::unique('ai_tariff_plans', 'name')->ignore($aiTariff->id)],
+            'category'     => ['nullable', 'string', Rule::in(array_keys(AiTariffPlan::categoryLabels()))],
             'ai_model_id'  => 'nullable|integer|exists:ai_models,id',
             'is_active'    => 'nullable|boolean',
         ]);
 
         $aiTariff->update([
             'name'         => $data['name'],
+            'category'     => AiTariffPlan::normalizeCategory((string) ($data['category'] ?? '')),
             'ai_model_id'  => $data['ai_model_id'] ?? null,
             'is_active'    => (bool) ($data['is_active'] ?? false),
         ]);

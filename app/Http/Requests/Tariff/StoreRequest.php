@@ -22,6 +22,8 @@ class StoreRequest extends FormRequest
             'end_date' => ['nullable', 'date'],
             'can_increase' => ['nullable', 'boolean'],
             'is_external' => ['nullable', 'boolean'],
+            'is_public' => ['nullable', 'boolean'],
+            'category' => ['nullable', 'string', 'max:255'],
             'is_one_time' => ['nullable', 'boolean'],
             'one_time_label' => ['nullable', 'string', 'max:255'],
             'is_tariff' => ['nullable', 'boolean'],

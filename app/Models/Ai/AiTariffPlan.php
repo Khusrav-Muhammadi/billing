@@ -14,6 +14,7 @@ class AiTariffPlan extends Model
 
     protected $fillable = [
         'name',
+        'category',
         'ai_model_id',
         'is_active',
     ];
@@ -21,6 +22,40 @@ class AiTariffPlan extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public const CATEGORY_CHAT = 'chat';
+
+    public const CATEGORY_CALL_ANALYSE = 'call_analyse';
+
+    public static function categoryLabels(): array
+    {
+        return [
+            self::CATEGORY_CHAT => 'ИИ-Агент чатов',
+            self::CATEGORY_CALL_ANALYSE => 'ИИ-Агент анализа звонков',
+        ];
+    }
+
+    public static function normalizeCategory(?string $value): string
+    {
+        $raw = mb_strtolower(trim((string) $value));
+
+        return match ($raw) {
+            'call_analyse',
+            'call-analyse',
+            'call_analysis',
+            'call-analysis',
+            'calls',
+            'call',
+            'analyse',
+            'analysis' => self::CATEGORY_CALL_ANALYSE,
+            default => self::CATEGORY_CHAT,
+        };
+    }
+
+    public function setCategoryAttribute(?string $value): void
+    {
+        $this->attributes['category'] = self::normalizeCategory($value);
+    }
 
     public function periods(): HasMany
     {

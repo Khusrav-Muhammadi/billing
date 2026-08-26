@@ -54,6 +54,7 @@ class CPGenerator {
         this.state.requestType = 'connection';
         this.state.initialOrganizationId = null;
         this.state.aiItem = null;
+        this.state.aiItems = {};
         this.aiTariffPlans = [];
         this.state.extraServicesContext = {
             hasSuccessfulConnection: false,
@@ -375,44 +376,9 @@ class CPGenerator {
      * (connection / доп.услуги / продление).
      */
     syncAiAgentAvailability(options = {}) {
-        const refreshSummary = options.refreshSummary === true;
-        const section = document.getElementById('aiAgentSection');
-        if (!section) {
+        if (window.AiAgentBlock) {
+            window.AiAgentBlock.syncAvailability(this, options);
             return;
-        }
-
-        const allowed = this.isAiAgentAllowedForSelectedTariff();
-        if (!allowed) {
-            section.style.display = 'none';
-            const checkbox = document.getElementById('aiEnabledCheckbox');
-            if (checkbox) {
-                checkbox.checked = false;
-            }
-            const body = document.getElementById('aiTariffBody');
-            if (body) {
-                body.style.display = 'none';
-            }
-            const currentMonthRowEl = document.getElementById('aiCurrentMonthRow');
-            if (currentMonthRowEl) currentMonthRowEl.style.display = 'none';
-            const topupRowEl = document.getElementById('aiBalanceTopupRow');
-            if (topupRowEl) topupRowEl.style.display = 'none';
-            const hadAi = Boolean(this.state.aiItem);
-            this.state.aiItem = null;
-            this._pendingAiItem = null;
-            if (hadAi && refreshSummary) {
-                this.updateSummary();
-            }
-            return;
-        }
-
-        // Показываем только если блок был инициализирован с тарифами.
-        if ((this.aiTariffPlans || []).length > 0 || section.dataset.aiReady === '1') {
-            section.style.display = '';
-        }
-
-        // Пересчитать подарок при смене тарифа/организации.
-        if (typeof this._refreshAiGiftUi === 'function') {
-            this._refreshAiGiftUi({ refreshSummary });
         }
     }
 
@@ -1454,27 +1420,18 @@ class CPGenerator {
                 this.state.partnerName = selectedPartner.name || this.state.partnerName || '';
             }
 
-            // Восстановить AI-item из сохранённого КП
-            if (payload.ai_item && payload.ai_item.plan_id) {
-                this.state.aiItem = {
-                    plan_id:          payload.ai_item.plan_id,
-                    plan_name:        payload.ai_item.plan_name || '',
-                    period_months:    payload.ai_item.period_months || 1,
-                    gift_months:      payload.ai_item.gift_months || 0,
-                    gift_original_price: payload.ai_item.gift_original_price
-                        || ((Number(payload.ai_item.unit_price) || 0) * (Number(payload.ai_item.gift_months) || 0))
-                        || 0,
-                    unit_price:       payload.ai_item.unit_price || 0,
-                    discount_percent: payload.ai_item.discount_percent || 0,
-                    partner_percent:  payload.ai_item.partner_percent || 0,
-                    original_price:   payload.ai_item.original_price || 0,
-                    total_price:      payload.ai_item.total_price || 0,
-                    current_month_amount: payload.ai_item.current_month_amount || 0,
-                    balance_topup:    payload.ai_item.balance_topup || 0,
-                    currency:         payload.ai_item.currency || '',
-                };
-                // Синхронизировать UI AI-блока с загруженными данными
-                this._pendingAiItem = this.state.aiItem;
+            const rawAiItems = Array.isArray(payload.ai_items) && payload.ai_items.length
+                ? payload.ai_items
+                : ((payload.ai_item && payload.ai_item.plan_id) ? [payload.ai_item] : []);
+            if (rawAiItems.length && window.AiAgentBlock) {
+                this._pendingAiItems = rawAiItems
+                    .map((row) => window.AiAgentBlock.mapAiItemFromPayload(row))
+                    .filter(Boolean);
+                this.state.aiItems = {};
+                this._pendingAiItems.forEach((item) => {
+                    this.state.aiItems[item.category] = item;
+                });
+                this.state.aiItem = this._pendingAiItems[0] || null;
             }
 
             this.state.hasUnsavedChanges = false;
@@ -2457,63 +2414,8 @@ class CPGenerator {
     buildPaymentItems() {
         const items = [];
         if (!this.state.selectedTariff) {
-            // No tariff but may have AI-only item
-            if (this.state.aiItem && this.getAiChargeTotal(this.state.aiItem) > 0) {
-                const ai = this.state.aiItem;
-                if ((Number(ai.current_month_amount) || 0) > 0) {
-                    items.push({
-                        service_key: `ai-current-month-${ai.plan_id}`,
-                        name: `ИИ-Агент «${ai.plan_name || ''}» — текущий месяц`,
-                        quantity: 1,
-                        pricing_kind: 'pack',
-                        unit_price: this.roundMoney(ai.current_month_amount || 0),
-                        price: this.roundMoney(ai.current_month_amount || 0),
-                        is_ai_agent: true,
-                        is_ai_current_month: true,
-                    });
-                }
-                if ((Number(ai.total_price) || 0) > 0 && (Number(ai.period_months) || 0) > 0) {
-                    items.push({
-                        service_key: `ai-plan-${ai.plan_id}`,
-                        name: `ИИ-Агент «${ai.plan_name || ''}» (+${ai.period_months} мес)`,
-                        quantity: 1,
-                        pricing_kind: 'pack',
-                        unit_price: this.roundMoney(ai.unit_price || 0),
-                        price: this.roundMoney(ai.total_price || 0),
-                        is_ai_agent: true,
-                    });
-                }
-                const giftMonthsOnly = Number(ai.gift_months) || this.getAiGiftMonthsForPeriod(ai.period_months);
-                const giftOriginalOnly = this.roundMoney(
-                    ai.gift_original_price
-                    ?? ((Number(ai.unit_price) || 0) * giftMonthsOnly)
-                );
-                if (giftMonthsOnly > 0 && giftOriginalOnly > 0) {
-                    items.push({
-                        service_key: `ai-plan-gift-${ai.plan_id}`,
-                        name: `ИИ-Агент «${ai.plan_name || ''}» (+${giftMonthsOnly} мес в подарок)`,
-                        quantity: 1,
-                        pricing_kind: 'pack',
-                        unit_price: this.roundMoney(ai.unit_price || 0),
-                        price: 0,
-                        original_price: giftOriginalOnly,
-                        discount_percent: 100,
-                        is_ai_agent: true,
-                        is_ai_gift: true,
-                    });
-                }
-                if ((Number(ai.balance_topup) || 0) > 0) {
-                    items.push({
-                        service_key: `ai-balance-topup-${ai.plan_id}`,
-                        name: `Баланс ИИ`,
-                        quantity: 1,
-                        pricing_kind: 'pack',
-                        unit_price: this.roundMoney(ai.balance_topup || 0),
-                        price: this.roundMoney(ai.balance_topup || 0),
-                        is_ai_agent: true,
-                        is_ai_balance_topup: true,
-                    });
-                }
+            if (typeof this.appendSelectedAiPaymentItems === 'function') {
+                this.appendSelectedAiPaymentItems(items);
             }
             return items.filter((i) => (Number(i.price) || 0) > 0 || i.is_ai_gift);
         }
@@ -2696,62 +2598,8 @@ class CPGenerator {
         });
 
         // ── ИИ-Агент ──
-        if (this.state.aiItem && this.getAiChargeTotal(this.state.aiItem) > 0) {
-            const ai = this.state.aiItem;
-            if ((Number(ai.current_month_amount) || 0) > 0) {
-                items.push({
-                    service_key: `ai-current-month-${ai.plan_id}`,
-                    name: `ИИ-Агент «${ai.plan_name || ''}» — текущий месяц`,
-                    quantity: 1,
-                    pricing_kind: 'pack',
-                    unit_price: this.roundMoney(ai.current_month_amount || 0),
-                    price: this.roundMoney(ai.current_month_amount || 0),
-                    is_ai_agent: true,
-                    is_ai_current_month: true,
-                });
-            }
-            if ((Number(ai.total_price) || 0) > 0 && (Number(ai.period_months) || 0) > 0) {
-                items.push({
-                    service_key: `ai-plan-${ai.plan_id}`,
-                    name: `ИИ-Агент «${ai.plan_name || ''}» (+${ai.period_months} мес)`,
-                    quantity: 1,
-                    pricing_kind: 'pack',
-                    unit_price: this.roundMoney(ai.unit_price || 0),
-                    price: this.roundMoney(ai.total_price || 0),
-                    is_ai_agent: true,
-                });
-            }
-            const giftMonths = Number(ai.gift_months) || this.getAiGiftMonthsForPeriod(ai.period_months);
-            const giftOriginal = this.roundMoney(
-                ai.gift_original_price
-                ?? ((Number(ai.unit_price) || 0) * giftMonths)
-            );
-            if (giftMonths > 0 && giftOriginal > 0) {
-                items.push({
-                    service_key: `ai-plan-gift-${ai.plan_id}`,
-                    name: `ИИ-Агент «${ai.plan_name || ''}» (+${giftMonths} мес в подарок)`,
-                    quantity: 1,
-                    pricing_kind: 'pack',
-                    unit_price: this.roundMoney(ai.unit_price || 0),
-                    price: 0,
-                    original_price: giftOriginal,
-                    discount_percent: 100,
-                    is_ai_agent: true,
-                    is_ai_gift: true,
-                });
-            }
-            if ((Number(ai.balance_topup) || 0) > 0) {
-                items.push({
-                    service_key: `ai-balance-topup-${ai.plan_id}`,
-                    name: `Баланс ИИ`,
-                    quantity: 1,
-                    pricing_kind: 'pack',
-                    unit_price: this.roundMoney(ai.balance_topup || 0),
-                    price: this.roundMoney(ai.balance_topup || 0),
-                    is_ai_agent: true,
-                    is_ai_balance_topup: true,
-                });
-            }
+        if (typeof this.appendSelectedAiPaymentItems === 'function') {
+            this.appendSelectedAiPaymentItems(items);
         }
 
         // Remove zero/negative lines (подарок оставляем — цена 0, скидка 100%)
@@ -2882,7 +2730,9 @@ class CPGenerator {
             original_total: originalTotal,
             payable_total: payableTotal,
             items,
-            ai_item: this.isAiAgentAllowedForSelectedTariff() ? (this.state.aiItem || null) : null,
+            ...(this.isAiAgentAllowedForSelectedTariff() && typeof this.buildAiOfferPayload === 'function'
+                ? this.buildAiOfferPayload()
+                : { ai_item: this.isAiAgentAllowedForSelectedTariff() ? (this.state.aiItem || null) : null, ai_items: [] }),
         };
     }
 
@@ -4191,29 +4041,20 @@ class CPGenerator {
         const oneTimeTotalPartnerShare = computedOneTime.reduce((s, r) => s + r.partnerShare, 0);
 
         // ── AI-агент: добавляем в итог ──
-        const aiItem = this.state.aiItem;
-        const aiSubTotal = aiItem ? this.roundMoney(aiItem.total_price || 0) : 0;
-        const aiCurrentMonth = aiItem ? this.roundMoney(aiItem.current_month_amount || 0) : 0;
-        const aiTopup = aiItem ? this.roundMoney(aiItem.balance_topup || 0) : 0;
-        const aiGiftMonths = aiItem
-            ? (Number(aiItem.gift_months) || this.getAiGiftMonthsForPeriod(aiItem.period_months))
-            : 0;
-        const aiGiftOriginal = aiItem
-            ? this.roundMoney(
-                aiItem.gift_original_price
-                ?? ((Number(aiItem.unit_price) || 0) * aiGiftMonths)
-            )
-            : 0;
-        const aiPaidOriginal = aiItem ? this.roundMoney(aiItem.original_price || 0) : 0;
-        const aiPaidDiscount = aiItem ? this.roundMoney(aiPaidOriginal - aiSubTotal) : 0;
-        const aiTotal = this.roundMoney(aiCurrentMonth + aiSubTotal + aiTopup);
-        const aiOriginal = aiItem
-            ? this.roundMoney(aiCurrentMonth + aiPaidOriginal + aiGiftOriginal + aiTopup)
-            : 0;
-        const aiDiscount = this.roundMoney(aiPaidDiscount + aiGiftOriginal);
-        const aiPartnerPct = aiItem ? (Number(aiItem.partner_percent) || 0) : 0;
-        // Партнёр берёт % со всех AI-сумм к оплате (подарок = 0).
-        const aiPartnerShare = aiItem ? this.roundMoney(aiTotal * (aiPartnerPct / 100)) : 0;
+        const aiTotals = typeof this.collectAiSummaryTotals === 'function'
+            ? this.collectAiSummaryTotals()
+            : { selected: [], hasAi: Boolean(this.state.aiItem), aiSubTotal: 0, aiCurrentMonth: 0, aiTopup: 0, aiGiftOriginal: 0, aiPaidOriginal: 0, aiPaidDiscount: 0, aiTotal: this.getAiChargeTotal(), aiOriginal: 0, aiDiscount: 0, aiPartnerShare: 0 };
+        const aiItem = aiTotals.hasAi;
+        const aiSubTotal = aiTotals.aiSubTotal;
+        const aiCurrentMonth = aiTotals.aiCurrentMonth;
+        const aiTopup = aiTotals.aiTopup;
+        const aiGiftOriginal = aiTotals.aiGiftOriginal;
+        const aiPaidOriginal = aiTotals.aiPaidOriginal;
+        const aiPaidDiscount = aiTotals.aiPaidDiscount;
+        const aiTotal = aiTotals.aiTotal;
+        const aiOriginal = aiTotals.aiOriginal;
+        const aiDiscount = aiTotals.aiDiscount;
+        const aiPartnerShare = aiTotals.aiPartnerShare;
 
         const totalSum = recurringTotalSum + oneTimeTotalSum + aiOriginal;
         const totalDiscount = recurringTotalDiscount + oneTimeTotalDiscount + aiDiscount;
@@ -4278,76 +4119,8 @@ class CPGenerator {
             }
 
             // ── ИИ-Агент строки ──
-            if (aiItem) {
-                const aiMonths = Number(aiItem.period_months) || 0;
-                const aiSubOriginal = aiPaidOriginal;
-                tableHTML += `<tr><th colspan="9" class="section-header">ИИ-Агент</th></tr>`;
-                if (aiCurrentMonth > 0) {
-                    const share = this.roundMoney(aiCurrentMonth * (aiPartnerPct / 100));
-                    tableHTML += `
-                    <tr>
-                        <td>Текущий месяц</td>
-                        <td>1</td>
-                        <td>${this.formatServicePrice(aiCurrentMonth)}</td>
-                        <td>—</td>
-                        <td>${this.formatTotalPrice(aiCurrentMonth)}</td>
-                        <td>${this.formatTotalPrice(0)} (0%)</td>
-                        <td>${this.formatTotalPrice(aiCurrentMonth)}</td>
-                        <td>${aiPartnerPct}%</td>
-                        <td>${this.formatTotalPrice(share)}</td>
-                    </tr>
-                    `;
-                }
-                if (aiMonths > 0) {
-                    const aiSubPartnerShare = this.roundMoney(aiSubTotal * (aiPartnerPct / 100));
-                    tableHTML += `
-                    <tr>
-                        <td>ИИ-Агент «${aiItem.plan_name || ''}» (+${aiMonths} мес)</td>
-                        <td>1</td>
-                        <td>${this.formatServicePrice(aiItem.unit_price)}</td>
-                        <td>+${aiMonths}</td>
-                        <td>${this.formatTotalPrice(aiSubOriginal)}</td>
-                        <td>${this.formatTotalPrice(aiPaidDiscount)} (${aiItem.discount_percent}%)</td>
-                        <td>${this.formatTotalPrice(aiSubTotal)}</td>
-                        <td>${aiPartnerPct}%</td>
-                        <td>${this.formatTotalPrice(aiSubPartnerShare)}</td>
-                    </tr>
-                    `;
-                }
-                if (aiGiftMonths > 0) {
-                    const giftSum = aiGiftOriginal > 0
-                        ? aiGiftOriginal
-                        : this.roundMoney((Number(aiItem.unit_price) || 0) * aiGiftMonths);
-                    tableHTML += `
-                    <tr>
-                        <td>ИИ-Агент «${aiItem.plan_name || ''}» (+${aiGiftMonths} мес в подарок)</td>
-                        <td>1</td>
-                        <td>${this.formatServicePrice(aiItem.unit_price)}</td>
-                        <td>+${aiGiftMonths}</td>
-                        <td>${this.formatTotalPrice(giftSum)}</td>
-                        <td>${this.formatTotalPrice(giftSum)} (100%)</td>
-                        <td>${this.formatTotalPrice(0)}</td>
-                        <td>${aiPartnerPct}%</td>
-                        <td>${this.formatTotalPrice(0)}</td>
-                    </tr>
-                    `;
-                }
-                if (aiTopup > 0) {
-                    const aiTopupPartnerShare = this.roundMoney(aiTopup * (aiPartnerPct / 100));
-                    tableHTML += `
-                    <tr>
-                        <td>Баланс ИИ</td>
-                        <td>1</td>
-                        <td>${this.formatServicePrice(aiTopup)}</td>
-                        <td>—</td>
-                        <td>${this.formatTotalPrice(aiTopup)}</td>
-                        <td>${this.formatTotalPrice(0)} (0%)</td>
-                        <td>${this.formatTotalPrice(aiTopup)}</td>
-                        <td>${aiPartnerPct}%</td>
-                        <td>${this.formatTotalPrice(aiTopupPartnerShare)}</td>
-                    </tr>
-                    `;
-                }
+            if (typeof this.renderAiPaymentTableRows === 'function') {
+                tableHTML += this.renderAiPaymentTableRows(aiTotals);
             }
 
             const partnerTotalLabel = tariffPartnerPercent === packPartnerPercent
@@ -5535,7 +5308,7 @@ class CPGenerator {
         const monthlyToPay = (monthlyTariffBase * periodMultiplier) + monthlyPacks;
         const periodToPay = monthlyToPay * months;
         const oneTimeToPay = this.calculateOneTimeTotal() + oneTimePacks;
-        const aiTotal = this.getAiChargeTotal(this.state.aiItem);
+        const aiTotal = this.getAiChargeTotal();
 
         return {
             monthly: monthlyToPay,
@@ -5666,7 +5439,7 @@ class CPGenerator {
             + this.applyPartnerShare(oneTimePacks, packPercent)
         );
         // Партнёрский % со всех AI-сумм: текущий месяц + доп. месяцы + баланс ИИ.
-        const aiTotal = this.getAiChargeTotal(this.state.aiItem);
+        const aiTotal = this.getAiChargeTotal();
         const aiNet = this.roundMoney(this.applyPartnerShare(aiTotal, packPercent));
 
         return {
@@ -6725,384 +6498,13 @@ class CPGenerator {
 
     // ── ИИ-Агент блок ─────────────────────────────────────────────────────────
     initAiAgentBlock() {
-        const plans = this.aiTariffPlans || [];
-        const section = document.getElementById('aiAgentSection');
-        if (!section) return;
-
-        section.dataset.aiReady = plans.length > 0 ? '1' : '0';
-
-        const body           = document.getElementById('aiTariffBody');
-        const checkbox       = document.getElementById('aiEnabledCheckbox');
-        const plansGrid      = document.getElementById('aiPlansGrid');
-        const periodRow      = document.getElementById('aiPeriodRow');
-        const periodSelector = document.getElementById('aiPeriodSelector');
-        const currentMonthRow = document.getElementById('aiCurrentMonthRow');
-        const currentMonthInput = document.getElementById('aiCurrentMonthInput');
-        const currentMonthCurrency = document.getElementById('aiCurrentMonthCurrency');
-        const topupRow       = document.getElementById('aiBalanceTopupRow');
-        const topupInput     = document.getElementById('aiBalanceTopupInput');
-        const topupCurrency  = document.getElementById('aiBalanceTopupCurrency');
-        const topupHint      = document.getElementById('aiBalanceTopupHint');
-        const topupResetBtn  = document.getElementById('aiBalanceTopupResetBtn');
-
-        if (!plans.length) {
-            if (checkbox && body) {
-                checkbox.addEventListener('change', () => {
-                    if (!this.isAiAgentAllowedForSelectedTariff()) {
-                        checkbox.checked = false;
-                        body.style.display = 'none';
-                        this.state.aiItem = null;
-                        this.syncAiAgentAvailability({ refreshSummary: true });
-                        return;
-                    }
-                    body.style.display = checkbox.checked ? 'block' : 'none';
-                    if (checkbox.checked) {
-                        body.innerHTML = '<div style="color:#b91c1c;font-size:13px;padding:8px 0;">Нет активных ИИ-тарифов с ценами. Создайте тариф и цену в разделе «ИИ-тарифы».</div>';
-                    }
-                    this.state.aiItem = null;
-                    this.updateSummary();
-                });
-            }
-            this.syncAiAgentAvailability();
+        if (window.AiAgentBlock) {
+            window.AiAgentBlock.init(this);
             return;
         }
-
-        if (!checkbox || !body || !plansGrid || !periodRow || !periodSelector) {
-            this.syncAiAgentAvailability();
-            return;
-        }
-
-        let selectedPlanId = null;
-        let selectedMonths = null;
-        this._aiTopupManual = false;
-
-        // Цена только из prices_by_currency для валюты клиента. Нет цены — 0 (без конвертации).
-        const getAiPrice = (plan) => {
-            const cur = this.normalizeCurrencyCode(this.state.currency) || '';
-            const byC = plan?.prices_by_currency || {};
-            if (!cur) return 0;
-            const direct = byC[cur] ?? byC[cur.toLowerCase()] ?? byC[cur.toUpperCase()];
-            const amount = Number(direct);
-            return Number.isFinite(amount) && amount > 0 ? amount : 0;
-        };
-
-        const getAiCurrency = (_plan) => {
-            return this.normalizeCurrencyCode(this.state.currency) || '';
-        };
-
-        const syncCurrentAndBalanceUi = (unitPrice, currency) => {
-            const current = this.suggestAiBalanceTopup(unitPrice);
-            if (currentMonthRow) currentMonthRow.style.display = 'block';
-            if (topupRow) topupRow.style.display = 'block';
-            if (currentMonthCurrency) currentMonthCurrency.textContent = currency || '';
-            if (topupCurrency) topupCurrency.textContent = currency || '';
-            if (currentMonthInput) currentMonthInput.value = current;
-            if (periodRow) periodRow.style.display = 'block';
-            return current;
-        };
-
-        const readTopup = () => {
-            if (!topupInput) return 0;
-            const v = Number(topupInput.value);
-            return Number.isFinite(v) && v > 0 ? this.roundMoney(v) : 0;
-        };
-
-        const readCurrentMonth = (unitPrice) => {
-            if (currentMonthInput && currentMonthInput.value !== '') {
-                const v = Number(currentMonthInput.value);
-                if (Number.isFinite(v) && v >= 0) return this.roundMoney(v);
-            }
-            return this.suggestAiBalanceTopup(unitPrice);
-        };
-
-        const applyAiItem = (options = {}) => {
-            const refreshSummary = options.refreshSummary !== false;
-            if (!this.isAiAgentAllowedForSelectedTariff()) {
-                this.state.aiItem = null;
-                if (checkbox) checkbox.checked = false;
-                body.style.display = 'none';
-                if (currentMonthRow) currentMonthRow.style.display = 'none';
-                if (topupRow) topupRow.style.display = 'none';
-                if (refreshSummary) this.updateSummary();
-                return;
-            }
-            if (checkbox.checked && selectedPlanId) {
-                const plan = plans.find(p => p.id === selectedPlanId);
-                const unitPrice = getAiPrice(plan);
-                const currency = getAiCurrency(plan);
-                const partnerPct = typeof this.getPartnerPackPercent === 'function'
-                    ? this.getPartnerPackPercent() : 0;
-
-                const currentMonth = syncCurrentAndBalanceUi(unitPrice, currency);
-                const topup = readTopup();
-
-                let discountPct = 0;
-                let original = 0;
-                let total = 0;
-                const months = selectedMonths ? Number(selectedMonths) : 0;
-                const giftMonths = months > 0 ? this.getAiGiftMonthsForPeriod(months) : 0;
-                if (months > 0) {
-                    const per = (plan?.periods || []).find(p => Number(p.months) === months);
-                    discountPct = per?.discount_percent ?? 0;
-                    original = this.roundMoney(unitPrice * months);
-                    total = this.roundMoney(original * (1 - discountPct / 100));
-                }
-                const giftOriginal = giftMonths > 0
-                    ? this.roundMoney(unitPrice * giftMonths)
-                    : 0;
-
-                this.state.aiItem = {
-                    plan_id: selectedPlanId,
-                    plan_name: plan.name,
-                    period_months: months,
-                    gift_months: giftMonths,
-                    gift_original_price: giftOriginal,
-                    unit_price: unitPrice,
-                    discount_percent: discountPct,
-                    partner_percent: partnerPct,
-                    original_price: original,
-                    total_price: total,
-                    current_month_amount: currentMonth,
-                    balance_topup: topup,
-                    currency: currency,
-                };
-            } else {
-                this.state.aiItem = null;
-                if (currentMonthRow) currentMonthRow.style.display = 'none';
-                if (topupRow) topupRow.style.display = 'none';
-            }
-            if (refreshSummary) {
-                this.updateSummary();
-            }
-        };
-
-        const renderSummary = () => applyAiItem({ refreshSummary: true });
-
-        const renderPeriods = (plan) => {
-            periodSelector.innerHTML = '';
-            if (!plan.periods || !plan.periods.length) {
-                periodRow.style.display = 'none';
-                return;
-            }
-            periodRow.style.display = 'block';
-            plan.periods.forEach(per => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'period-btn';
-                btn.dataset.months = per.months;
-                const giftMonths = this.getAiGiftMonthsForPeriod(per.months);
-                let label = '+' + per.months + ' мес';
-                if (per.discount_percent > 0) {
-                    label += ' <span class="discount-badge">-' + per.discount_percent + '%</span>';
-                }
-                if (giftMonths > 0) {
-                    label += ' <span class="gift-badge">+' + giftMonths + ' подарок</span>';
-                }
-                btn.innerHTML = label;
-                btn.addEventListener('click', () => {
-                    const already = btn.classList.contains('active');
-                    periodSelector.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-                    if (already) {
-                        selectedMonths = null;
-                    } else {
-                        btn.classList.add('active');
-                        selectedMonths = per.months;
-                    }
-                    renderSummary();
-                });
-                periodSelector.appendChild(btn);
-            });
-            // Месяцы необязательны: по умолчанию только «Текущий месяц».
-        };
-
-        this._refreshAiGiftUi = (options = {}) => {
-            if (!checkbox.checked || !selectedPlanId) {
-                return;
-            }
-            const plan = plans.find(p => p.id === selectedPlanId);
-            if (!plan) {
-                return;
-            }
-            const keepMonths = selectedMonths;
-            renderPeriods(plan);
-            if (keepMonths) {
-                const targetBtn = periodSelector.querySelector(`[data-months="${keepMonths}"]`);
-                if (targetBtn) {
-                    periodSelector.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-                    targetBtn.classList.add('active');
-                    selectedMonths = keepMonths;
-                }
-            }
-            applyAiItem({ refreshSummary: options.refreshSummary !== false });
-        };
-
-        const renderCardPrice = (card, plan) => {
-            const bestPeriod = (plan.periods || []).slice().sort((a, b) => b.discount_percent - a.discount_percent)[0];
-            const discountHtml = bestPeriod && bestPeriod.discount_percent > 0
-                ? `<span class="discount-badge" style="margin-left:6px;">-${bestPeriod.discount_percent}%</span>` : '';
-            const displayPrice = getAiPrice(plan);
-            const displayCur   = getAiCurrency(plan);
-            const priceEl = card.querySelector('.ai-price-area');
-            if (priceEl) {
-                priceEl.innerHTML = displayPrice > 0
-                    ? `<div class="tariff-price"><span class="price-value">${displayPrice}</span><span class="price-period">&nbsp;${displayCur}/мес${discountHtml}</span></div>`
-                    : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
-            }
-        };
-
-        this._refreshAiCardPrices = () => {
-            plansGrid.querySelectorAll('.tariff-card').forEach(card => {
-                const plan = plans.find(p => String(p.id) === String(card.dataset.planId));
-                if (plan) renderCardPrice(card, plan);
-            });
-            // Только пересобрать aiItem под текущую валюту, без updateSummary.
-            if (checkbox.checked && selectedPlanId) {
-                const plan = plans.find(p => p.id === selectedPlanId);
-                if (plan) {
-                    syncCurrentAndBalanceUi(getAiPrice(plan), getAiCurrency(plan));
-                }
-                applyAiItem({ refreshSummary: false });
-            }
-        };
-
-        plansGrid.innerHTML = '';
-        plansGrid.classList.add('ai-plans-by-model');
-
-        const modelGroups = new Map();
-        plans.forEach(plan => {
-            const modelKey = String(plan.model_name || '').trim() || 'Прочие';
-            if (!modelGroups.has(modelKey)) {
-                modelGroups.set(modelKey, []);
-            }
-            modelGroups.get(modelKey).push(plan);
-        });
-
-        const sortedModelNames = Array.from(modelGroups.keys()).sort((a, b) => {
-            if (a === 'Прочие') return 1;
-            if (b === 'Прочие') return -1;
-            return a.localeCompare(b, 'ru', { sensitivity: 'base' });
-        });
-
-        sortedModelNames.forEach(modelName => {
-            const groupPlans = modelGroups.get(modelName).slice().sort((a, b) => {
-                const priceDiff = getAiPrice(a) - getAiPrice(b);
-                if (priceDiff !== 0) return priceDiff;
-                return String(a.name || '').localeCompare(String(b.name || ''), 'ru', { sensitivity: 'base' });
-            });
-
-            const groupEl = document.createElement('div');
-            groupEl.className = 'ai-model-group';
-
-            const titleEl = document.createElement('div');
-            titleEl.className = 'ai-model-group-title';
-            titleEl.textContent = modelName;
-            groupEl.appendChild(titleEl);
-
-            const rowEl = document.createElement('div');
-            rowEl.className = 'ai-model-plans-row';
-
-            groupPlans.forEach(plan => {
-                const card = document.createElement('div');
-                card.className = 'tariff-card';
-                card.dataset.planId = plan.id;
-
-                const bestPeriod = (plan.periods || []).slice().sort((a, b) => b.discount_percent - a.discount_percent)[0];
-                const discountHtml = bestPeriod && bestPeriod.discount_percent > 0
-                    ? `<span class="discount-badge" style="margin-left:6px;">-${bestPeriod.discount_percent}%</span>` : '';
-                const displayPrice = getAiPrice(plan);
-                const displayCur   = getAiCurrency(plan);
-                const priceDisplay = displayPrice > 0
-                    ? `<div class="tariff-price"><span class="price-value">${displayPrice}</span><span class="price-period">&nbsp;${displayCur}/мес${discountHtml}</span></div>`
-                    : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
-
-                card.innerHTML = `
-                    <div class="tariff-select-indicator"></div>
-                    <div class="tariff-name" style="margin-top:24px;">${plan.name}</div>
-                    <div class="ai-price-area">${priceDisplay}</div>`;
-
-                card.addEventListener('click', () => {
-                    plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
-                    card.classList.add('selected');
-                    selectedPlanId = plan.id;
-                    selectedMonths = null;
-                    this._aiTopupManual = false;
-                    renderPeriods(plan);
-                    renderSummary();
-                });
-
-                rowEl.appendChild(card);
-            });
-
-            groupEl.appendChild(rowEl);
-            plansGrid.appendChild(groupEl);
-        });
-
-        if (topupInput) {
-            topupInput.addEventListener('input', () => {
-                applyAiItem();
-            });
-        }
-
-        checkbox.addEventListener('change', () => {
-            if (!this.isAiAgentAllowedForSelectedTariff()) {
-                checkbox.checked = false;
-                body.style.display = 'none';
-                this.state.aiItem = null;
-                this.syncAiAgentAvailability({ refreshSummary: true });
-                return;
-            }
-            body.style.display = checkbox.checked ? 'block' : 'none';
-            if (!checkbox.checked) {
-                selectedPlanId = null;
-                selectedMonths = null;
-                periodRow.style.display = 'none';
-                if (currentMonthRow) currentMonthRow.style.display = 'none';
-                if (topupRow) topupRow.style.display = 'none';
-                plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
-                this.state.aiItem = null;
-                this.updateSummary();
-            }
-        });
-
-        const pending = this._pendingAiItem;
-        if (pending && pending.plan_id && this.isAiAgentAllowedForSelectedTariff()) {
-            const plan = plans.find(p => p.id === pending.plan_id);
-            if (plan) {
-                checkbox.checked = true;
-                body.style.display = 'block';
-                const targetCard = plansGrid.querySelector(`[data-plan-id="${plan.id}"]`);
-                if (targetCard) {
-                    plansGrid.querySelectorAll('.tariff-card').forEach(c => c.classList.remove('selected'));
-                    targetCard.classList.add('selected');
-                }
-                selectedPlanId = plan.id;
-                selectedMonths = null;
-                renderPeriods(plan);
-                const pendingMonths = Number(pending.period_months) || 0;
-                if (pendingMonths > 0) {
-                    const targetBtn = periodSelector.querySelector(`[data-months="${pendingMonths}"]`);
-                    if (targetBtn) {
-                        periodSelector.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-                        targetBtn.classList.add('active');
-                        selectedMonths = pendingMonths;
-                    }
-                }
-                const topup = Number(pending.balance_topup) || 0;
-                const currency = pending.currency || getAiCurrency(plan);
-                const current = Number(pending.current_month_amount) || syncCurrentAndBalanceUi(getAiPrice(plan), currency);
-                syncCurrentAndBalanceUi(getAiPrice(plan), currency);
-                if (currentMonthInput) currentMonthInput.value = current;
-                if (topupInput) topupInput.value = topup > 0 ? topup : '';
-                applyAiItem({ refreshSummary: true });
-            }
-            this._pendingAiItem = null;
-        } else if (pending) {
-            this._pendingAiItem = null;
-        }
-
-        this.syncAiAgentAvailability();
     }
 }
+
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
