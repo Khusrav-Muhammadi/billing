@@ -95,6 +95,74 @@ class PaymentVerificationController extends Controller
         return redirect()->away($checkoutUrl);
     }
 
+    public function publicShow(Payment $payment)
+    {
+        $provider = $this->providerFromPayment($payment);
+        $offer = $this->offerForPayment($payment);
+        $items = $payment->paymentItems()->get(['service_name', 'price']);
+        $canPay = in_array($provider, ['alif', 'octo'], true)
+            && trim((string) ($offer?->payment_link ?? '')) !== '';
+
+        return view('public.payment-verification', [
+            'provider' => $provider,
+            'providerLabel' => match ($provider) {
+                'alif' => 'Alif',
+                'octo' => 'Visa',
+                default => 'Счет',
+            },
+            'payment' => $payment,
+            'offer' => $offer,
+            'items' => $items,
+            'goUrl' => $canPay ? route('site.payment.go', $payment) : null,
+            'canPay' => $canPay,
+        ]);
+    }
+
+    public function publicGo(Request $request, Payment $payment)
+    {
+        $provider = $this->providerFromPayment($payment);
+        if (!in_array($provider, ['alif', 'octo'], true)) {
+            abort(404);
+        }
+
+        $offer = $this->offerForPayment($payment);
+        $checkoutUrl = trim((string) ($offer?->payment_link ?? ''));
+        if ($checkoutUrl === '') {
+            abort(404, 'Ссылка на оплату не найдена.');
+        }
+
+        if (!filter_var($request->input('consent'), FILTER_VALIDATE_BOOLEAN)) {
+            return redirect()
+                ->route('site.payment.show', $payment)
+                ->withErrors([
+                    'consent' => 'Подтвердите согласие с условиями оферты перед оплатой.',
+                ]);
+        }
+
+        return redirect()->away($checkoutUrl);
+    }
+
+    private function providerFromPayment(Payment $payment): string
+    {
+        return match (strtolower(trim((string) $payment->payment_type))) {
+            'alif' => 'alif',
+            'visa', 'octo' => 'octo',
+            default => 'invoice',
+        };
+    }
+
+    private function offerForPayment(Payment $payment): ?CommercialOffer
+    {
+        return CommercialOffer::query()
+            ->with([
+                'organization:id,name',
+                'partner:id,name',
+            ])
+            ->where('payment_id', $payment->id)
+            ->latest('id')
+            ->first();
+    }
+
     private function signedShowUrl(string $provider, Payment $payment, Request $request): string
     {
         $expiresTs = (int) $request->query('expires', 0);

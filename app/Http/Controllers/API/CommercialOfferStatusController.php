@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Events\CommercialOfferAiTopUpPaidStatusEvent;
 use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
 use App\Events\CommercialOfferPaidStatusEvent;
 use App\Events\CommercialOfferRenewalNoChangePaidStatusEvent;
@@ -113,6 +114,8 @@ class CommercialOfferStatusController extends Controller
                 CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } elseif ($requestType === 'renewal_no_changes') {
                 CommercialOfferRenewalNoChangePaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } elseif ($requestType === 'ai_topup') {
+                CommercialOfferAiTopUpPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } else {
                 CommercialOfferPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             }

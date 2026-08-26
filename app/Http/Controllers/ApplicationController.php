@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CommercialOfferAiTopUpPaidStatusEvent;
 use App\Events\CommercialOfferPaidStatusEvent;
 use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
 use App\Events\CommercialOfferRenewalNoChangePaidStatusEvent;
@@ -36,6 +37,7 @@ class ApplicationController extends Controller
         'connection_extra_services' => 'Подключение доп услуг',
         'renewal' => 'Продление (изменение)',
         'renewal_no_changes' => 'Продление',
+        'ai_topup' => 'Пополнение ИИ-счёта',
     ];
 
     public function index(Request $request)
@@ -589,6 +591,8 @@ class ApplicationController extends Controller
                 CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } elseif ($requestType == 'renewal_no_changes') {
                 CommercialOfferRenewalNoChangePaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } elseif ($requestType === 'ai_topup') {
+                CommercialOfferAiTopUpPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } else {
                 CommercialOfferPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             }
@@ -684,6 +688,8 @@ class ApplicationController extends Controller
                 \App\Events\CommercialOfferRenewalPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } elseif ($requestType == 'renewal_no_changes') {
                 \App\Events\CommercialOfferRenewalNoChangePaidStatusEvent::dispatch($freshOffer, $freshStatus);
+            } elseif ($requestType === 'ai_topup') {
+                CommercialOfferAiTopUpPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             } else {
                 \App\Events\CommercialOfferPaidStatusEvent::dispatch($freshOffer, $freshStatus);
             }

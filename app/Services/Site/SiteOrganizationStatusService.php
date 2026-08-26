@@ -2,6 +2,8 @@
 
 namespace App\Services\Site;
 
+use App\Models\Ai\AiBalance;
+use App\Models\Ai\AiSubscription;
 use App\Models\ClientBalance;
 use App\Models\Organization;
 use App\Services\Organizations\OrganizationValidityService;
@@ -40,14 +42,17 @@ class SiteOrganizationStatusService
             : null;
 
         $status = $this->resolveStatus($isDemo, $client?->created_at, $connectionStatus, (bool) $organization->has_access);
+        $crmBalance = $this->realBalance($organization, (int) ($client?->country?->currency_id ?? 0));
 
         return [
             'organization' => [
                 'id' => (int) $organization->id,
                 'name' => (string) $organization->name,
             ],
-            'balance' => $this->realBalance($organization, (int) ($client?->country?->currency_id ?? 0)),
+            'balance' => $crmBalance,
+            'crm_balance' => $crmBalance,
             'currency' => $context['currency'],
+            'ai' => $this->aiPayload($organization, $context['currency']),
             'tariff' => $tariff ? [
                 'id' => (int) $tariff->id,
                 'name' => (string) $tariff->name,
@@ -118,6 +123,32 @@ class SiteOrganizationStatusService
         }
 
         return $count;
+    }
+
+    private function aiPayload(Organization $organization, string $fallbackCurrency): array
+    {
+        $balance = AiBalance::query()
+            ->with('currency:id,symbol_code')
+            ->where('organization_id', (int) $organization->id)
+            ->first();
+
+        $hasActiveSubscription = AiSubscription::query()
+            ->where('organization_id', (int) $organization->id)
+            ->where('status', true)
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>=', now());
+            })
+            ->exists();
+
+        $isAgentEnabled = (bool) ($balance?->is_agent_enabled);
+
+        return [
+            'connected' => $isAgentEnabled || $hasActiveSubscription,
+            'is_agent_enabled' => $isAgentEnabled,
+            'limited_balance' => round((float) ($balance?->limited_balance ?? 0), 4),
+            'ai_balance' => round((float) ($balance?->ai_balance ?? 0), 4),
+            'currency' => strtoupper(trim((string) ($balance?->currency?->symbol_code ?: $fallbackCurrency))),
+        ];
     }
 
     private function partnerPayload(mixed $partner): ?array

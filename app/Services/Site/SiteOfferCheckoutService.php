@@ -2,8 +2,10 @@
 
 namespace App\Services\Site;
 
+use App\Models\Ai\AiBalance;
 use App\Models\CommercialOffer;
 use App\Models\ConnectedClientServices;
+use App\Models\Currency;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Services\Payment\OnlineCheckoutLinkService;
@@ -39,9 +41,59 @@ class SiteOfferCheckoutService
         return $this->checkout($payload, 'connection_extra_services', false);
     }
 
+    public function aiTopUp(array $payload): array
+    {
+        $context = $this->organizationContext->resolve((int) ($payload['organization_id'] ?? 0));
+        $paymentType = $this->organizationContext->normalizePaymentType((string) ($payload['payment_type'] ?? ''));
+        $this->organizationContext->assertPaymentTypeAllowed($context, $paymentType);
+
+        $amount = round((float) ($payload['amount'] ?? 0), 4);
+        if ($amount <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => 'Сумма должна быть больше 0.',
+            ]);
+        }
+
+        $organization = $context['organization'];
+        $payer = $context['payer'];
+        $currency = $paymentType === 'visa' ? 'USD' : (string) $context['currency'];
+        $this->ensureAiBalance((int) $organization->id, (string) $context['currency']);
+
+        $payload['period_months'] = 1;
+        $payload['extra_users'] = 0;
+        $payload['tariff_id'] = 0;
+
+        $quote = [
+            'context' => $context,
+            'payer' => $payer,
+            'payment_type' => $paymentType,
+            'currency' => $currency,
+            'period_months' => 1,
+            'tariff_id' => 0,
+            'extra_users' => 0,
+            'items' => [[
+                'id' => 0,
+                'type' => 'ai_topup',
+                'name' => 'Пополнение ИИ-счёта',
+                'quantity' => 1,
+                'unit_price' => $amount,
+                'price' => $amount,
+                'discount_percent' => 0,
+                'months' => 1,
+            ]],
+            'sum' => $amount,
+        ];
+
+        return $this->checkoutFromQuote($quote, 'ai_topup');
+    }
+
     private function checkout(array $payload, string $requestType, bool $includeTariff): array
     {
-        $quote = $this->cart->quote($payload, $includeTariff);
+        return $this->checkoutFromQuote($this->cart->quote($payload, $includeTariff), $requestType);
+    }
+
+    private function checkoutFromQuote(array $quote, string $requestType): array
+    {
         $context = $quote['context'];
         $organization = $context['organization'];
         $payer = $quote['payer'];
@@ -96,8 +148,13 @@ class SiteOfferCheckoutService
             $offer->save();
 
             foreach ($items as $item) {
+                $tariffId = (int) ($item['id'] ?? 0);
+                if ($tariffId <= 0) {
+                    continue;
+                }
+
                 $offer->items()->create([
-                    'tariff_id' => (int) $item['id'],
+                    'tariff_id' => $tariffId,
                     'quantity' => max(1, (int) $item['quantity']),
                     'unit_price' => $item['unit_price'],
                     'months' => max(1, (int) ($item['months'] ?? $periodMonths)),
@@ -141,12 +198,14 @@ class SiteOfferCheckoutService
         });
 
         $payment = $result['payment']->fresh('paymentItems');
-        $paymentUrl = $paymentType === 'invoice'
+        $providerUrl = $paymentType === 'invoice'
             ? null
             : app(OnlineCheckoutLinkService::class)->createUrl($payment);
 
+        $publicUrl = url('/payment/' . $payment->id);
+
         $result['offer']->forceFill([
-            'payment_link' => $paymentUrl,
+            'payment_link' => $providerUrl,
         ])->save();
 
         return [
@@ -159,8 +218,8 @@ class SiteOfferCheckoutService
             'currency' => $currency,
             'period_months' => $periodMonths,
             'sum' => $sum,
-            'payment_url' => $paymentUrl,
-            'redirect_url' => $paymentUrl,
+            'payment_url' => $publicUrl,
+            'redirect_url' => $publicUrl,
             'items' => $items,
         ];
     }
@@ -190,5 +249,28 @@ class SiteOfferCheckoutService
         }
 
         return (int) $row->tariff_id;
+    }
+
+    private function ensureAiBalance(int $organizationId, string $currencyCode): void
+    {
+        $currencyId = (int) Currency::query()
+            ->whereRaw('UPPER(symbol_code) = ?', [strtoupper($currencyCode)])
+            ->value('id');
+
+        if ($currencyId <= 0) {
+            throw ValidationException::withMessages([
+                'organization_id' => 'Не удалось определить валюту для ИИ-баланса.',
+            ]);
+        }
+
+        AiBalance::query()->firstOrCreate(
+            ['organization_id' => $organizationId],
+            [
+                'currency_id' => $currencyId,
+                'limited_balance' => 0,
+                'ai_balance' => 0,
+                'is_agent_enabled' => false,
+            ]
+        );
     }
 }

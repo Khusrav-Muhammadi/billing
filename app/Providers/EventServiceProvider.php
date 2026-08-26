@@ -3,12 +3,14 @@
 namespace App\Providers;
 
 use App\Events\ClientHistoryEvent;
+use App\Events\CommercialOfferAiTopUpPaidStatusEvent;
 use App\Events\CommercialOfferExtraServicesPaidStatusEvent;
 use App\Events\CommercialOfferPaidStatusEvent;
 use App\Events\CommercialOfferRenewalNoChangePaidStatusEvent;
 use App\Events\CommercialOfferRenewalPaidStatusEvent;
 use App\Events\OrganizationHistoryEvent;
 use App\Listeners\ClientHistoryListener;
+use App\Listeners\CommercialOfferAiTopUpPaidStatusListener;
 use App\Listeners\CommercialOfferExtraServicesPaidStatusListener;
 use App\Listeners\CommercialOfferPaidStatusListener;
 use App\Listeners\CommercialOfferRenewalNoChangePaidStatusListener;
@@ -61,6 +63,10 @@ class EventServiceProvider extends ServiceProvider
 
         CommercialOfferRenewalNoChangePaidStatusEvent::class => [
             CommercialOfferRenewalNoChangePaidStatusListener::class,
+        ],
+
+        CommercialOfferAiTopUpPaidStatusEvent::class => [
+            CommercialOfferAiTopUpPaidStatusListener::class,
         ],
     ];
 

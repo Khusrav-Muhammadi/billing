@@ -186,6 +186,7 @@
         $displaySum = number_format((float) $sum, 2, '.', ' ');
     }
     $agreementUrl = 'https://shamcrm.com/agreement';
+    $canPay = $canPay ?? !empty($goUrl);
 @endphp
 
 <div class="card">
@@ -196,7 +197,11 @@
         </div>
         <h1 class="title">Подтверждение оплаты</h1>
         <p class="subtitle">
-            Перед переходом к оплате проверьте данные и подтвердите согласие с условиями оферты.
+            @if(!empty($canPay))
+                Перед переходом к оплате проверьте данные и подтвердите согласие с условиями оферты.
+            @else
+                Счёт сформирован. Оплата будет подтверждена после поступления платежа.
+            @endif
         </p>
     </div>
 
@@ -248,6 +253,7 @@
             </div>
         @endif
 
+        @if(!empty($canPay) && !empty($goUrl))
         <form method="POST" action="{{ $goUrl }}" style="margin:0;">
             @csrf
 
@@ -276,6 +282,7 @@
                 </a>
             </div>
         </form>
+        @endif
     </div>
 
     <div class="footer">

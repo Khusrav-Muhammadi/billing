@@ -3,6 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\CommercialOfferPaidStatusEvent;
+use App\Services\Ai\AiBalanceTopUpService;
 use App\Services\ClientBalances\ClientBalanceRegistryService;
 use App\Services\ClientPaymentRegistries\ClientPaymentRegistryService;
 use App\Services\CommercialOffers\CommercialOfferPaymentNotificationService;
@@ -26,13 +27,27 @@ class CommercialOfferPaidStatusListener
         private OrganizationConnectionStatusRegistryService $organizationConnectionStatusRegistryService,
         private CommercialOfferProvisioningService $commercialOfferProvisioningService,
         private CommercialOfferPaymentNotificationService $paymentNotificationService,
-        private AiSubscriptionRegistryService $aiSubscriptionRegistryService
+        private AiSubscriptionRegistryService $aiSubscriptionRegistryService,
+        private AiBalanceTopUpService $aiBalanceTopUpService
     ) {
     }
 
     public function handle(CommercialOfferPaidStatusEvent $event): void
     {
         $offer = $event->offer;
+
+        if (trim((string) ($offer->request_type ?: '')) === 'ai_topup') {
+            $amount = (float) ($offer->payable_total ?: $offer->grand_total ?: 0);
+            if ($amount > 0) {
+                $this->aiBalanceTopUpService->topUp(
+                    (int) $offer->organization_id,
+                    $amount,
+                    sprintf('Пополнение ИИ-счёта, платёж КП #%d', $offer->id)
+                );
+            }
+
+            return;
+        }
 
         $this->connectedClientServicesRegistryService->register($offer, $event->status);
         $this->discountExpensesRegistryService->register($offer, $event->status);

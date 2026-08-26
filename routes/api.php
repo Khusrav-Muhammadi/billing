@@ -115,6 +115,7 @@ Route::middleware('site.token')->group(function () {
     Route::post('site/payment-link', [\App\Http\Controllers\API\SitePaymentController::class, 'createLink']);
     Route::post('site/renewal', [\App\Http\Controllers\API\SiteRenewalController::class, 'store']);
     Route::post('site/extra-services', [\App\Http\Controllers\API\SiteExtraServicesController::class, 'store']);
+    Route::post('site/ai-topup', [\App\Http\Controllers\API\SiteAiTopUpController::class, 'store']);
 });
 Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
 
