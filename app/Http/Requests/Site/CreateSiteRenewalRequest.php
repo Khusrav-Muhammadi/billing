@@ -5,7 +5,7 @@ namespace App\Http\Requests\Site;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class CreatePaymentLinkRequest extends FormRequest
+class CreateSiteRenewalRequest extends FormRequest
 {
     public function authorize(): bool
     {

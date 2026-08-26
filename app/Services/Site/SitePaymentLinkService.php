@@ -13,21 +13,23 @@ use Illuminate\Validation\ValidationException;
 
 class SitePaymentLinkService
 {
-    public function create(array $payload): array
+    public function __construct(
+        private readonly SiteOrganizationContextService $organizationContext,
+    ) {
+    }
+
+    public function quote(array $payload, bool $includeTariff = true): array
     {
-        $paymentType = $this->normalizePaymentType((string) ($payload['payment_type'] ?? ''));
-        $currency = $paymentType === 'alif' ? 'UZS' : 'USD';
+        $context = $this->organizationContext->resolve((int) ($payload['organization_id'] ?? 0));
+        $paymentType = $this->organizationContext->normalizePaymentType((string) ($payload['payment_type'] ?? ''));
+        $this->organizationContext->assertPaymentTypeAllowed($context, $paymentType);
+
+        $currency = $paymentType === 'visa' ? 'USD' : (string) $context['currency'];
         $asOfTs = $this->parseDateToTs($payload['date'] ?? null) ?? strtotime(date('Y-m-d'));
-        $periodMonths = max(1, (int) ($payload['period_months'] ?? 6));
+        $periodMonths = (int) $payload['period_months'];
         $extraUsers = max(0, (int) ($payload['extra_users'] ?? 0));
         $tariffId = (int) ($payload['tariff_id'] ?? 0);
         $requestedServices = $this->normalizeRequestedServices($payload['services'] ?? []);
-
-        if ($tariffId <= 0 && $requestedServices === [] && $extraUsers <= 0) {
-            throw ValidationException::withMessages([
-                'tariff_id' => 'Выберите тариф или услуги для оплаты.',
-            ]);
-        }
 
         $items = $this->buildPayableItems(
             tariffId: $tariffId,
@@ -35,7 +37,8 @@ class SitePaymentLinkService
             extraUsers: $extraUsers,
             periodMonths: $periodMonths,
             currency: $currency,
-            asOfTs: $asOfTs
+            asOfTs: $asOfTs,
+            includeTariff: $includeTariff
         );
 
         if ($items === []) {
@@ -51,13 +54,39 @@ class SitePaymentLinkService
             ]);
         }
 
-        $payment = DB::transaction(function () use ($payload, $paymentType, $sum, $items): Payment {
+        return [
+            'context' => $context,
+            'payer' => $context['payer'],
+            'payment_type' => $paymentType,
+            'currency' => $currency,
+            'period_months' => $periodMonths,
+            'tariff_id' => $tariffId,
+            'extra_users' => $extraUsers,
+            'items' => $items,
+            'sum' => $sum,
+        ];
+    }
+
+    public function create(array $payload): array
+    {
+        $quote = $this->quote($payload);
+        $context = $quote['context'];
+        $payer = $quote['payer'];
+        $paymentType = $quote['payment_type'];
+        $currency = $quote['currency'];
+        $periodMonths = $quote['period_months'];
+        $items = $quote['items'];
+        $sum = $quote['sum'];
+
+        $storedPaymentType = $paymentType === 'visa' ? 'octo' : $paymentType;
+
+        $payment = DB::transaction(function () use ($payer, $storedPaymentType, $sum, $items): Payment {
             $payment = Payment::query()->create([
-                'name' => trim((string) $payload['name']),
-                'phone' => preg_replace('/\D+/', '', (string) $payload['phone']) ?: '',
-                'email' => trim((string) $payload['email']),
+                'name' => $payer['name'],
+                'phone' => preg_replace('/\D+/', '', (string) $payer['phone']) ?: '',
+                'email' => $payer['email'],
                 'sum' => $sum,
-                'payment_type' => $paymentType,
+                'payment_type' => $storedPaymentType,
             ]);
 
             foreach ($items as $item) {
@@ -71,11 +100,15 @@ class SitePaymentLinkService
             return $payment->fresh('paymentItems');
         });
 
-        $paymentUrl = app(OnlineCheckoutLinkService::class)->createUrl($payment);
+        $paymentUrl = $paymentType === 'invoice'
+            ? null
+            : app(OnlineCheckoutLinkService::class)->createUrl($payment);
 
         return [
             'payment_id' => (int) $payment->id,
-            'payment_type' => $paymentType === 'alif' ? 'alif' : 'visa',
+            'organization_id' => (int) $context['organization']->id,
+            'payer' => $payer,
+            'payment_type' => $paymentType,
             'currency' => $currency,
             'period_months' => $periodMonths,
             'sum' => $sum,
@@ -91,7 +124,8 @@ class SitePaymentLinkService
         int $extraUsers,
         int $periodMonths,
         string $currency,
-        int $asOfTs
+        int $asOfTs,
+        bool $includeTariff = true
     ): array {
         $items = [];
         $tariff = null;
@@ -99,16 +133,20 @@ class SitePaymentLinkService
 
         if ($tariffId > 0) {
             $tariff = $this->findPublicTariff($tariffId, true);
-            $monthly = $this->resolvePrice($tariff, $currency, $asOfTs);
-            $discountedMonthly = $this->applyPeriodDiscount($monthly, $periodMonths);
-            $items[] = [
-                'id' => (int) $tariff->id,
-                'type' => 'tariff',
-                'name' => sprintf('Тариф "%s" (%d мес)', $tariff->name, $periodMonths),
-                'quantity' => 1,
-                'unit_price' => $discountedMonthly,
-                'price' => $this->money($discountedMonthly * $periodMonths),
-            ];
+            if ($includeTariff) {
+                $monthly = $this->resolvePrice($tariff, $currency, $asOfTs);
+                $discountedMonthly = $this->applyPeriodDiscount($monthly, $periodMonths);
+                $items[] = [
+                    'id' => (int) $tariff->id,
+                    'type' => 'tariff',
+                    'name' => sprintf('Тариф "%s" (%d мес)', $tariff->name, $periodMonths),
+                    'quantity' => 1,
+                    'unit_price' => $discountedMonthly,
+                    'price' => $this->money($discountedMonthly * $periodMonths),
+                    'discount_percent' => $periodMonths === 12 ? 15 : 0,
+                    'months' => $periodMonths,
+                ];
+            }
 
             foreach ($tariff->includedServices as $included) {
                 $includedByServiceId[(int) $included->id] = [
@@ -127,13 +165,16 @@ class SitePaymentLinkService
             }
 
             $extraMonthly = $this->resolveExtraUserPrice($tariff, $currency, $asOfTs);
+            $extraTariffId = $this->extraUserTariffId($tariff) ?: (int) $tariff->id;
             $items[] = [
-                'id' => (int) ($tariff->id),
+                'id' => $extraTariffId,
                 'type' => 'extra_users',
                 'name' => sprintf('Доп. пользователи (×%d)', $extraUsers),
                 'quantity' => $extraUsers,
                 'unit_price' => $extraMonthly,
                 'price' => $this->money($extraMonthly * $extraUsers * $periodMonths),
+                'discount_percent' => 0,
+                'months' => $periodMonths,
             ];
         }
 
@@ -173,6 +214,8 @@ class SitePaymentLinkService
                 'quantity' => $chargeableQty,
                 'unit_price' => $unitPrice,
                 'price' => $this->money($lineTotal),
+                'discount_percent' => 0,
+                'months' => $isOneTime ? 1 : $periodMonths,
             ];
         }
 
@@ -243,6 +286,16 @@ class SitePaymentLinkService
         throw ValidationException::withMessages([
             'currency' => sprintf('Нет цены в %s для «%s».', $currency, $tariff->name),
         ]);
+    }
+
+    private function extraUserTariffId(Tariff $tariff): ?int
+    {
+        $id = Tariff::query()
+            ->where('is_extra_user', true)
+            ->where('parent_tariff_id', $tariff->id)
+            ->value('id');
+
+        return $id ? (int) $id : null;
     }
 
     private function resolveExtraUserPrice(Tariff $tariff, string $currency, int $asOfTs): float
@@ -365,19 +418,6 @@ class SitePaymentLinkService
         }
 
         return ctype_digit(trim($key)) ? (int) $key : 0;
-    }
-
-    private function normalizePaymentType(string $type): string
-    {
-        $normalized = strtolower(trim($type));
-
-        return match ($normalized) {
-            'alif' => 'alif',
-            'visa', 'octo' => 'octo',
-            default => throw ValidationException::withMessages([
-                'payment_type' => 'Тип оплаты должен быть visa или alif.',
-            ]),
-        };
     }
 
     private function currencyIdByCode(string $code): int
