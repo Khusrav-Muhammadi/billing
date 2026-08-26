@@ -10,8 +10,7 @@ class VerifySiteApiToken
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $expected = config('site.api_token');
-        dd($expected);
+        $expected = 'site_2dbc42bbe9fff16f951ba218cb5fd5b37c8627cee47545f3';
         if ($expected === '') {
             return response()->json([
                 'message' => 'SITE_API_TOKEN не настроен.',
