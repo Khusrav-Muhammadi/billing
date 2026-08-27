@@ -59,7 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('clients/getHistory/{client}', [\App\Http\Controllers\API\ClientController::class, 'getHistory']);
 
     Route::post('organizations/access/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'access']);
-    Route::get('organizations-v2', [\App\Http\Controllers\API\OrganizationController::class, 'indexV2']);
+    Route::get('organizations-v2', [\App\Http\Controllers\API\OrganizationController::class, 'indexV2'f]);
     Route::get('organizations-active-v2', [\App\Http\Controllers\API\OrganizationController::class, 'active']);
     Route::get('organizations-inActive-v2', [\App\Http\Controllers\API\OrganizationController::class, 'inActive']);
     Route::get('organizations-nfr-v2', [\App\Http\Controllers\API\OrganizationController::class, 'nfr']);

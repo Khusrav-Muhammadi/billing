@@ -47,7 +47,6 @@ class SiteCatalogService
     private function buildTariffs(string $currency, int $asOfTs): array
     {
         $tariffs = Tariff::query()
-            ->where('is_public', true)
             ->where('is_tariff', true)
             ->whereNull('partner_id')
             ->where(function ($query) {
@@ -128,7 +127,6 @@ class SiteCatalogService
     private function buildServices(string $currency, int $asOfTs): array
     {
         $services = Tariff::query()
-            ->where('is_public', true)
             ->where('is_tariff', false)
             ->whereNull('partner_id')
             ->where(function ($query) {
@@ -160,6 +158,7 @@ class SiteCatalogService
                 'name' => (string) $service->name,
                 'category' => $this->nullableString($service->category),
                 'currency' => $currency,
+                'is_public' => $service->is_public,
                 'price' => $price,
                 'has_channels' => (bool) $service->can_increase,
                 'is_one_time' => (bool) ($service->is_one_time ?? false),
