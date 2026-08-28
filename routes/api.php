@@ -112,6 +112,7 @@ Route::get('get/application-data', [CommercialFooferController::class, 'index'])
 Route::middleware('site.token')->group(function () {
     Route::get('site/catalog', [\App\Http\Controllers\API\SiteCatalogController::class, 'show']);
     Route::get('site/organization', [\App\Http\Controllers\API\SiteOrganizationController::class, 'show']);
+    Route::get('site/services', [\App\Http\Controllers\API\SiteOrganizationController::class, 'services']);
     Route::post('site/payment-link', [\App\Http\Controllers\API\SitePaymentController::class, 'createLink']);
     Route::post('site/renewal', [\App\Http\Controllers\API\SiteRenewalController::class, 'store']);
     Route::post('site/extra-services', [\App\Http\Controllers\API\SiteExtraServicesController::class, 'store']);

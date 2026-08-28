@@ -277,9 +277,6 @@
     <div class="total-amount">
         <strong>Итого к оплате: {{ number_format((float) $totalAmount, 4, ',', ' ') }} {{ $currency }}</strong>
     </div>
-{{--    <div class="amount-words">--}}
-{{--      123  {{  $currency }}--}}
-{{--    </div>--}}
 </div>
 
 <div class="payment-note">
