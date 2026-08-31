@@ -293,7 +293,7 @@ class AiSubscriptionRegistryService
 
     private function resolveOfferCurrencyId(CommercialOffer $offer): int
     {
-        $code = strtoupper(trim((string) ($offer->payable_currency ?: $offer->currency ?: '')));
+        $code = strtoupper(trim((string) ($offer->currency ?: $offer->payable_currency ?: '')));
         if ($code === '') {
             throw new RuntimeException(
                 "AiSubscriptionRegistryService: offer #{$offer->id} has empty currency/payable_currency."

@@ -30,8 +30,8 @@
         <div class="info">
             @if($client->sub_domain)
                 <p><strong>Адрес CRM:</strong>
-                    <a href="https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}">
-                        https://{{ $client->sub_domain }}.{{ env('APP_DOMAIN') }}
+                    <a href="https://{{ $client->sub_domain }}.shamcrm.com">
+                        https://{{ $client->sub_domain }}.shamcrm.com
                     </a>
                 </p>
             @endif
