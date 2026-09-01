@@ -12,10 +12,18 @@ class CommercialOfferAiItem extends Model
 {
     use HasFactory;
 
+    public const DEMO_DAYS = 3;
+
+    public const DEMO_ALLOWED_REQUEST_TYPES = [
+        'connection',
+        'connection_extra_services',
+    ];
+
     protected $fillable = [
         'commercial_offer_id',
         'plan_id',
         'period_months',
+        'demo_days',
         'gift_months',
         'unit_price',
         'discount_percent',
@@ -28,6 +36,7 @@ class CommercialOfferAiItem extends Model
 
     protected $casts = [
         'period_months' => 'integer',
+        'demo_days' => 'integer',
         'gift_months' => 'integer',
         'unit_price' => 'decimal:4',
         'discount_percent' => 'decimal:2',
@@ -103,7 +112,23 @@ class CommercialOfferAiItem extends Model
         return max(0, (int) $this->period_months) + max(0, (int) $this->gift_months);
     }
 
-    /** Сумма к оплате по AI: текущий месяц + доп. месяцы + баланс ИИ */
+    public function isDemo(): bool
+    {
+        return max(0, (int) ($this->demo_days ?? 0)) > 0;
+    }
+
+    /** Цена демо: тариф / 30 × дни. */
+    public static function demoAmount(float $unitPrice, int $days = self::DEMO_DAYS): float
+    {
+        return round(max(0, $unitPrice) / 30 * max(0, $days), 4);
+    }
+
+    public static function allowsDemoForRequestType(?string $requestType): bool
+    {
+        return in_array((string) $requestType, self::DEMO_ALLOWED_REQUEST_TYPES, true);
+    }
+
+    /** Сумма к оплате по AI: текущий месяц + доп. месяцы / демо + баланс ИИ */
     public function chargedTotal(): float
     {
         return round(

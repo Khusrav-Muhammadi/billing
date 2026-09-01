@@ -66,19 +66,26 @@ class AiSubscriptionRegistryService
                     $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer);
                     $balance = $this->ensureBalance($orgId, $offerCurrencyId);
 
-                    if (AiTariffPlan::normalizeCategory((string) ($plan->category ?? '')) === AiTariffPlan::CATEGORY_CHAT) {
+                    if (
+                        ! $aiItem->isDemo()
+                        && AiTariffPlan::normalizeCategory((string) ($plan->category ?? '')) === AiTariffPlan::CATEGORY_CHAT
+                    ) {
                         Organization::query()
                             ->whereKey($orgId)
                             ->update(['ai_gift_promo_used' => true]);
                     }
 
-                    $this->creditAndGrantCurrentMonth($balance, $aiItem, $plan);
+                    if ($aiItem->isDemo()) {
+                        $this->creditAndGrantDemo($balance, $aiItem, $plan);
+                    } else {
+                        $this->creditAndGrantCurrentMonth($balance, $aiItem, $plan);
 
-                    if ((int) $aiItem->period_months > 0 && (float) $aiItem->original_price > 0) {
-                        $this->creditPaidAmount($balance, $aiItem, $plan);
+                        if ((int) $aiItem->period_months > 0 && (float) $aiItem->original_price > 0) {
+                            $this->creditPaidAmount($balance, $aiItem, $plan);
+                        }
+
+                        $this->creditGiftMonths($balance, $aiItem, $plan);
                     }
-
-                    $this->creditGiftMonths($balance, $aiItem, $plan);
                     $this->creditBalanceTopUp($balance, $aiItem);
                 }
 
@@ -258,10 +265,7 @@ class AiSubscriptionRegistryService
             ->first();
 
         $today = Carbon::today('Asia/Dushanbe');
-        $extraMonths = max(0, (int) $aiItem->period_months);
-        // Срок из снапшота КП (gift_months уже посчитан при сохранении с учётом тарифа/акции).
-        $extraMonths += max(0, (int) ($aiItem->gift_months ?? 0));
-        $calendarMonths = $extraMonths + 1;
+        $demoDays = max(0, (int) ($aiItem->demo_days ?? 0));
 
         if ($existing && $existing->expires_at && $existing->expires_at->gt($today)) {
             $startedAt = $existing->expires_at->copy()->addDay()->startOfDay();
@@ -269,10 +273,22 @@ class AiSubscriptionRegistryService
             $startedAt = $today->copy()->startOfDay();
         }
 
-        $expiresAt = $startedAt->copy()
-            ->addMonthsNoOverflow($calendarMonths - 1)
-            ->endOfMonth()
-            ->endOfDay();
+        if ($demoDays > 0) {
+            $calendarMonths = 0;
+            $expiresAt = $startedAt->copy()
+                ->addDays($demoDays - 1)
+                ->endOfDay();
+        } else {
+            $extraMonths = max(0, (int) $aiItem->period_months);
+            // Срок из снапшота КП (gift_months уже посчитан при сохранении с учётом тарифа/акции).
+            $extraMonths += max(0, (int) ($aiItem->gift_months ?? 0));
+            $calendarMonths = $extraMonths + 1;
+
+            $expiresAt = $startedAt->copy()
+                ->addMonthsNoOverflow($calendarMonths - 1)
+                ->endOfMonth()
+                ->endOfDay();
+        }
 
         if ($existing) {
             $existing->update(['status' => false]);
@@ -431,6 +447,72 @@ class AiSubscriptionRegistryService
             'organization_id' => $balance->organization_id,
             'gift_months' => $giftMonths,
             'amount' => $amount,
+        ]);
+    }
+
+    private function creditAndGrantDemo(AiBalance $balance, CommercialOfferAiItem $aiItem, AiTariffPlan $plan): void
+    {
+        $days = max(0, (int) ($aiItem->demo_days ?? 0));
+        $amount = round((float) $aiItem->total_price, 4);
+        if ($amount <= 0) {
+            $amount = CommercialOfferAiItem::demoAmount((float) $aiItem->unit_price, $days);
+        }
+
+        if ($days <= 0 || $amount <= 0) {
+            throw new RuntimeException(
+                "AI item missing demo amount; cannot grant demo limit (plan #{$plan->id})."
+            );
+        }
+
+        $plan->monthlyLimitForCurrency((int) $balance->currency_id);
+
+        $balance->increment('ai_balance', $amount);
+        $balance->refresh();
+
+        AiBalanceTransaction::query()->create([
+            'organization_id' => $balance->organization_id,
+            'currency_id' => $balance->currency_id,
+            'type' => AiBalanceTransaction::TYPE_PAYMENT,
+            'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+            'amount' => $amount,
+            'description' => "Оплата демо ИИ ({$days} дня, тариф «{$plan->name}»)",
+        ]);
+
+        $ai = (float) $balance->ai_balance;
+        if ($ai + 0.0001 < $amount) {
+            throw new RuntimeException(
+                "AiSubscriptionRegistryService: ai_balance insufficient for demo "
+                . "(have={$ai}, need={$amount}, org #{$balance->organization_id})."
+            );
+        }
+
+        $balance->ai_balance = round($ai - $amount, 4);
+        $balance->save();
+
+        AiBalanceTransaction::query()->create([
+            'organization_id' => $balance->organization_id,
+            'currency_id' => $balance->currency_id,
+            'type' => AiBalanceTransaction::TYPE_MONTHLY_PURCHASE,
+            'target_balance' => AiBalanceTransaction::TARGET_AI_BALANCE,
+            'amount' => $amount,
+            'description' => "Списание за демо ({$days} дня)",
+        ]);
+
+        $balance->increment('limited_balance', $amount);
+
+        AiBalanceTransaction::query()->create([
+            'organization_id' => $balance->organization_id,
+            'currency_id' => $balance->currency_id,
+            'type' => AiBalanceTransaction::TYPE_TARIFF_GRANT_PRORATED,
+            'target_balance' => AiBalanceTransaction::TARGET_LIMITED,
+            'amount' => $amount,
+            'description' => "Начисление лимита за демо ({$days} дня)",
+        ]);
+
+        Log::info('AiSubscriptionRegistryService: demo granted', [
+            'organization_id' => $balance->organization_id,
+            'amount' => $amount,
+            'demo_days' => $days,
         ]);
     }
 

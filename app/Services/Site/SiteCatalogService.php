@@ -2,6 +2,7 @@
 
 namespace App\Services\Site;
 
+use App\Models\Ai\CommercialOfferAiItem;
 use App\Models\Currency;
 use App\Models\Tariff;
 use App\Models\TariffCurrency;
@@ -196,6 +197,13 @@ class SiteCatalogService
                 'currency' => $currency,
                 'price' => $price,
                 'periods' => $plan['periods'],
+                'demo_period' => $category === 'chat'
+                    ? [
+                        'days' => CommercialOfferAiItem::DEMO_DAYS,
+                        'price' => $this->money($price / 30 * CommercialOfferAiItem::DEMO_DAYS),
+                        'label' => 'Демо 3 дня',
+                    ]
+                    : null,
             ];
         }
 

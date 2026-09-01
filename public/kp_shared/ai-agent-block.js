@@ -1,5 +1,7 @@
 (function () {
     const CATEGORY_ORDER = ['chat', 'call_analyse'];
+    const AI_CHAT_DEMO_DAYS = 3;
+    const AI_CHAT_DEMO_REQUEST_TYPES = ['connection', 'connection_extra_services'];
     const CATEGORY_LABELS = {
         chat: 'ИИ-Агент чатов',
         call_analyse: 'ИИ-Агент анализа звонков',
@@ -31,9 +33,25 @@
 
     function getAiCategoryRules(category) {
         if (category === 'call_analyse') {
-            return { showBalance: false, showPeriodDiscounts: false, showGifts: false };
+            return { showBalance: false, showPeriodDiscounts: false, showGifts: false, showDemo: false };
         }
-        return { showBalance: true, showPeriodDiscounts: true, showGifts: true };
+        return { showBalance: true, showPeriodDiscounts: true, showGifts: true, showDemo: true };
+    }
+
+    function canOfferAiChatDemo(cp, category) {
+        if (normalizeAiCategory(category) !== 'chat') {
+            return false;
+        }
+        const type = String(cp?.state?.requestType || '').trim();
+        return AI_CHAT_DEMO_REQUEST_TYPES.includes(type);
+    }
+
+    function calcAiDemoPrice(cp, unitPrice, days = AI_CHAT_DEMO_DAYS) {
+        const price = Number(unitPrice) || 0;
+        if (price <= 0 || days <= 0) {
+            return 0;
+        }
+        return cp.roundMoney((price / 30) * days);
     }
 
     function mapAiItemFromPayload(raw, category) {
@@ -45,6 +63,7 @@
             plan_name: raw.plan_name || '',
             category: normalizeAiCategory(raw.category || category),
             period_months: raw.period_months || 0,
+            demo_days: raw.demo_days || 0,
             gift_months: raw.gift_months || 0,
             gift_original_price: raw.gift_original_price
                 || ((Number(raw.unit_price) || 0) * (Number(raw.gift_months) || 0))
@@ -116,7 +135,21 @@
             }
             const lines = [];
             const label = this.getAiCategoryLabel(aiItem.category);
-            if ((Number(aiItem.current_month_amount) || 0) > 0) {
+            const demoDays = Number(aiItem.demo_days) || 0;
+            if (demoDays > 0 && (Number(aiItem.total_price) || 0) > 0) {
+                lines.push({
+                    service_key: `ai-demo-${aiItem.plan_id}`,
+                    name: `${label} «${aiItem.plan_name || ''}» — демо ${demoDays} дня`,
+                    quantity: 1,
+                    pricing_kind: 'pack',
+                    unit_price: this.roundMoney(aiItem.total_price || 0),
+                    price: this.roundMoney(aiItem.total_price || 0),
+                    is_ai_agent: true,
+                    is_ai_demo: true,
+                    ai_category: aiItem.category,
+                });
+            }
+            if (demoDays <= 0 && (Number(aiItem.current_month_amount) || 0) > 0) {
                 lines.push({
                     service_key: `ai-current-month-${aiItem.plan_id}`,
                     name: `${label} «${aiItem.plan_name || ''}» — текущий месяц`,
@@ -259,6 +292,7 @@
                 const paidOriginal = this.roundMoney(aiItem.original_price || 0);
                 const paidDiscount = this.roundMoney(paidOriginal - subTotal);
                 const months = Number(aiItem.period_months) || 0;
+                const demoDays = Number(aiItem.demo_days) || 0;
                 const giftMonths = rules.showGifts
                     ? (Number(aiItem.gift_months) || this.getAiGiftMonthsForPeriod(aiItem.period_months))
                     : 0;
@@ -269,7 +303,22 @@
                 const topup = rules.showBalance ? this.roundMoney(aiItem.balance_topup || 0) : 0;
 
                 html += `<tr><th colspan="9" class="section-header">${label}</th></tr>`;
-                if (currentMonth > 0) {
+                if (demoDays > 0 && subTotal > 0) {
+                    const share = this.roundMoney(subTotal * (partnerPct / 100));
+                    html += `
+                    <tr>
+                        <td>${label} «${aiItem.plan_name || ''}» — демо ${demoDays} дня</td>
+                        <td>1</td>
+                        <td>${this.formatServicePrice(subTotal)}</td>
+                        <td>демо</td>
+                        <td>${this.formatTotalPrice(subTotal)}</td>
+                        <td>${this.formatTotalPrice(0)} (0%)</td>
+                        <td>${this.formatTotalPrice(subTotal)}</td>
+                        <td>${partnerPct}%</td>
+                        <td>${this.formatTotalPrice(share)}</td>
+                    </tr>`;
+                }
+                if (demoDays <= 0 && currentMonth > 0) {
                     const share = this.roundMoney(currentMonth * (partnerPct / 100));
                     html += `
                     <tr>
@@ -398,7 +447,7 @@
                     <div class="ai-plans-by-model ai-plans-grid"></div>
                     <div class="ai-period-row" style="display:none;margin-top:20px;">
                         <div class="setting-group">
-                            <label class="setting-label">Доп. месяцы (необязательно)</label>
+                            <label class="setting-label">${canOfferAiChatDemo(cp, category) ? 'Период (необязательно)' : 'Доп. месяцы (необязательно)'}</label>
                             <div class="period-selector ai-period-selector"></div>
                         </div>
                     </div>
@@ -440,6 +489,7 @@
                 plans: categoryPlans,
                 selectedPlanId: null,
                 selectedMonths: null,
+                selectedDemoDays: null,
                 checkbox: block.querySelector('.ai-enabled-checkbox'),
                 body: block.querySelector('.ai-category-body'),
                 plansGrid: block.querySelector('.ai-plans-grid'),
@@ -489,16 +539,30 @@
                     const currency = getAiCurrency();
                     const partnerPct = typeof cp.getPartnerPackPercent === 'function'
                         ? cp.getPartnerPackPercent() : 0;
-                    const currentMonth = syncCurrentAndBalanceUi(unitPrice, currency);
                     const topup = readTopup();
                     const months = ui.selectedMonths ? Number(ui.selectedMonths) : 0;
-                    const giftMonths = (rules.showGifts && months > 0)
+                    const demoDays = ui.selectedDemoDays ? Number(ui.selectedDemoDays) : 0;
+                    const isDemo = demoDays > 0;
+                    let currentMonth = 0;
+                    if (isDemo) {
+                        if (ui.currentMonthRow) ui.currentMonthRow.style.display = 'none';
+                        if (ui.topupRow) ui.topupRow.style.display = rules.showBalance ? 'block' : 'none';
+                        if (ui.periodRow) ui.periodRow.style.display = 'block';
+                        if (ui.currentMonthInput) ui.currentMonthInput.value = 0;
+                        if (ui.topupCurrency) ui.topupCurrency.textContent = currency || '';
+                    } else {
+                        currentMonth = syncCurrentAndBalanceUi(unitPrice, currency);
+                    }
+                    const giftMonths = (!isDemo && rules.showGifts && months > 0)
                         ? cp.getAiGiftMonthsForPeriod(months)
                         : 0;
                     let discountPct = 0;
                     let original = 0;
                     let total = 0;
-                    if (months > 0) {
+                    if (isDemo) {
+                        original = calcAiDemoPrice(cp, unitPrice, demoDays);
+                        total = original;
+                    } else if (months > 0) {
                         const period = (plan?.periods || []).find((item) => Number(item.months) === months);
                         discountPct = rules.showPeriodDiscounts ? (period?.discount_percent ?? 0) : 0;
                         original = cp.roundMoney(unitPrice * months);
@@ -508,7 +572,8 @@
                         plan_id: ui.selectedPlanId,
                         plan_name: plan.name,
                         category,
-                        period_months: months,
+                        period_months: isDemo ? 0 : months,
+                        demo_days: isDemo ? demoDays : 0,
                         gift_months: giftMonths,
                         gift_original_price: giftMonths > 0 ? cp.roundMoney(unitPrice * giftMonths) : 0,
                         unit_price: unitPrice,
@@ -533,12 +598,34 @@
 
             const renderPeriods = (plan) => {
                 ui.periodSelector.innerHTML = '';
-                if (!plan.periods || !plan.periods.length) {
+                const hasDemo = canOfferAiChatDemo(cp, category);
+                if ((!plan.periods || !plan.periods.length) && !hasDemo) {
                     ui.periodRow.style.display = 'none';
                     return;
                 }
                 ui.periodRow.style.display = 'block';
-                plan.periods.forEach((period) => {
+                if (hasDemo) {
+                    const demoBtn = document.createElement('button');
+                    demoBtn.type = 'button';
+                    demoBtn.className = 'period-btn';
+                    demoBtn.dataset.demoDays = String(AI_CHAT_DEMO_DAYS);
+                    demoBtn.innerHTML = 'Демо ' + AI_CHAT_DEMO_DAYS + ' дня';
+                    demoBtn.addEventListener('click', () => {
+                        const already = demoBtn.classList.contains('active');
+                        ui.periodSelector.querySelectorAll('.period-btn').forEach((item) => item.classList.remove('active'));
+                        if (already) {
+                            ui.selectedDemoDays = null;
+                            ui.selectedMonths = null;
+                        } else {
+                            demoBtn.classList.add('active');
+                            ui.selectedDemoDays = AI_CHAT_DEMO_DAYS;
+                            ui.selectedMonths = null;
+                        }
+                        applyAiItem();
+                    });
+                    ui.periodSelector.appendChild(demoBtn);
+                }
+                (plan.periods || []).forEach((period) => {
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'period-btn';
@@ -557,9 +644,11 @@
                         ui.periodSelector.querySelectorAll('.period-btn').forEach((item) => item.classList.remove('active'));
                         if (already) {
                             ui.selectedMonths = null;
+                            ui.selectedDemoDays = null;
                         } else {
                             btn.classList.add('active');
                             ui.selectedMonths = period.months;
+                            ui.selectedDemoDays = null;
                         }
                         applyAiItem();
                     });
@@ -638,6 +727,7 @@
                         card.classList.add('selected');
                         ui.selectedPlanId = plan.id;
                         ui.selectedMonths = null;
+                        ui.selectedDemoDays = null;
                         renderPeriods(plan);
                         applyAiItem();
                     });
@@ -665,6 +755,7 @@
                 if (!ui.checkbox.checked) {
                     ui.selectedPlanId = null;
                     ui.selectedMonths = null;
+                    ui.selectedDemoDays = null;
                     ui.periodRow.style.display = 'none';
                     if (ui.currentMonthRow) ui.currentMonthRow.style.display = 'none';
                     if (ui.topupRow) ui.topupRow.style.display = 'none';
@@ -699,8 +790,17 @@
                     return;
                 }
                 const keepMonths = ui.selectedMonths;
+                const keepDemoDays = ui.selectedDemoDays;
                 ui.renderPeriods(plan);
-                if (keepMonths) {
+                if (keepDemoDays) {
+                    const targetBtn = ui.periodSelector.querySelector(`[data-demo-days="${keepDemoDays}"]`);
+                    if (targetBtn) {
+                        ui.periodSelector.querySelectorAll('.period-btn').forEach((item) => item.classList.remove('active'));
+                        targetBtn.classList.add('active');
+                        ui.selectedDemoDays = keepDemoDays;
+                        ui.selectedMonths = null;
+                    }
+                } else if (keepMonths) {
                     const targetBtn = ui.periodSelector.querySelector(`[data-months="${keepMonths}"]`);
                     if (targetBtn) {
                         ui.periodSelector.querySelectorAll('.period-btn').forEach((item) => item.classList.remove('active'));
@@ -722,7 +822,7 @@
                 });
                 if (ui.checkbox.checked && ui.selectedPlanId) {
                     const plan = ui.plans.find((item) => item.id === ui.selectedPlanId);
-                    if (plan) {
+                    if (plan && !ui.selectedDemoDays) {
                         ui.syncCurrentAndBalanceUi(ui.getAiPrice(plan), getAiCurrency());
                     }
                     ui.applyAiItem({ refreshSummary: false });
@@ -756,9 +856,19 @@
             }
             ui.selectedPlanId = plan.id;
             ui.selectedMonths = null;
+            ui.selectedDemoDays = null;
             ui.renderPeriods(plan);
+            const pendingDemoDays = Number(pending.demo_days) || 0;
             const pendingMonths = Number(pending.period_months) || 0;
-            if (pendingMonths > 0) {
+            if (pendingDemoDays > 0) {
+                const targetBtn = ui.periodSelector.querySelector(`[data-demo-days="${pendingDemoDays}"]`);
+                if (targetBtn) {
+                    ui.periodSelector.querySelectorAll('.period-btn').forEach((item) => item.classList.remove('active'));
+                    targetBtn.classList.add('active');
+                    ui.selectedDemoDays = pendingDemoDays;
+                    ui.selectedMonths = null;
+                }
+            } else if (pendingMonths > 0) {
                 const targetBtn = ui.periodSelector.querySelector(`[data-months="${pendingMonths}"]`);
                 if (targetBtn) {
                     ui.periodSelector.querySelectorAll('.period-btn').forEach((item) => item.classList.remove('active'));

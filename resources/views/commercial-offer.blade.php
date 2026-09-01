@@ -1039,6 +1039,7 @@
                 $aiLabel = (string) ($aiRow['label'] ?? 'ИИ-Агент');
                 $aiPlanName = (string) ($aiRow['plan_name'] ?? '');
                 $aiMonths = (int) ($aiRow['period_months'] ?? 0);
+                $aiDemoDays = (int) ($aiRow['demo_days'] ?? 0);
                 $aiUnit = (float) ($aiRow['unit_price'] ?? 0);
                 $aiDiscountPct = (float) ($aiRow['discount_percent'] ?? 0);
                 $aiOriginal = (float) ($aiRow['original_price'] ?? 0);
@@ -1058,6 +1059,12 @@
                         <th>Тарифный план</th>
                         <td>{{ $aiLabel }} «{{ $aiPlanName }}»</td>
                     </tr>
+                    @if($aiDemoDays > 0)
+                    <tr>
+                        <th>Демо</th>
+                        <td>+{{ $aiDemoDays }} дня</td>
+                    </tr>
+                    @endif
                     @if($aiCurrentMonth > 0)
                     <tr>
                         <th>Текущий месяц</th>
@@ -1085,7 +1092,7 @@
                         <td>{{ formatPrice($aiUnit) }} {{ $currency }}</td>
                     </tr>
                     @endif
-                    @if($aiOriginal > 0)
+                    @if($aiOriginal > 0 && $aiDemoDays <= 0)
                     <tr>
                         <th>Сумма за доп. период без скидки</th>
                         <td>{{ formatPrice($aiOriginal) }} {{ $currency }}</td>
@@ -1104,7 +1111,7 @@
                     @endif
                     @if($aiSubTotal > 0)
                     <tr>
-                        <th>Стоимость доп. месяцев</th>
+                        <th>{{ $aiDemoDays > 0 ? 'Стоимость демо' : 'Стоимость доп. месяцев' }}</th>
                         <td>{{ formatPrice($aiSubTotal) }} {{ $currency }}</td>
                     </tr>
                     @endif
@@ -1197,6 +1204,9 @@
                     <tr>
                         <td>
                             {{ $aiLabel }} «{{ $aiRow['plan_name'] ?? '' }}»
+                            @if((int)($aiRow['demo_days'] ?? 0) > 0)
+                                + демо {{ (int) $aiRow['demo_days'] }} дня
+                            @endif
                             @if((float)($aiRow['current_month_amount'] ?? 0) > 0)
                                 + текущий месяц
                             @endif

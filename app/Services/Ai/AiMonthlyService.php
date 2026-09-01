@@ -39,6 +39,16 @@ class AiMonthlyService
                         return;
                     }
 
+                    $activeDemo = AiSubscription::query()
+                        ->where('organization_id', $balance->organization_id)
+                        ->active()
+                        ->where('period_months', 0)
+                        ->where('expires_at', '>', now())
+                        ->exists();
+                    if ($activeDemo) {
+                        return;
+                    }
+
                     $expired = (float) $balance->limited_balance;
                     $balance->limited_balance = 0;
                     // После сгорания лимита агент должен быть выключен до покупки нового месяца.
@@ -108,9 +118,9 @@ class AiMonthlyService
                             ->orderByDesc('id')
                             ->first();
 
-                        if ($subscription) {
-                            $this->grantStartOfMonthLimit($balance, $subscription);
-                        }
+        if ($subscription && (int) $subscription->period_months > 0) {
+            $this->grantStartOfMonthLimit($balance, $subscription);
+        }
                     });
                 } catch (\Throwable $e) {
                     // Не продолжаем с нулём/фолбеком — фиксируем ошибку и идём к следующей org.
