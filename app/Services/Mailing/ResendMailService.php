@@ -29,11 +29,12 @@ class ResendMailService
     ): bool
     {
         $html = view($view, $data)->render();
-        $text = strip_tags($html);
+        $textView = $view . '_text';
+        $text = view()->exists($textView)
+            ? view($textView, $data)->render()
+            : $this->htmlToText($html);
 
-
-
-        $sent = $this->send($to, $subject, $html, $attachments);
+        $sent = $this->send($to, $subject, $html, $attachments, $text);
 
         if (!empty($logContext)) {
             app(IntegrationActionLogService::class)->logEmail(
@@ -59,9 +60,9 @@ class ResendMailService
         return $sent;
     }
 
-    public function send(string $to, string $subject, string $html, array $attachments = []): bool
+    public function send(string $to, string $subject, string $html, array $attachments = [], ?string $text = null): bool
     {
-        $payload = $this->mailPayload($to, $subject, $html, strip_tags($html), $this->attachmentPayload($attachments));
+        $payload = $this->mailPayload($to, $subject, $html, $text ?? $this->htmlToText($html), $this->attachmentPayload($attachments));
 
         try {
             $response = Http::withHeaders([
@@ -134,5 +135,10 @@ class ResendMailService
             })
             ->values()
             ->all();
+    }
+
+    public function htmlToText(string $html): string
+    {
+        return MailText::fromHtml($html);
     }
 }

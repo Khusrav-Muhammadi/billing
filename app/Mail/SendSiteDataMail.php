@@ -38,6 +38,7 @@ class SendSiteDataMail extends Mailable
     {
         return new Content(
             view: 'mail.send_site_data',
+            text: 'mail.send_site_data_text',
             with: ['client' => $this->client, 'password' => $this->password]
         );
     }

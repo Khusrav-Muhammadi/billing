@@ -90,4 +90,16 @@ class Client extends Model
         return $this->hasMany(ClientSale::class);
     }
 
+    public function crmHost(): string
+    {
+        $domain = (string) config('services.sham.domain', 'shamcrm.com');
+
+        return $this->sub_domain . '.' . $domain;
+    }
+
+    public function crmUrl(): string
+    {
+        return 'https://' . $this->crmHost() . '/';
+    }
+
 }

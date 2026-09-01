@@ -20,7 +20,7 @@
 <body style="margin: 0; padding: 0; background-color: #f4f7fa;">
 
 @php
-    $siteUrl = 'https://' . $client->sub_domain . '.' . 'shamcrm.com';
+    $siteUrl = $client->crmUrl();
     $accountId = $id ?? $client->order_number ?? $client->id ?? '';
 @endphp
 
@@ -58,8 +58,13 @@
                                     <!-- Ссылка -->
                                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom: 1px solid #edf2f7;">
                                         <tr>
-                                            <td style="padding: 14px 0; font-size: 15px; color: #1B1F3B; font-family: -apple-system, BlinkMacSystemFont, sans-serif; word-break: break-all;">
-                                                <strong style="font-weight: 700;">Ссылка:</strong> <a href="{{ $siteUrl }}" style="color: #7C83FF; text-decoration: none; font-weight: 600;">{{ $siteUrl }}</a>
+                                            <td style="padding: 14px 0; font-size: 15px; color: #1B1F3B; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+                                                <strong style="font-weight: 700;">Ссылка:</strong>
+                                                <div style="margin-top: 6px;">
+                                                    <a href="{{ $siteUrl }}" target="_blank" style="color: #7C83FF; text-decoration: none; font-weight: 600;">
+                                                        {{ $client->sub_domain }}<span style="white-space: nowrap;">.{{ config('services.sham.domain', 'shamcrm.com') }}</span>
+                                                    </a>
+                                                </div>
                                             </td>
                                         </tr>
                                     </table>
@@ -92,6 +97,14 @@
                                         </tr>
                                     </table>
 
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 25px;">
+                            <tr>
+                                <td align="center" style="background-color: #7C83FF; border-radius: 12px;">
+                                    <a href="{{ $siteUrl }}" target="_blank" style="display: block; padding: 14px 20px; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Открыть CRM</a>
                                 </td>
                             </tr>
                         </table>

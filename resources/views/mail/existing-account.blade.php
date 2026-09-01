@@ -30,9 +30,12 @@
         <div class="info">
             @if($client->sub_domain)
                 <p><strong>Адрес CRM:</strong>
-                    <a href="https://{{ $client->sub_domain }}.shamcrm.com">
-                        https://{{ $client->sub_domain }}.shamcrm.com
+                    <a href="{{ $client->crmUrl() }}" target="_blank">
+                        {{ $client->sub_domain }}<span style="white-space: nowrap;">.{{ config('services.sham.domain', 'shamcrm.com') }}</span>
                     </a>
+                </p>
+                <p style="text-align:center;margin:18px 0;">
+                    <a class="btn" href="{{ $client->crmUrl() }}" target="_blank">Открыть CRM</a>
                 </p>
             @endif
             <p><strong>Email (логин):</strong> {{ $client->email }}</p>

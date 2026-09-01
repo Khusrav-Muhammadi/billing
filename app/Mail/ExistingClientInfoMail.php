@@ -21,6 +21,7 @@ class ExistingClientInfoMail extends Mailable
 
         return $this->subject('Доступ к shamCRM: У Вас уже есть аккаунт')
             ->view('mail.existing-account')
+            ->text('mail.existing-account_text')
             ->with(['client' => $this->client]);
 
     }

@@ -12,6 +12,8 @@ use App\Repositories\PartnerRepository;
 use App\Repositories\PartnerRequestRepository;
 use App\Repositories\Payment\Contracts\PaymentRepositoryInterface;
 use App\Repositories\Payment\PaymentRepository;
+use App\Services\Mailing\BrevoMailService;
+use App\Services\Mailing\SafeBrevoMailService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -28,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
 
 
         $this->app->singleton(PaymentRepositoryInterface::class, PaymentRepository::class);
+        $this->app->bind(BrevoMailService::class, SafeBrevoMailService::class);
     }
 
     /**

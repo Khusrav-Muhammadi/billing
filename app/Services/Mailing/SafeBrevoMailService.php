@@ -9,21 +9,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 
-class BrevoMailService
+class SafeBrevoMailService extends BrevoMailService
 {
-    public const ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
-
-    private string $apiKey;
-    private string $fromEmail;
-    private string $fromName;
-
-    public function __construct()
-    {
-        $this->apiKey = (string) config('services.brevo.api_key');
-        $this->fromEmail = (string) config('services.brevo.mail_from');
-        $this->fromName = (string) config('services.brevo.mail_from_name', 'shamCRM');
-    }
-
     public function sendWithView(
         string $to,
         string $subject,
@@ -34,8 +21,8 @@ class BrevoMailService
         array $attachments = []
     ): bool {
         $html = view($view, $data)->render();
-        $text = strip_tags($html);
-        $sent = $this->send($to, $subject, $html, $attachments);
+        $text = $this->renderText($view, $data, $html);
+        $sent = $this->send($to, $subject, $html, $attachments, $text);
 
         if (!empty($logContext)) {
             app(IntegrationActionLogService::class)->logEmail(
@@ -47,12 +34,12 @@ class BrevoMailService
                 payload: [
                     'view' => $view,
                     'data' => $data,
-                    'request_body' => $this->mailPayload(
+                    'request_body' => $this->payload(
                         $to,
                         $subject,
                         $html,
                         $text,
-                        $this->attachmentPayload($attachments, false)
+                        $this->attachmentsWithoutContent($attachments)
                     ),
                     'email_body' => [
                         'html' => $html,
@@ -69,10 +56,12 @@ class BrevoMailService
         return $sent;
     }
 
-    public function send(string $to, string $subject, string $html, array $attachments = []): bool
+    public function send(string $to, string $subject, string $html, array $attachments = [], ?string $text = null): bool
     {
+        $text ??= MailText::fromHtml($html);
+
         try {
-            $response = $this->sendRequest($to, $subject, $html, $attachments);
+            $response = $this->sendRequest($to, $subject, $html, $attachments, $text);
 
             if ($response->successful()) {
                 return true;
@@ -90,49 +79,60 @@ class BrevoMailService
             ]);
         }
 
-        return $this->sendViaMailFallback($to, $subject, $html, $attachments);
+        return $this->fallback($to, $subject, $html, $attachments);
     }
 
     public function sendRequest(
         string $to,
         string $subject,
         string $html,
-        array $attachments = []
+        array $attachments = [],
+        ?string $text = null
     ): Response {
-        $this->ensureConfigured();
+        $apiKey = (string) config('services.brevo.api_key');
+        $fromEmail = (string) config('services.brevo.mail_from');
+
+        if ($apiKey === '') {
+            throw new RuntimeException('BREVO_API_KEY is not configured');
+        }
+
+        if ($fromEmail === '') {
+            throw new RuntimeException('BREVO_MAIL_FROM_ADDRESS is not configured');
+        }
 
         return Http::withHeaders([
-            'api-key' => $this->apiKey,
+            'api-key' => $apiKey,
             'Accept' => 'application/json',
         ])->post(
             self::ENDPOINT,
-            $this->mailPayload(
+            $this->payload(
                 $to,
                 $subject,
                 $html,
-                strip_tags($html),
-                $this->attachmentPayload($attachments)
+                $text ?? MailText::fromHtml($html),
+                $this->attachmentsWithContent($attachments)
             )
         );
     }
 
-    private function ensureConfigured(): void
+    public function htmlToText(string $html): string
     {
-        if ($this->apiKey === '') {
-            throw new RuntimeException('BREVO_API_KEY is not configured');
-        }
-
-        if ($this->fromEmail === '') {
-            throw new RuntimeException('BREVO_MAIL_FROM_ADDRESS is not configured');
-        }
+        return MailText::fromHtml($html);
     }
 
-    private function sendViaMailFallback(
-        string $to,
-        string $subject,
-        string $html,
-        array $attachments
-    ): bool {
+    private function renderText(string $view, array $data, string $html): string
+    {
+        $textView = $view . '_text';
+
+        if (view()->exists($textView)) {
+            return view($textView, $data)->render();
+        }
+
+        return MailText::fromHtml($html);
+    }
+
+    private function fallback(string $to, string $subject, string $html, array $attachments): bool
+    {
         try {
             Mail::html($html, function ($message) use ($to, $subject, $attachments): void {
                 $message->to($to)->subject($subject);
@@ -162,7 +162,7 @@ class BrevoMailService
         }
     }
 
-    private function mailPayload(
+    private function payload(
         string $to,
         string $subject,
         string $html,
@@ -171,13 +171,17 @@ class BrevoMailService
     ): array {
         $payload = [
             'sender' => [
-                'email' => $this->fromEmail,
-                'name' => $this->fromName,
+                'email' => (string) config('services.brevo.mail_from'),
+                'name' => (string) config('services.brevo.mail_from_name', 'shamCRM'),
             ],
             'to' => [['email' => $to]],
             'subject' => $subject,
             'htmlContent' => $html,
             'textContent' => $text,
+            'headers' => [
+                'X-Mailin-Track' => 'false',
+                'X-Mailin-Track-Clicks' => 'false',
+            ],
         ];
 
         if (!empty($attachments)) {
@@ -187,20 +191,25 @@ class BrevoMailService
         return $payload;
     }
 
-    private function attachmentPayload(array $attachments, bool $includeContent = true): array
+    private function attachmentsWithContent(array $attachments): array
     {
         return collect($attachments)
-            ->map(function (array $attachment) use ($includeContent): array {
-                $payload = [
+            ->map(function (array $attachment): array {
+                return [
                     'name' => (string) ($attachment['filename'] ?? 'attachment'),
+                    'content' => base64_encode((string) ($attachment['content'] ?? '')),
                 ];
-
-                if ($includeContent) {
-                    $payload['content'] = base64_encode((string) ($attachment['content'] ?? ''));
-                }
-
-                return $payload;
             })
+            ->values()
+            ->all();
+    }
+
+    private function attachmentsWithoutContent(array $attachments): array
+    {
+        return collect($attachments)
+            ->map(fn (array $attachment): array => [
+                'name' => (string) ($attachment['filename'] ?? 'attachment'),
+            ])
             ->values()
             ->all();
     }
