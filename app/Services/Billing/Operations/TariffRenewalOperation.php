@@ -3,6 +3,7 @@
 namespace App\Services\Billing\Operations;
 
 use App\Models\Client;
+use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Organization;
 use App\Models\TariffCurrency;
@@ -10,6 +11,7 @@ use App\Models\Transaction;
 use App\Services\Billing\Enum\TransactionType;
 use App\Services\WithdrawalService;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 class TariffRenewalOperation extends BaseBillingOperation
 {
@@ -22,7 +24,7 @@ class TariffRenewalOperation extends BaseBillingOperation
     )
     {
         $this->client = $this->organization->client;
-        $this->newTariff = TariffCurrency::find($this->client->tariff_id);
+        $this->newTariff = $this->resolveNewTariff();
     }
 
     public function calculateAmount(): float
@@ -33,13 +35,13 @@ class TariffRenewalOperation extends BaseBillingOperation
     public function getMetadata(): array
     {
         return [
-            'description' => "Активация тарифа {$this->client->tariffPrice->tariff->name}",
+            'description' => "Активация тарифа {$this->newTariff->tariff->name}",
             'client_name' => $this->client->name,
-            'tariff_name' => $this->client->tariffPrice->tariff->name,
+            'tariff_name' => $this->newTariff->tariff->name,
             'phone' => $this->client->phone,
             'email' => $this->client->email,
             'subdomain' => $this->client->sub_domain,
-            'tariff_price' => $this->client->tariffPrice->tariff_price,
+            'tariff_price' => $this->newTariff->tariff_price,
             'currency_id' => $this->client->country?->currency_id,
             'months' => $this->operationData["months"],
         ];
@@ -81,5 +83,40 @@ class TariffRenewalOperation extends BaseBillingOperation
             'provider' => $transactionType == TransactionType::DEBIT ? 'manual' : $invoiceItem->invoice->provider,
             'accounted_amount' => $isUSD ? $invoiceItem->price : $invoiceItem->price / $exchangeRate
         ]);
+    }
+
+    private function resolveNewTariff(): TariffCurrency
+    {
+        $currencyId = (int) ($this->client->country?->currency_id ?? 0) ?: null;
+        $tariffName = $this->operationData['tariff_name'] ?? null;
+
+        $candidateIds = [];
+
+        if (!empty($this->operationData['tariff_id'])) {
+            $candidateIds[] = (int) $this->operationData['tariff_id'];
+        }
+
+        if (!empty($this->operationData['invoice_id'])) {
+            $invoiceTariffId = Invoice::query()
+                ->whereKey($this->operationData['invoice_id'])
+                ->value('tariff_id');
+
+            if ($invoiceTariffId) {
+                $candidateIds[] = (int) $invoiceTariffId;
+            }
+        }
+
+        if ($this->client->tariff_id) {
+            $candidateIds[] = (int) $this->client->tariff_id;
+        }
+
+        foreach (array_unique($candidateIds) as $id) {
+            $tariff = TariffCurrency::resolveById($id, $currencyId, $tariffName);
+            if ($tariff) {
+                return $tariff;
+            }
+        }
+
+        throw new InvalidArgumentException('Не найден тариф для продления.');
     }
 }
