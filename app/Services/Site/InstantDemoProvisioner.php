@@ -48,7 +48,7 @@ class InstantDemoProvisioner
         SendSiteAccessEmailJob::dispatch($client, $organization, $password);
         SendToShamJob::dispatch(
             $client->phone,
-            $client->tariff?->name,
+            $this->demoTariff($client)?->name,
             $client->email,
             $client->name,
             $client->country?->name ?? Country::find($client->country_id)?->name,
@@ -88,14 +88,12 @@ class InstantDemoProvisioner
     private function createClient(array $data): ?Client
     {
         $countryId = $data['region_id'] ?? 1;
-        $tariffId = ((int) $countryId === 2) ? 8 : 4;
 
         $clientData = [
             'name' => $data['fio'],
             'phone' => $data['phone'],
             'email' => $data['email'],
             'country_id' => $countryId,
-            'tariff_id' => $tariffId,
             'is_demo' => true,
             'sub_domain' => $this->generateSubdomain($data['email']),
             'manager_id' => $data['manager_id'] ?? null,
@@ -175,6 +173,13 @@ class InstantDemoProvisioner
         if (!$response->successful()) {
             throw new RuntimeException('Не удалось создать поддомен. Попробуйте позже.');
         }
+    }
+
+    private function demoTariff(Client $client): ?Tariff
+    {
+        $tariffId = ((int) $client->country_id === 2) ? 8 : 4;
+
+        return Tariff::query()->find($tariffId) ?? Tariff::query()->find(4);
     }
 
     private function createOrganizationInCrm(Client $client, Organization $organization, string $password): ?string
