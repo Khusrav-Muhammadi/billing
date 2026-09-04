@@ -8,9 +8,15 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    // Сколько живёт одноразовая ссылка входа, которую выдаёт CRM.
-    // Должно совпадать с TTL в App\Services\Auth\DemoLoginTokenService на стороне CRM.
-    'login_token_ttl_minutes' => (int) env('DEMO_LOGIN_TOKEN_TTL', 15),
+    /*
+     * Сколько живёт одноразовая ссылка входа, которую выдаёт CRM.
+     * Должно совпадать с demo.login_token_ttl_minutes на стороне CRM.
+     *
+     * Здесь и ниже `?:` вместо второго аргумента env(): пустая переменная в
+     * .env превратилась бы в 0, а нулевой TTL и нулевой таймаут ломают выдачу
+     * тихо и неочевидно.
+     */
+    'login_token_ttl_minutes' => (int) (env('DEMO_LOGIN_TOKEN_TTL') ?: 15),
 
     // Тариф демо-организации по стране клиента (country_id).
     'tariff' => [
@@ -20,22 +26,27 @@ return [
         'default' => 4,
     ],
 
+    /*
+     * Адреса CRM. Через `?:`, а не через второй аргумент env(): объявленная в
+     * .env, но пустая переменная даёт '', и дефолт бы не подставился — демо
+     * молча падало бы с «cURL error 3: missing URL».
+     */
     'endpoints' => [
-        'create_subdomain' => env('DEMO_CREATE_SUBDOMAIN_URL', 'https://shamcrm.com/api/createSubdomain'),
-        'delete_subdomain' => env('DEMO_DELETE_SUBDOMAIN_URL', 'https://shamcrm.com/api/deleteSubdomain'),
+        'create_subdomain' => env('DEMO_CREATE_SUBDOMAIN_URL') ?: 'https://shamcrm.com/api/createSubdomain',
+        'delete_subdomain' => env('DEMO_DELETE_SUBDOMAIN_URL') ?: 'https://shamcrm.com/api/deleteSubdomain',
     ],
 
-    'crm_check_email_url' => env('DEMO_CRM_CHECK_EMAIL_URL', 'https://shamcrm.com/api/check-email'),
+    'crm_check_email_url' => env('DEMO_CRM_CHECK_EMAIL_URL') ?: 'https://shamcrm.com/api/check-email',
 
     'provisioning' => [
-        'subdomain_timeout' => (int) env('DEMO_SUBDOMAIN_TIMEOUT', 90),
-        'crm_timeout' => (int) env('DEMO_CRM_TIMEOUT', 15),
-        'crm_attempts' => (int) env('DEMO_CRM_ATTEMPTS', 6),
-        'crm_retry_delay_ms' => (int) env('DEMO_CRM_RETRY_DELAY_MS', 1500),
+        'subdomain_timeout' => (int) (env('DEMO_SUBDOMAIN_TIMEOUT') ?: 90),
+        'crm_timeout' => (int) (env('DEMO_CRM_TIMEOUT') ?: 15),
+        'crm_attempts' => (int) (env('DEMO_CRM_ATTEMPTS') ?: 6),
+        'crm_retry_delay_ms' => (int) (env('DEMO_CRM_RETRY_DELAY_MS') ?: 1500),
 
         // Заявка, зависшая дольше этого срока, считается провалившейся:
         // воркер мог умереть, не успев записать причину.
-        'stale_after_minutes' => (int) env('DEMO_STALE_AFTER_MINUTES', 15),
+        'stale_after_minutes' => (int) (env('DEMO_STALE_AFTER_MINUTES') ?: 15),
     ],
 
     'turnstile' => [

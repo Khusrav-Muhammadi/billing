@@ -46,10 +46,8 @@ class DemoProvisioner
             $password = Str::random(12);
             $loginToken = $this->createOrganizationInCrm($request, $client, $organization, $password);
 
-            // Кабинет уже существует, поэтому письмо с доступами уходит в любом
-            // случае — даже если автовход почему-то недоступен.
-            $this->notify($client, $organization, $password);
-
+            // Сначала отдаём доступ: с этого момента сайт уже может открыть
+            // кабинет, и ничто дальше не должно этому помешать.
             $base = rtrim($client->crmUrl(), '/');
 
             $request->markReady(
@@ -58,6 +56,17 @@ class DemoProvisioner
                     : $base . '/demo-login?token=' . urlencode($loginToken),
                 (int) config('demo.login_token_ttl_minutes', 15)
             );
+
+            // Письмо и уведомление менеджеру — уже не критичный путь. Их сбой
+            // не должен приводить к откату живого кабинета.
+            try {
+                $this->notify($client, $organization, $password);
+            } catch (\Throwable $e) {
+                Log::error('DemoProvisioner: notifications failed', [
+                    'demo_request_id' => $request->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         } catch (DemoProvisioningException $e) {
             // Свежий поддомен может быть ещё не проксирован — такие сбои
             // лечит повтор джобы, а не сообщение об ошибке пользователю.
@@ -185,6 +194,15 @@ class DemoProvisioner
                 error: $e->getMessage()
             );
 
+            // Пользователю нужен внятный текст, а разбирающему логи — причина.
+            // Без неё «не удалось подготовить» неотличимо от таймаута.
+            Log::error('DemoProvisioner: createSubdomain unreachable', [
+                'demo_request_id' => $request->id,
+                'url' => $url,
+                'subdomain' => $client->sub_domain,
+                'error' => $e->getMessage(),
+            ]);
+
             throw new DemoProvisioningException(
                 'subdomain_failed',
                 'Не удалось подготовить рабочее пространство. Попробуйте ещё раз через минуту.',
@@ -203,6 +221,14 @@ class DemoProvisioner
         );
 
         if (!$response->successful()) {
+            Log::error('DemoProvisioner: createSubdomain rejected', [
+                'demo_request_id' => $request->id,
+                'url' => $url,
+                'subdomain' => $client->sub_domain,
+                'status' => $response->status(),
+                'body' => mb_substr($response->body(), 0, 500),
+            ]);
+
             throw new DemoProvisioningException(
                 'subdomain_failed',
                 'Не удалось подготовить рабочее пространство. Попробуйте ещё раз через минуту.',
