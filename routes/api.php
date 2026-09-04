@@ -6,6 +6,7 @@ use App\Http\Controllers\API\CommercialFooferController;
 use App\Http\Controllers\API\ImplementationCatalogController;
 use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\API\SiteApplicationController;
+use App\Http\Controllers\API\V2\DemoRequestController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -128,7 +129,23 @@ Route::options('/{any}', function (Request $request) {
     ]);
 })->where('any', '.*');
 Route::post('sendRequest', [SiteApplicationController::class, 'store']);
-Route::post('v2/sendRequest', [\App\Http\Controllers\API\V2\SiteApplicationController::class, 'store']);
+
+/*
+ * Демо-доступ с сайта. Выдача идёт в фоне: store отдаёт uuid заявки,
+ * сайт показывает прогресс и опрашивает show до статуса ready.
+ */
+Route::prefix('v2/demo')->group(function () {
+    Route::get('email-check', [DemoRequestController::class, 'emailCheck'])
+        ->middleware('throttle:60,1');
+    Route::post('requests', [DemoRequestController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::get('requests/{uuid}', [DemoRequestController::class, 'show'])
+        ->middleware('throttle:240,1');
+});
+
+// Совместимость со старым бандлом сайта, который ещё может быть в кеше браузера.
+Route::post('v2/sendRequest', [DemoRequestController::class, 'store'])
+    ->middleware('throttle:10,1');
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
 
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);

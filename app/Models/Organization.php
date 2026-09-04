@@ -31,14 +31,13 @@ class Organization extends Model
                 return;
             }
 
-            DB::transaction(function () use ($organization): void {
-                $timestamp = now()->timestamp;
-                $random = str_pad(random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-
-                $organization->forceFill([
-                    'order_number' => $timestamp . $random,
-                ])->saveQuietly();
-            });
+            // Номер — это id, дополненный нулями до девяти знаков: столько же
+            // отведено под колонку, и по такой форме организацию ищут в списке.
+            // Метка времени со случайным хвостом сюда не помещалась и роняла
+            // создание организации на строгом режиме MySQL.
+            $organization->forceFill([
+                'order_number' => self::formatOrderNumber((int) $organization->id),
+            ])->saveQuietly();
         });
     }
 

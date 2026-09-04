@@ -11,6 +11,7 @@ use App\Models\Client;
 use App\Models\Country;
 use App\Models\SiteApplications;
 use App\Models\User;
+use App\Services\Site\DemoEmailAvailability;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -96,93 +97,36 @@ class SiteApplicationController extends Controller
     }
 
 
-    public function verifyEmail(Request $request)
+    /**
+     * Проверка email для формы демо.
+     *
+     * Оставлен для старой версии сайта: та считает занятым любой не-2xx ответ.
+     * Новая версия использует GET /api/v2/demo/email-check, который отдаёт
+     * решение полем `available` и всегда 200.
+     */
+    public function verifyEmail(Request $request, DemoEmailAvailability $availability)
     {
-        $request->validate([
+        $data = $request->validate([
             'email' => 'required|string|max:255',
         ], [
             'email.required' => 'Поле email обязательно.',
             'email.max' => 'Поле email не должно превышать 255 символов.',
         ]);
-        return response()->json([
-            'success' => true,
-            'email' => $request->input('email')
-        ]);
 
-        $raw = trim((string)$request->input('email'));
-        $email = mb_strtolower($raw);
+        $email = mb_strtolower(trim($data['email']));
+        $check = $availability->check($email);
 
-        $atPos = strrpos($email, '@');
-        if ($atPos === false || $atPos === mb_strlen($email) - 1) {
+        if (!$check['available']) {
             return response()->json([
                 'success' => false,
-                'reason' => 'invalid_format',
-                'message' => 'Пожалуйста введите правильный адрес почты.',
-            ], 422);
-        }
-
-        $domain = substr($email, $atPos + 1);
-
-        $asciiDomain = function_exists('idn_to_ascii')
-            ? (idn_to_ascii($domain, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46) ?: $domain)
-            : $domain;
-
-        if ($this->checkEmail($email)) {
-            return response()->json([
-                'success' => false,
-                'reason' => 'email_exists',
-                'message' => 'Этот email уже используется в системе.',
-            ], 409);
-        }
-
-        $subdomain = $this->generateSubdomain($email);
-        if (Client::query()->where('email', $email)->exists()) {
-            return response()->json([
-                'success' => false,
-                'reason' => 'email_exists',
-                'message' => 'Этот email уже используется в системе.',
-            ], 409);
-        }
-        if (Client::query()->where('sub_domain', $subdomain)->exists()) {
-            return response()->json([
-                'success' => false,
-                'reason' => 'subdomain_exists',
-                'message' => 'Пользователь с таким поддоменом уже существует.',
-            ], 409);
-        }
-
-        if (!$this->hasDns($asciiDomain)) {
-            return response()->json([
-                'success' => false,
-                'reason' => 'dns_not_found',
-                'message' => 'У домена нет MX/A записей. Адрес недоставляем.',
-                'details' => ['domain' => $domain],
-            ], 422);
-        }
-
-        $formatValid = filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
-        if (!$formatValid) {
-            return response()->json([
-                'success' => false,
-                'reason' => 'invalid_format',
-                'message' => 'Пожалуйста введите правильный адрес почты.',
-            ], 422);
-        }
-
-
-        $api = $this->validateWithApi($email);
-        if (!$api['deliverable']) {
-            return response()->json([
-                'success' => false,
-                'reason' => 'not_deliverable',
-                'message' => 'Указанный email адрес не является действительным.',
-                'details' => $api,
-            ], 422);
+                'reason' => $check['reason'],
+                'message' => $check['message'],
+            ], $check['reason'] === DemoEmailAvailability::REASON_TAKEN ? 409 : 422);
         }
 
         return response()->json([
             'success' => true,
-            'email' => $email
+            'email' => $email,
         ]);
     }
 
