@@ -19,7 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://site.shamcrm.com'],
+    'allowed_origins' => [
+        'https://site.shamcrm.com',
+        'https://shamcrm.com',
+        'https://www.shamcrm.com',
+    ],
 
     'allowed_origins_patterns' => [],
 

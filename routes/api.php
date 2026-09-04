@@ -128,6 +128,7 @@ Route::options('/{any}', function (Request $request) {
     ]);
 })->where('any', '.*');
 Route::post('sendRequest', [SiteApplicationController::class, 'store']);
+Route::post('v2/sendRequest', [\App\Http\Controllers\API\V2\SiteApplicationController::class, 'store']);
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
 
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
