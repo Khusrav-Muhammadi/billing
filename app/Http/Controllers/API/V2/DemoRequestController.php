@@ -10,24 +10,16 @@ use App\Services\Site\TurnstileVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * Демо-доступ с сайта.
- *
- * Создание аккаунта занимает от секунд до пары минут, поэтому запрос не
- * держит соединение: store() отвечает сразу, а сайт опрашивает show().
- */
 class DemoRequestController extends Controller
 {
     private const POLL_INTERVAL_MS = 2000;
 
-    /** Проверка email до отправки формы: сайт разблокирует кнопку по available. */
     public function emailCheck(Request $request, DemoEmailAvailability $availability): JsonResponse
     {
         $data = $request->validate([
             'email' => ['required', 'string', 'max:255'],
         ]);
 
-        // Всегда 200: сайту нужно отличать «адрес занят» от «проверка не удалась».
         return response()->json($availability->check($data['email']));
     }
 
@@ -46,8 +38,6 @@ class DemoRequestController extends Controller
             ], 422);
         }
 
-        // Повторный клик по кнопке или возврат на страницу не должны
-        // порождать вторую заявку и второй аккаунт.
         if ($existing = $this->findReusable($data['email'])) {
             return response()->json($this->payload($existing), $existing->isPending() ? 202 : 200);
         }
@@ -95,10 +85,7 @@ class DemoRequestController extends Controller
         return response()->json($this->payload($demoRequest));
     }
 
-    /**
-     * Заявка в работе, но обновлений давно нет — воркер, скорее всего, умер.
-     * Лучше честно показать ошибку, чем крутить прогресс до бесконечности.
-     */
+
     private function failIfStale(DemoRequest $demoRequest): void
     {
         if (!$demoRequest->isPending()) {
@@ -117,10 +104,7 @@ class DemoRequestController extends Controller
         );
     }
 
-    /**
-     * Заявка, которую можно вернуть вместо создания новой: та же почта и либо
-     * работа ещё идёт, либо ссылка входа всё ещё жива.
-     */
+
     private function findReusable(string $email): ?DemoRequest
     {
         $demoRequest = DemoRequest::query()
