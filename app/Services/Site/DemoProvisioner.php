@@ -17,13 +17,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-/**
- * Выдача демо-аккаунта по заявке с сайта.
- *
- * Шаги идут по порядку и отмечаются в самой заявке, чтобы сайт мог показать
- * честный прогресс. Каждый шаг идемпотентен: повторный запуск джобы
- * дописывает недостающее, а не создаёт дубликаты.
- */
 class DemoProvisioner
 {
     public function __construct(
@@ -194,8 +187,6 @@ class DemoProvisioner
                 error: $e->getMessage()
             );
 
-            // Пользователю нужен внятный текст, а разбирающему логи — причина.
-            // Без неё «не удалось подготовить» неотличимо от таймаута.
             Log::error('DemoProvisioner: createSubdomain unreachable', [
                 'demo_request_id' => $request->id,
                 'url' => $url,
@@ -237,10 +228,6 @@ class DemoProvisioner
         }
     }
 
-    /* ---------------------------------------------------------------- */
-    /* Шаг 3. Организация в биллинге и в CRM                             */
-    /* ---------------------------------------------------------------- */
-
     private function resolveOrganization(DemoRequest $request, Client $client): Organization
     {
         $request->markStep(DemoRequest::STEP_CRM);
@@ -262,19 +249,14 @@ class DemoProvisioner
         return $organization;
     }
 
-    /**
-     * Создаёт организацию в CRM и возвращает одноразовый токен входа.
-     *
-     * null означает, что кабинет создан, но автовход недоступен: например,
-     * CRM ещё не умеет выдавать токен. Это не ошибка — доступы уйдут письмом.
-     */
+
     private function createOrganizationInCrm(
         DemoRequest $request,
         Client $client,
         Organization $organization,
         string $password
     ): ?string {
-        $domain = config('services.sham.domain', 'shamcrm.com');
+        $domain = config('services.sham.domain');
         $url = "https://{$client->sub_domain}-back.{$domain}/api/organization";
         $tariff = $this->demoTariff($client);
 
@@ -303,8 +285,6 @@ class DemoProvisioner
             try {
                 $response = Http::timeout($timeout)->acceptJson()->post($url, $payload);
             } catch (\Throwable $e) {
-                // Свежий поддомен ещё не резолвится и не проксируется —
-                // это ожидаемо на первых секундах, поэтому повторяем.
                 $lastError = $e->getMessage();
                 $this->pause($attempt, $delayMs);
                 continue;
@@ -339,7 +319,6 @@ class DemoProvisioner
 
             $lastError = 'HTTP ' . $response->status();
 
-            // Ответ 4xx повторять бессмысленно: данные не станут валиднее.
             if (!$this->isRetryable($response)) {
                 break;
             }
@@ -358,11 +337,6 @@ class DemoProvisioner
             error: $lastError
         );
 
-        Log::error('DemoProvisioner: CRM organization creation failed', [
-            'demo_request_id' => $request->id,
-            'url' => $url,
-            'error' => $lastError,
-        ]);
 
         throw new DemoProvisioningException(
             'crm_unreachable',
@@ -376,7 +350,6 @@ class DemoProvisioner
         return $response->serverError() || $response->status() === 429;
     }
 
-    /** Линейный рост паузы: к последней попытке ждём заметно дольше. */
     private function pause(int $attempt, int $delayMs): void
     {
         usleep(min($attempt, 4) * $delayMs * 1000);
@@ -385,15 +358,11 @@ class DemoProvisioner
     private function demoTariff(Client $client): ?Tariff
     {
         $byCountry = (array) config('demo.tariff.by_country', []);
-        $default = (int) config('demo.tariff.default', 4);
+        $default = (int) config('demo.tariff.default',);
         $tariffId = $byCountry[(int) $client->country_id] ?? $default;
 
         return Tariff::query()->find($tariffId) ?? Tariff::query()->find($default);
     }
-
-    /* ---------------------------------------------------------------- */
-    /* Уведомления и откат                                               */
-    /* ---------------------------------------------------------------- */
 
     private function notify(Client $client, Organization $organization, string $password): void
     {
@@ -409,11 +378,6 @@ class DemoProvisioner
         );
     }
 
-    /**
-     * Освобождаем email, чтобы клиент мог повторить попытку. Поддомен и базу
-     * тенанта не трогаем: создание поддомена идемпотентно, а удаление базы —
-     * необратимая операция, которой не место в обработке ошибок.
-     */
     private function rollback(DemoRequest $request): void
     {
         try {

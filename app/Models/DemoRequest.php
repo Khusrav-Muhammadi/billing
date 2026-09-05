@@ -84,10 +84,7 @@ class DemoRequest extends Model
         return in_array($this->status, [self::STATUS_QUEUED, self::STATUS_PROVISIONING], true);
     }
 
-    /**
-     * Готова ли ссылка для входа. Токен одноразовый и живёт 15 минут — по
-     * истечении срока пользователю нужен пароль из письма, а не эта ссылка.
-     */
+
     public function hasUsableLoginUrl(): bool
     {
         return $this->status === self::STATUS_READY

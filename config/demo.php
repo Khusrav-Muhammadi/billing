@@ -32,8 +32,8 @@ return [
      * молча падало бы с «cURL error 3: missing URL».
      */
     'endpoints' => [
-        'create_subdomain' => env('DEMO_CREATE_SUBDOMAIN_URL') ?: 'https://shamcrm.com/api/createSubdomain',
-        'delete_subdomain' => env('DEMO_DELETE_SUBDOMAIN_URL') ?: 'https://shamcrm.com/api/deleteSubdomain',
+        'create_subdomain' => 'https://shamcrm.com/api/createSubdomain',
+        'delete_subdomain' => 'https://shamcrm.com/api/deleteSubdomain',
     ],
 
     'crm_check_email_url' => env('DEMO_CRM_CHECK_EMAIL_URL') ?: 'https://shamcrm.com/api/check-email',
@@ -44,8 +44,6 @@ return [
         'crm_attempts' => (int) (env('DEMO_CRM_ATTEMPTS') ?: 6),
         'crm_retry_delay_ms' => (int) (env('DEMO_CRM_RETRY_DELAY_MS') ?: 1500),
 
-        // Заявка, зависшая дольше этого срока, считается провалившейся:
-        // воркер мог умереть, не успев записать причину.
         'stale_after_minutes' => (int) (env('DEMO_STALE_AFTER_MINUTES') ?: 15),
     ],
 

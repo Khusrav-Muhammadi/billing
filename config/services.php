@@ -45,7 +45,7 @@ return [
     ],
 
     'sham' => [
-        'domain' => env('APP_DOMAIN'),
+        'domain' => 'shamcrm.com',
     ],
 
 ];
