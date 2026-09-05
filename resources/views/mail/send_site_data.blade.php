@@ -20,7 +20,7 @@
 <body style="margin: 0; padding: 0; background-color: #f4f7fa;">
 
 @php
-    $siteUrl = $client->crmUrl();
+    $siteUrl = 'https://'. $client->sub_domain . '.shamcrm.com';
     $accountId = $id ?? $client->order_number ?? $client->id ?? '';
 @endphp
 
