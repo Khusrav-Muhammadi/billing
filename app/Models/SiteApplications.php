@@ -7,5 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class SiteApplications extends Model
 {
-    protected $fillable = ['request_type', 'fio', 'email', 'phone', 'organization', 'region'];
+    protected $fillable = [
+        'request_type',
+        'fio',
+        'email',
+        'phone',
+        'organization',
+        'region',
+        'comment',
+    ];
 }

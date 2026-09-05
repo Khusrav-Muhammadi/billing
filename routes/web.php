@@ -210,7 +210,7 @@ Route::middleware('auth')->group(function () {
 
     Route::group(['prefix' => 'site-application'], function () {
         Route::get('/', [\App\Http\Controllers\API\SiteApplicationController::class, 'index'])->name('site-application.index');
-        Route::get('/{siteApplication}', [\App\Http\Controllers\API\SiteApplicationController::class, 'destroy'])->name('site-application.delete');
+        Route::delete('/{siteApplication}', [\App\Http\Controllers\API\SiteApplicationController::class, 'destroy'])->name('site-application.delete');
     });
 
     Route::group(['prefix' => 'tariff'], function () {

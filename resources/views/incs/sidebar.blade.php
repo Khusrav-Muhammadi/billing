@@ -35,6 +35,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="{{ route('site-application.index') }}">
+            <i class="mdi mdi-web menu-icon"></i>
+            <span class="menu-title">Запросы из сайта</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="{{ route('partner.index') }}">
             <i class="mdi mdi-account-multiple menu-icon"></i>
             <span class="menu-title">Партнеры</span>

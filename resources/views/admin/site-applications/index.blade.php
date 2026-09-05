@@ -1,45 +1,61 @@
 @extends('layouts.app')
 
 @section('title')
-    Тарифы
+    Запросы из сайта
 @endsection
 
 @section('content')
+    @if(session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
 
     <div class="card-body">
-        <h4 class="card-title">Заявки с сайта</h4>
+        <h4 class="card-title">Запросы из сайта</h4>
+        <p class="text-muted mb-3">Заявки с форм shamcrm.com: партнёрская программа и остальные обращения, кроме демо.</p>
+
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead>
                 <tr>
-                    <th>№</th>
-                    <th>ФИО</th>
+                    <th>Дата</th>
+                    <th>Имя</th>
                     <th>Телефон</th>
                     <th>Email</th>
                     <th>Регион</th>
-                    <th>Организация</th>
-                    <th>Тип обращение</th>
-                    <th>Действие</th>
+                    <th>Тип</th>
+                    <th>Комментарий</th>
+                    <th></th>
                 </tr>
                 </thead>
                 <tbody>
-                @foreach($applications as $application)
+                @forelse($applications as $application)
                     <tr>
-                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $application->created_at?->format('d.m.Y H:i') }}</td>
                         <td>{{ $application->fio }}</td>
                         <td>{{ $application->phone }}</td>
-                        <td>{{ $application->email }}</td>
-                        <td>{{ $application->region }}</td>
-                        <td>{{ $application->organization }}</td>
-                        <td>{{ $application->request_type }}</td>
+                        <td>{{ $application->email ?: '—' }}</td>
+                        <td>{{ $application->region ?: '—' }}</td>
+                        <td>{{ $types[$application->request_type] ?? $application->request_type }}</td>
+                        <td style="max-width: 280px;">{{ $application->comment ?: '—' }}</td>
                         <td>
-                            <a href="{{route('site-application.delete', $application->id)}}">Удалить</a>
+                            <form action="{{ route('site-application.delete', $application) }}" method="POST"
+                                  onsubmit="return confirm('Удалить этот запрос?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-link text-danger p-0" title="Удалить">
+                                    <i class="mdi mdi-delete" style="font-size: 24px"></i>
+                                </button>
+                            </form>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">Пока нет запросов с сайта</td>
+                    </tr>
+                @endforelse
                 </tbody>
             </table>
         </div>
-    </div>
 
+    </div>
 @endsection

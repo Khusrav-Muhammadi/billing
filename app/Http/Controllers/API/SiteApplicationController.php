@@ -17,15 +17,33 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use function Pest\Laravel\put;
 
 
 class SiteApplicationController extends Controller
 {
     public function index()
     {
-        $applications = SiteApplications::all();
-        return view('admin.site-applications.index', compact('applications'));
+        $applications = SiteApplications::query()
+            ->latest()
+            ->limit(200)
+            ->get();
+
+        $types = [
+            'partner' => 'Партнёр',
+            'corporate' => 'Корпоративная',
+            'individual' => 'Индивидуальная',
+            'site' => 'Сайт',
+            'demo' => 'Демо',
+        ];
+
+        return view('admin.site-applications.index', compact('applications', 'types'));
+    }
+
+    public function destroy(SiteApplications $siteApplication)
+    {
+        $siteApplication->delete();
+
+        return redirect()->route('site-application.index')->with('success', 'Запрос удалён');
     }
 
 
@@ -250,9 +268,11 @@ class SiteApplicationController extends Controller
         return $request->validate([
             'fio' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
-            'email' => [Rule::requiredIf($request->input('request_type') === 'demo'), 'email', 'max:255'],
+            'email' => [Rule::requiredIf($request->input('request_type') === 'demo'), 'nullable', 'email', 'max:255'],
             'region_id' => 'nullable|integer',
             'request_type' => 'required|string|in:demo,partner,corporate,individual,site',
+            'organization' => 'nullable|string|max:255',
+            'comment' => 'nullable|string|max:2000',
             'partner_id' => 'nullable',
             'manager_id' => 'nullable',
         ], [
@@ -349,9 +369,11 @@ class SiteApplicationController extends Controller
         SiteApplications::create([
             'fio' => $data['fio'],
             'phone' => $data['phone'],
-            'email' => $data['email'],
-            'region_id' => $data['region_id'] ?? null,
+            'email' => $data['email'] ?? null,
+            'organization' => $data['organization'] ?? null,
+            'region' => Country::query()->find($data['region_id'] ?? null)?->name,
             'request_type' => $data['request_type'],
+            'comment' => $data['comment'] ?? null,
         ]);
     }
 
