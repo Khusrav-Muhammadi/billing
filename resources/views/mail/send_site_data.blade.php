@@ -33,7 +33,7 @@
                 <!-- ШАПКА -->
                 <tr>
                     <td align="center" style="background: #1B1F3B linear-gradient(135deg, #1B1F3B 0%, #2A2F5C 45%, #7C83FF 100%); padding: 20px 32px;">
-                        <img src="https://fingroupcrm-back.shamcrm.com/storage/TaskFiles/RUV5XQqT6oC0NI9VQeSQCksbwYv4EFqYyIpZ4Uke.png" alt="shamCRM" width="100" style="width: 100px; max-width: 100px; height: auto; display: block; margin: 0 auto;" />
+                        <img src="https://fingroupcrm-new-back.shamcrm.com/storage/TaskFiles/RUV5XQqT6oC0NI9VQeSQCksbwYv4EFqYyIpZ4Uke.png" alt="shamCRM" width="100" style="width: 100px; max-width: 100px; height: auto; display: block; margin: 0 auto;" />
                     </td>
                 </tr>
 
@@ -129,7 +129,7 @@
                                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 14px;">
                                         <tr>
                                             <td width="45" valign="middle" style="padding-right: 12px;">
-                                                <img src="https://fingroupcrm-back.shamcrm.com/storage/TaskFiles/YFxOCBSZToOeK8vIUVhjE3Vaxd7fclCLYTuiKKkk.png" width="35" style="width: 35px; height: auto; display: block;" alt="TG" />
+                                                <img src="https://fingroupcrm-new-back.shamcrm.com/storage/TaskFiles/YFxOCBSZToOeK8vIUVhjE3Vaxd7fclCLYTuiKKkk.png" width="35" style="width: 35px; height: auto; display: block;" alt="TG" />
                                             </td>
                                             <td valign="middle">
                                                 <div style="color: #1B1F3B; font-weight: 600; font-size: 16px; line-height: 1.2; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Telegram-канал shamCRM</div>

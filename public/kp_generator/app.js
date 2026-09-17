@@ -1269,7 +1269,7 @@ class CPGenerator {
             };
         }
 
-        if (apiHost === 'fingroupcrm-back.shamcrm.com') {
+        if (apiHost === 'fingroupcrm-new-back.shamcrm.com') {
             return {
                 ...defaultContacts,
                 phone: '+992488886363',
