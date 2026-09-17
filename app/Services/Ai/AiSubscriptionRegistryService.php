@@ -48,6 +48,7 @@ class AiSubscriptionRegistryService
                 $orgId = (int) $offer->organization_id;
                 $offerCurrencyId = $this->resolveOfferCurrencyId($offer);
                 $balance = null;
+                $syncCallAnalyse = false;
 
                 foreach ($aiItems as $aiItem) {
                     $alreadyRegistered = AiSubscription::query()
@@ -57,11 +58,23 @@ class AiSubscriptionRegistryService
                         ->exists();
 
                     if ($alreadyRegistered) {
+                        $existingPlan = AiTariffPlan::query()->find($aiItem->plan_id);
+                        if (
+                            $existingPlan
+                            && AiTariffPlan::normalizeCategory((string) ($existingPlan->category ?? '')) === AiTariffPlan::CATEGORY_CALL_ANALYSE
+                        ) {
+                            $syncCallAnalyse = true;
+                        }
+
                         continue;
                     }
 
                     $plan = AiTariffPlan::query()->findOrFail($aiItem->plan_id);
                     $plan->monthlyLimitForCurrency($offerCurrencyId);
+
+                    if (AiTariffPlan::normalizeCategory((string) ($plan->category ?? '')) === AiTariffPlan::CATEGORY_CALL_ANALYSE) {
+                        $syncCallAnalyse = true;
+                    }
 
                     $this->createOrRenewSubscription($orgId, $plan, $aiItem, $offer);
                     $balance = $this->ensureBalance($orgId, $offerCurrencyId);
@@ -87,6 +100,14 @@ class AiSubscriptionRegistryService
                         $this->creditGiftMonths($balance, $aiItem, $plan);
                     }
                     $this->creditBalanceTopUp($balance, $aiItem);
+                }
+
+                // Минуты анализа звонков живут в CRM, как user_count.
+                // Даже если кошелёк чат-агента не трогали — лимит минут всё равно шлём.
+                if ($syncCallAnalyse) {
+                    DB::afterCommit(function () use ($orgId): void {
+                        app(CallAnalyseQuotaSyncService::class)->syncOrganization($orgId);
+                    });
                 }
 
                 if (! $balance) {
@@ -127,6 +148,7 @@ class AiSubscriptionRegistryService
         DB::transaction(function () use ($offer): void {
             $subscriptions = AiSubscription::query()
                 ->where('commercial_offer_id', $offer->id)
+                ->with('plan')
                 ->lockForUpdate()
                 ->get();
 
@@ -166,6 +188,11 @@ class AiSubscriptionRegistryService
             }
 
             $orgId = (int) $offer->organization_id;
+            $syncCallAnalyse = $subscriptions->contains(function (AiSubscription $subscription): bool {
+                $category = AiTariffPlan::normalizeCategory((string) ($subscription->plan?->category ?? ''));
+
+                return $category === AiTariffPlan::CATEGORY_CALL_ANALYSE;
+            });
 
             /** @var AiBalance|null $balance */
             $balance = AiBalance::query()
@@ -247,6 +274,12 @@ class AiSubscriptionRegistryService
                 'from_limited' => $fromLimited,
                 'from_ai_balance' => $fromAi,
             ]);
+
+            if ($syncCallAnalyse) {
+                DB::afterCommit(function () use ($orgId): void {
+                    app(CallAnalyseQuotaSyncService::class)->syncOrganization($orgId);
+                });
+            }
         });
     }
 

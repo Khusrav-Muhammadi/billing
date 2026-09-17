@@ -26,6 +26,7 @@
                 <th>№</th>
                 <th>Название</th>
                 <th>Категория</th>
+                <th>Минут/день</th>
                 <th>Модель</th>
                 <th>Активные периоды</th>
                 <th>Статус</th>
@@ -38,6 +39,13 @@
                     <td>{{ $loop->iteration }}</td>
                     <td>{{ $plan->name }}</td>
                     <td>{{ \App\Models\Ai\AiTariffPlan::categoryLabels()[\App\Models\Ai\AiTariffPlan::normalizeCategory($plan->category)] ?? $plan->category }}</td>
+                    <td>
+                        @if(\App\Models\Ai\AiTariffPlan::normalizeCategory($plan->category) === \App\Models\Ai\AiTariffPlan::CATEGORY_CALL_ANALYSE)
+                            {{ $plan->resolvedDailyMinutes() }} мин
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
                     <td>
                         @if($plan->aiModel)
                             <span class="badge bg-light text-dark border">{{ $plan->aiModel->name }}</span>
@@ -101,6 +109,12 @@
                                         </select>
                                     </div>
                                     <div class="form-group">
+                                        <label>Минут анализа в день</label>
+                                        <input type="number" class="form-control" name="daily_minutes" min="0" max="1440"
+                                               value="{{ $plan->daily_minutes }}" placeholder="Только для анализа звонков: 30 / 60 / 180">
+                                        <small class="text-muted">Start 30, Premium 60, VIP 180. Для чат-агента оставьте пустым.</small>
+                                    </div>
+                                    <div class="form-group">
                                         <label>Модель ИИ</label>
                                         <select class="form-control" name="ai_model_id">
                                             <option value="">— не выбрана —</option>
@@ -154,7 +168,7 @@
                 </div>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">Нет тарифных планов</td>
+                    <td colspan="8" class="text-center text-muted py-4">Нет тарифных планов</td>
                 </tr>
             @endforelse
             </tbody>
@@ -186,6 +200,13 @@
                             @endforeach
                         </select>
                         @error('category')<span class="text-danger">{{ $message }}</span>@enderror
+                    </div>
+                    <div class="form-group">
+                        <label>Минут анализа в день</label>
+                        <input type="number" class="form-control @error('daily_minutes') is-invalid @enderror"
+                               name="daily_minutes" min="0" max="1440" value="{{ old('daily_minutes') }}"
+                               placeholder="Для анализа звонков: 30 / 60 / 180">
+                        @error('daily_minutes')<span class="text-danger">{{ $message }}</span>@enderror
                     </div>
                     <div class="form-group">
                         <label>Модель ИИ</label>

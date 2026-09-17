@@ -193,6 +193,7 @@ class SiteCatalogService
                 'id' => (int) $plan['id'],
                 'name' => (string) $plan['name'],
                 'category' => $category,
+                'daily_minutes' => (int) ($plan['daily_minutes'] ?? 0),
                 'model_name' => $plan['model_name'] ?? null,
                 'currency' => $currency,
                 'price' => $price,

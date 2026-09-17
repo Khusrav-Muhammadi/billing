@@ -31,9 +31,9 @@ class AiCallAnalyseTariffSeeder extends Seeder
             ->update(['is_active' => false]);
 
         $plans = [
-            ['name' => 'Start', 'usd' => 35],
-            ['name' => 'Premium', 'usd' => 60],
-            ['name' => 'Vip', 'usd' => 95],
+            ['name' => 'Start', 'usd' => 35, 'daily_minutes' => 30],
+            ['name' => 'Premium', 'usd' => 60, 'daily_minutes' => 60],
+            ['name' => 'Vip', 'usd' => 95, 'daily_minutes' => 180],
         ];
 
         foreach ($plans as $planData) {
@@ -42,6 +42,7 @@ class AiCallAnalyseTariffSeeder extends Seeder
                 ['name' => $planData['name']],
                 [
                     'category' => AiTariffPlan::CATEGORY_CALL_ANALYSE,
+                    'daily_minutes' => (int) $planData['daily_minutes'],
                     'is_active' => true,
                 ]
             );

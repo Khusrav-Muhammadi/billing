@@ -15,17 +15,33 @@ class AiTariffPlan extends Model
     protected $fillable = [
         'name',
         'category',
+        'daily_minutes',
         'ai_model_id',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'daily_minutes' => 'integer',
     ];
 
     public const CATEGORY_CHAT = 'chat';
 
     public const CATEGORY_CALL_ANALYSE = 'call_analyse';
+
+    /** Id тарифов анализа звонков в проде не меняются. */
+    public const CALL_ANALYSE_START_ID = 9;
+
+    public const CALL_ANALYSE_PREMIUM_ID = 10;
+
+    public const CALL_ANALYSE_VIP_ID = 11;
+
+    /** Start 30 мин, Premium 1 час, Vip 3 часа в день. */
+    public const CALL_ANALYSE_DAILY_MINUTES = [
+        self::CALL_ANALYSE_START_ID => 30,
+        self::CALL_ANALYSE_PREMIUM_ID => 60,
+        self::CALL_ANALYSE_VIP_ID => 180,
+    ];
 
     public static function categoryLabels(): array
     {
@@ -55,6 +71,20 @@ class AiTariffPlan extends Model
     public function setCategoryAttribute(?string $value): void
     {
         $this->attributes['category'] = self::normalizeCategory($value);
+    }
+
+    /**
+     * Минут анализа в день.
+     * Если в БД пусто — берём значение по стабильному id тарифа.
+     */
+    public function resolvedDailyMinutes(): int
+    {
+        $stored = (int) ($this->daily_minutes ?? 0);
+        if ($stored > 0) {
+            return $stored;
+        }
+
+        return self::CALL_ANALYSE_DAILY_MINUTES[(int) $this->id] ?? 0;
     }
 
     public function periods(): HasMany

@@ -26,6 +26,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:ai-end-of-month')->dailyAt('23:59')->withoutOverlapping();
         $schedule->command('app:ai-start-of-month')->dailyAt('00:01')->withoutOverlapping();
         $schedule->command('app:ai-check-scheduled')->dailyAt('09:00')->withoutOverlapping();
+        // Просроченный тариф анализа должен обнулить минуты в CRM.
+        $schedule->command('app:ai-sync-call-analyse-quotas --queued')->dailyAt('00:10')->withoutOverlapping();
     }
 
     /**

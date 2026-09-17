@@ -50,6 +50,7 @@ class AiTariffPlanCatalogService
                     'id' => $p->id,
                     'name' => $p->name,
                     'category' => AiTariffPlan::normalizeCategory((string) ($p->category ?? '')),
+                    'daily_minutes' => $p->resolvedDailyMinutes(),
                     'model_name' => $p->aiModel?->name ?? null,
                     'prices_by_currency' => $pricesByCurrency,
                     'periods' => $p->activePeriods->map(fn ($per) => [

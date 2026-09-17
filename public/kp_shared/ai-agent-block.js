@@ -718,9 +718,13 @@
                     const priceDisplay = displayPrice > 0
                         ? `<div class="tariff-price"><span class="price-value">${displayPrice}</span><span class="price-period">&nbsp;${displayCur}/мес${discountHtml}</span></div>`
                         : `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">Цена не задана</div>`;
+                    const minutesHtml = (category === 'call_analyse' && Number(plan.daily_minutes) > 0)
+                        ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;">${Number(plan.daily_minutes)} мин/день</div>`
+                        : '';
                     card.innerHTML = `
                         <div class="tariff-select-indicator"></div>
                         <div class="tariff-name" style="margin-top:24px;">${plan.name}</div>
+                        ${minutesHtml}
                         <div class="ai-price-area">${priceDisplay}</div>`;
                     card.addEventListener('click', () => {
                         ui.plansGrid.querySelectorAll('.tariff-card').forEach((item) => item.classList.remove('selected'));
