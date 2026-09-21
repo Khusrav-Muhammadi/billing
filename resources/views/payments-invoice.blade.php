@@ -16,6 +16,35 @@
         $partnerId = (int) data_get($offer, 'partner_id', 0);
         $signatureUrl = $signatureUrl ?? asset('assets/images/invoice/imzo.png');
         $stampUrl = $stampUrl ?? asset('assets/images/invoice/pechat.png');
+        // Колонка «Месяц» как в partners: сначала строка счёта, иначе период КП (не для ИИ).
+        $itemMonths = static function ($item) use ($offer): int {
+            $months = data_get($item, 'period_months')
+                ?? data_get($item, 'months')
+                ?? data_get($item, 'period');
+
+            if ($months === null || $months === '') {
+                $name = mb_strtolower((string) data_get($item, 'service_name', ''));
+                $isAi = str_contains($name, 'ии-агент')
+                    || str_contains($name, 'ии агент')
+                    || str_contains($name, 'баланс ии')
+                    || str_contains($name, 'пополнение ии');
+                if (! $isAi) {
+                    $months = data_get($offer, 'period_months');
+                }
+            }
+
+            return max(0, (int) $months);
+        };
+        $itemQuantity = static function ($item): int {
+            $quantity = (int) (
+                data_get($item, 'quantity')
+                ?? data_get($item, 'qty')
+                ?? data_get($item, 'count')
+                ?? 0
+            );
+
+            return max(1, $quantity);
+        };
         $customer = [
             'legal_name' => (string) ($invoiceOrganization?->legal_name ?: $invoiceOrganization?->name ?: ($payment->name ?? '')),
             'INN' => (string) ($invoiceOrganization?->INN ?? ''),
@@ -107,6 +136,7 @@
                     <th style="width: 50px;">№</th>
                     <th>Товары (работы, услуги)</th>
                     <th style="width: 80px;">Кол-во</th>
+                    <th style="width: 80px;">Месяц</th>
                     <th style="width: 120px;">Цена</th>
                     <th style="width: 120px;">Сумма</th>
                 </tr>
@@ -114,8 +144,15 @@
                 <tbody>
                 @forelse($items as $index => $item)
                     @php
-                        $price = (float) ($item->price ?? 0);
+                        $sum = (float) ($item->price ?? 0);
+                        $months = $itemMonths($item);
+                        $quantity = $itemQuantity($item);
+                        $price = (float) (data_get($item, 'unit_price') ?? 0);
+                        if ($price <= 0) {
+                            $price = $quantity > 0 && $months > 0 ? $sum / $quantity / $months : ($quantity > 0 ? $sum / $quantity : $sum);
+                        }
                         $priceFormatted = number_format($price, 2, ',', ' ');
+                        $sumFormatted = number_format($sum, 2, ',', ' ');
                         $serviceName = (string) ($item->service_name ?? '');
                         if (str_starts_with($serviceName, 'Внедрение и обучение')) {
                             $serviceName = preg_replace('/\s*\(скидка\s*[\d.,]+\s*%\)\s*/u', '', $serviceName) ?: $serviceName;
@@ -124,9 +161,10 @@
                     <tr>
                         <td>{{ $index + 1 }}</td>
                         <td>{{ $serviceName }}</td>
-                        <td>1</td>
+                        <td>{{ $quantity }}</td>
+                        <td>{{ $months > 0 ? $months : '—' }}</td>
                         <td>{{ $priceFormatted }}</td>
-                        <td>{{ $priceFormatted }}</td>
+                        <td>{{ $sumFormatted }}</td>
                     </tr>
                 @empty
                     <tr>

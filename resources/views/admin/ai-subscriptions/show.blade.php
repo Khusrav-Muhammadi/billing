@@ -72,6 +72,33 @@
         </div>
     </div>
 
+    {{-- Сколько списано за использование ИИ --}}
+    <div class="card mt-3 p-3">
+        <h5 class="card-title">Потрачено на ИИ</h5>
+        <p class="text-muted small mb-3">Списания за токены. Оплата тарифа в эту сумму не входит.</p>
+        @php $spendCurrency = $balance?->currency?->symbol_code ?? ''; @endphp
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="text-muted small mb-1">За всё время</div>
+                    <div class="fs-4 fw-bold">
+                        {{ number_format($aiSpend['all_time'], 4) }}
+                        {{ $spendCurrency }}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="text-muted small mb-1">В этом месяце ({{ $aiSpend['month_label'] }})</div>
+                    <div class="fs-4 fw-bold">
+                        {{ number_format($aiSpend['this_month'], 4) }}
+                        {{ $spendCurrency }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- История транзакций --}}
     <div class="card mt-3 p-3">
         <h5 class="card-title">История движения баланса</h5>

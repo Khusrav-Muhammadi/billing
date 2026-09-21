@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CommercialOffer;
 use App\Models\Payment;
 use App\Services\Mailing\BrevoMailService;
+use App\Services\Payment\InvoicePaymentItemPresenter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -12,7 +13,8 @@ use RuntimeException;
 class ClientPaymentInvoiceEmailService
 {
     public function __construct(
-        private BrevoMailService $mailService
+        private BrevoMailService $mailService,
+        private InvoicePaymentItemPresenter $invoiceItemPresenter
     ) {
     }
 
@@ -25,9 +27,13 @@ class ClientPaymentInvoiceEmailService
                 'organization:id,name,legal_name,INN,email,phone,order_number,client_id',
                 'organization.client:id,name,email',
                 'partner:id,name,email',
+                'items.tariff:id,name',
+                'aiItems.plan:id,name,category',
             ])
             ->where('payment_id', $payment->id)
             ->first();
+
+        $this->invoiceItemPresenter->enrich($payment, $offer);
 
         $recipient = $this->recipient($payment, $offer);
         if ($recipient['email'] === null) {

@@ -8,6 +8,7 @@ use App\Models\Ai\AiSubscription;
 use App\Models\Ai\AiTariffPlan;
 use App\Models\Ai\AiUsageLog;
 use App\Models\Ai\AiUsageRawLog;
+use App\Services\Ai\AiUsageSpendSummary;
 use Illuminate\Http\Request;
 
 class AiSubscriptionController extends Controller
@@ -61,7 +62,7 @@ class AiSubscriptionController extends Controller
         return view('admin.ai-subscriptions.index', compact('subscriptions', 'plans'));
     }
 
-    public function show(AiSubscription $aiSubscription)
+    public function show(AiSubscription $aiSubscription, AiUsageSpendSummary $aiUsageSpendSummary)
     {
         $aiSubscription->load(['organization', 'plan', 'commercialOffer']);
 
@@ -86,11 +87,15 @@ class AiSubscriptionController extends Controller
 
         $this->attachFallbackRawLogs($usageLogs, (int) $aiSubscription->organization_id);
 
+        // Итоги списаний за токены: за всё время и за текущий календарный месяц.
+        $aiSpend = $aiUsageSpendSummary->forOrganization((int) $aiSubscription->organization_id);
+
         return view('admin.ai-subscriptions.show', compact(
             'aiSubscription',
             'balance',
             'transactions',
-            'usageLogs'
+            'usageLogs',
+            'aiSpend'
         ));
     }
 

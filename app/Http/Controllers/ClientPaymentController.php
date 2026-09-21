@@ -16,6 +16,7 @@ use App\Models\PaymentItem;
 use App\Models\User;
 use App\Services\ClientPaymentInvoiceEmailService;
 use App\Services\Mailing\BrevoMailService;
+use App\Services\Payment\InvoicePaymentItemPresenter;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,13 +39,19 @@ class ClientPaymentController extends Controller
         return view('payments', compact('clients'));
     }
 
-    public function invoice(Payment $payment)
+    public function invoice(Payment $payment, InvoicePaymentItemPresenter $presenter)
     {
         $payment->load('paymentItems');
         $offer = CommercialOffer::query()
-            ->with('organization:id,name,legal_name,INN,email,phone,order_number')
+            ->with([
+                'organization:id,name,legal_name,INN,email,phone,order_number',
+                'items.tariff:id,name',
+                'aiItems.plan:id,name,category',
+            ])
             ->where('payment_id', $payment->id)
             ->first();
+
+        $presenter->enrich($payment, $offer);
 
         return view('payments-invoice', [
             'payment' => $payment,
