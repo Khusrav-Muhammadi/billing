@@ -8,13 +8,11 @@ use Illuminate\Support\Str;
 /**
  * Поддомен тенанта по email клиента.
  *
- * Суффикс `-new` обязателен: по нему инфраструктура отличает тенантов,
- * которые обслуживает переработанный фронтенд, от старых.
+ * Новые демо создаются без суффикса `-new`. Старые клиенты с `-new`
+ * в поддомене остаются как есть, этот генератор их не переименовывает.
  */
 class DemoSubdomainGenerator
 {
-    public const SUFFIX = '-new';
-
     private const MAX_BASE_LENGTH = 40;
     private const MAX_ATTEMPTS = 50;
 
@@ -48,7 +46,7 @@ class DemoSubdomainGenerator
     /** Поддомен-кандидат без учёта занятости. */
     public function generate(string $email): string
     {
-        return $this->base($email) . self::SUFFIX;
+        return $this->base($email);
     }
 
     /**
@@ -59,14 +57,14 @@ class DemoSubdomainGenerator
     public function generateUnique(string $email): string
     {
         $base = $this->base($email);
-        $candidate = $base . self::SUFFIX;
+        $candidate = $base;
 
         for ($i = 2; $i <= self::MAX_ATTEMPTS && $this->taken($candidate); $i++) {
-            $candidate = $base . $i . self::SUFFIX;
+            $candidate = $base . $i;
         }
 
         if ($this->taken($candidate)) {
-            $candidate = $base . Str::lower(Str::random(4)) . self::SUFFIX;
+            $candidate = $base . Str::lower(Str::random(4));
         }
 
         return $candidate;
