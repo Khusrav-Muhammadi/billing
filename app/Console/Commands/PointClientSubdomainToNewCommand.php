@@ -20,13 +20,36 @@ class PointClientSubdomainToNewCommand extends Command
     {
         $execute = (bool) $this->option('execute');
 
-        $count = DB::table('clients')
+        $rows = DB::table('clients')
             ->whereNotNull('sub_domain')
             ->where('sub_domain', '!=', '')
             ->where('sub_domain', 'not like', '%-new')
-            ->count();
+            ->get(['id', 'sub_domain']);
 
-        $this->info('Строк без -new: ' . $count);
+        $taken = DB::table('clients')
+            ->whereNotNull('sub_domain')
+            ->pluck('sub_domain')
+            ->map(fn ($name) => strtolower((string) $name))
+            ->flip();
+
+        $ids = [];
+        $skipped = 0;
+
+        foreach ($rows as $row) {
+            $next = strtolower((string) $row->sub_domain) . '-new';
+
+            // tfaiziev04 нельзя переименовать, если tfaiziev04-new уже есть.
+            if (isset($taken[$next])) {
+                $this->warn("Пропуск {$row->sub_domain}: {$next} уже есть");
+                $skipped++;
+                continue;
+            }
+
+            $taken[$next] = true;
+            $ids[] = $row->id;
+        }
+
+        $this->info('Допишем -new: ' . count($ids) . ', пропуск: ' . $skipped);
 
         if (!$execute) {
             $this->line('Сухой прогон. Добавь --execute чтобы записать.');
@@ -34,14 +57,15 @@ class PointClientSubdomainToNewCommand extends Command
             return self::SUCCESS;
         }
 
-        $updated = DB::table('clients')
-            ->whereNotNull('sub_domain')
-            ->where('sub_domain', '!=', '')
-            ->where('sub_domain', 'not like', '%-new')
-            ->update([
-                'sub_domain' => DB::raw("CONCAT(sub_domain, '-new')"),
-                'updated_at' => now(),
-            ]);
+        $updated = 0;
+        foreach (array_chunk($ids, 200) as $chunk) {
+            $updated += DB::table('clients')
+                ->whereIn('id', $chunk)
+                ->update([
+                    'sub_domain' => DB::raw("CONCAT(sub_domain, '-new')"),
+                    'updated_at' => now(),
+                ]);
+        }
 
         $this->info('Обновлено: ' . $updated);
 
