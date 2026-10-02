@@ -219,20 +219,44 @@
         }
     }
 
-    // Сохранённое КП уже могло положить эту строку в доп. услуги. Убираем дубль.
+    // Сохранённое КП кладёт внедрение ИИ в доп. услуги уже со скидкой (только сумма).
+    // При просмотре прайс рисует ту же строку заново. Убираем доп. услугу по названию.
+    // Если процент скидки не сохранился, восстанавливаем его из разницы с прайсом.
     function stripSavedAiImplementationDuplicates(cp) {
         if (!Array.isArray(cp.state.customOneTimePayments)) {
             return;
         }
-        const autoKeys = new Set(
-            getSelectedAiImplementationPayments(cp).map((extra) => `${extra.name}::${cp.roundMoney(extra.price)}`)
-        );
-        if (!autoKeys.size) {
+        const payments = getSelectedAiImplementationPayments(cp);
+        if (!payments.length) {
             return;
         }
+        const byName = new Map(payments.map((payment) => [payment.name, payment]));
+        const items = typeof cp.getSelectedAiItems === 'function' ? cp.getSelectedAiItems() : [];
+
         cp.state.customOneTimePayments = cp.state.customOneTimePayments.filter((extra) => {
-            const key = `${String(extra?.name || '').trim()}::${cp.roundMoney(extra?.price)}`;
-            return !autoKeys.has(key);
+            const name = String(extra?.name || '').trim();
+            const payment = byName.get(name);
+            if (!payment) {
+                return true;
+            }
+
+            const item = items.find((row) => payment.key === `ai-plan-${row.plan_id}`);
+            const savedNet = cp.roundMoney(extra?.price);
+            const base = cp.roundMoney(payment.basePrice);
+            const storedPercent = Number(item?.implementation_discount_percent) || 0;
+            if (item && storedPercent <= 0 && base > 0 && savedNet >= 0 && savedNet < base) {
+                const rawPercent = (1 - (savedNet / base)) * 100;
+                const percent = typeof cp.roundPercentValue === 'function'
+                    ? cp.roundPercentValue(rawPercent)
+                    : Math.round(rawPercent * 10000) / 10000;
+                const discountAmount = cp.roundMoney(base * (percent / 100));
+                const recomputed = cp.roundMoney(Math.max(0, base - discountAmount));
+                if (Math.abs(recomputed - savedNet) < 1) {
+                    item.implementation_discount_percent = percent;
+                }
+            }
+
+            return false;
         });
     }
 
@@ -1088,7 +1112,23 @@
         cp._pendingAiItems = null;
 
         stripSavedAiImplementationDuplicates(cp);
+        // Процент мог восстановиться из сохранённой суммы. Записываем его в поле и пересчитываем строку.
+        Object.values(cp._aiCategoryUi || {}).forEach((ui) => {
+            const item = cp.state.aiItems?.[ui.category];
+            if (!item || !ui.checkbox?.checked) {
+                return;
+            }
+            if (ui.implementationDiscountInput) {
+                ui.implementationDiscountInput.value = String(Number(item.implementation_discount_percent) || 0);
+            }
+            if (typeof ui.applyAiItem === 'function') {
+                ui.applyAiItem({ refreshSummary: false });
+            }
+        });
         refreshImplementationSection(cp);
+        if (typeof cp.updateSummary === 'function') {
+            cp.updateSummary();
+        }
         cp.syncAiAgentAvailability();
     }
 
