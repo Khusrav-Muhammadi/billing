@@ -9,6 +9,13 @@ class ImplementationDiscountCap extends Model
 {
     use HasFactory;
 
+    /** Типы потолка скидки на внедрение. */
+    public const PERIOD_TYPES = [
+        'standard' => 'Стандартная',
+        'months_12' => '12 месяцев',
+        'ai' => 'ИИ',
+    ];
+
     protected $fillable = [
         'tariff_id',
         'period_type',

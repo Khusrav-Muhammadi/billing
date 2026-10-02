@@ -211,6 +211,14 @@ class DemoProvisioner
             response: $response
         );
 
+        // CRM больше не отдаёт чужой тенант как успех: 409 — поддомен уже занят.
+        if ($response->status() === 409) {
+            throw new DemoProvisioningException(
+                'subdomain_taken',
+                'Пользователь с таким поддоменом уже существует. Укажите другой email.'
+            );
+        }
+
         if (!$response->successful()) {
             Log::error('DemoProvisioner: createSubdomain rejected', [
                 'demo_request_id' => $request->id,

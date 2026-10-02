@@ -3784,16 +3784,17 @@ class CPGenerator {
             });
 
             this.getSelectedServiceImplementationPayments().forEach((payment, index) => {
-                const price = Math.max(0, Number(payment?.price) || 0);
+                const price = Math.max(0, Number(payment?.basePrice ?? payment?.price) || 0);
                 if (price <= 0) {
                     return;
                 }
+                const discountPercent = Math.max(0, Math.min(100, Number(payment?.discountPercent) || 0));
                 oneTimeRows.push({
                     name: String(payment?.name || '').trim() || `Внедрение услуги (${index + 1})`,
                     qty: 1,
                     unitMonthly: price,
                     kind: 'one_time',
-                    discountPercent: 0,
+                    discountPercent,
                     partnerPercent: 0,
                     months: 1,
                 });

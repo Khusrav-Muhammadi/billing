@@ -37,6 +37,8 @@ return [
     ],
 
     'crm_check_email_url' => env('DEMO_CRM_CHECK_EMAIL_URL') ?: 'https://shamcrm.com/api/check-email',
+    // POST {domain}: CRM отвечает result=true, если тенант `{domain}-back` или его домен уже есть.
+    'crm_check_subdomain_url' => env('DEMO_CRM_CHECK_SUBDOMAIN_URL') ?: 'https://shamcrm.com/api/checkDomain',
 
     'provisioning' => [
         'subdomain_timeout' => (int) (env('DEMO_SUBDOMAIN_TIMEOUT') ?: 90),

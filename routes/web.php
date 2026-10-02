@@ -9,6 +9,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ConnectedClientServiceController;
 use App\Http\Controllers\DayClosingController;
 use App\Http\Controllers\ImplementationDiscountCapController;
+use App\Http\Controllers\AiImplementationPriceController;
 use App\Http\Controllers\ImplementationPriceController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PackController;
@@ -261,6 +262,9 @@ Route::middleware('auth')->group(function () {
     Route::group(['prefix' => 'implementation-prices'], function () {
         Route::get('/', [ImplementationPriceController::class, 'index'])->name('implementation-prices.index');
         Route::post('/store', [ImplementationPriceController::class, 'store'])->name('implementation-prices.store');
+        Route::post('/ai', [AiImplementationPriceController::class, 'store'])->name('implementation-prices.ai.store');
+        Route::patch('/ai/{aiImplementationPrice}', [AiImplementationPriceController::class, 'update'])->name('implementation-prices.ai.update');
+        Route::delete('/ai/{aiImplementationPrice}', [AiImplementationPriceController::class, 'destroy'])->name('implementation-prices.ai.destroy');
         Route::patch('/{price}', [ImplementationPriceController::class, 'update'])->name('implementation-prices.update');
         Route::delete('/{price}', [ImplementationPriceController::class, 'destroy'])->name('implementation-prices.destroy');
     });

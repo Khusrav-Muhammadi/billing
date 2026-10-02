@@ -30,7 +30,7 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $cap->currency_code ? strtoupper($cap->currency_code) : '—' }}</td>
-                        <td>{{ $cap->period_type === 'months_12' ? '12 месяцев' : 'Стандартная' }}</td>
+                        <td>{{ \App\Models\ImplementationDiscountCap::PERIOD_TYPES[$cap->period_type] ?? $cap->period_type }}</td>
                         <td>{{ $cap->max_percent }}</td>
                         <td>{{ $cap->is_active ? 'Да' : 'Нет' }}</td>
                         <td>
@@ -73,8 +73,9 @@
                                         <div class="form-group mb-2">
                                             <label>Тип</label>
                                             <select name="period_type" class="form-control">
-                                                <option value="standard" {{ $cap->period_type === 'standard' ? 'selected' : '' }}>Стандартная</option>
-                                                <option value="months_12" {{ $cap->period_type === 'months_12' ? 'selected' : '' }}>12 месяцев</option>
+                                                @foreach(\App\Models\ImplementationDiscountCap::PERIOD_TYPES as $type => $label)
+                                                    <option value="{{ $type }}" {{ $cap->period_type === $type ? 'selected' : '' }}>{{ $label }}</option>
+                                                @endforeach
                                             </select>
                                         </div>
 
@@ -152,8 +153,9 @@
                         <div class="form-group mb-2">
                             <label>Тип</label>
                             <select name="period_type" class="form-control">
-                                <option value="standard">Стандартная</option>
-                                <option value="months_12">12 месяцев</option>
+                                @foreach(\App\Models\ImplementationDiscountCap::PERIOD_TYPES as $type => $label)
+                                    <option value="{{ $type }}">{{ $label }}</option>
+                                @endforeach
                             </select>
                         </div>
 

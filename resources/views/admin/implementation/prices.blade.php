@@ -134,6 +134,8 @@
         </div>
     </div>
 
+    @include('admin.implementation.ai-prices')
+
     <div class="modal fade" id="createImplementationPrice" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <form action="{{ route('implementation-prices.store') }}" method="POST">

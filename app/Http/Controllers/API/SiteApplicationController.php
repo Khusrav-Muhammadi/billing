@@ -139,7 +139,10 @@ class SiteApplicationController extends Controller
                 'success' => false,
                 'reason' => $check['reason'],
                 'message' => $check['message'],
-            ], $check['reason'] === DemoEmailAvailability::REASON_TAKEN ? 409 : 422);
+            ], in_array($check['reason'], [
+                DemoEmailAvailability::REASON_TAKEN,
+                DemoEmailAvailability::REASON_SUBDOMAIN,
+            ], true) ? 409 : 422);
         }
 
         return response()->json([

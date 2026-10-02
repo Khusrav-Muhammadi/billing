@@ -48,7 +48,7 @@ class SendEmail extends Command
 
             if ($daysSinceCreated > self::DEMO_DAYS) {
                 $organization->client?->update(['is_active' => false]);
-                TariffExtensionJob::dispatch($organization, false);
+                            TariffExtensionJob::dispatch($organization, false);
                 $sent += $this->sendDemoExpiredFollowUpIfNeeded($organization, $daysSinceCreated);
             }
         }

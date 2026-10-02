@@ -38,7 +38,6 @@ class PointClientSubdomainToNewCommand extends Command
         foreach ($rows as $row) {
             $next = strtolower((string) $row->sub_domain) . '-new';
 
-            // tfaiziev04 нельзя переименовать, если tfaiziev04-new уже есть.
             if (isset($taken[$next])) {
                 $this->warn("Пропуск {$row->sub_domain}: {$next} уже есть");
                 $skipped++;

@@ -30,6 +30,17 @@ class AiTariffPlanCatalogService
                         })
                         ->orderByDesc('start_date');
                 },
+                'implementationPrices' => function ($q) use ($today) {
+                    $q->with('currency')
+                        ->where('start_date', '<=', $today)
+                        ->where(function ($qq) use ($today) {
+                            $qq->whereNull('end_date')
+                                ->orWhere('end_date', '9999-12-31')
+                                ->orWhere('end_date', '>=', $today);
+                        })
+                        ->orderByDesc('start_date')
+                        ->orderByDesc('id');
+                },
             ])
             ->orderBy('name')
             ->get()
@@ -46,6 +57,19 @@ class AiTariffPlanCatalogService
                     }
                 }
 
+                // Первая подходящая строка уже самая свежая: без пересчёта в другую валюту.
+                $implementationByCurrency = [];
+                foreach ($p->implementationPrices as $priceRow) {
+                    $code = $priceRow->currency?->symbol_code;
+                    if (! $code) {
+                        continue;
+                    }
+                    $code = strtoupper(trim($code));
+                    if (! isset($implementationByCurrency[$code])) {
+                        $implementationByCurrency[$code] = (float) $priceRow->sum;
+                    }
+                }
+
                 return [
                     'id' => $p->id,
                     'name' => $p->name,
@@ -53,6 +77,7 @@ class AiTariffPlanCatalogService
                     'daily_minutes' => $p->resolvedDailyMinutes(),
                     'model_name' => $p->aiModel?->name ?? null,
                     'prices_by_currency' => $pricesByCurrency,
+                    'suggestedImplementationPrice' => $implementationByCurrency,
                     'periods' => $p->activePeriods->map(fn ($per) => [
                         'months' => (int) $per->months,
                         'discount_percent' => (float) $per->discount_percent,

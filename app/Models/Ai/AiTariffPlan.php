@@ -105,6 +105,12 @@ class AiTariffPlan extends Model
         return $this->hasMany(AiTariffPlanPrice::class, 'plan_id')->orderByDesc('start_date');
     }
 
+    /** Разовая цена внедрения тарифа по валютам и датам. */
+    public function implementationPrices(): HasMany
+    {
+        return $this->hasMany(AiImplementationPrice::class, 'plan_id')->orderByDesc('start_date');
+    }
+
     /** Текущая актуальная цена (при дублях на одну дату — последняя по id) */
     public function currentPrice(): HasOne
     {

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Ai\AiImplementationPrice;
+use App\Models\Ai\AiTariffPlan;
 use App\Models\Currency;
 use App\Models\Price;
 use App\Models\Tariff;
@@ -34,7 +36,13 @@ class ImplementationPriceController extends Controller
 
         $currencies = Currency::query()->orderBy('name')->get();
 
-        return view('admin.implementation.prices', compact('prices', 'tariffs', 'currencies'));
+        $aiPlans = AiTariffPlan::query()->orderBy('name')->get();
+        $aiPrices = AiImplementationPrice::query()
+            ->with(['plan', 'currency'])
+            ->orderByDesc('id')
+            ->get();
+
+        return view('admin.implementation.prices', compact('prices', 'tariffs', 'currencies', 'aiPlans', 'aiPrices'));
     }
 
     public function store(Request $request)
