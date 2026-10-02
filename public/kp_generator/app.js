@@ -648,9 +648,6 @@ class CPGenerator {
     }
 
     getImplementationDiscountPercent() {
-        if (String(this.state.selectedPartnerId) === '11') {
-            return this.state.periodMonths === 12 ? 100 : 0;
-        }
         const raw = this.parsePercentValue(this.state.implementationDiscountPercent);
         const val = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
         if (this.state.editOfferId) {
@@ -692,7 +689,7 @@ class CPGenerator {
     }
 
     getImplementationDiscount12ExtraPercent() {
-        if (this.state.periodMonths !== 12 || String(this.state.selectedPartnerId) === '11') {
+        if (this.state.periodMonths !== 12) {
             return 0;
         }
         const raw = this.parsePercentValue(this.state.implementationDiscountPercent12);
@@ -1663,24 +1660,19 @@ class CPGenerator {
             fields.hidden = !enabled;
         }
 
-        const isPartner11 = String(this.state.selectedPartnerId) === '11';
         const discountInput = document.getElementById('implementationDiscountPercent');
         if (discountInput) {
             const cap = this.getImplementationDiscountCapPercent();
             const current = this.getImplementationDiscountPercent();
             discountInput.value = this.formatPercentValue(current);
             discountInput.max = String(cap);
-            discountInput.disabled = this.state.isLocked || isPartner11;
+            discountInput.disabled = this.state.isLocked;
         }
 
         const discountHint = document.getElementById('implementationDiscountHint');
         if (discountHint) {
-            if (isPartner11) {
-                discountHint.textContent = '';
-            } else {
-                const cap = this.getImplementationDiscountCapPercent();
-                discountHint.textContent = `Потолок скидки (Стандартная): ${cap}%.`;
-            }
+            const cap = this.getImplementationDiscountCapPercent();
+            discountHint.textContent = `Потолок скидки (Стандартная): ${cap}%.`;
         }
 
         const discount12Block = document.getElementById('implementationDiscount12Block');
@@ -1694,17 +1686,13 @@ class CPGenerator {
             const current = this.getImplementationDiscount12ExtraPercent();
             discount12Input.value = this.formatPercentValue(current);
             discount12Input.max = String(cap);
-            discount12Input.disabled = this.state.isLocked || this.state.periodMonths !== 12 || isPartner11;
+            discount12Input.disabled = this.state.isLocked || this.state.periodMonths !== 12;
         }
 
         const discount12Hint = document.getElementById('implementationDiscount12Hint');
         if (discount12Hint) {
-            if (isPartner11) {
-                discount12Hint.textContent = '';
-            } else {
-                const cap = this.getImplementationDiscount12ExtraCapPercent();
-                discount12Hint.textContent = `Потолок доп. скидки: ${cap}%.`;
-            }
+            const cap = this.getImplementationDiscount12ExtraCapPercent();
+            discount12Hint.textContent = `Потолок доп. скидки: ${cap}%.`;
         }
 
         const priceInput = document.getElementById('implementationPrice');
