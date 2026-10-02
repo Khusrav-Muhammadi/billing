@@ -9,6 +9,19 @@
     <div class="card-body">
         <h4 class="card-title">Скидки — потолок скидки на внедрение</h4>
 
+        @if(session('success'))
+            <div class="alert alert-success mt-3">{{ session('success') }}</div>
+        @endif
+        @if($errors->any())
+            <div class="alert alert-danger mt-3">
+                <ul class="mb-0">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCap">
             Создать / обновить
         </button>

@@ -4533,8 +4533,11 @@ class CPGenerator {
                 const cap = this.getImplementationDiscountCapPercent();
                 const capped = this.roundPercentValue(Math.max(0, Math.min(cap, raw)));
                 this.state.implementationDiscountPercent = capped;
+                // Пока печатают, поле не ждёт blur: цифра выше потолка сразу становится потолком.
+                if (commit || raw > cap) {
+                    implementationDiscountInput.value = this.formatPercentValue(capped);
+                }
                 if (commit) {
-                    implementationDiscountInput.value = this.formatPercentValue(this.getImplementationDiscountPercent());
                     this.renderImplementationSection();
                 }
                 this.markOfferDirty();
@@ -4553,8 +4556,8 @@ class CPGenerator {
                 const cap = this.getImplementationDiscount12ExtraCapPercent();
                 const capped = this.roundPercentValue(Math.max(0, Math.min(cap, raw)));
                 this.state.implementationDiscountPercent12 = capped;
-                if (commit) {
-                    implementationDiscount12Input.value = this.formatPercentValue(this.getImplementationDiscount12ExtraPercent());
+                if (commit || raw > cap) {
+                    implementationDiscount12Input.value = this.formatPercentValue(capped);
                 }
                 this.markOfferDirty();
                 this.updateSummary();

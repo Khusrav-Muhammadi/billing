@@ -4430,10 +4430,14 @@ class CPGenerator {
             const syncImplementationDiscount = (commit = false) => {
                 this.limitPercentInputPrecision(implementationDiscountInput);
                 const raw = this.parsePercentValue(implementationDiscountInput.value);
-                const capped = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+                const cap = this.getImplementationDiscountCapPercent();
+                const capped = this.roundPercentValue(Math.max(0, Math.min(cap, raw)));
                 this.state.implementationDiscountPercent = capped;
+                // Пока печатают, поле не ждёт blur: цифра выше потолка сразу становится потолком.
+                if (commit || raw > cap) {
+                    implementationDiscountInput.value = this.formatPercentValue(capped);
+                }
                 if (commit) {
-                    implementationDiscountInput.value = this.formatPercentValue(this.getImplementationDiscountPercent());
                     this.renderImplementationSection();
                 }
                 this.markOfferDirty();
@@ -4449,10 +4453,11 @@ class CPGenerator {
             const syncImplementationDiscount12 = (commit = false) => {
                 this.limitPercentInputPrecision(implementationDiscount12Input);
                 const raw = this.parsePercentValue(implementationDiscount12Input.value);
-                const capped = this.roundPercentValue(Math.max(0, Math.min(100, raw)));
+                const cap = this.getImplementationDiscount12ExtraCapPercent();
+                const capped = this.roundPercentValue(Math.max(0, Math.min(cap, raw)));
                 this.state.implementationDiscountPercent12 = capped;
-                if (commit) {
-                    implementationDiscount12Input.value = this.formatPercentValue(this.getImplementationDiscount12ExtraPercent());
+                if (commit || raw > cap) {
+                    implementationDiscount12Input.value = this.formatPercentValue(capped);
                 }
                 this.markOfferDirty();
                 this.updateSummary();

@@ -70,7 +70,7 @@ class ImplementationDiscountCapController extends Controller
 
         ImplementationDiscountCap::query()->updateOrCreate($match, $payload);
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Потолок скидки сохранён.');
     }
 
     public function update(ImplementationDiscountCap $cap, UpdateRequest $request)
@@ -96,7 +96,7 @@ class ImplementationDiscountCapController extends Controller
 
         $cap->update($update);
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Потолок скидки сохранён.');
     }
 
     public function destroy(ImplementationDiscountCap $cap)

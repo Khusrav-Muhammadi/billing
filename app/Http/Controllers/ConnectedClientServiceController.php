@@ -819,7 +819,7 @@ class ConnectedClientServiceController extends Controller
         if (!Schema::hasTable('implementation_discount_caps')) {
             return [
                 'by_type' => [],
-                'default' => ['standard' => 0, 'months_12' => 0],
+                'default' => ['standard' => 0, 'months_12' => 0, 'ai' => 0],
             ];
         }
 
@@ -839,7 +839,7 @@ class ConnectedClientServiceController extends Controller
             $byType = [];
             foreach ($caps as $cap) {
                 $type = (string) $cap->period_type;
-                if ($type !== 'standard' && $type !== 'months_12') {
+                if (!array_key_exists($type, ImplementationDiscountCap::PERIOD_TYPES)) {
                     continue;
                 }
                 if (!array_key_exists($type, $byType)) {
@@ -849,7 +849,7 @@ class ConnectedClientServiceController extends Controller
 
             return [
                 'by_type' => $byType,
-                'default' => ['standard' => 0, 'months_12' => 0],
+                'default' => ['standard' => 0, 'months_12' => 0, 'ai' => 0],
             ];
         }
 
@@ -857,7 +857,7 @@ class ConnectedClientServiceController extends Controller
 
         foreach ($caps as $cap) {
             $type = (string) $cap->period_type;
-            if ($type !== 'standard' && $type !== 'months_12') {
+            if (!array_key_exists($type, ImplementationDiscountCap::PERIOD_TYPES)) {
                 continue;
             }
 
@@ -875,7 +875,7 @@ class ConnectedClientServiceController extends Controller
         return [
             'by_currency' => $byCurrency,
             'by_type' => [], // legacy/global fallback (disabled when currency-based caps exist)
-            'default' => ['standard' => 0, 'months_12' => 0],
+            'default' => ['standard' => 0, 'months_12' => 0, 'ai' => 0],
         ];
     }
 
