@@ -28,7 +28,10 @@
                     || str_contains($name, 'ии агент')
                     || str_contains($name, 'баланс ии')
                     || str_contains($name, 'пополнение ии');
-                if (! $isAi) {
+                // Внедрение разовое: период тарифа в эту колонку не подставляем.
+                $isOneTimeImplementation = str_contains($name, 'внедрение и обучение')
+                    || str_starts_with($name, 'внедрение:');
+                if (! $isAi && ! $isOneTimeImplementation) {
                     $months = data_get($offer, 'period_months');
                 }
             }

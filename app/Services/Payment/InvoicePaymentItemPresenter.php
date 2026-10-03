@@ -24,6 +24,9 @@ class InvoicePaymentItemPresenter
         $usedCrm = [];
         $usedAi = [];
 
+        // Старые счета могли сохранить внедрение только со стандартной скидкой, без доп. за 12 месяцев.
+        $this->alignImplementationDiscount($payment, $offer);
+
         foreach ($payment->paymentItems as $item) {
             $matched = $this->matchAiLine($item, $aiLines, $usedAi)
                 ?? $this->matchCrmItem($item, $crmItems, $usedCrm);
@@ -32,6 +35,10 @@ class InvoicePaymentItemPresenter
             $sum = (float) $item->price;
             $quantity = $matched['quantity'] ?? 1;
             $months = $matched['months'] ?? $this->fallbackMonths($name);
+            // «Внедрение и обучение» — разовый платёж. Период тарифа (12 мес.) к нему не относится.
+            if ($this->isOneTimeImplementationName($name) && ($matched === null || (int) ($matched['months'] ?? 0) === 0)) {
+                $months = 0;
+            }
             $unitPrice = $matched['unit_price'] ?? null;
             if ($unitPrice === null || $unitPrice <= 0) {
                 $unitPrice = $quantity > 0 && (int) $months > 0
@@ -179,6 +186,99 @@ class InvoicePaymentItemPresenter
         }
 
         return null;
+    }
+
+    /**
+     * Если в счёте внедрение посчитано только по стандартной скидке,
+     * а в КП есть ещё скидка за 12 месяцев — пишем полную сумму.
+     * Чужую цену не трогаем: правим строку только когда она совпала с «базой минус стандартная скидка».
+     */
+    private function alignImplementationDiscount(Payment $payment, ?CommercialOffer $offer): void
+    {
+        if (! $offer || $payment->paid_at) {
+            return;
+        }
+
+        $implementation = $this->implementationFromSnapshot($offer);
+        if (! is_array($implementation) || empty($implementation['enabled'])) {
+            return;
+        }
+
+        $base = round(max(0, (float) ($implementation['price'] ?? 0)), 4);
+        if ($base <= 0) {
+            return;
+        }
+
+        $basePercent = $this->clampPercent($implementation['discount_percent_base'] ?? null);
+        $extraPercent = $this->clampPercent($implementation['discount_percent_12_extra'] ?? null);
+        $totalField = $this->clampPercent($implementation['discount_percent'] ?? null);
+        $fullPercent = max($totalField, min(100, $basePercent + $extraPercent));
+        if ($fullPercent <= $basePercent + 0.0001) {
+            return;
+        }
+
+        $expected = round($base * (1 - ($fullPercent / 100)), 4);
+        $partialNet = round($base * (1 - ($basePercent / 100)), 4);
+        if ($expected <= 0 || ($partialNet - $expected) <= 1) {
+            return;
+        }
+
+        foreach ($payment->paymentItems as $item) {
+            $name = mb_strtolower(trim((string) $item->service_name));
+            if ($name !== 'внедрение и обучение') {
+                continue;
+            }
+
+            $stored = round((float) $item->price, 4);
+            // Строка ещё со стандартной скидкой, без доп. за 12 месяцев.
+            if (abs($stored - $partialNet) > 1 || ($stored - $expected) <= 1) {
+                continue;
+            }
+
+            $delta = round($stored - $expected, 4);
+            $item->price = $expected;
+            $payment->sum = round(max(0, (float) $payment->sum - $delta), 4);
+
+            if ($item->exists) {
+                $item->save();
+            }
+            if ($payment->exists) {
+                $payment->save();
+            }
+
+            break;
+        }
+    }
+
+    private function implementationFromSnapshot(CommercialOffer $offer): ?array
+    {
+        $snapshot = $offer->snapshot;
+        if (is_string($snapshot)) {
+            $snapshot = json_decode($snapshot, true);
+        }
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $implementation = $snapshot['implementation'] ?? null;
+
+        return is_array($implementation) ? $implementation : null;
+    }
+
+    private function clampPercent(mixed $value): float
+    {
+        if (! is_numeric($value)) {
+            return 0.0;
+        }
+
+        return max(0, min(100, (float) $value));
+    }
+
+    private function isOneTimeImplementationName(string $name): bool
+    {
+        $normalized = mb_strtolower(trim($name));
+
+        return $normalized === 'внедрение и обучение' || str_starts_with($normalized, 'внедрение:');
     }
 
     private function fallbackMonths(string $name): ?int

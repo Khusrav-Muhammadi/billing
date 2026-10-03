@@ -25,6 +25,9 @@ class ClientPaymentController extends Controller
             ->where('payment_id', $payment->id)
             ->first();
 
+        // Сначала строки: сумма счёта может уменьшиться, если к внедрению добавили скидку за 12 месяцев.
+        $items = $presenter->toApiItems($payment, $offer);
+
         return response()->json([
             'payment' => [
                 'id' => $payment->id,
@@ -46,7 +49,7 @@ class ClientPaymentController extends Controller
                     ]
                     : null,
             ],
-            'items' => $presenter->toApiItems($payment, $offer),
+            'items' => $items,
             'offer' => $offer
         ]);
     }

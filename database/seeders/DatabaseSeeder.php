@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             PackSeeder::class,
             InvoiceStatusSeeder::class,
             AiCallAnalyseTariffSeeder::class,
+            AiModelPriceSeeder::class,
         ]);
 
     }

@@ -97,4 +97,53 @@ class InvoicePaymentItemPresenterTest extends TestCase
         $this->assertSame(2, $item->getAttribute('quantity'));
         $this->assertEqualsWithDelta(100.0, (float) $item->getAttribute('unit_price'), 0.01);
     }
+
+    public function test_one_time_implementation_does_not_inherit_offer_period(): void
+    {
+        $offer = new CommercialOffer(['period_months' => 12]);
+        $offer->setRelation('items', collect());
+        $offer->setRelation('aiItems', collect());
+
+        $item = new PaymentItem([
+            'service_name' => 'Внедрение и обучение',
+            'price' => 10950000,
+        ]);
+        $payment = new Payment(['sum' => 10950000]);
+        $payment->setRelation('paymentItems', collect([$item]));
+
+        (new InvoicePaymentItemPresenter())->enrich($payment, $offer);
+
+        $this->assertSame(0, $item->getAttribute('months'));
+        $this->assertEqualsWithDelta(10950000.0, (float) $item->getAttribute('unit_price'), 0.01);
+    }
+
+    public function test_implementation_invoice_includes_twelve_month_extra_discount(): void
+    {
+        $offer = new CommercialOffer(['period_months' => 12]);
+        // snapshot не в fillable, как и при чтении из базы кладём его напрямую.
+        $offer->setAttribute('snapshot', [
+            'implementation' => [
+                'enabled' => true,
+                'price' => 15000000,
+                'discount_percent' => 27,
+                'discount_percent_base' => 15,
+                'discount_percent_12_extra' => 12,
+            ],
+        ]);
+        $offer->setRelation('items', collect());
+        $offer->setRelation('aiItems', collect());
+
+        $item = new PaymentItem([
+            'service_name' => 'Внедрение и обучение',
+            'price' => 12750000,
+        ]);
+        $payment = new Payment(['sum' => 33495655.65]);
+        $payment->setRelation('paymentItems', collect([$item]));
+
+        (new InvoicePaymentItemPresenter())->enrich($payment, $offer);
+
+        $this->assertEqualsWithDelta(10950000.0, (float) $item->price, 0.01);
+        $this->assertEqualsWithDelta(31695655.65, (float) $payment->sum, 0.01);
+        $this->assertSame(0, $item->getAttribute('months'));
+    }
 }
