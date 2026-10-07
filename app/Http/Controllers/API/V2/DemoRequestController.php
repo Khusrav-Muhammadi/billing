@@ -22,7 +22,7 @@ class DemoRequestController extends Controller
 
         return response()->json($availability->check($data['email']));
     }
-
+    
     public function store(
         Request $request,
         DemoEmailAvailability $availability,

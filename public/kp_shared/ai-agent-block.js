@@ -1032,18 +1032,25 @@
         };
 
         cp._refreshAiCardPrices = () => {
+            // Каталог ИИ уже загружен на дату из поля «Дата».
+            // Подменяем планы, чтобы цена и остаток текущего месяца пересчитались от этой даты.
+            const latestPlans = Array.isArray(cp.aiTariffPlans) ? cp.aiTariffPlans : [];
             Object.values(cp._aiCategoryUi || {}).forEach((ui) => {
-                ui.plansGrid.querySelectorAll('.tariff-card').forEach((card) => {
-                    const plan = ui.plans.find((item) => String(item.id) === String(card.dataset.planId));
-                    if (plan) {
-                        ui.renderCardPrice(card, plan);
+                if (latestPlans.length && ui.category) {
+                    const fresh = latestPlans.filter((plan) => normalizeAiCategory(plan.category) === ui.category);
+                    if (fresh.length) {
+                        ui.plans = fresh;
                     }
-                });
-                if (ui.checkbox.checked && ui.selectedPlanId) {
-                    const plan = ui.plans.find((item) => item.id === ui.selectedPlanId);
-                    if (plan && !ui.selectedDemoDays) {
-                        ui.syncCurrentAndBalanceUi(ui.getAiPrice(plan), getAiCurrency());
-                    }
+                }
+                if (ui.plansGrid) {
+                    ui.plansGrid.querySelectorAll('.tariff-card').forEach((card) => {
+                        const plan = (ui.plans || []).find((item) => String(item.id) === String(card.dataset.planId));
+                        if (plan && typeof ui.renderCardPrice === 'function') {
+                            ui.renderCardPrice(card, plan);
+                        }
+                    });
+                }
+                if (ui.checkbox && ui.checkbox.checked && ui.selectedPlanId && typeof ui.applyAiItem === 'function') {
                     ui.applyAiItem({ refreshSummary: false });
                 }
             });

@@ -346,14 +346,22 @@ class CPGenerator {
     }
 
     getAllowedPaymentPeriodMonths() {
+        // Базовый тариф можно взять только на 12 месяцев.
+        if (this.isBaseTariff()) {
+            return [12];
+        }
         if (this.isVipTariff()) {
             return [3, 6, 12];
         }
         return [6, 12];
     }
 
-    getPeriodDiscountPercentForMonths(months) {
+    getPeriodDiscountPercentForMonths(months, tariffKey = this.state.selectedTariff) {
         if (!this.shouldIncludeBaseTariffInPricing()) {
+            return 0;
+        }
+        // На базовом тарифе нет скидки 15% за 12 месяцев.
+        if (this.isBaseTariff(tariffKey)) {
             return 0;
         }
         if (Number(months) === 12) return 15;
@@ -1780,7 +1788,8 @@ class CPGenerator {
 
     getTariffPriceByKey(tariffKey) {
         const base = this.getTariffMonthlyBase(tariffKey);
-        return base * this.getPeriodDiscountMultiplier();
+        // Скидка периода считается по этому тарифу: у базового её нет.
+        return base * this.getPeriodDiscountMultiplier(tariffKey);
     }
 
     getOriginalTariffPriceByKey(tariffKey) {
@@ -2134,8 +2143,8 @@ class CPGenerator {
         return this.getPeriodDiscountPercentForMonths(this.state.periodMonths);
     }
 
-    getPeriodDiscountMultiplier() {
-        return 1 - (this.getPeriodDiscountPercent() / 100);
+    getPeriodDiscountMultiplier(tariffKey = this.state.selectedTariff) {
+        return 1 - (this.getPeriodDiscountPercentForMonths(this.state.periodMonths, tariffKey) / 100);
     }
 
     applyPartnerDiscount(amount) {
@@ -3164,6 +3173,7 @@ class CPGenerator {
             const tariff = this.config.tariffs[key];
             const price = this.getTariffPriceByKey(key);
             const originalPrice = this.getOriginalTariffPriceByKey(key);
+            const cardDiscount = this.getPeriodDiscountPercentForMonths(this.state.periodMonths, key);
             const isPopular = index === popularIndex;
             const isSelected = this.state.selectedTariff === key;
 
@@ -3184,7 +3194,7 @@ class CPGenerator {
                 <div class="tariff-price">
                     <span class="price-value">${this.formatPrice(price)}</span>
                     <span class="price-period">/мес</span>
-                    ${(this.getPeriodDiscountPercent() > 0) ? `<span class="original-price">${this.formatPrice(originalPrice)}</span>` : ''}
+                    ${(cardDiscount > 0) ? `<span class="original-price">${this.formatPrice(originalPrice)}</span>` : ''}
                 </div>
             `;
 
@@ -3377,10 +3387,11 @@ class CPGenerator {
             });
         }
 
+        // Сначала период: у базового остаётся только 12 месяцев и без скидки 15%.
+        this.syncPeriodSelectorUI();
         this.renderServices();
         this.renderTariffs();
         this.renderImplementationSection();
-        this.syncPeriodSelectorUI();
         this.syncAiAgentAvailability();
         this.updateSummary();
     }
@@ -6473,13 +6484,15 @@ class CPGenerator {
     }
 
     /**
-     * Рекомендуемый запас = цена_месяца × оставшиеся_дни / дней_в_месяце
-     * (по дате прайса / операции).
+     * Остаток текущего месяца = цена_месяца × оставшиеся_дни / дней_в_месяце.
+     * День берём из поля «Дата», как и сам прайс.
      */
     suggestAiBalanceTopup(unitPrice) {
         const price = Number(unitPrice) || 0;
         if (price <= 0) return 0;
-        const raw = this.state.pricingDate || this.state.operationStartDate || this.getTodayYmd();
+        const dateInput = document.getElementById('pricingDate');
+        const fromField = dateInput ? this.normalizeDateToYmd(dateInput.value) : '';
+        const raw = fromField || this.state.pricingDate || this.state.operationStartDate || this.getTodayYmd();
         const parts = String(raw).slice(0, 10).split('-').map(Number);
         if (parts.length < 3 || !parts[0]) return this.roundMoney(price);
         const [y, m, day] = parts;

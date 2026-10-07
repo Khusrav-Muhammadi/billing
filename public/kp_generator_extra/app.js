@@ -6379,13 +6379,15 @@ class CPGenerator {
     }
 
     /**
-     * Рекомендуемый запас = цена_месяца × оставшиеся_дни / дней_в_месяце
-     * (по дате прайса / операции).
+     * Остаток текущего месяца = цена_месяца × оставшиеся_дни / дней_в_месяце.
+     * День берём из поля «Дата», как и сам прайс.
      */
     suggestAiBalanceTopup(unitPrice) {
         const price = Number(unitPrice) || 0;
         if (price <= 0) return 0;
-        const raw = this.state.pricingDate || this.state.operationStartDate || this.getTodayYmd();
+        const dateInput = document.getElementById('pricingDate');
+        const fromField = dateInput ? this.normalizeDateToYmd(dateInput.value) : '';
+        const raw = fromField || this.state.pricingDate || this.state.operationStartDate || this.getTodayYmd();
         const parts = String(raw).slice(0, 10).split('-').map(Number);
         if (parts.length < 3 || !parts[0]) return this.roundMoney(price);
         const [y, m, day] = parts;
