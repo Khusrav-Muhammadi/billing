@@ -294,6 +294,26 @@
             this.state.aiItem = selected[0] || null;
         };
 
+        // Остаток за текущий месяц = цена тарифа × оставшиеся дни / дней в месяце.
+        // День берётся из поля «Дата» внутри suggestAiBalanceTopup.
+        // Сохранённая сумма не используется: иначе строка остаётся на сегодняшнем дне.
+        cp.syncAiCurrentMonthAmount = function (aiItem) {
+            if (!aiItem || (Number(aiItem.demo_days) || 0) > 0) {
+                return 0;
+            }
+            const unit = Number(aiItem.unit_price) || 0;
+            if (unit > 0 && typeof this.suggestAiBalanceTopup === 'function') {
+                aiItem.current_month_amount = this.suggestAiBalanceTopup(unit);
+                const currentInput = document.querySelector(
+                    `.ai-agent-card[data-ai-category="${aiItem.category}"] .ai-current-month-input`
+                );
+                if (currentInput) {
+                    currentInput.value = aiItem.current_month_amount;
+                }
+            }
+            return this.roundMoney(Number(aiItem.current_month_amount) || 0);
+        };
+
         cp.getAiChargeTotal = function (aiItem) {
             if (aiItem === undefined) {
                 return this.roundMoney(
@@ -303,8 +323,9 @@
             if (!aiItem) {
                 return 0;
             }
+            const currentMonth = this.syncAiCurrentMonthAmount(aiItem);
             return this.roundMoney(
-                (Number(aiItem.current_month_amount) || 0)
+                currentMonth
                 + (Number(aiItem.total_price) || 0)
                 + (Number(aiItem.balance_topup) || 0)
             );
@@ -420,7 +441,7 @@
             selected.forEach((aiItem) => {
                 const rules = getAiCategoryRules(aiItem.category);
                 const subTotal = this.roundMoney(aiItem.total_price || 0);
-                const currentMonth = this.roundMoney(aiItem.current_month_amount || 0);
+                const currentMonth = this.syncAiCurrentMonthAmount(aiItem);
                 const topup = rules.showBalance ? this.roundMoney(aiItem.balance_topup || 0) : 0;
                 const giftMonths = rules.showGifts
                     ? (Number(aiItem.gift_months) || this.getAiGiftMonthsForPeriod(aiItem.period_months))
@@ -468,7 +489,7 @@
                 const rules = getAiCategoryRules(aiItem.category);
                 const label = this.getAiCategoryLabel(aiItem.category);
                 const partnerPct = Number(aiItem.partner_percent) || 0;
-                const currentMonth = this.roundMoney(aiItem.current_month_amount || 0);
+                const currentMonth = this.syncAiCurrentMonthAmount(aiItem);
                 const subTotal = this.roundMoney(aiItem.total_price || 0);
                 const paidOriginal = this.roundMoney(aiItem.original_price || 0);
                 const paidDiscount = this.roundMoney(paidOriginal - subTotal);
@@ -637,7 +658,7 @@
                         <div class="setting-group">
                             <label class="setting-label">Текущий месяц</label>
                             <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
-                                Пропорция за оставшиеся дни текущего месяца.
+                                Считается от поля «Дата»: цена месяца × оставшиеся дни / дней в месяце. 1-е число — полный месяц.
                             </p>
                             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                                 <input type="number" class="ai-current-month-input" min="0" step="0.01" value="0" readonly
@@ -740,8 +761,13 @@
                     return;
                 }
                 if (ui.checkbox.checked && ui.selectedPlanId) {
-                    const plan = categoryPlans.find((item) => item.id === ui.selectedPlanId);
-                    const unitPrice = getAiPrice(plan);
+            // Берём тариф из свежего каталога карточки, а не из массива на момент открытия страницы.
+            const plans = (ui.plans && ui.plans.length) ? ui.plans : categoryPlans;
+            const plan = plans.find((item) => Number(item.id) === Number(ui.selectedPlanId));
+            if (!plan) {
+                return;
+            }
+            const unitPrice = getAiPrice(plan);
                     const currency = getAiCurrency();
                     const partnerPct = typeof cp.getPartnerPackPercent === 'function'
                         ? cp.getPartnerPackPercent() : 0;
@@ -1133,10 +1159,42 @@
             }
         });
         refreshImplementationSection(cp);
+        bindPricingDateRecalc(cp);
         if (typeof cp.updateSummary === 'function') {
             cp.updateSummary();
         }
         cp.syncAiAgentAvailability();
+    }
+
+    // Смена поля «Дата» сразу пересчитывает строку «текущий месяц», не дожидаясь загрузки каталога.
+    function bindPricingDateRecalc(cp) {
+        const input = document.getElementById('pricingDate');
+        if (!input || input.dataset.aiMonthBound === '1') {
+            return;
+        }
+        input.dataset.aiMonthBound = '1';
+        if (!cp.state?.isLocked) {
+            input.disabled = false;
+            input.readOnly = false;
+        }
+        const applyDate = () => {
+            const normalized = typeof cp.normalizeDateToYmd === 'function'
+                ? cp.normalizeDateToYmd(input.value)
+                : String(input.value || '').slice(0, 10);
+            if (!normalized || !cp.state) {
+                return;
+            }
+            cp.state.pricingDate = normalized;
+            if (typeof cp.updateSummary === 'function') {
+                try {
+                    cp.updateSummary();
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        };
+        input.addEventListener('input', applyDate);
+        input.addEventListener('change', applyDate);
     }
 
     function syncAiAgentAvailability(cp, options = {}) {

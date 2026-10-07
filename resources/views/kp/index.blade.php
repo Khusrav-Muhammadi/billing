@@ -1034,9 +1034,17 @@
             if (cpg && typeof cpg.suggestAiBalanceTopup === 'function') {
                 return cpg.suggestAiBalanceTopup(price);
             }
+            // Запасной расчёт, если генератор ещё не подключил suggestAiBalanceTopup.
+            // День берём из поля «Дата», а не из сегодняшнего календарного дня.
+            const dateInput = document.getElementById('pricingDate');
+            const raw = (dateInput && dateInput.value) ? String(dateInput.value).slice(0, 10) : '';
+            const parts = raw.split('-').map(Number);
             const now = new Date();
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            const daysLeft = Math.max(1, daysInMonth - now.getDate() + 1);
+            const y = parts[0] || now.getFullYear();
+            const m = parts[1] || (now.getMonth() + 1);
+            const day = parts[2] || now.getDate();
+            const daysInMonth = new Date(y, m, 0).getDate();
+            const daysLeft = Math.max(1, daysInMonth - day + 1);
             return +(price * (daysLeft / daysInMonth)).toFixed(2);
         };
 

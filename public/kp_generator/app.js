@@ -218,6 +218,8 @@ class CPGenerator {
     async loadConfig() {
         try {
             const date = this.state.pricingDate || this.getTodayYmd();
+            // Запоминаем дату, по которой уже загружен каталог, чтобы смена даты не пропускала пересчёт.
+            this._configLoadedForDate = date;
             const response = await fetch(`/kp/config?date=${encodeURIComponent(date)}`, {
                 credentials: 'same-origin',
                 headers: {
@@ -3822,9 +3824,14 @@ class CPGenerator {
     // Update Summary
     // ========================================
     updateSummary() {
-        // Refresh AI card prices when currency changes
+        // Refresh AI card prices when currency or the pricing date changes.
+        // A failure here must not leave the old "current month" row on screen.
         if (typeof this._refreshAiCardPrices === 'function') {
-            this._refreshAiCardPrices();
+            try {
+                this._refreshAiCardPrices();
+            } catch (error) {
+                console.error('AI price refresh failed', error);
+            }
         }
 
         const summaryItems = document.getElementById('summaryItems');
@@ -4369,12 +4376,18 @@ class CPGenerator {
                     return;
                 }
 
-                if (normalized === this.state.pricingDate) {
-                    return;
-                }
-
                 this.state.pricingDate = normalized;
                 this.setOperationStartDate(normalized, { fallbackToToday: false });
+                // Остаток ИИ пересчитываем сразу. Каталог ниже подтянется, если дата новая.
+                try {
+                    this.updateSummary();
+                } catch (error) {
+                    console.error(error);
+                }
+                if (normalized === this._configLoadedForDate) {
+                    this.markOfferDirty();
+                    return;
+                }
 
                 this.showLoading();
                 try {
