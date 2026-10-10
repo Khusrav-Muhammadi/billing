@@ -2,6 +2,8 @@
 
 namespace App\Jobs\Ai;
 
+use App\Support\CrmHttp;
+
 use App\Models\Organization;
 use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
@@ -52,7 +54,7 @@ class AiAgentToggleJob implements ShouldQueue
         ];
 
         try {
-            $response = Http::withHeaders([
+            $response = CrmHttp::client()->withHeaders([
                 'Accept' => 'application/json',
             ])->post($url, $payload);
         } catch (\Throwable $e) {

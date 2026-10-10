@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\CrmHttp;
+
 use App\Models\Organization;
 use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
@@ -38,7 +40,7 @@ class TariffExtensionJob implements ShouldQueue
         ];
 
         try {
-            $response = Http::withHeaders([
+            $response = CrmHttp::client()->withHeaders([
                 'Accept' => 'application/json',
             ])->post($url, $payload);
         } catch (\Throwable $e) {

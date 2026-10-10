@@ -19,6 +19,7 @@
 {{--                    <th>Цена</th>--}}
                     <th>Кол-во пользователей</th>
                     <th>Кол-во проектов</th>
+                    <th>Хранилище, GB</th>
                     <th>Тип</th>
                     <th>Партнер</th>
                     <th>Категория</th>
@@ -37,6 +38,7 @@
 {{--                        <td>{{ $tariff->price }} $</td>--}}
                         <td>{{ $tariff->user_count }}</td>
                         <td>{{ $tariff->project_count }}</td>
+                        <td>{{ $tariff->storage_gb !== null ? $tariff->storage_gb : '—' }}</td>
                         <td>
                             @if($tariff->is_extra_user)
                                 Доп. пользователь (для тарифа #{{ $tariff->parent_tariff_id ?? '—' }})
@@ -87,6 +89,18 @@
                         <div class="form-group">
                             <label for="name">Кол-во проектов</label>
                             <input type="number" class="form-control" name="project_count" value="{{ $tariff->project_count }}">
+                        </div>
+                        {{-- Хранилище R2: для тарифа — включено, для услуги add_storage — за одну единицу пакета --}}
+                        <div class="form-group">
+                            <label for="storage_gb">Хранилище, GB</label>
+                            <input type="number" min="0" class="form-control" name="storage_gb" value="{{ $tariff->storage_gb }}"
+                                   placeholder="Тариф: включено. Услуга add_storage: за 1 шт.">
+                        </div>
+                        {{-- Тип услуги для CRM. Раньше правился только в БД --}}
+                        <div class="form-group">
+                            <label for="type">Тип услуги (для CRM)</label>
+                            <input type="text" class="form-control" name="type" value="{{ $tariff->type }}" list="tariff-type-options"
+                                   placeholder="add_user, add_channel, add_storage ...">
                         </div>
                                         <div class="form-group">
                                             <label for="end_date">Дата завершения</label>
@@ -236,6 +250,32 @@
                             <label for="name">Кол-во проектов</label>
                             <input type="number" class="form-control" name="project_count" placeholder="Кол-во проектов (необязательно)">
                         </div>
+                        {{-- Хранилище R2: для тарифа — включено, для услуги add_storage — за одну единицу пакета --}}
+                        <div class="form-group">
+                            <label for="storage_gb">Хранилище, GB</label>
+                            <input type="number" min="0" class="form-control" name="storage_gb" value="{{ old('storage_gb') }}"
+                                   placeholder="Тариф: включено. Услуга add_storage: за 1 шт.">
+                        </div>
+                        {{-- Тип услуги для CRM --}}
+                        <div class="form-group">
+                            <label for="type">Тип услуги (для CRM)</label>
+                            <input type="text" class="form-control" name="type" value="{{ old('type') }}" list="tariff-type-options"
+                                   placeholder="add_user, add_channel, add_storage ...">
+                        </div>
+                        {{-- Подсказки для поля type (общий datalist для всех форм на странице) --}}
+                        <datalist id="tariff-type-options">
+                            <option value="add_user">
+                            <option value="add_sales_funnel">
+                            <option value="add_channel">
+                            <option value="add_insta_channel">
+                            <option value="add_mini_app_b2b">
+                            <option value="add_mini_app_b2c">
+                            <option value="add_storage">
+                            <option value="call-center">
+                            <option value="online-shop">
+                            <option value="good_accounting">
+                            <option value="sms-mailing">
+                        </datalist>
                         <div class="form-group">
                             <label for="end_date">Дата завершения</label>
                             <input type="date" class="form-control" name="end_date" value="{{ old('end_date') }}">

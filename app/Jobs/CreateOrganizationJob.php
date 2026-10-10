@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\CrmHttp;
+
 use App\Mail\SendSiteDataMail;
 use App\Models\Client;
 use App\Models\Organization;
@@ -56,7 +58,7 @@ class CreateOrganizationJob implements ShouldQueue
         ];
 
         try {
-            $response = Http::withHeaders([
+            $response = CrmHttp::client()->withHeaders([
                 'Accept' => 'application/json',
             ])->post($url, $payload);
         } catch (\Throwable $e) {

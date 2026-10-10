@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\CrmHttp;
+
 use App\Models\Organization;
 use App\Models\Tariff;
 use Illuminate\Bus\Queueable;
@@ -37,7 +39,7 @@ class OrganizationJob implements ShouldQueue
             ->where('is_tariff', true)
             ->firstOrFail();
 
-        Http::withHeaders([
+        CrmHttp::client()->withHeaders([
             'Accept' => 'application/json',
         ])->post($url, [
             'name' => $organization->name,

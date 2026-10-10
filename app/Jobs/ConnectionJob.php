@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\CrmHttp;
+
 use App\Models\Organization;
 use App\Models\Tariff;
 use App\Services\IntegrationActionLogService;
@@ -45,7 +47,7 @@ class ConnectionJob implements ShouldQueue
         ];
 
         try {
-            $response = Http::withHeaders([
+            $response = CrmHttp::client()->withHeaders([
                 'Accept' => 'application/json',
             ])->post($url, $payload);
         } catch (\Throwable $e) {

@@ -173,8 +173,9 @@ class DemoProvisioner
         ];
 
         try {
-            $response = Http::timeout((int) config('demo.provisioning.subdomain_timeout', 90))
-                ->acceptJson()
+            // createSubdomain в CRM закрыт сервисным токеном (X-Service-Token).
+            $response = CrmHttp::client()
+                ->timeout((int) config('demo.provisioning.subdomain_timeout', 90))
                 ->post($url, $payload);
         } catch (\Throwable $e) {
             $this->logs->logApiResponse(
@@ -291,7 +292,8 @@ class DemoProvisioner
 
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             try {
-                $response = Http::timeout($timeout)->acceptJson()->post($url, $payload);
+                // Создание организации в CRM — с сервисным токеном (X-Service-Token).
+                $response = CrmHttp::client()->timeout($timeout)->post($url, $payload);
             } catch (\Throwable $e) {
                 $lastError = $e->getMessage();
                 $this->pause($attempt, $delayMs);

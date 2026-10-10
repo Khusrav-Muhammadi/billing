@@ -2,6 +2,8 @@
 
 namespace App\Jobs\Ai;
 
+use App\Support\CrmHttp;
+
 use App\Models\Organization;
 use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
@@ -64,7 +66,7 @@ class SyncCallAnalyseQuotaJob implements ShouldQueue
         ];
 
         try {
-            $response = Http::withHeaders([
+            $response = CrmHttp::client()->withHeaders([
                 'Accept' => 'application/json',
             ])->timeout(20)->post($url, $payload);
         } catch (\Throwable $e) {

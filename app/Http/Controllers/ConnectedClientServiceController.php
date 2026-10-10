@@ -746,6 +746,10 @@ class ConnectedClientServiceController extends Controller
                 'prices'      => $prices,
                 'suggestedImplementationPrice' => $this->buildImplementationPricesForTariff($service, $today),
                 'hasChannels' => (bool) ($service->can_increase ?? false),
+                // Тип услуги для CRM (add_storage, add_channel ...) и GB за единицу пакета хранилища.
+                // Нужны генераторам КП, чтобы подписать счётчик «Пакетов» вместо «Каналов».
+                'serviceType' => (string) ($service->type ?? ''),
+                'storageGb' => (int) ($service->storage_gb ?? 0),
                 'isOneTime' => (bool) ($service->is_one_time ?? false),
                 'oneTimeLabel' => (string) ($service->one_time_label ?? ''),
                 'isExternal' => (bool) ($service->is_external ?? false),

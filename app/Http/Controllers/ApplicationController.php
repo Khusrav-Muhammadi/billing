@@ -72,7 +72,11 @@ class ApplicationController extends Controller
 
         $filterService->apply($offers, $filters);
 
+        // Сортируем по колонке «Дата операции», а не по id: КП, у которого
+        // статус сменили сегодня, должно быть сверху, даже если создано давно.
+        // У черновиков status_date пустая — берём дату создания.
         $offers = $offers
+            ->orderByRaw('COALESCE(commercial_offers.status_date, commercial_offers.created_at) DESC')
             ->orderByDesc('id')
             ->paginate(1000)
             ->withQueryString();

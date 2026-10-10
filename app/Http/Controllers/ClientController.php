@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\CrmHttp;
+
 use App\Http\Requests\Client\GetBalanceRequest;
 use App\Http\Requests\Client\RejectRequest;
 use App\Http\Requests\Client\StoreRequest;
@@ -238,7 +240,7 @@ class ClientController extends Controller
         $client->organizations()->delete();
         $client->delete();
 
-        Http::delete('https://shamcrm.com/api/deleteClient/' . $subdomain);
+        CrmHttp::client()->delete('https://shamcrm.com/api/deleteClient/' . $subdomain);
 
         return redirect()->route('client.index');
     }

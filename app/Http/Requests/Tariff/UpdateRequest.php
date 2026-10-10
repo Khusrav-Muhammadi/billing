@@ -19,6 +19,10 @@ class UpdateRequest extends FormRequest
             'name' => ['required'],
             'user_count' => ['nullable', 'integer', 'min:0'],
             'project_count' => ['nullable', 'integer', 'min:0'],
+            // GB хранилища (тариф — включено, услуга add_storage — за единицу).
+            'storage_gb' => ['nullable', 'integer', 'min:0'],
+            // Тип услуги для CRM (add_user, add_channel, add_storage ...). Раньше правился только в БД.
+            'type' => ['nullable', 'string', 'max:64'],
             'end_date' => ['nullable', 'date'],
             'can_increase' => ['nullable', 'boolean'],
             'is_external' => ['nullable', 'boolean'],

@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\CrmHttp;
+
 use App\Models\Client;
 use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
@@ -39,7 +41,7 @@ class DisableDemoJob implements ShouldQueue
             ];
 
             try {
-                $response = Http::withHeaders([
+                $response = CrmHttp::client()->withHeaders([
                     'Accept' => 'application/json',
                 ])->post($url, $payload);
             } catch (\Throwable $e) {

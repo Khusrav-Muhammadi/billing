@@ -361,6 +361,8 @@
                                 'update_tariff' => 'Изменение тарифа',
                                 'connection_update_tariff' => 'Подключение тарифа',
                                 'add_pack' => 'Добавление доп. услуг',
+                                'call_analyse_quota_sync' => 'Лимит анализа звонков',
+                                'storage_quota_sync' => 'Лимит хранилища',
                                 'activation' => 'Активация',
                                 'deactivation' => 'Отключение',
                                 'tariff_extension' => 'Продление доступа',
@@ -377,7 +379,13 @@
                                 : null;
                             $payloadJson = json_encode($log->payload ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                             $responseJson = json_encode($log->response ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                            $canRetry = $log->successful === false || ($log->status_code && !in_array((int) $log->status_code, [200, 201], true));
+                            // «Отправить заново» доступно для любого API/почтового лога, не только для ошибок
+                            $canRetry = in_array($log->type, ['api', 'email'], true);
+                            $wasFailed = $log->successful === false || ($log->status_code && !in_array((int) $log->status_code, [200, 201], true));
+                            // add_pack в CRM аддитивный: повтор успешного запроса удвоит пакеты
+                            $retryConfirm = $log->action === 'add_pack' && !$wasFailed
+                                ? 'Внимание: add-pack в CRM прибавляет пакеты. Повтор успешного запроса ПРИБАВИТ их ещё раз. Отправить заново?'
+                                : 'Отправить этот запрос заново с тем же телом?';
                         @endphp
                         <tr>
                             <td>{{ $loop->iteration }}</td>
@@ -408,10 +416,10 @@
                                     <form action="{{ route('organization_v2.integration-log.retry', $log) }}"
                                           method="POST"
                                           class="d-inline"
-                                          onsubmit="return confirm('Повторить этот запрос с тем же телом?')">
+                                          onsubmit="return confirm(@js($retryConfirm))">
                                         @csrf
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            Повторить
+                                        <button type="submit" class="btn btn-sm {{ $wasFailed ? 'btn-outline-danger' : 'btn-outline-secondary' }}">
+                                            Отправить заново
                                         </button>
                                     </form>
                                 @endif
@@ -469,10 +477,10 @@
                                         <div class="modal-footer">
                                             <form action="{{ route('organization_v2.integration-log.retry', $log) }}"
                                                   method="POST"
-                                                  onsubmit="return confirm('Повторить этот запрос с тем же телом?')">
+                                                  onsubmit="return confirm(@js($retryConfirm))">
                                                 @csrf
-                                                <button type="submit" class="btn btn-danger">
-                                                    Повторить
+                                                <button type="submit" class="btn {{ $wasFailed ? 'btn-danger' : 'btn-secondary' }}">
+                                                    Отправить заново
                                                 </button>
                                             </form>
                                         </div>

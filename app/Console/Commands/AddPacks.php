@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Support\CrmHttp;
+
 use App\Models\ConnectedClientServices;
 use App\Models\OrganizationConnectionStatus;
 use Illuminate\Console\Command;
@@ -54,7 +56,7 @@ class AddPacks extends Command
                 $data['amount'] = $connectedClient->quantity;
             }
 
-            $response = Http::withHeaders([
+            $response = CrmHttp::client()->withHeaders([
                 'Accept' => 'application/json',
             ])->post($url, $data);
 

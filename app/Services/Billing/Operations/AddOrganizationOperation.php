@@ -2,6 +2,8 @@
 
 namespace App\Services\Billing\Operations;
 
+use App\Support\CrmHttp;
+
 use App\Jobs\CreateOrganizationJob;
 use App\Models\Client;
 use App\Models\Invoice;
@@ -92,7 +94,7 @@ class AddOrganizationOperation extends BaseBillingOperation
 
         $tariff = Tariff::find($this->client->tariff_id);
 
-        Http::withHeaders([
+        CrmHttp::client()->withHeaders([
             'Accept' => 'application/json',
         ])->post($url, [
             'name' => $this->organization->name,

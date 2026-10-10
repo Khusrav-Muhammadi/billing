@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\CrmHttp;
+
 use App\Models\Organization;
 use App\Services\IntegrationActionLogService;
 use Illuminate\Bus\Queueable;
@@ -39,7 +41,7 @@ class ActivationJob implements ShouldQueue
         ];
 
         try {
-            $res = Http::withHeaders([
+            $res = CrmHttp::client()->withHeaders([
                 'Accept' => 'application/json',
             ])->post($url, $data);
         } catch (\Throwable $e) {

@@ -65,6 +65,10 @@ class TariffController extends Controller
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
         $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
         $data['partner_id'] = $data['partner_id'] ?? null;
+        // Тип меняем только если поле пришло из формы. Пустая строка -> null.
+        if (array_key_exists('type', $data)) {
+            $data['type'] = trim((string) $data['type']) ?: null;
+        }
 
         if ($data['is_extra_user']) {
             $data['is_tariff'] = false;
@@ -95,6 +99,9 @@ class TariffController extends Controller
         $data['is_one_time'] = (bool) ($data['is_one_time'] ?? false);
         $data['one_time_label'] = trim((string) ($data['one_time_label'] ?? '')) ?: null;
         $data['partner_id'] = $data['partner_id'] ?? null;
+        if (array_key_exists('type', $data)) {
+            $data['type'] = trim((string) $data['type']) ?: null;
+        }
         if ($data['is_extra_user']) {
             $data['is_tariff'] = false;
         }

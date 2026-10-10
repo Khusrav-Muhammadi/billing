@@ -28,6 +28,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:ai-check-scheduled')->dailyAt('09:00')->withoutOverlapping();
         // Просроченный тариф анализа должен обнулить минуты в CRM.
         $schedule->command('app:ai-sync-call-analyse-quotas --queued')->dailyAt('00:10')->withoutOverlapping();
+        // Лимит файлового хранилища в CRM: тариф + активные пакеты add_storage.
+        $schedule->command('app:sync-storage-quotas --queued')->dailyAt('00:15')->withoutOverlapping();
     }
 
     /**

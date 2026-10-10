@@ -2,6 +2,8 @@
 
 namespace App\Services\Ai;
 
+use App\Support\CrmHttp;
+
 use App\Models\Ai\AiBalance;
 use App\Models\Ai\AiModel;
 use App\Models\Ai\AiSubscription;
@@ -74,7 +76,7 @@ class AiCrmFetchService
             }
 
             try {
-                $response = Http::withHeaders([
+                $response = CrmHttp::client()->withHeaders([
                     'Accept' => 'application/json',
                 ])->get($url, $params);
             } catch (\Throwable $e) {

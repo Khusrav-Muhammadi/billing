@@ -46,6 +46,9 @@ return [
 
     'sham' => [
         'domain' => 'shamcrm.com',
+        // Общий секрет биллинг <-> CRM. Один и тот же BILLING_CRM_TOKEN в .env обоих проектов.
+        // Биллинг шлёт его в CRM (App\Support\CrmHttp), CRM шлёт его сюда (middleware crm.token).
+        'crm_token' => env('BILLING_CRM_TOKEN'),
     ],
 
 ];

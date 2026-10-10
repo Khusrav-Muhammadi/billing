@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use App\Support\CrmHttp;
+
 use App\Jobs\ActivationJob;
 use App\Jobs\CreateOrganizationJob;
 use App\Jobs\SendOrganizationLicense;
@@ -606,7 +608,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         }
 
         try {
-            $response = Http::withHeaders([
+            $response = CrmHttp::client()->withHeaders([
                 'Accept' => 'application/json',
             ])->post($url, $data);
         } catch (\Throwable $e) {

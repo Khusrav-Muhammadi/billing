@@ -10,6 +10,8 @@ use App\Models\CommercialOffer;
 use App\Models\Organization;
 use App\Models\OrganizationConnectionStatus;
 use App\Models\Tariff;
+use App\Services\Storage\StorageQuotaSyncService;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class CommercialOfferProvisioningService
@@ -26,6 +28,8 @@ class CommercialOfferProvisioningService
         $this->dispatchTariff($offer, $context['organization']);
         // Только паки этого КП (CRM add-pack — additive).
         $this->dispatchPackUpdates($offer, $context['organization']);
+        // Лимит хранилища шлём итогом (тариф + пакеты), не приростом.
+        $this->syncStorageQuota($context['organization']);
     }
 
     public function provisionConnectionExtraServices(CommercialOffer $offer): void
@@ -39,6 +43,7 @@ class CommercialOfferProvisioningService
 
         // Только новые паки этого доп.КП — не пересылать уже выданные.
         $this->dispatchPackUpdates($offer, $context['organization']);
+        $this->syncStorageQuota($context['organization']);
     }
 
     public function provisionRenewal(CommercialOffer $offer): void
@@ -54,6 +59,24 @@ class CommercialOfferProvisioningService
         // Повторная отправка тех же воронок/юзеров/каналов удваивала бы их на CRM.
         $this->dispatchTariffUpdate($offer, $context['organization']);
         $this->dispatchPackIncreases($offer, $context['organization']);
+        // Хранилище — абсолютное значение, поэтому дельту считать не нужно.
+        $this->syncStorageQuota($context['organization']);
+    }
+
+    /**
+     * Лимит хранилища не должен ронять подключение, если CRM недоступна:
+     * ошибку пишем в лог, ночная команда app:sync-storage-quotas дошлёт.
+     */
+    private function syncStorageQuota(Organization $organization): void
+    {
+        try {
+            app(StorageQuotaSyncService::class)->syncOrganization((int) $organization->id);
+        } catch (\Throwable $e) {
+            Log::error('Storage quota sync failed after provisioning', [
+                'organization_id' => $organization->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

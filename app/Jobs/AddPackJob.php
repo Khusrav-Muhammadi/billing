@@ -2,10 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Support\CrmHttp;
+
 use App\Models\CommercialOffer;
 use App\Models\CommercialOfferStatus;
 use App\Models\ConnectedClientServices;
 use App\Models\Organization;
+use App\Models\Tariff;
 use App\Services\IntegrationActionLogService;
 use App\Support\RegistryDateTimeResolver;
 use Illuminate\Bus\Queueable;
@@ -83,7 +86,7 @@ class AddPackJob implements ShouldQueue
             }
 
             try {
-                $response = Http::withHeaders([
+                $response = CrmHttp::client()->withHeaders([
                     'Accept' => 'application/json',
                 ])->post($url, $data);
             } catch (\Throwable $e) {
@@ -215,6 +218,11 @@ class AddPackJob implements ShouldQueue
                 throw new RuntimeException(
                     "AddPackJob: tariff #{$tariff->id} has empty type; cannot provision pack to CRM."
                 );
+            }
+
+            // Пакеты хранилища не аддитивные: их шлёт SyncStorageQuotaJob итоговым значением.
+            if ($type === Tariff::TYPE_ADD_STORAGE) {
+                continue;
             }
 
             $quantity = max(1, (int) round((float) ($connectedClient->quantity ?? 1)));

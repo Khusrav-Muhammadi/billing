@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\V2;
 
+use App\Support\CrmHttp;
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organization\AddPackRequest;
 use App\Http\Requests\Organization\RejectRequest;
@@ -196,9 +198,9 @@ class OrganizationV2Controller extends Controller
             return redirect()->back()->with('error', 'Этот тип лога нельзя повторить');
         }
 
-        if (!$this->shouldRetryIntegrationLog($log)) {
-            return redirect()->back()->with('error', 'Повтор доступен только для неуспешных запросов');
-        }
+        // Раньше повтор разрешался только для неуспешных логов (shouldRetryIntegrationLog).
+        // Теперь «Отправить заново» доступно для любого: тот же URL, метод и тело.
+        // Это нужно, когда CRM приняла запрос, но данные потерялись (например, после восстановления базы).
 
         try {
             $response = $log->type === 'email'
@@ -302,19 +304,6 @@ class OrganizationV2Controller extends Controller
         return round($income - $outcome, 4);
     }
 
-    private function shouldRetryIntegrationLog(IntegrationActionLog $log): bool
-    {
-        if ($log->successful === false) {
-            return true;
-        }
-
-        if ($log->status_code !== null) {
-            return !in_array((int)$log->status_code, [200, 201], true);
-        }
-
-        return false;
-    }
-
     private function retryApiLog(IntegrationActionLog $log): \Illuminate\Http\Client\Response
     {
         $method = strtoupper((string)($log->method ?: 'POST'));
@@ -326,7 +315,7 @@ class OrganizationV2Controller extends Controller
 
         $payload = is_array($log->payload) ? $log->payload : [];
 
-        return Http::withHeaders([
+        return CrmHttp::client()->withHeaders([
             'Accept' => 'application/json',
         ])->send($method, $url, [
             'json' => $payload,

@@ -29,14 +29,16 @@ Route::get('simple', [CommercialOfferController::class, 'simple']);
 
 Route::get('email/verify', [SiteApplicationController::class, 'verifyEmail']);
 Route::get('partners/email/verify', [SiteApplicationController::class, 'verifyPartnerEmail']);
-Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance']);
+// Баланс запрашивает CRM (BalanceController) — только с сервисным токеном.
+Route::get('clients-balance', [\App\Http\Controllers\ClientController::class, 'getBalance'])->middleware('crm.token');
 Route::get('createInvoice', [\App\Http\Controllers\ClientController::class, 'createInvoice']);
 Route::get('implementation-catalog', [ImplementationCatalogController::class, 'index']);
 Route::middleware('auth.basic')->group(function () {
 });
 
 
-Route::post('clients/change-sub-domain', [\App\Http\Controllers\API\ClientController::class, 'changeSubdomain']);
+// Смену поддомена присылает CRM (TenantSubdomainChangeService). Раньше роут был открыт всем.
+Route::post('clients/change-sub-domain', [\App\Http\Controllers\API\ClientController::class, 'changeSubdomain'])->middleware('crm.token');
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -119,7 +121,8 @@ Route::middleware('site.token')->group(function () {
     Route::post('site/extra-services', [\App\Http\Controllers\API\SiteExtraServicesController::class, 'store']);
     Route::post('site/ai-topup', [\App\Http\Controllers\API\SiteAiTopUpController::class, 'store']);
 });
-Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity']);
+// Активность присылает CRM (NotifyBillingClientActivityJob). Basic auth тут никогда не проверялся — теперь токен.
+Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity'])->middleware('crm.token');
 
 Route::options('/{any}', function (Request $request) {
     return response()->json(['status' => 'ok'], 200, [
@@ -149,8 +152,12 @@ Route::post('v2/sendRequest', [DemoRequestController::class, 'store'])
 Route::post('login', [\App\Http\Controllers\API\AuthController::class, 'login']);
 
 Route::get('organization/tariff-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'tariffInfo']);
-Route::get('organization/legal-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'getLegalInfo']);
-Route::post('organization/legal-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'addLegalInfo']);
+// Реквизиты организации: фронт CRM ходит через свой бэкенд (CRM -> биллинг с сервисным токеном).
+// Раньше браузер дёргал этот роут напрямую, и он был открыт всем.
+Route::middleware('crm.token')->group(function () {
+    Route::get('organization/legal-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'getLegalInfo']);
+    Route::post('organization/legal-info/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'addLegalInfo']);
+});
 Route::post('add-organization', [\App\Http\Controllers\API\OrganizationController::class, 'addOrganization']);
 
 Route::post('payment/alif/webhook/change-tariff', [\App\Http\Controllers\API\ClientController::class, 'webhookChangeTariff']);
@@ -166,7 +173,8 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('tariff-difference', [\App\Http\Controllers\API\ClientController::class, 'countDifference']);
 Route::get('tariff', [\App\Http\Controllers\TariffController::class, 'getTariffByCurrency']);
 Route::get('t/tariff', [\App\Http\Controllers\TariffController::class, 'tariff']);
-Route::post('change-tariff', [\App\Http\Controllers\API\ClientController::class, 'changeTariff']);
+// Смена тарифа по sub_domain — только server-to-server. Раньше был открыт всем.
+Route::post('change-tariff', [\App\Http\Controllers\API\ClientController::class, 'changeTariff'])->middleware('crm.token');
 
 
 Route::post('/payment', [PaymentController::class, 'createInvoice']);

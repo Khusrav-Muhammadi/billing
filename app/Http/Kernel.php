@@ -65,5 +65,7 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'site.token' => \App\Http\Middleware\VerifySiteApiToken::class,
+        // Server-to-server роуты, которые вызывает CRM (общий секрет X-Service-Token).
+        'crm.token' => \App\Http\Middleware\VerifyCrmServiceToken::class,
     ];
 }

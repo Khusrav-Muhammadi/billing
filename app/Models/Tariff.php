@@ -27,8 +27,13 @@ class Tariff extends Model
         'category',
         'is_one_time',
         'one_time_label',
-        'type'
+        'type',
+        // GB хранилища: для тарифа — включено, для услуги add_storage — за одну единицу.
+        'storage_gb',
     ];
+
+    /** Тип услуги «доп. пакет хранилища» (см. миграцию add_storage_gb_to_tariffs_table). */
+    public const TYPE_ADD_STORAGE = 'add_storage';
 
     protected $casts = [
         'end_date' => 'date',

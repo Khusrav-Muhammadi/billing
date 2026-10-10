@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Support\CrmHttp;
+
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -34,7 +36,7 @@ class DeleteClientJob implements ShouldQueue
             'subdomain' => $this->domain,
         ];
 
-        Http::withHeaders([
+        CrmHttp::client()->withHeaders([
             'Accept' => 'application/json',
         ])->delete($url, $data);
 

@@ -334,8 +334,16 @@ class ClientController extends Controller
 
     public function changeSubdomain(Request $request)
     {
-        Client::where('sub_domain', $request->old_sub_domain)->update([
-            'sub_domain' => $request->new_sub_domain
+        // Роут закрыт middleware crm.token. Валидация — чтобы не затереть поддомен пустышкой.
+        $data = $request->validate([
+            'old_sub_domain' => ['required', 'string', 'max:63'],
+            'new_sub_domain' => ['required', 'string', 'max:63', 'regex:/^[a-z0-9-]+$/', 'different:old_sub_domain', 'unique:clients,sub_domain'],
         ]);
+
+        $updated = Client::where('sub_domain', $data['old_sub_domain'])->update([
+            'sub_domain' => $data['new_sub_domain'],
+        ]);
+
+        return response()->json(['success' => $updated > 0, 'updated' => $updated]);
     }
 }
