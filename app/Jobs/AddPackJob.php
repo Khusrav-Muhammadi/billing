@@ -51,7 +51,7 @@ class AddPackJob implements ShouldQueue
             throw new RuntimeException('AddPackJob: services.sham.domain is not configured.');
         }
 
-        $url = 'https://' . $this->sub_domain . '-back.' . $domain . '/api/organization/add-pack';
+        $url = CrmHttp::tenantUrl($this->sub_domain, $domain, '/api/organization/add-pack');
 
         $quantitiesByType = $this->sendOnlyIncreases
             ? $this->resolveIncreaseQuantitiesByType()

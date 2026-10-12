@@ -55,8 +55,8 @@ class SyncCallAnalyseQuotaJob implements ShouldQueue
             throw new RuntimeException('SyncCallAnalyseQuotaJob: services.sham.domain is not configured.');
         }
 
-        // Тот же хост, что и у лимита пользователей: тенант CRM.
-        $url = "https://{$client->sub_domain}-back.{$domain}/api/ai/call-analyse-quota";
+        // Тот же хост, что и у лимита пользователей: {sub}-new-back.
+        $url = CrmHttp::tenantUrl((string) $client->sub_domain, (string) $domain, '/api/ai/call-analyse-quota');
 
         $payload = [
             'b_organization_id' => $this->organizationId,

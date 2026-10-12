@@ -62,7 +62,7 @@ class DemoEmailAvailability
             );
         }
 
-        // fingroupcrm@gmail.com превращается в тенант fingroupcrm-back.
+        // fingroupcrm@gmail.com превращается в тенант fingroupcrm-new-back.
         // Если такой тенант уже есть, CRM раньше молча возвращала его, и демо
         // садилось в чужой кабинет. Здесь отказываем до создания заявки.
         if ($this->subdomainTaken($email)) {

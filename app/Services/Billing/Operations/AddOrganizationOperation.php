@@ -90,7 +90,7 @@ class AddOrganizationOperation extends BaseBillingOperation
 
     public function createInSham(Organization $organization, Client $client, string $password)
     {
-        $url = "https://hello-back.sham360.com/api/organization";
+        $url = "https://hello-new-back.sham360.com/api/organization";
 
         $tariff = Tariff::find($this->client->tariff_id);
 

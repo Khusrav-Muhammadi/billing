@@ -55,7 +55,7 @@ class SyncStorageQuotaJob implements ShouldQueue
             throw new RuntimeException('SyncStorageQuotaJob: services.sham.domain is not configured.');
         }
 
-        $url = "https://{$client->sub_domain}-back.{$domain}/api/organization/storage-quota";
+        $url = CrmHttp::tenantUrl((string) $client->sub_domain, (string) $domain, '/api/organization/storage-quota');
 
         $payload = [
             'b_organization_id' => $this->organizationId,

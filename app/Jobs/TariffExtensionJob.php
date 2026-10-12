@@ -32,7 +32,7 @@ class TariffExtensionJob implements ShouldQueue
     {
         $client = $this->organization->client;
         $domain = config('services.sham.domain');
-        $url = "https://{$client->sub_domain}-back.{$domain}/api/organization/tariff-extension";
+        $url = CrmHttp::tenantUrl((string) $client->sub_domain, (string) $domain, '/api/organization/tariff-extension');
 
         $payload = [
             'has_access' => $this->has_access,

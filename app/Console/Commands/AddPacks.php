@@ -45,7 +45,7 @@ class AddPacks extends Command
                 continue;
             }
 
-            $url = 'https://' . $client->sub_domain . '-back.' . $domain . '/api/organization/add-pack';
+            $url = CrmHttp::tenantUrl((string) $client->sub_domain, (string) $domain, '/api/organization/add-pack');
 
             $data = [
                 'type'             => $tariff->type,

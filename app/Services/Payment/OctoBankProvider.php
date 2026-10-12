@@ -254,7 +254,7 @@ class OctoBankProvider implements PaymentProviderInterface
             'description' => $this->getPaymentDescription($dto->operationType, $dto->metadata),
             'basket' => $basket,
             'return_url' => $this->generateReturnUrl($dto),
-            'notify_url' => 'https://billing-back.shamcrm.com/api/payment/webhook/OCTOBANK',
+            'notify_url' => 'https://billing-new-back.shamcrm.com/api/payment/webhook/OCTOBANK',
             'language' => config('payments.octobank.language', 'ru'),
             'ttl' => config('payments.octobank.ttl', 1440)
         ];

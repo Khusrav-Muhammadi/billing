@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\Tariff;
 use App\Models\Transaction;
 use App\Repositories\Payment\Contracts\PaymentRepositoryInterface;
+use App\Support\CrmHttp;
 use App\Services\WithdrawalService;
 use Exception;
 use Illuminate\Http\Request;
@@ -63,7 +64,7 @@ class PaymentRepository implements PaymentRepositoryInterface
             'invoice_status_id' => 1,
             'cancel_url' => "https://shamcrm.com/payment-failed?subdomain={$client->sub_domain}",
             'redirect_url' => "https://{$client->sub_domain}shamcrm.com/payment",
-            'webhook_url' => 'https://' . $client->sub_domain . '-back.shamcrm.com/api/payment/alif/webhook',
+            'webhook_url' => CrmHttp::tenantUrl((string) $client->sub_domain, 'shamcrm.com', '/api/payment/alif/webhook'),
 
         ];
     }

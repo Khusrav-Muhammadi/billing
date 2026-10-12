@@ -267,7 +267,7 @@ class DemoProvisioner
         string $password
     ): ?string {
         $domain = config('services.sham.domain');
-        $url = "https://{$client->sub_domain}-back.{$domain}/api/organization";
+        $url = CrmHttp::tenantUrl((string) $client->sub_domain, (string) $domain, '/api/organization');
         $tariff = $this->demoTariff($client);
 
         $payload = [

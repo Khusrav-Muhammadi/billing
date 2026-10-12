@@ -117,14 +117,14 @@
 
         @font-face {
             font-family: 'Cygrotesk';
-            src: url('https://billing-back.shamcrm.com/img/CYGROTESK-KEYMEDIUM.OTF') format('opentype');
+            src: url('https://billing-new-back.shamcrm.com/img/CYGROTESK-KEYMEDIUM.OTF') format('opentype');
             font-weight: 500;
             font-style: normal;
         }
 
         @font-face {
             font-family: 'Cygrotesk';
-            src: url('https://billing-back.shamcrm.com/img/CYGROTESK-KEYBOLD.OTF') format('opentype');
+            src: url('https://billing-new-back.shamcrm.com/img/CYGROTESK-KEYBOLD.OTF') format('opentype');
             font-weight: 700;
             font-style: normal;
         }
@@ -169,7 +169,7 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: url("https://billing-back.shamcrm.com/img/main_backgoun.png");
+            background: url("https://billing-new-back.shamcrm.com/img/main_backgoun.png");
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -791,7 +791,7 @@
 <!-- ========== PAGE 1 - WELCOME ========== -->
 <div class="page-welcome">
     <div class="header">
-        <img class="logo-mark" src="https://billing-back.shamcrm.com/img/logo.png" alt="SHAM CRM logo">
+        <img class="logo-mark" src="https://billing-new-back.shamcrm.com/img/logo.png" alt="SHAM CRM logo">
     </div>
 
     <div class="hero">
@@ -801,7 +801,7 @@
     <div class="meta">
         <div class="meta-item">
             <div class="icon">
-                <img src="https://billing-back.shamcrm.com/img/clients.png" alt="Клиент">
+                <img src="https://billing-new-back.shamcrm.com/img/clients.png" alt="Клиент">
             </div>
             <div class="label">Клиент:</div>
             <p class="value">{{ $client }}</p>
@@ -809,7 +809,7 @@
 
         <div class="meta-item">
             <div class="icon">
-                <img src="https://billing-back.shamcrm.com/img/manager.png" alt="Менеджер">
+                <img src="https://billing-new-back.shamcrm.com/img/manager.png" alt="Менеджер">
             </div>
             <div class="label">Менеджер:</div>
             <p class="value">{{ $manager }}</p>
@@ -817,20 +817,20 @@
 
         <div class="meta-item">
             <div class="icon">
-                <img src="https://billing-back.shamcrm.com/img/calendar.png" alt="Дата">
+                <img src="https://billing-new-back.shamcrm.com/img/calendar.png" alt="Дата">
             </div>
             <div class="label">Дата:</div>
             <p class="value">{{ $date }}</p>
         </div>
     </div>
 
-    <img class="laptop-image" src="https://billing-back.shamcrm.com/img/laptop.png" alt="Laptop">
+    <img class="laptop-image" src="https://billing-new-back.shamcrm.com/img/laptop.png" alt="Laptop">
 </div>
 
 <!-- ========== CONTENT PAGES ========== -->
 <div class="page-content">
     <div class="page-header">
-        <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
+        <img class="page-logo" src="https://billing-new-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
         <div class="page-link">*подробнее: <a href="https://shamcrm.com/price" target="_blank">shamcrm.com</a></div>
     </div>
 
@@ -1025,7 +1025,7 @@
     <!-- ========== PAGE - AI AGENT (перед итоговой) ========== -->
     <div class="page-ai-agent">
         <div class="page-header">
-            <img class="page-logo" src="https://billing-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
+            <img class="page-logo" src="https://billing-new-back.shamcrm.com/img/logoWithText.png" alt="SHAM CRM">
             <div class="page-link">*подробнее: <a href="https://shamcrm.com/price" target="_blank">shamcrm.com</a></div>
         </div>
 
@@ -1255,14 +1255,14 @@
 
             <div class="contact-item">
                 <div class="contact-icon">
-                    <img src="https://billing-back.shamcrm.com/img/world.png" alt="Web">
+                    <img src="https://billing-new-back.shamcrm.com/img/world.png" alt="Web">
                 </div>
                 <div class="contact-value"><a href="https://shamcrm.com/price">shamcrm.com/price</a></div>
             </div>
 
             <div class="contact-item">
                 <div class="contact-icon">
-                    <img src="https://billing-back.shamcrm.com/img/telegram.png" alt="Telegram">
+                    <img src="https://billing-new-back.shamcrm.com/img/telegram.png" alt="Telegram">
                 </div>
                 <div class="contact-value">
                     @php

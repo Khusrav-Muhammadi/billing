@@ -413,7 +413,7 @@ AiTariffPlanPeriod::updateDiscount(float $newDiscount, int $userId): AiTariffPla
 **`AiCrmFetchService`** — получение логов из CRM
 ```
 Для каждой активной ai_subscriptions:
-  GET https://{sub_domain}-back.{domain}/api/ai/token-logs
+  GET https://{sub_domain}-new-back.{domain}/api/ai/token-logs
       ?since={last_crm_fetch_at}
   
   Маппинг полей CRM → ai_usage_raw_logs:
@@ -478,7 +478,7 @@ register(CommercialOffer $offer, CommercialOfferStatus $status): void
 ```php
 // Аналог TariffExtensionJob
 Http::withHeaders(['Accept' => 'application/json'])
-    ->post("https://{sub_domain}-back.{domain}/api/ai/agent-toggle", [
+    ->post("https://{sub_domain}-new-back.{domain}/api/ai/agent-toggle", [
         'enabled' => $this->enabled,
         'b_organization_id' => $this->organization->id,
     ]);
@@ -540,7 +540,7 @@ $this->aiSubscriptionRegistryService->register($offer, $event->status);
 ### 5.1. Получение логов (AiCrmFetchService)
 
 ```
-Endpoint: GET https://{sub_domain}-back.{domain}/api/ai/token-logs?since={timestamp}
+Endpoint: GET https://{sub_domain}-new-back.{domain}/api/ai/token-logs?since={timestamp}
 Auth: Http::withHeaders(['Accept' => 'application/json']) (как в существующих Jobs)
 Параметр b_organization_id передаётся если CRM требует
 
@@ -555,7 +555,7 @@ Auth: Http::withHeaders(['Accept' => 'application/json']) (как в сущес�
 ### 5.2. Управление агентом (AiAgentToggleJob)
 
 ```
-Endpoint: POST https://{sub_domain}-back.{domain}/api/ai/agent-toggle
+Endpoint: POST https://{sub_domain}-new-back.{domain}/api/ai/agent-toggle
            (ЗАГЛУШКА — эндпоинт разрабатывается на стороне CRM)
 Payload: { enabled: true/false, b_organization_id: org.id }
 Auth: Http::withHeaders(['Accept' => 'application/json'])

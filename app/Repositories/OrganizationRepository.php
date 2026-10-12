@@ -594,7 +594,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     public function addPackInSham(OrganizationPack $organizationPack, string $sub_domain)
     {
         $domain = config('services.sham.domain');
-        $url = 'https://' . $sub_domain . '-back.' . $domain . '/api/organization/add-pack';
+        $url = CrmHttp::tenantUrl($sub_domain, (string) $domain, '/api/organization/add-pack');
 
         $organization = $organizationPack->organization()->first();
         $pack = $organizationPack->pack()->first();

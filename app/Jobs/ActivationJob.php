@@ -33,7 +33,7 @@ class ActivationJob implements ShouldQueue
     public function handle(): void
     {
         $domain = config('services.sham.domain');
-        $url = 'https://' . $this->domain . '-back.' . $domain . '/api/organization/activation';
+        $url = CrmHttp::tenantUrl($this->domain, (string) $domain, '/api/organization/activation');
 
         $data = [
             'b_organizations' => $this->organizationIds,

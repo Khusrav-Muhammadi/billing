@@ -49,7 +49,7 @@
 6. Всегда `chat.other_capabilities`.
 7. Всегда `chat.no_hallucination`.
 8. Всегда `chat.call_manager_rules`.
-9. `chat.kp_rules` только если `tenant('id')` входит в список `sham-new-back`, `tajikistan-new-back`, `khnodiraaaicloudcom-back`. Для остальных тенантов этого блока нет.
+9. `chat.kp_rules` только если `tenant('id')` входит в список `sham-new-back`, `tajikistan-new-back`, `khnodiraaaicloudcom-new-back`. Для остальных тенантов этого блока нет.
 10. `chat.update_lead_info`.
 11. `chat.notice_header` и дальше:
     - если режим не `requests`: `chat.notice_meeting`;

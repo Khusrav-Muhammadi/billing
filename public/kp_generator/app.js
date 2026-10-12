@@ -1268,7 +1268,7 @@ class CPGenerator {
 
         const apiHost = this.getApiHost();
 
-        if (apiHost === 'tajikistan-back.shamcrm.com') {
+        if (apiHost === 'tajikistan-new-back.shamcrm.com') {
             return {
                 ...defaultContacts,
                 phone: '+992488885050',
@@ -5721,7 +5721,7 @@ class CPGenerator {
             }
 
             // Фиксированный URL для генерации PDF
-            const pdfApiUrl = 'https://billing-back.shamcrm.com/api/generateOffer';
+            const pdfApiUrl = 'https://billing-new-back.shamcrm.com/api/generateOffer';
 
             console.log('Sending PDF generation request to:', pdfApiUrl);
             console.log('PDF Data:', pdfData);

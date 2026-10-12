@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * HTTP-клиент для вызовов биллинг → CRM ({sub_domain}-back.{domain}/api/...).
+ * HTTP-клиент для вызовов биллинг → CRM ({sub}-new-back.{domain}/api/...).
  *
  * Все такие вызовы идут с общим секретом в заголовке X-Service-Token.
  * CRM проверяет его middleware'ом billing.token. Тот же секрет CRM
@@ -19,6 +19,29 @@ use RuntimeException;
 class CrmHttp
 {
     public const HEADER = 'X-Service-Token';
+
+    /**
+     * Базовый URL тенанта CRM: https://{sub}-new-back.{domain}{path}
+     *
+     * sham → sham-new-back. Если поддомен уже кончается на -new
+     * (старые клиенты), второй -new не добавляем.
+     */
+    public static function tenantUrl(string $subDomain, string $domain, string $path = ''): string
+    {
+        $sub = trim($subDomain);
+
+        if ($sub !== '' && !str_ends_with(strtolower($sub), '-new')) {
+            $sub .= '-new';
+        }
+
+        $url = 'https://' . $sub . '-back.' . $domain;
+
+        if ($path === '') {
+            return $url;
+        }
+
+        return $url . '/' . ltrim($path, '/');
+    }
 
     public static function client(): PendingRequest
     {

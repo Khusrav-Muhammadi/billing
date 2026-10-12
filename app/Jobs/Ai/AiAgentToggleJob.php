@@ -46,7 +46,7 @@ class AiAgentToggleJob implements ShouldQueue
             throw new RuntimeException('AiAgentToggleJob: services.sham.domain is not configured.');
         }
 
-        $url = "https://{$client->sub_domain}-back.{$domain}/api/ai/agent-toggle";
+        $url = CrmHttp::tenantUrl((string) $client->sub_domain, (string) $domain, '/api/ai/agent-toggle');
 
         $payload = [
             'enabled' => $this->enabled,

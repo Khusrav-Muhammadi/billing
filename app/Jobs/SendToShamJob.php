@@ -33,7 +33,7 @@ class SendToShamJob implements ShouldQueue
         $partner = User::find($this->partnerId);
 
         $defaultLink = $this->region === 'Узбекистан'
-            ? 'https://sham-back.shamcrm.com'
+            ? 'https://sham-new-back.shamcrm.com'
             : 'https://fingroupcrm-new-back.shamcrm.com';
 
         $shamLink = $partner?->sham_link ?? $defaultLink;

@@ -25,8 +25,8 @@ class CPGenerator {
             token: '',
             csrfToken: '',
             saveUrl: '/application/kp/store',
-            createClientUrl: 'https://billing-back.shamcrm.com/api/sendRequest',
-            generateOfferUrl: 'https://billing-back.shamcrm.com/api/generateOffer',
+            createClientUrl: 'https://billing-new-back.shamcrm.com/api/sendRequest',
+            generateOfferUrl: 'https://billing-new-back.shamcrm.com/api/generateOffer',
             leadId: '',
             dealStatusId: '',
             apiUrl: '',
@@ -108,8 +108,8 @@ class CPGenerator {
         this.state.managerId        = meta.managerId        || '';
         this.state.csrfToken        = meta.csrfToken        || '';
         this.state.saveUrl          = meta.saveUrl          || '/application/kp/store';
-        this.state.createClientUrl  = meta.createClientUrl  || 'https://billing-back.shamcrm.com/api/sendRequest';
-        this.state.generateOfferUrl = meta.generateOfferUrl || 'https://billing-back.shamcrm.com/api/generateOffer';
+        this.state.createClientUrl  = meta.createClientUrl  || 'https://billing-new-back.shamcrm.com/api/sendRequest';
+        this.state.generateOfferUrl = meta.generateOfferUrl || 'https://billing-new-back.shamcrm.com/api/generateOffer';
         this.state.leadId           = meta.leadId           || '';
         this.state.dealStatusId     = meta.dealStatusId     || '';
         this.state.apiUrl           = meta.apiUrl           || '';
@@ -140,7 +140,7 @@ class CPGenerator {
 
         const apiHost = this.getApiHost();
 
-        if (apiHost === 'tajikistan-back.shamcrm.com') {
+        if (apiHost === 'tajikistan-new-back.shamcrm.com') {
             return { ...defaultContacts, phone: '+992488885050', telegram: '@Mrashuraliev' };
         }
 
@@ -968,7 +968,7 @@ class CPGenerator {
         try {
             if (statusEl) { statusEl.className = 'client-email-status pending'; statusEl.textContent = 'Сохраняем...'; }
 
-            const response = await fetch(this.state.createClientUrl || 'https://billing-back.shamcrm.com/api/sendRequest', {
+            const response = await fetch(this.state.createClientUrl || 'https://billing-new-back.shamcrm.com/api/sendRequest', {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({ fio: name, phone, email, request_type: 'demo', partner_id: 1 }),

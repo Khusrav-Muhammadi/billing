@@ -32,7 +32,7 @@ class UpdateTariffJob implements ShouldQueue
     public function handle(): void
     {
         $domain = config('services.sham.domain');
-        $url = "https://{$this->domain}-back.{$domain}/api/organization/update-tariff";
+        $url = CrmHttp::tenantUrl($this->domain, (string) $domain, '/api/organization/update-tariff');
 
         $tariff = Tariff::query()
             ->whereKey($this->tariff_id)

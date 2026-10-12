@@ -55,7 +55,7 @@ class AiCrmFetchService
         }
 
         $domain = config('services.sham.domain');
-        $url = "https://{$client->sub_domain}-back.{$domain}/api/ai/token-logs";
+        $url = CrmHttp::tenantUrl((string) $client->sub_domain, (string) $domain, '/api/ai/token-logs');
 
         $params = [
             'b_organization_id' => (int) $organization->id,

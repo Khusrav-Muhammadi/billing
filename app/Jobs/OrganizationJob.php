@@ -31,7 +31,7 @@ class OrganizationJob implements ShouldQueue
     public function handle(): void
     {
         $domain = config('services.sham.domain');
-        $url = "https://{$this->domain}-back.{$domain}/api/organization";
+        $url = CrmHttp::tenantUrl($this->domain, (string) $domain, '/api/organization');
 
         $organization = $this->organization;
         $tariff = Tariff::query()
