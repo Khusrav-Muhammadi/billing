@@ -32,9 +32,16 @@ class DemoProvisioner
             return;
         }
 
+        // Джоба может прийти повторно (CRM не ответила, таймаут). Шаг `crm`
+        // ставится только после успешного createSubdomain, значит поддомен уже
+        // есть и второй раз его создавать нельзя: CRM ответит 409 на наш же
+        // тенант, и пользователь увидит «поддомен уже существует».
+        // Читаем до resolveClient(): он перезапишет step на `account`.
+        $subdomainCreated = $request->step === DemoRequest::STEP_CRM;
+
         try {
             $client = $this->resolveClient($request);
-            $this->ensureSubdomain($request, $client);
+            $this->ensureSubdomain($request, $client, $subdomainCreated);
 
             $organization = $this->resolveOrganization($request, $client);
             $password = Str::random(12);
@@ -163,9 +170,14 @@ class DemoProvisioner
     /* Шаг 2. Поддомен и база тенанта                                    */
     /* ---------------------------------------------------------------- */
 
-    private function ensureSubdomain(DemoRequest $request, Client $client): void
+    private function ensureSubdomain(DemoRequest $request, Client $client, bool $alreadyCreated = false): void
     {
         $request->markStep(DemoRequest::STEP_WORKSPACE);
+
+        // Поддомен создан в прошлой попытке — просто идём дальше.
+        if ($alreadyCreated) {
+            return;
+        }
 
         $url = (string) config('demo.endpoints.create_subdomain');
         $payload = [

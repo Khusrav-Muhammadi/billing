@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 /**
- * HTTP-клиент для вызовов биллинг → CRM ({sub}-new-back.{domain}/api/...).
+ * HTTP-клиент для вызовов биллинг → CRM ({sub}-back.{domain}/api/...).
  *
  * Все такие вызовы идут с общим секретом в заголовке X-Service-Token.
  * CRM проверяет его middleware'ом billing.token. Тот же секрет CRM
@@ -21,18 +21,19 @@ class CrmHttp
     public const HEADER = 'X-Service-Token';
 
     /**
-     * Базовый URL тенанта CRM: https://{sub}-new-back.{domain}{path}
+     * Базовый URL тенанта CRM: https://{sub}-back.{domain}{path}
      *
-     * sham → sham-new-back. Если поддомен уже кончается на -new
-     * (старые клиенты), второй -new не добавляем.
+     * Берём clients.sub_domain как есть и дописываем только `-back`:
+     * sham → sham-back, sham-new → sham-new-back.
+     *
+     * Раньше здесь принудительно дописывался `-new`. Это ломало новые демо:
+     * CRM через createSubdomain создавала тенант `{sub}-back`, а биллинг
+     * стучался в `{sub}-new-back`, которого нет, и ловил 530 от Cloudflare.
+     * Теперь имя тенанта определяется только тем, что лежит в sub_domain.
      */
     public static function tenantUrl(string $subDomain, string $domain, string $path = ''): string
     {
         $sub = trim($subDomain);
-
-        if ($sub !== '' && !str_ends_with(strtolower($sub), '-new')) {
-            $sub .= '-new';
-        }
 
         $url = 'https://' . $sub . '-back.' . $domain;
 
