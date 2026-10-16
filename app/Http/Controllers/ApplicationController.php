@@ -19,6 +19,7 @@ use App\Models\Tariff;
 use App\Models\User;
 use App\Services\CommercialOffers\CommercialOfferListFilter;
 use App\Services\CommercialOffers\PaidOffersExcelExportService;
+use App\Services\CommercialOffers\UnpaidCommercialOfferDeletionService;
 use App\Support\RegistryDateTimeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -50,7 +51,7 @@ class ApplicationController extends Controller
                 'tariff:id,name',
                 'organization:id,name',
                 'partner:id,name,account_id,payment_methods',
-                'payment:id,payment_type',
+                'payment:id,payment_type,paid_at',
                 'items:id,commercial_offer_id,total_price,partner_percent',
                 'latestOfferStatus' => function ($query) {
                     $query->select([
@@ -797,16 +798,31 @@ class ApplicationController extends Controller
         return redirect()->route('application.edit', $id);
     }
 
-    public function destroy(int $id): RedirectResponse
+    public function destroy(int $id, UnpaidCommercialOfferDeletionService $deletionService): RedirectResponse
     {
         $offer = CommercialOffer::query()->findOrFail($id);
-        if ($offer->locked_at) {
-            return redirect()->back()->withErrors(['error' => 'Нельзя удалить КП после генерации ссылки оплаты.']);
+
+        // Оплаченные не удаляем. Неоплаченные можно убрать даже после ссылки на оплату:
+        // ссылка сама по себе ещё не означает, что деньги пришли.
+        if ($offer->isPaid()) {
+            return redirect()
+                ->route('application.index', $this->listQueryFromRequest())
+                ->withErrors(['error' => 'Нельзя удалить оплаченное подключение.']);
         }
 
-        $offer->delete();
+        $deletionService->delete($offer);
 
-        return redirect()->route('application.index')->with('success', 'КП удалено.');
+        return redirect()
+            ->route('application.index', $this->listQueryFromRequest())
+            ->with('success', 'Подключение и связанные данные удалены.');
+    }
+
+    /**
+     * Фильтры списка, чтобы после удаления остаться на той же таблице.
+     */
+    private function listQueryFromRequest(): array
+    {
+        return request()->except(['id', '_token', '_method']);
     }
 
     public function getCommercialOfferState(CommercialOffer $offer): JsonResponse

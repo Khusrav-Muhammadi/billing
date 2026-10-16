@@ -113,4 +113,30 @@ class CommercialOffer extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    /**
+     * Подключение считается оплаченным, если оплата есть в карточке,
+     * в истории статусов или у связанного платежа.
+     * Такой КП из таблицы удалять нельзя.
+     */
+    public function isPaid(): bool
+    {
+        if ((string) $this->status === 'paid') {
+            return true;
+        }
+
+        $statuses = $this->relationLoaded('offerStatuses')
+            ? $this->offerStatuses
+            : $this->offerStatuses()->get(['id', 'status']);
+
+        if ($statuses->contains(fn ($row) => (string) $row->status === 'paid')) {
+            return true;
+        }
+
+        if ($this->relationLoaded('payment')) {
+            return $this->payment?->paid_at !== null;
+        }
+
+        return $this->payment()->whereNotNull('paid_at')->exists();
+    }
 }

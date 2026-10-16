@@ -9,6 +9,13 @@
     <div class="card-body">
         <h4 class="card-title">Оплата</h4>
 
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+        @if(isset($errors) && $errors->any())
+            <div class="alert alert-danger">{{ $errors->first() }}</div>
+        @endif
+
         <form id="filterForm" method="GET" action="{{ route('application.index') }}">
             <div class="row mb-3 align-items-end">
                 <div class="col-md-2">
@@ -132,6 +139,7 @@
                     <th>Период</th>
                     <th>Сумма оплаты (в валюте)</th>
                     <th>Сумма оплаты (системная валюта)</th>
+                    <th class="text-center">Действия</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -245,11 +253,24 @@
                         <td>{{ $offer->period_months }} мес.</td>
                         <td>{{ $formatMoney($amountInOfferCurrency, $amountCurrencyCode) }}</td>
                         <td>{{ $formatMoney($amountInSystemCurrency, $systemCurrencyCode) }}</td>
+                        <td class="text-center offer-actions-cell">
+                            @if(!$offer->isPaid())
+                                <form method="POST"
+                                      action="{{ route('application.delete', array_merge(request()->query(), ['id' => $offer->id])) }}"
+                                      onsubmit="return confirm('Удалить это подключение? Будут удалены само подключение и все связанные записи.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-link text-danger p-0" title="Удалить">
+                                        <i class="mdi mdi-delete" style="font-size: 24px"></i>
+                                    </button>
+                                </form>
+                            @endif
+                        </td>
 
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center">
+                        <td colspan="11" class="text-center">
                             {{ !empty($filterQuery) ? 'По выбранным фильтрам КП не найдены' : 'Пока нет сохраненных КП' }}
                         </td>
                     </tr>
@@ -527,6 +548,10 @@
             white-space: nowrap;
         }
 
+        .offer-actions-cell form {
+            margin: 0;
+        }
+
         .modal-x-close {
             border: 0;
             background: transparent;
@@ -549,7 +574,7 @@
                     if (event.target.closest('a, button, input, select, textarea, label')) {
                         return;
                     }
-                    if (event.target.closest('.offer-status-cell')) {
+                    if (event.target.closest('.offer-status-cell, .offer-actions-cell')) {
                         return;
                     }
 
