@@ -409,13 +409,13 @@ class ClickAdvancedShopService
 
     private function positiveId(mixed $value): ?int
     {
-        if (!is_int($value) && !is_string($value)) {
+        if (!is_int($value)) {
             return null;
         }
 
-        $id = filter_var($value, FILTER_VALIDATE_INT);
+        $id = (int) $value;
 
-        return $id !== false && $id > 0 ? $id : null;
+        return $id > 0 ? $id : null;
     }
 
     private function result(array $ids, int $error, string $note, array $extra = []): array
