@@ -51,4 +51,9 @@ return [
         'crm_token' => env('BILLING_CRM_TOKEN'),
     ],
 
+    'click_advanced' => [
+        'service_id' => env('CLICK_ADVANCED_SERVICE_ID'),
+        'secret_key' => env('CLICK_ADVANCED_SECRET_KEY'),
+    ],
+
 ];
