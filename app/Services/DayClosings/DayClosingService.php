@@ -259,7 +259,7 @@ class DayClosingService
 
             $dayClosingIds = $dayClosings->pluck('id');
 
-            // 1. Очищаем балансы строго по времени закрытия (23:30), даже если документ был утерян
+            // Очищаем только списания закрытия дня; отмены CLICK с source сохраняются.
             $period = CarbonPeriod::create($dateFrom->copy()->startOfDay(), '1 day', $dateTo->copy()->startOfDay());
             $outcomeDateTimes = [];
             foreach ($period as $dt) {
@@ -269,6 +269,7 @@ class DayClosingService
             if (!empty($outcomeDateTimes)) {
                 ClientBalance::query()
                     ->where('type', 'outcome')
+                    ->whereNull('source')
                     ->whereIn('date', $outcomeDateTimes)
                     ->delete();
             }
