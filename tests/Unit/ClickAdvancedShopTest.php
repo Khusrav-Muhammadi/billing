@@ -86,7 +86,7 @@ beforeEach(function () {
     config()->set('services.click_advanced.service_id', '123');
     config()->set('services.click_advanced.secret_key', 'test-click-secret');
     config()->set('services.sham.crm_token', 'test-billing-crm-token');
-    test()->withToken('test-billing-crm-token');
+    test()->withHeaders(['Authorization' => 'Basic ' . base64_encode('123:test-billing-crm-token')]);
 });
 
 function clickAdvancedPayload(int $action, int $paydocId, int $attemptId, array $params, ?string $prepareId = null, ?int $error = null): array
@@ -112,17 +112,24 @@ function clickAdvancedPayload(int $action, int $paydocId, int $attemptId, array 
     return $payload;
 }
 
-it('requires the configured bearer token before handling CLICK callbacks', function () {
+it('requires Basic Auth with the CLICK service ID and billing CRM token', function () {
     $payload = ['service_id' => 123, 'action' => 0, 'params' => ['account' => '42']];
 
     $this->withHeaders(['Authorization' => ''])->postJson('/api/click/advanced-shop', $payload)
         ->assertUnauthorized()
-        ->assertHeader('WWW-Authenticate', 'Bearer');
-    $this->withToken('wrong-token')->postJson('/api/click/advanced-shop', $payload)
+        ->assertHeader('WWW-Authenticate', 'Basic realm="CLICK Advanced Shop"');
+    $this->withHeaders(['Authorization' => 'Basic ' . base64_encode('123:wrong-token')])
+        ->postJson('/api/click/advanced-shop', $payload)
+        ->assertUnauthorized();
+    $this->withHeaders(['Authorization' => 'Basic ' . base64_encode('999:test-billing-crm-token')])
+        ->postJson('/api/click/advanced-shop', $payload)
+        ->assertUnauthorized();
+    $this->withToken('test-billing-crm-token')->postJson('/api/click/advanced-shop', $payload)
         ->assertUnauthorized();
 
     config()->set('services.sham.crm_token', '');
-    $this->withToken('test-billing-crm-token')->postJson('/api/click/advanced-shop', $payload)
+    $this->withHeaders(['Authorization' => 'Basic ' . base64_encode('123:test-billing-crm-token')])
+        ->postJson('/api/click/advanced-shop', $payload)
         ->assertServiceUnavailable();
 });
 
