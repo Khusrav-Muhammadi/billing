@@ -126,7 +126,34 @@ it('returns only the canonical account for a UZS organization with a tariff', fu
     ])->assertOk()->assertJsonPath('error', -8);
 });
 
+it('validates Prepare and Confirm callbacks without creating payments or balance entries', function () {
+    $params = ['amount' => '1000.50', 'account' => '000000042'];
+
+    $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 1, $params))
+        ->assertOk()->assertJsonPath('error', -7)->json();
+    expect($prepare['error_note'])->toContain('Данные проверены');
+
+    $confirm = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 100, 1, $params, '1', 0))
+        ->assertOk()->assertJsonPath('error', -7)->json();
+    expect($confirm['error_note'])->toContain('Данные проверены');
+
+    $badSignature = clickAdvancedPayload(1, 101, 1, $params);
+    $badSignature['sign_string'] = str_repeat('0', 32);
+    $this->postJson('/api/click/advanced-shop', $badSignature)->assertJsonPath('error', -1);
+    $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 102, 1,
+        ['amount' => '1000.50', 'account' => '000000044']))->assertJsonPath('error', -5);
+    $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 103, 1,
+        ['amount' => 0, 'account' => '000000042']))->assertJsonPath('error', -2);
+    $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 104, 1, $params))
+        ->assertJsonPath('error', -8);
+
+    expect(DB::table('click_balance_payments')->count())->toBe(0)
+        ->and(DB::table('client_balances')->count())->toBe(0);
+});
+
 it('credits once for repeated Confirm and rejects another attempt for the same paydoc', function () {
+    $this->markTestSkipped('Temporary callback validation mode: payment activation is disabled.');
+
     $params = ['amount' => '1000.50', 'account' => '000000042'];
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 1, $params))
         ->assertOk()->assertJsonPath('error', 0)->json();
@@ -162,6 +189,8 @@ it('credits once for repeated Confirm and rejects another attempt for the same p
 });
 
 it('rejects bad signatures, changed amounts, and cancelled payments', function () {
+    $this->markTestSkipped('Temporary callback validation mode: payment activation is disabled.');
+
     $params = ['account' => '42', 'amount' => '25.00'];
     $bad = clickAdvancedPayload(1, 101, 1, $params);
     $bad['sign_string'] = str_repeat('0', 32);
@@ -183,6 +212,8 @@ it('rejects bad signatures, changed amounts, and cancelled payments', function (
 });
 
 it('reverses a paid transaction only once and keeps both ledger entries attributed to CLICK', function () {
+    $this->markTestSkipped('Temporary callback validation mode: payment activation is disabled.');
+
     $params = ['account' => '42', 'amount' => 500];
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 102, 1, $params))
         ->assertJsonPath('error', 0)->json();
@@ -199,6 +230,8 @@ it('reverses a paid transaction only once and keeps both ledger entries attribut
 });
 
 it('keeps the payment prepared if writing to the balance ledger fails', function () {
+    $this->markTestSkipped('Temporary callback validation mode: payment activation is disabled.');
+
     $params = ['account' => '42', 'amount' => 100];
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 103, 1, $params))
         ->assertJsonPath('error', 0)->json();

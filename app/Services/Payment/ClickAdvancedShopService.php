@@ -84,15 +84,47 @@ class ClickAdvancedShopService
         }
 
         try {
-            return $action === 1
-                ? $this->prepare($ids, $paydocId, $attemptId, $account, $amount)
-                : $this->confirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
+            // return $action === 1
+            //     ? $this->prepare($ids, $paydocId, $attemptId, $account, $amount)
+            //     : $this->confirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
+
+            // Заглушенная проверка CLICK callback
+            return $this->validateCallback($payload, $ids, $paydocId, $attemptId, $account, $amount);
 
         } catch (Throwable $e) {
             $this->logFailure($e, $paydocId, $attemptId);
 
             return $this->result($ids, -7, 'Не удалось обработать платёж');
         }
+    }
+
+    private function validateCallback(array $payload, array $ids, int $paydocId, int $attemptId, string $account, string $amount): array
+    {
+        $action = $payload['action'];
+
+        if ($action === 2) {
+            $prepareId = filter_var($payload['merchant_prepare_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $providerError = $payload['error'] ?? 0;
+
+            if ($prepareId === false || !is_int($providerError) || $providerError > 0) {
+                return $this->result($ids, -8, 'Некорректный запрос');
+            }
+        }
+
+        $organization = $this->organization($account);
+        if (!$organization) {
+            return $this->result($ids, -5, 'Организация не найдена');
+        }
+
+        Log::info('CLICK Advanced Shop callback validated', [
+            'action' => $action,
+            'click_paydoc_id' => $paydocId,
+            'attempt_trans_id' => $attemptId,
+            'organization_id' => $organization->id,
+            'amount' => $amount,
+        ]);
+
+        return $this->result($ids, -7, 'Данные проверены; тестовый режим, платёж не проводится');
     }
 
     private function signatureError(array $payload, array $params): int
