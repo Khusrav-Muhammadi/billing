@@ -165,6 +165,8 @@ Route::post('client-payment/webhook/alif', [\App\Http\Controllers\ClientPaymentC
     ->name('client-payment.webhook.alif');
 Route::post('client-payment/webhook/octo', [\App\Http\Controllers\ClientPaymentController::class, 'octoWebhook'])
     ->name('client-payment.webhook.octo');
+Route::post('click/advanced-shop', \App\Http\Controllers\API\ClickAdvancedShopController::class)
+    ->name('click.advanced-shop');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::patch('client-payment/invoice/{payment}/customer', [\App\Http\Controllers\API\ClientPaymentController::class, 'updateInvoiceCustomer']);
