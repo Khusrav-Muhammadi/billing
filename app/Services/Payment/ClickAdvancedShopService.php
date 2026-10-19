@@ -377,13 +377,11 @@ class ClickAdvancedShopService
     private function organization(string $account): ?Organization
     {
         $organization = Organization::query()->with('client.country')
-            ->where('order_number', $account)->first()
-            ?? Organization::query()->with('client.country')
-                ->whereNull('order_number')->whereKey((int) $account)->first();
+            ->where('order_number', $account)->first();
 
         $currencyId = Currency::query()->where('symbol_code', 'UZS')->value('id');
         
-        if (!$organization || !$currencyId
+        if (!$organization || $organization->order_number !== $account || !$currencyId
             || (int) ($organization->client?->country?->currency_id ?? 0) !== (int) $currencyId) {
             return null;
         }
@@ -418,9 +416,7 @@ class ClickAdvancedShopService
             $value = (string) $value;
         }
 
-        return is_string($value) && $value !== '' && strlen($value) <= 9 && ctype_digit($value)
-            ? str_pad($value, 9, '0', STR_PAD_LEFT)
-            : null;
+        return is_string($value) && $value !== '' ? $value : null;
     }
 
     private function amount(mixed $value): ?string

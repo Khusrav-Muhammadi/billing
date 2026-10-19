@@ -133,12 +133,12 @@ it('requires Basic Auth with the CLICK service ID and billing CRM token', functi
         ->assertServiceUnavailable();
 });
 
-it('returns only the canonical account for a UZS organization with a tariff', function () {
+it('looks up the exact order number without padding or falling back to organization ID', function () {
     $this->postJson('/api/click/advanced-shop', [
-        'service_id' => 123, 'action' => 0, 'params' => ['account' => '43'],
-    ])->assertOk()->assertJsonPath('params.account', '000000043');
+        'service_id' => 123, 'action' => 0, 'params' => ['account' => '000000042'],
+    ])->assertOk()->assertJsonPath('error', 0)->assertJsonPath('params.account', '000000042');
 
-    foreach (['99', '44'] as $account) {
+    foreach (['42', '43', '99', '44'] as $account) {
         $this->postJson('/api/click/advanced-shop', [
             'service_id' => 123, 'action' => 0, 'params' => ['account' => $account],
         ])->assertOk()->assertJsonPath('error', -5);
