@@ -85,6 +85,8 @@ beforeEach(function () {
 
     config()->set('services.click_advanced.service_id', '123');
     config()->set('services.click_advanced.secret_key', 'test-click-secret');
+    config()->set('services.sham.crm_token', 'test-billing-crm-token');
+    test()->withToken('test-billing-crm-token');
 });
 
 function clickAdvancedPayload(int $action, int $paydocId, int $attemptId, array $params, ?string $prepareId = null, ?int $error = null): array
@@ -109,6 +111,20 @@ function clickAdvancedPayload(int $action, int $paydocId, int $attemptId, array 
 
     return $payload;
 }
+
+it('requires the configured bearer token before handling CLICK callbacks', function () {
+    $payload = ['service_id' => 123, 'action' => 0, 'params' => ['account' => '42']];
+
+    $this->withHeaders(['Authorization' => ''])->postJson('/api/click/advanced-shop', $payload)
+        ->assertUnauthorized()
+        ->assertHeader('WWW-Authenticate', 'Bearer');
+    $this->withToken('wrong-token')->postJson('/api/click/advanced-shop', $payload)
+        ->assertUnauthorized();
+
+    config()->set('services.sham.crm_token', '');
+    $this->withToken('test-billing-crm-token')->postJson('/api/click/advanced-shop', $payload)
+        ->assertServiceUnavailable();
+});
 
 it('returns only the canonical account for a UZS organization with a tariff', function () {
     $this->postJson('/api/click/advanced-shop', [

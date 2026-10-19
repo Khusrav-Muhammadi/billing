@@ -67,5 +67,6 @@ class Kernel extends HttpKernel
         'site.token' => \App\Http\Middleware\VerifySiteApiToken::class,
         // Server-to-server роуты, которые вызывает CRM (общий секрет X-Service-Token).
         'crm.token' => \App\Http\Middleware\VerifyCrmServiceToken::class,
+        'click.token' => \App\Http\Middleware\VerifyClickCallbackToken::class,
     ];
 }

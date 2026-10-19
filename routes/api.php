@@ -166,6 +166,7 @@ Route::post('client-payment/webhook/alif', [\App\Http\Controllers\ClientPaymentC
 Route::post('client-payment/webhook/octo', [\App\Http\Controllers\ClientPaymentController::class, 'octoWebhook'])
     ->name('client-payment.webhook.octo');
 Route::post('click/advanced-shop', \App\Http\Controllers\API\ClickAdvancedShopController::class)
+    ->middleware('click.token')
     ->name('click.advanced-shop');
 
 Route::middleware('auth:sanctum')->group(function () {
