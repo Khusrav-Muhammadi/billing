@@ -348,10 +348,6 @@ class CPGenerator {
     }
 
     getAllowedPaymentPeriodMonths() {
-        // Базовый тариф можно взять только на 12 месяцев.
-        if (this.isBaseTariff()) {
-            return [12];
-        }
         if (this.isVipTariff()) {
             return [3, 6, 12];
         }
@@ -3389,7 +3385,7 @@ class CPGenerator {
             });
         }
 
-        // Сначала период: у базового остаётся только 12 месяцев и без скидки 15%.
+        // Период и бейдж скидки: на базовом 6 и 12 месяцев, скидки 15% нет.
         this.syncPeriodSelectorUI();
         this.renderServices();
         this.renderTariffs();

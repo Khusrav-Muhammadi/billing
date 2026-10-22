@@ -92,7 +92,6 @@ class CPGenerator {
             return;
         }
 
-        // Базовый тариф: прячем 6 месяцев и оставляем только 12.
         this.enforceAllowedPaymentPeriod();
         const allowed = new Set(this.getAllowedPaymentPeriodMonths());
         const months = this.normalizePeriodMonths(this.state.periodMonths);
@@ -316,10 +315,6 @@ class CPGenerator {
     }
 
     getAllowedPaymentPeriodMonths() {
-        // Базовый тариф можно взять только на 12 месяцев.
-        if (this.isBaseTariff()) {
-            return [12];
-        }
         return [6, 12];
     }
 
@@ -343,8 +338,7 @@ class CPGenerator {
             this.state.periodMonths = current;
             return;
         }
-        // Базовый остаётся на 12 месяцах, остальные — на 6, если 6 ещё доступны.
-        this.state.periodMonths = allowed.includes(12) && !allowed.includes(6) ? 12 : (allowed.includes(6) ? 6 : (allowed[0] || 6));
+        this.state.periodMonths = allowed.includes(6) ? 6 : (allowed[0] || 6);
     }
 
     isAiAgentAllowedForSelectedTariff() {
@@ -3264,7 +3258,7 @@ class CPGenerator {
             });
         }
 
-        // Смена тарифа может оставить только 12 месяцев и убрать скидку 15%.
+        // Смена тарифа обновляет доступные периоды и бейдж скидки 15%.
         this.syncPeriodSelectorUI();
         this.renderServices();
         this.renderTariffs();
