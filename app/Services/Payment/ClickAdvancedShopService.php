@@ -15,7 +15,7 @@ use Throwable;
 
 class ClickAdvancedShopService
 {
-    // shortcut: фиксированная сумма для проверки CLICK, заменить расчётом суммы к оплате после согласования правила.
+    // фиксированная сумма оплаты, заменить расчётом задолженности после согласования правила.
     private const FIXED_AMOUNT = 1000000;
 
     public function handle(array $payload): array
@@ -94,12 +94,9 @@ class ClickAdvancedShopService
         }
 
         try {
-            // return $action === 1
-            //     ? $this->prepare($ids, $paydocId, $attemptId, $account, $amount)
-            //     : $this->confirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
-
-            // Заглушенная проверка CLICK callback
-            return $this->validateCallback($payload, $ids, $paydocId, $attemptId, $account, $amount);
+            return $action === 1
+                ? $this->prepare($ids, $paydocId, $attemptId, $account, $amount)
+                : $this->confirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
 
         } catch (Throwable $e) {
             $this->logFailure($e, $paydocId, $attemptId);
@@ -108,34 +105,7 @@ class ClickAdvancedShopService
         }
     }
 
-    private function validateCallback(array $payload, array $ids, int $paydocId, int $attemptId, string $account, string $amount): array
-    {
-        $action = $payload['action'];
-
-        if ($action === 2) {
-            $prepareId = filter_var($payload['merchant_prepare_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-            $providerError = $payload['error'] ?? 0;
-
-            if ($prepareId === false || !is_int($providerError) || $providerError > 0) {
-                return $this->result($ids, -8, 'Некорректный запрос');
-            }
-        }
-
-        $organization = $this->organization($account);
-        if (!$organization) {
-            return $this->result($ids, -5, 'Организация не найдена');
-        }
-
-        Log::info('CLICK Advanced Shop callback validated', [
-            'action' => $action,
-            'click_paydoc_id' => $paydocId,
-            'attempt_trans_id' => $attemptId,
-            'organization_id' => $organization->id,
-            'amount' => $amount,
-        ]);
-
-        return $this->result($ids, -7, 'Данные проверены; тестовый режим, платёж не проводится');
-    }
+    
 
     private function signatureError(array $payload, array $params): int
     {
@@ -261,11 +231,11 @@ class ClickAdvancedShopService
 
     private function confirm(array $payload, array $ids, int $paydocId, int $attemptId, string $account, string $amount): array
     {
-        $prepareId = $this->positiveId($payload['merchant_prepare_id'] ?? null);
+        $prepareId = filter_var($payload['merchant_prepare_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 
         $providerError = $payload['error'] ?? 0;
 
-        if (!$prepareId || !is_int($providerError) || $providerError > 0) {
+        if ($prepareId === false || !is_int($prepareId) || !is_int($providerError) || $providerError > 0) {
             return $this->result($ids, -8, 'Некорректный запрос');
         }
 
@@ -323,11 +293,8 @@ class ClickAdvancedShopService
                     return $this->confirmedResult($ids, $payment);
                 }
 
-                $organization = $this->organization($account);
-
-                if (!$organization || (int) $organization->id !== (int) $payment->organization_id
-                    || (int) $organization->client->country->currency_id !== (int) $payment->currency_id) {
-                    return $this->result($ids, -5, 'Организация не найдена');
+                if (!Organization::query()->whereKey($payment->organization_id)->exists()) {
+                    return $this->result($ids, -7, 'Организация недоступна');
                 }
 
                 $payment->paid_paydoc_id = $paydocId;
@@ -469,4 +436,35 @@ class ClickAdvancedShopService
             'exception' => $e::class,
         ]);
     }
+
+    // меотод был создан для проверки данных в тестовом режиме, но не используется, так как тестовый режим отключен
+
+    // private function validateCallback(array $payload, array $ids, int $paydocId, int $attemptId, string $account, string $amount): array
+    // {
+    //     $action = $payload['action'];
+
+    //     if ($action === 2) {
+    //         $prepareId = filter_var($payload['merchant_prepare_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    //         $providerError = $payload['error'] ?? 0;
+
+    //         if ($prepareId === false || !is_int($providerError) || $providerError > 0) {
+    //             return $this->result($ids, -8, 'Некорректный запрос');
+    //         }
+    //     }
+
+    //     $organization = $this->organization($account);
+    //     if (!$organization) {
+    //         return $this->result($ids, -5, 'Организация не найдена');
+    //     }
+
+    //     Log::info('CLICK Advanced Shop callback validated', [
+    //         'action' => $action,
+    //         'click_paydoc_id' => $paydocId,
+    //         'attempt_trans_id' => $attemptId,
+    //         'organization_id' => $organization->id,
+    //         'amount' => $amount,
+    //     ]);
+
+    //     return $this->result($ids, -7, 'Данные проверены; тестовый режим, платёж не проводится');
+    // }
 }
