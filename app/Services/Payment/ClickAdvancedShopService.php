@@ -15,6 +15,9 @@ use Throwable;
 
 class ClickAdvancedShopService
 {
+    // shortcut: фиксированная сумма для проверки CLICK, заменить расчётом суммы к оплате после согласования правила.
+    private const FIXED_AMOUNT = 1000000;
+
     public function handle(array $payload): array
     {
         $serviceId = $payload['service_id'] ?? null;
@@ -31,8 +34,15 @@ class ClickAdvancedShopService
             $account = $this->account(is_array($params) ? ($params['account'] ?? null) : null);
 
             try {
-                return $account && $this->organization($account)
-                    ? $this->result([], 0, 'Успешно', ['params' => ['account' => $account]])
+                $organization = $account ? $this->organization($account) : null;
+
+                return $organization
+                    ? $this->result([], 0, 'Успешно', ['params' => [
+                        'account' => $account,
+                        'amount' => self::FIXED_AMOUNT,
+                        'organization_name' => $organization->legal_name ?: $organization->name,
+                        'TIN' => (string) $organization->INN,
+                    ]])
                     : $this->result([], -5, 'Организация не найдена');
 
             } catch (Throwable $e) {
@@ -79,7 +89,7 @@ class ClickAdvancedShopService
 
         $amount = $this->amount($params['amount'] ?? null);
 
-        if (!$amount) {
+        if ($amount !== (self::FIXED_AMOUNT . '.00')) {
             return $this->result($ids, -2, 'Некорректная сумма');
         }
 
