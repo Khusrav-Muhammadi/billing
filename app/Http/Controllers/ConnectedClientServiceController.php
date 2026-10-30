@@ -120,23 +120,13 @@ class ConnectedClientServiceController extends Controller
         $visiblePartnerId = $this->currentPartnerId();
 
         $tariffs = Tariff::where('is_tariff', true)
-            ->when($visiblePartnerId !== null, function ($query) use ($visiblePartnerId) {
-                $query->where(function ($query) use ($visiblePartnerId) {
-                    $query->whereNull('partner_id')
-                        ->orWhere('partner_id', $visiblePartnerId);
-                });
-            })
+            ->forCommercialPartner($visiblePartnerId)
             ->with(['prices.currency', 'includedServices'])
             ->get()
             ;
 
         $services = Tariff::where('is_tariff', false)
-            ->when($visiblePartnerId !== null, function ($query) use ($visiblePartnerId) {
-                $query->where(function ($query) use ($visiblePartnerId) {
-                    $query->whereNull('partner_id')
-                        ->orWhere('partner_id', $visiblePartnerId);
-                });
-            })
+            ->forCommercialPartner($visiblePartnerId)
             ->where(function ($q) {
                 $q->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
@@ -151,12 +141,7 @@ class ConnectedClientServiceController extends Controller
 
         $extraUserServicesByTariffId = Tariff::query()
             ->where('is_extra_user', true)
-            ->when($visiblePartnerId !== null, function ($query) use ($visiblePartnerId) {
-                $query->where(function ($query) use ($visiblePartnerId) {
-                    $query->whereNull('partner_id')
-                        ->orWhere('partner_id', $visiblePartnerId);
-                });
-            })
+            ->forCommercialPartner($visiblePartnerId)
             ->with(['prices.currency'])
             ->get()
             ->groupBy('parent_tariff_id');
@@ -618,7 +603,7 @@ class ConnectedClientServiceController extends Controller
             $tariffsForJs[$key] = [
                 'id'              => $tariff->id,
                 'name'            => $tariff->name,
-                'partnerId'       => $tariff->partner_id ? (int) $tariff->partner_id : null,
+                'partnerId'       => $tariff->commercialPartnerId(),
                 'users'           => $tariff->user_count ?? 0,
                 'extraUserTariffId' => $extraUserTariffId,
                 'prices'          => $prices,

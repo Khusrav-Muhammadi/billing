@@ -1008,12 +1008,7 @@ class CommercialFooferController extends Controller
 
         $tariffs = Tariff::query()
             ->where('is_tariff', true)
-            ->when($visiblePartnerId !== null, function (Builder $query) use ($visiblePartnerId) {
-                $query->where(function (Builder $query) use ($visiblePartnerId) {
-                    $query->whereNull('partner_id')
-                        ->orWhere('partner_id', $visiblePartnerId);
-                });
-            })
+            ->forCommercialPartner($visiblePartnerId)
             ->where(function (Builder $query) {
                 $query->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })
@@ -1041,12 +1036,7 @@ class CommercialFooferController extends Controller
 
         $extraUserServicesByTariffId = Tariff::query()
             ->where('is_extra_user', true)
-            ->when($visiblePartnerId !== null, function (Builder $query) use ($visiblePartnerId) {
-                $query->where(function (Builder $query) use ($visiblePartnerId) {
-                    $query->whereNull('partner_id')
-                        ->orWhere('partner_id', $visiblePartnerId);
-                });
-            })
+            ->forCommercialPartner($visiblePartnerId)
             ->with(['prices.currency:id,symbol_code'])
             ->get()
             ->groupBy('parent_tariff_id');
@@ -1138,7 +1128,7 @@ class CommercialFooferController extends Controller
                 'name' => (string)$tariff->name,
                 'category' => $tariff->category !== null && $tariff->category !== '' ? (string)$tariff->category : null,
                 'isPublic' => (bool)($tariff->is_public ?? false),
-                'partnerId' => $tariff->partner_id ? (int)$tariff->partner_id : null,
+                'partnerId' => $tariff->commercialPartnerId(),
                 'users' => (int)($tariff->user_count ?? 0),
                 'extraUserTariffId' => $extraUserTariffId,
                 'prices' => $prices,
@@ -1163,12 +1153,7 @@ class CommercialFooferController extends Controller
 
         $services = Tariff::query()
             ->where('is_tariff', false)
-            ->when($visiblePartnerId !== null, function (Builder $query) use ($visiblePartnerId) {
-                $query->where(function (Builder $query) use ($visiblePartnerId) {
-                    $query->whereNull('partner_id')
-                        ->orWhere('partner_id', $visiblePartnerId);
-                });
-            })
+            ->forCommercialPartner($visiblePartnerId)
             ->where(function (Builder $query) {
                 $query->whereNull('is_extra_user')->orWhere('is_extra_user', false);
             })

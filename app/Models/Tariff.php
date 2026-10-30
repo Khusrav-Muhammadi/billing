@@ -35,6 +35,11 @@ class Tariff extends Model
     /** Тип услуги «доп. пакет хранилища» (см. миграцию add_storage_gb_to_tariffs_table). */
     public const TYPE_ADD_STORAGE = 'add_storage';
 
+    /** «Тариф учет» в подключении показывается только этому партнёру (FIN GROUP). */
+    public const FINGROUP_PARTNER_ID = 8;
+
+    public const FINGROUP_ACCOUNTING_TARIFF_NAME = 'тариф учет';
+
     protected $casts = [
         'end_date' => 'date',
         'can_increase' => 'bool',
@@ -94,5 +99,53 @@ class Tariff extends Model
     public function isBaseTariff(): bool
     {
         return self::isBaseTariffName($this->name);
+    }
+
+    public static function isFingroupAccountingTariffName(?string $name): bool
+    {
+        $normalized = mb_strtolower(str_replace(['Ё', 'ё'], ['Е', 'е'], trim((string) $name)), 'UTF-8');
+
+        return $normalized === self::FINGROUP_ACCOUNTING_TARIFF_NAME;
+    }
+
+    /**
+     * Партнёр, которому виден тариф в подключении.
+     * «Тариф учет» всегда только FIN GROUP, даже если в базе стоит другой partner_id.
+     */
+    public function commercialPartnerId(): ?int
+    {
+        if (self::isFingroupAccountingTariffName($this->name)) {
+            return self::FINGROUP_PARTNER_ID;
+        }
+
+        return $this->partner_id ? (int) $this->partner_id : null;
+    }
+
+    public function scopeForCommercialPartner($query, ?int $partnerId)
+    {
+        if ($partnerId === null) {
+            return $query;
+        }
+
+        $query->where(function ($query) use ($partnerId) {
+            $query->whereNull('partner_id')
+                ->orWhere('partner_id', $partnerId);
+
+            if ($partnerId === self::FINGROUP_PARTNER_ID) {
+                $query->orWhereRaw(
+                    "LOWER(REPLACE(REPLACE(name, 'Ё', 'Е'), 'ё', 'е')) = ?",
+                    [self::FINGROUP_ACCOUNTING_TARIFF_NAME]
+                );
+            }
+        });
+
+        if ($partnerId !== self::FINGROUP_PARTNER_ID) {
+            $query->whereRaw(
+                "LOWER(REPLACE(REPLACE(name, 'Ё', 'Е'), 'ё', 'е')) != ?",
+                [self::FINGROUP_ACCOUNTING_TARIFF_NAME]
+            );
+        }
+
+        return $query;
     }
 }

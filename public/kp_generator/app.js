@@ -1865,9 +1865,17 @@ class CPGenerator {
         return selectedPartnerId !== "" && String(partnerId) === selectedPartnerId;
     }
 
+    isFingroupOnlyAccountingTariff(tariff) {
+        const name = (tariff?.name || '').toString().toLowerCase().replace(/ё/g, 'е').trim();
+        return name === 'тариф учет';
+    }
+
     isTariffVisibleForSelectedPartner(tariffKey) {
+        const tariff = this.config?.tariffs?.[tariffKey];
+        if (this.isFingroupOnlyAccountingTariff(tariff)) {
+            return String(this.state.selectedPartnerId || '') === '8';
+        }
         if (String(this.state.selectedPartnerId) === '11') {
-            const tariff = this.config?.tariffs?.[tariffKey];
             if (tariff) {
                 const name = (tariff.name || '').toString().toLowerCase().replace(/ё/g, 'е');
                 if (name === 'base' || name.includes('базов') || tariffKey === 'base') {
@@ -1875,7 +1883,7 @@ class CPGenerator {
                 }
             }
         }
-        return this.isItemVisibleForSelectedPartner(this.config?.tariffs?.[tariffKey]);
+        return this.isItemVisibleForSelectedPartner(tariff);
     }
 
 

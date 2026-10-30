@@ -1801,8 +1801,17 @@ class CPGenerator {
         return selectedPartnerId !== "" && String(partnerId) === selectedPartnerId;
     }
 
+    isFingroupOnlyAccountingTariff(tariff) {
+        const name = (tariff?.name || '').toString().toLowerCase().replace(/ё/g, 'е').trim();
+        return name === 'тариф учет';
+    }
+
     isTariffVisibleForSelectedPartner(tariffKey) {
-        return this.isItemVisibleForSelectedPartner(this.config?.tariffs?.[tariffKey]);
+        const tariff = this.config?.tariffs?.[tariffKey];
+        if (this.isFingroupOnlyAccountingTariff(tariff)) {
+            return String(this.state.selectedPartnerId || '') === '8';
+        }
+        return this.isItemVisibleForSelectedPartner(tariff);
     }
 
 
