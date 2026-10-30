@@ -6494,7 +6494,8 @@ class CPGenerator {
 
     /**
      * Остаток текущего месяца = цена_месяца × оставшиеся_дни / дней_в_месяце.
-     * День берём из поля «Дата», как и сам прайс.
+     * День берём из поля «Дата». Если дата — 1-е число, текущий месяц не берём:
+     * выбранные месяцы уже включают этот месяц целиком.
      */
     suggestAiBalanceTopup(unitPrice) {
         const price = Number(unitPrice) || 0;
@@ -6505,6 +6506,7 @@ class CPGenerator {
         const parts = String(raw).slice(0, 10).split('-').map(Number);
         if (parts.length < 3 || !parts[0]) return this.roundMoney(price);
         const [y, m, day] = parts;
+        if (day === 1) return 0;
         const daysInMonth = new Date(y, m, 0).getDate();
         const daysLeft = Math.max(1, daysInMonth - day + 1);
         return this.roundMoney(price * (daysLeft / daysInMonth));

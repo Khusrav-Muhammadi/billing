@@ -658,7 +658,7 @@
                         <div class="setting-group">
                             <label class="setting-label">Текущий месяц</label>
                             <p style="font-size:12px;color:#6b7280;margin:0 0 8px;line-height:1.4;">
-                                Считается от поля «Дата»: цена месяца × оставшиеся дни / дней в месяце. 1-е число — полный месяц.
+                                Считается от поля «Дата»: цена месяца × оставшиеся дни / дней в месяце. Если дата — 1-е число, текущий месяц не берётся.
                             </p>
                             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                                 <input type="number" class="ai-current-month-input" min="0" step="0.01" value="0" readonly
@@ -731,7 +731,7 @@
 
             const syncCurrentAndBalanceUi = (unitPrice, currency) => {
                 const current = cp.suggestAiBalanceTopup(unitPrice);
-                if (ui.currentMonthRow) ui.currentMonthRow.style.display = 'block';
+                if (ui.currentMonthRow) ui.currentMonthRow.style.display = current > 0 ? 'block' : 'none';
                 if (ui.topupRow) ui.topupRow.style.display = 'block';
                 if (ui.currentMonthCurrency) ui.currentMonthCurrency.textContent = currency || '';
                 if (ui.topupCurrency) ui.topupCurrency.textContent = currency || '';

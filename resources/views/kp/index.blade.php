@@ -1043,6 +1043,7 @@
             const y = parts[0] || now.getFullYear();
             const m = parts[1] || (now.getMonth() + 1);
             const day = parts[2] || now.getDate();
+            if (day === 1) return 0;
             const daysInMonth = new Date(y, m, 0).getDate();
             const daysLeft = Math.max(1, daysInMonth - day + 1);
             return +(price * (daysLeft / daysInMonth)).toFixed(2);
@@ -1127,7 +1128,7 @@
                 const unit = getAiPrice(plan);
                 const cur = getAiCurrency(plan);
                 const currentMonth = suggestCurrentMonth(unit);
-                if (currentMonthRow) currentMonthRow.style.display = 'block';
+                if (currentMonthRow) currentMonthRow.style.display = currentMonth > 0 ? 'block' : 'none';
                 if (topupRow) topupRow.style.display = 'block';
                 if (currentMonthInput) currentMonthInput.value = currentMonth;
                 if (currentMonthCurrency) currentMonthCurrency.textContent = cur || '';

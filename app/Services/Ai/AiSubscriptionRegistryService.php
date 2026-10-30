@@ -315,12 +315,22 @@ class AiSubscriptionRegistryService
             $extraMonths = max(0, (int) $aiItem->period_months);
             // Срок из снапшота КП (gift_months уже посчитан при сохранении с учётом тарифа/акции).
             $extraMonths += max(0, (int) ($aiItem->gift_months ?? 0));
-            $calendarMonths = $extraMonths + 1;
+            // 1-е число: текущий месяц уже входит в выбранный срок, отдельно его не добавляем.
+            $pricingDay = $offer->pricing_date
+                ? (int) $offer->pricing_date->copy()->timezone('Asia/Dushanbe')->day
+                : (int) $today->day;
+            $chargedCurrentMonth = round(max(0, (float) ($aiItem->current_month_amount ?? 0)), 4) > 0;
+            $includesCurrentMonth = $pricingDay !== 1 || $chargedCurrentMonth;
+            $calendarMonths = $extraMonths + ($includesCurrentMonth ? 1 : 0);
 
-            $expiresAt = $startedAt->copy()
-                ->addMonthsNoOverflow($calendarMonths - 1)
-                ->endOfMonth()
-                ->endOfDay();
+            if ($calendarMonths < 1) {
+                $expiresAt = $startedAt->copy()->endOfDay();
+            } else {
+                $expiresAt = $startedAt->copy()
+                    ->addMonthsNoOverflow($calendarMonths - 1)
+                    ->endOfMonth()
+                    ->endOfDay();
+            }
         }
 
         if ($existing) {
@@ -553,9 +563,7 @@ class AiSubscriptionRegistryService
     {
         $amount = round(max(0, (float) ($aiItem->current_month_amount ?? 0)), 4);
         if ($amount <= 0) {
-            throw new RuntimeException(
-                "AI item missing current_month_amount; cannot grant current-month limit (plan #{$plan->id})."
-            );
+            return;
         }
 
         $plan->monthlyLimitForCurrency((int) $balance->currency_id);
