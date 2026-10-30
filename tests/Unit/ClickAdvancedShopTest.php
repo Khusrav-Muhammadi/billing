@@ -27,6 +27,9 @@ beforeEach(function () {
     });
     Schema::create('organizations', function (Blueprint $table) {
         $table->id();
+        $table->string('name');
+        $table->string('legal_name')->nullable();
+        $table->string('INN')->nullable();
         $table->string('order_number', 9)->nullable();
         $table->unsignedBigInteger('client_id');
     });
@@ -72,9 +75,9 @@ beforeEach(function () {
         ['id' => 2, 'country_id' => 2],
     ]);
     DB::table('organizations')->insert([
-        ['id' => 42, 'order_number' => '000000042', 'client_id' => 1],
-        ['id' => 43, 'order_number' => null, 'client_id' => 1],
-        ['id' => 44, 'order_number' => '000000044', 'client_id' => 2],
+        ['id' => 42, 'name' => 'Пример', 'legal_name' => 'ООО «Пример»', 'INN' => '123456789', 'order_number' => '000000042', 'client_id' => 1],
+        ['id' => 43, 'name' => 'Организация 43', 'legal_name' => null, 'INN' => null, 'order_number' => null, 'client_id' => 1],
+        ['id' => 44, 'name' => 'Организация 44', 'legal_name' => null, 'INN' => null, 'order_number' => '000000044', 'client_id' => 2],
     ]);
     DB::table('tariffs')->insert(['id' => 1, 'is_tariff' => true, 'is_extra_user' => false, 'is_external' => false]);
     DB::table('connected_client_services')->insert([
@@ -136,7 +139,16 @@ it('requires Basic Auth with the CLICK service ID and billing CRM token', functi
 it('looks up the exact order number without padding or falling back to organization ID', function () {
     $this->postJson('/api/click/advanced-shop', [
         'service_id' => 123, 'action' => 0, 'params' => ['account' => '000000042'],
-    ])->assertOk()->assertJsonPath('error', 0)->assertJsonPath('params.account', '000000042');
+    ])->assertOk()->assertJsonPath('error', 0)
+        ->assertJsonPath('params.account', '000000042')
+        ->assertJsonPath('params.amount', 1000000)
+        ->assertJsonPath('params.organization_name', 'ООО «Пример»')
+        ->assertJsonPath('params.TIN', '123456789');
+
+    DB::table('organizations')->where('id', 42)->update(['legal_name' => null]);
+    $this->postJson('/api/click/advanced-shop', [
+        'service_id' => 123, 'action' => 0, 'params' => ['account' => '000000042'],
+    ])->assertOk()->assertJsonPath('params.organization_name', 'Пример');
 
     foreach (['42', '43', '99', '44'] as $account) {
         $this->postJson('/api/click/advanced-shop', [
@@ -150,7 +162,7 @@ it('looks up the exact order number without padding or falling back to organizat
 });
 
 it('validates Prepare and Confirm callbacks without creating payments or balance entries', function () {
-    $params = ['amount' => '1000.50', 'account' => '000000042'];
+    $params = ['amount' => 1000000, 'account' => '000000042'];
 
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 1, $params))
         ->assertOk()->assertJsonPath('error', -7)->json();
@@ -164,9 +176,13 @@ it('validates Prepare and Confirm callbacks without creating payments or balance
     $badSignature['sign_string'] = str_repeat('0', 32);
     $this->postJson('/api/click/advanced-shop', $badSignature)->assertJsonPath('error', -1);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 102, 1,
-        ['amount' => '1000.50', 'account' => '000000044']))->assertJsonPath('error', -5);
+        ['amount' => 1000000, 'account' => '000000044']))->assertJsonPath('error', -5);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 103, 1,
         ['amount' => 0, 'account' => '000000042']))->assertJsonPath('error', -2);
+    $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 105, 1,
+        ['amount' => 999999, 'account' => '000000042']))->assertJsonPath('error', -2);
+    $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 106, 1,
+        ['amount' => 999999, 'account' => '000000042'], '1', 0))->assertJsonPath('error', -2);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 104, 1, $params))
         ->assertJsonPath('error', -8);
 
