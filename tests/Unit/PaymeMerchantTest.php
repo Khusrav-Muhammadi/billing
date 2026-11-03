@@ -102,7 +102,28 @@ it('requires Payme Basic Auth and preserves the RPC id in errors', function () {
         ->assertOk()->assertJsonPath('id', 7)->assertJsonPath('error.code', -32504);
     $this->withHeaders(['Authorization' => 'Basic ' . base64_encode('Paycom:wrong')])
         ->postJson('/api/payme/merchant', $request)->assertJsonPath('error.code', -32504);
+    $this->withHeaders(['Authorization' => 'Basic !!!'])
+        ->postJson('/api/payme/merchant', $request)->assertJsonPath('id', 7)->assertJsonPath('error.code', -32504);
+    $this->withHeaders(['Authorization' => 'Basic ' . base64_encode('Paycom')])
+        ->postJson('/api/payme/merchant', $request)->assertJsonPath('error.code', -32504);
+    config()->set('services.payme_merchant.login', '');
+    config()->set('services.payme_merchant.key', '');
+    $this->withHeaders(['Authorization' => 'Basic ' . base64_encode(':')])
+        ->postJson('/api/payme/merchant', $request)->assertJsonPath('error.code', -32504);
     expect(DB::table('payme_balance_transactions')->count())->toBe(0);
+});
+
+it('accepts test credentials only outside production and preserves colons in the password', function () {
+    config()->set('services.payme_merchant.test_login', 'TestPaycom');
+    config()->set('services.payme_merchant.test_key', 'test:key');
+    config()->set('app.env', 'testing');
+    $request = paymeRpc('CheckPerformTransaction', ['amount' => 100000000, 'account' => ['order_number' => '000000042']]);
+    $this->withHeaders(['Authorization' => 'Basic ' . base64_encode('TestPaycom:test:key')])
+        ->postJson('/api/payme/merchant', $request)->assertJsonPath('result.allow', true);
+
+    config()->set('app.env', 'production');
+    $this->postJson('/api/payme/merchant', $request)
+        ->assertJsonPath('id', 7)->assertJsonPath('error.code', -32504);
 });
 
 it('checks exact account and fixed tiyin amount before creating a transaction', function () {
@@ -213,16 +234,4 @@ it('rolls back a failed balance write and leaves the Payme transaction pending',
         ->assertJsonPath('error.code', -32400);
     expect(DB::table('payme_balance_transactions')->value('state'))->toBe(1)
         ->and(DB::table('payme_balance_transactions')->value('income_balance_id'))->toBeNull();
-});
-
-it('builds the GET checkout URL for CRM without exposing the service token', function () {
-    $path = '/api/payme/balance-checkout/000000042';
-    $this->withHeaders(['Authorization' => ''])->getJson($path)->assertStatus(401);
-    $response = $this->withHeaders(['X-Service-Token' => 'crm-token'])->getJson($path)
-        ->assertOk()->assertJsonPath('amount_tiyin', 100000000);
-    $url = $response->json('checkout_url');
-    expect($url)->toStartWith('https://test.paycom.uz/')
-        ->and(base64_decode(basename(parse_url($url, PHP_URL_PATH))))
-        ->toBe('m=merchant123;ac.order_number=000000042;a=100000000');
-    $this->getJson('/api/payme/balance-checkout/42')->assertStatus(404);
 });

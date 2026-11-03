@@ -59,6 +59,8 @@ return [
     'payme_merchant' => [
         'login' => env('PAYME_MERCHANT_LOGIN'),
         'key' => env('PAYME_MERCHANT_KEY'),
+        'test_login' => env('PAYME_MERCHANT_TEST_LOGIN'),
+        'test_key' => env('PAYME_MERCHANT_TEST_KEY'),
         'merchant_id' => env('PAYME_MERCHANT_ID'),
         'checkout_url' => env('PAYME_CHECKOUT_URL', 'https://test.paycom.uz'),
     ],

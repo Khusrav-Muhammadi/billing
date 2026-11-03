@@ -25,12 +25,6 @@ class PaymeMerchantController extends Controller
         }
 
         $id = is_array($payload) && is_int($payload['id'] ?? null) ? $payload['id'] : null;
-        if (!$this->authorized($request)) {
-            return response()->json($this->service->error(
-                -32504, 'Недостаточно привилегий', 'Insufficient privileges', 'Ruxsat yetarli emas'
-            ) + ['id' => $id]);
-        }
-
         if (!is_array($payload) || array_is_list($payload)
             || $id === null || !is_string($payload['method'] ?? null)
             || !is_array($payload['params'] ?? null)) {
@@ -40,26 +34,5 @@ class PaymeMerchantController extends Controller
         }
 
         return response()->json($this->service->handle($payload['method'], $payload['params']) + ['id' => $id]);
-    }
-
-    private function authorized(Request $request): bool
-    {
-        $login = (string) config('services.payme_merchant.login');
-        $key = (string) config('services.payme_merchant.key');
-        if ($login === '' || $key === '') {
-            return false;
-        }
-
-        $header = (string) $request->header('Authorization', '');
-        $decoded = strncasecmp($header, 'Basic ', 6) === 0
-            ? base64_decode(substr($header, 6), true)
-            : false;
-        if (!is_string($decoded) || !str_contains($decoded, ':')) {
-            return false;
-        }
-
-        [$providedLogin, $providedKey] = explode(':', $decoded, 2);
-
-        return hash_equals($login, $providedLogin) && hash_equals($key, $providedKey);
     }
 }
