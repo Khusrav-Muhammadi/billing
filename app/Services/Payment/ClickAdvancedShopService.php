@@ -115,7 +115,6 @@ class ClickAdvancedShopService
             return $this->result($ids, -7, 'Не удалось обработать платёж');
         }
     }
-
     
 
     private function signatureError(array $payload, array $params): int
