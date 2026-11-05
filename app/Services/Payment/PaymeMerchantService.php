@@ -49,6 +49,7 @@ class PaymeMerchantService
 
         $merchantId = (string) config('services.payme_merchant.merchant_id');
         $checkoutBase = rtrim((string) config('services.payme_merchant.checkout_url'), '/');
+
         if ($merchantId === '' || $checkoutBase === '') {
             throw new \RuntimeException('Payme checkout is not configured');
         }
@@ -63,6 +64,7 @@ class PaymeMerchantService
     public function error(int $code, string $ru, string $en, string $uz, ?string $data = null): array
     {
         $error = ['code' => $code, 'message' => ['ru' => $ru, 'uz' => $uz, 'en' => $en]];
+
         if ($data !== null) {
             $error['data'] = $data;
         }
@@ -73,6 +75,7 @@ class PaymeMerchantService
     private function checkPerform(array $params): array
     {
         $account = $this->account($params);
+
         if ($account === null || !$this->organization($account)) {
             return $this->accountError();
         }
@@ -85,7 +88,9 @@ class PaymeMerchantService
     private function create(array $params): array
     {
         $id = $this->paymeId($params);
+
         $time = $params['time'] ?? null;
+
         if ($id === null || !is_int($time) || $time < 1000000000000 || $time > 9999999999999) {
             return $this->invalidRequest();
         }
@@ -93,6 +98,7 @@ class PaymeMerchantService
         $account = $this->account($params);
         $amount = $params['amount'] ?? null;
         $existing = PaymeBalanceTransaction::query()->where('payme_id', $id)->first();
+
         if ($existing) {
             return $existing->payme_time === $time && $existing->account === $account
                 && $existing->amount_tiyin === $amount && $existing->state === 1
@@ -103,6 +109,7 @@ class PaymeMerchantService
         if ($account === null || !($organization = $this->organization($account))) {
             return $this->accountError();
         }
+
         if ($amount !== self::TOP_UP_TIYIN) {
             return $this->amountError();
         }
@@ -119,10 +126,13 @@ class PaymeMerchantService
                 'create_time' => $this->milliseconds(),
             ]);
         } catch (Throwable $e) {
+
             $payment = PaymeBalanceTransaction::query()->where('payme_id', $id)->first();
+
             if (!$payment) {
                 throw $e;
             }
+
             return $payment->payme_time === $time && $payment->account === $account
                 && $payment->amount_tiyin === $amount && $payment->state === 1
                     ? ['result' => $this->createdResult($payment)]
@@ -135,21 +145,26 @@ class PaymeMerchantService
     private function perform(array $params): array
     {
         $id = $this->paymeId($params);
+
         if ($id === null) {
             return $this->invalidRequest();
         }
 
         return DB::transaction(function () use ($id): array {
             $payment = PaymeBalanceTransaction::query()->where('payme_id', $id)->lockForUpdate()->first();
+
             if (!$payment) {
                 return $this->notFound();
             }
+
             if ($payment->state === 2) {
                 return ['result' => $this->performedResult($payment)];
             }
+
             if ($payment->state !== 1) {
                 return $this->stateError();
             }
+
             if ($this->milliseconds() - $payment->payme_time >= 43200000) {
                 $payment->state = -1;
                 $payment->reason = 4;
@@ -158,6 +173,7 @@ class PaymeMerchantService
 
                 return $this->stateError();
             }
+            
             if (!Organization::query()->whereKey($payment->organization_id)->exists()) {
                 return $this->accountError();
             }
@@ -183,19 +199,25 @@ class PaymeMerchantService
     private function cancel(array $params): array
     {
         $id = $this->paymeId($params);
+
         $reason = $params['reason'] ?? null;
+
         if ($id === null || !is_int($reason) || !in_array($reason, [1, 2, 3, 4, 5, 10], true)) {
             return $this->invalidRequest();
         }
 
         return DB::transaction(function () use ($id, $reason): array {
+
             $payment = PaymeBalanceTransaction::query()->where('payme_id', $id)->lockForUpdate()->first();
+
             if (!$payment) {
                 return $this->notFound();
             }
+
             if ($payment->state < 0) {
                 return ['result' => $this->cancelledResult($payment)];
             }
+
             if ($payment->state === 2) {
                 $reversal = ClientBalance::query()->create([
                     'date' => now(),
@@ -234,7 +256,9 @@ class PaymeMerchantService
     private function statement(array $params): array
     {
         $from = $params['from'] ?? null;
+
         $to = $params['to'] ?? null;
+
         if (!is_int($from) || !is_int($to) || $from < 0 || $to < $from) {
             return $this->invalidRequest();
         }

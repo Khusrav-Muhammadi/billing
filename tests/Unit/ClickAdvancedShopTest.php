@@ -3,7 +3,7 @@
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use App\Enums\PaymentType;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -182,10 +182,14 @@ it('rejects invalid payment callbacks without creating payments or balance entri
         ->and(DB::table('client_balances')->count())->toBe(0);
 });
 
-it('credits once for repeated Confirm and rejects another attempt for the same paydoc', function () {
+it('prepares idempotently and leaves Confirm unprocessed without balance writes', function () {
+    config()->set('app.env', 'production');
     $params = ['amount' => 1000000, 'account' => '000000042'];
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 1, $params))
-        ->assertOk()->assertJsonPath('error', 0)->json();
+        ->assertOk()->assertJsonPath('error', 0)
+        ->assertJsonPath('click_paydoc_id', 100)
+        ->assertJsonPath('attempt_trans_id', 1)
+        ->assertJsonPath('params.account', '000000042')->json();
 
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 1, $params))
         ->assertJsonPath('merchant_prepare_id', $prepare['merchant_prepare_id']);
@@ -200,24 +204,22 @@ it('credits once for repeated Confirm and rejects another attempt for the same p
 
     $confirm = clickAdvancedPayload(2, 100, 1, $params, $prepare['merchant_prepare_id']);
     $this->postJson('/api/click/advanced-shop', $confirm)
-        ->assertOk()->assertJsonPath('error', 0)
-        ->assertJsonPath('merchant_confirm_id', $prepare['merchant_prepare_id']);
-    $this->postJson('/api/click/advanced-shop', $confirm)->assertJsonPath('error', 0);
+        ->assertOk()->assertJsonPath('error', -7);
+    $this->postJson('/api/click/advanced-shop', $confirm)->assertJsonPath('error', -7);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 1, $params))
         ->assertJsonPath('merchant_prepare_id', $prepare['merchant_prepare_id']);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 100, 2, $params, $second['merchant_prepare_id']))
-        ->assertJsonPath('error', -4);
+        ->assertJsonPath('error', -7);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 2, $params))
-        ->assertJsonPath('error', -4);
+        ->assertJsonPath('merchant_prepare_id', $second['merchant_prepare_id']);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 3, $params))
-        ->assertJsonPath('error', -4);
+        ->assertJsonPath('error', 0);
 
-    expect(DB::table('client_balances')->where('type', 'income')->count())->toBe(1)
-        ->and(DB::table('client_balances')->value('sum'))->toBe(1000000)
-        ->and(DB::table('click_balance_payments')->where('status', 'paid')->count())->toBe(1);
+    expect(DB::table('client_balances')->count())->toBe(0)
+        ->and(DB::table('click_balance_payments')->where('status', 'prepared')->count())->toBe(3);
 });
 
-it('credits a prepared long account even if its tariff becomes inactive before Confirm', function () {
+it('keeps a prepared long account when its tariff becomes inactive before Confirm', function () {
     DB::table('organizations')->insert([
         'id' => 45, 'name' => 'Организация 45', 'legal_name' => null,
         'INN' => null, 'order_number' => '17418416944265', 'client_id' => 1,
@@ -234,10 +236,11 @@ it('credits a prepared long account even if its tariff becomes inactive before C
     DB::table('connected_client_services')->where('client_id', 45)->update(['status' => false]);
 
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 105, 1, $params, $prepare['merchant_prepare_id']))
-        ->assertJsonPath('error', 0);
+        ->assertJsonPath('error', -7);
 
     expect(DB::table('click_balance_payments')->value('account'))->toBe('17418416944265')
-        ->and(DB::table('client_balances')->where('organization_id', 45)->where('type', 'income')->count())->toBe(1);
+        ->and(DB::table('click_balance_payments')->value('status'))->toBe('prepared')
+        ->and(DB::table('client_balances')->count())->toBe(0);
 });
 
 it('rejects bad signatures, changed amounts, and cancelled payments', function () {
@@ -257,27 +260,34 @@ it('rejects bad signatures, changed amounts, and cancelled payments', function (
     $cancel = clickAdvancedPayload(2, 101, 1, $params, $prepare['merchant_prepare_id'], -1);
     $this->postJson('/api/click/advanced-shop', $cancel)->assertJsonPath('error', -9);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 101, 1, $params, $prepare['merchant_prepare_id']))
-        ->assertJsonPath('error', -9);
-    expect(DB::table('client_balances')->count())->toBe(0);
+        ->assertJsonPath('error', -7);
+    expect(DB::table('client_balances')->count())->toBe(0)
+        ->and(DB::table('click_balance_payments')->value('status'))->toBe('prepared');
 });
 
-it('reverses a paid transaction only once and keeps both ledger entries attributed to CLICK', function () {
+it('logs Confirm without crediting or reversing the balance', function () {
+    Log::spy();
     $params = ['account' => '000000042', 'amount' => 1000000];
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 102, 1, $params))
         ->assertJsonPath('error', 0)->json();
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 102, 1, $params, $prepare['merchant_prepare_id']))
-        ->assertJsonPath('error', 0);
+        ->assertJsonPath('error', -7);
 
     $cancel = clickAdvancedPayload(2, 102, 1, $params, $prepare['merchant_prepare_id'], -1);
     $this->postJson('/api/click/advanced-shop', $cancel)->assertJsonPath('error', -9);
     $this->postJson('/api/click/advanced-shop', $cancel)->assertJsonPath('error', -9);
 
-    expect(DB::table('client_balances')->where('source', PaymentType::CLICK->value)->count())->toBe(2)
-        ->and(DB::table('client_balances')->where('type', 'outcome')->count())->toBe(1)
-        ->and(DB::table('click_balance_payments')->value('status'))->toBe('cancelled');
+    expect(DB::table('client_balances')->count())->toBe(0)
+        ->and(DB::table('click_balance_payments')->value('status'))->toBe('prepared');
+    Log::shouldHaveReceived('info')->times(3)->with('CLICK Advanced Shop Confirm received', Mockery::on(
+        fn (array $context): bool => $context['click_paydoc_id'] === 102
+            && $context['merchant_prepare_id'] === $prepare['merchant_prepare_id']
+            && $context['account'] === '000000042'
+            && $context['amount'] === '1000000.00'
+    ));
 });
 
-it('keeps the payment prepared if writing to the balance ledger fails', function () {
+it('does not require the balance ledger to process a prepared Confirm', function () {
     $params = ['account' => '000000042', 'amount' => 1000000];
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 103, 1, $params))
         ->assertJsonPath('error', 0)->json();
