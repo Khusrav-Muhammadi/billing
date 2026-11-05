@@ -94,6 +94,10 @@ class ClickAdvancedShopService
         }
 
         try {
+            // return $action === 1
+            //     ? $this->prepare($ids, $paydocId, $attemptId, $account, $amount)
+            //     : $this->confirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
+            
             if ($action === 1) {
                 return $this->prepare($ids, $paydocId, $attemptId, $account, $amount);
             }
