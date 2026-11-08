@@ -41,6 +41,7 @@ class DemoRequest extends Model
         'country_id',
         'partner_id',
         'manager_id',
+        'onboarding',
         'status',
         'step',
         'sub_domain',
@@ -57,6 +58,7 @@ class DemoRequest extends Model
     ];
 
     protected $casts = [
+        'onboarding' => 'array',
         'login_url_expires_at' => 'datetime',
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
