@@ -104,7 +104,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('dashboard', [\App\Http\Controllers\API\DashBoardController::class, 'index']);
 
-
     Route::group(['prefix' => 'profile'], function () {
         Route::patch('/change-password', [ProfileController::class, 'changePasswordApi']);
         Route::patch('/{user}', [ProfileController::class, 'updateApi']);
@@ -121,7 +120,6 @@ Route::middleware('site.token')->group(function () {
     Route::post('site/extra-services', [\App\Http\Controllers\API\SiteExtraServicesController::class, 'store']);
     Route::post('site/ai-topup', [\App\Http\Controllers\API\SiteAiTopUpController::class, 'store']);
 });
-// Активность присылает CRM (NotifyBillingClientActivityJob). Basic auth тут никогда не проверялся — теперь токен.
 Route::post('client/activity/{subdomain}', [\App\Http\Controllers\ClientController::class, 'updateActivity'])->middleware('crm.token');
 
 Route::options('/{any}', function (Request $request) {

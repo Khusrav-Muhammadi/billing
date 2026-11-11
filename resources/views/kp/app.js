@@ -358,10 +358,6 @@ class CPGenerator {
     }
 
     getAiGiftMonthsForPeriod(periodMonths) {
-        if (!this.isAiGiftPromoEligible()) return 0;
-        const months = Math.max(0, Number(periodMonths) || 0);
-        if (months >= 6) return 6;
-        if (months >= 3) return 3;
         return 0;
     }
 

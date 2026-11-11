@@ -121,10 +121,7 @@ class AiSubscriptionRegistryService
                     $balance->scheduled_activation_at = null;
                     $balance->save();
 
-                    AiAgentToggleJob::dispatchSync(
-                        organizationId: $orgId,
-                        enabled: true
-                    );
+                    $this->toggleAgentAfterCommit($orgId, true);
                 } else {
                     $balance->is_agent_enabled = false;
                     $balance->save();
@@ -261,10 +258,7 @@ class AiSubscriptionRegistryService
             if ($wasEnabled && $balance->availableForUsageAmount() <= 0) {
                 $balance->is_agent_enabled = false;
                 $balance->save();
-                AiAgentToggleJob::dispatchSync(
-                    organizationId: $orgId,
-                    enabled: false
-                );
+                $this->toggleAgentAfterCommit($orgId, false);
             }
 
             Log::info('AiSubscriptionRegistryService: reversed AI registration', [
@@ -700,6 +694,27 @@ class AiSubscriptionRegistryService
             'description' => 'Баланс ИИ при подключении ',
         ]);
 
+    }
+
+    /**
+     * CRM-вызов не должен откатывать уже посчитанную подписку и кошелёк.
+     */
+    private function toggleAgentAfterCommit(int $orgId, bool $enabled): void
+    {
+        DB::afterCommit(function () use ($orgId, $enabled): void {
+            try {
+                AiAgentToggleJob::dispatchSync(
+                    organizationId: $orgId,
+                    enabled: $enabled
+                );
+            } catch (\Throwable $e) {
+                Log::error('AiSubscriptionRegistryService: CRM agent toggle failed after commit', [
+                    'organization_id' => $orgId,
+                    'enabled' => $enabled,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        });
     }
 
     private function isUniqueCommercialOfferViolation(QueryException $e): bool

@@ -60,18 +60,10 @@ class CommercialOfferAiItem extends Model
     }
 
     /**
-     * Подарочные месяцы: 1–2 → 0, 3–5 → +3, 6+ → +6.
+     * Акция 3+3 и 6+6 выключена.
      */
     public static function giftMonthsForConnectionPeriod(int $periodMonths): int
     {
-        $months = max(0, $periodMonths);
-        if ($months >= 6) {
-            return 6;
-        }
-        if ($months >= 3) {
-            return 3;
-        }
-
         return 0;
     }
 

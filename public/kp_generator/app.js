@@ -6475,16 +6475,8 @@ class CPGenerator {
         );
     }
 
-    /**
-     * Подарочные месяцы ИИ:
-     * 1–2 → 0, 3–5 → +3, 6+ → +6.
-     * Не на базовом и только если акция ещё не использована.
-     */
+    /** Акция 3+3 и 6+6 выключена. */
     getAiGiftMonthsForPeriod(periodMonths) {
-        if (!this.isAiGiftPromoEligible()) return 0;
-        const months = Math.max(0, Number(periodMonths) || 0);
-        if (months >= 6) return 6;
-        if (months >= 3) return 3;
         return 0;
     }
 
