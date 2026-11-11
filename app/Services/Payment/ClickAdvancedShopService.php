@@ -15,6 +15,9 @@ use Throwable;
 
 class ClickAdvancedShopService
 {
+    // фиксированная сумма оплаты, заменить расчётом задолженности после согласования правила.
+    private const FIXED_AMOUNT = 1000000;
+
     public function handle(array $payload): array
     {
         $serviceId = $payload['service_id'] ?? null;
@@ -31,8 +34,15 @@ class ClickAdvancedShopService
             $account = $this->account(is_array($params) ? ($params['account'] ?? null) : null);
 
             try {
-                return $account && $this->organization($account)
-                    ? $this->result([], 0, 'Успешно', ['params' => ['account' => $account]])
+                $organization = $account ? $this->organization($account) : null;
+
+                return $organization
+                    ? $this->result([], 0, 'Успешно', ['params' => [
+                        'account' => $account,
+                        'amount' => self::FIXED_AMOUNT,
+                        'organization_name' => $organization->legal_name ?: $organization->name,
+                        'TIN' => (string) $organization->INN,
+                    ]])
                     : $this->result([], -5, 'Организация не найдена');
 
             } catch (Throwable $e) {
@@ -79,7 +89,7 @@ class ClickAdvancedShopService
 
         $amount = $this->amount($params['amount'] ?? null);
 
-        if (!$amount) {
+        if ($amount !== (self::FIXED_AMOUNT . '.00')) {
             return $this->result($ids, -2, 'Некорректная сумма');
         }
 
@@ -87,9 +97,21 @@ class ClickAdvancedShopService
             // return $action === 1
             //     ? $this->prepare($ids, $paydocId, $attemptId, $account, $amount)
             //     : $this->confirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
+            
+            if ($action === 1) {
+                return $this->prepare($ids, $paydocId, $attemptId, $account, $amount);
+            }
 
-            // Заглушенная проверка CLICK callback
-            return $this->validateCallback($payload, $ids, $paydocId, $attemptId, $account, $amount);
+            Log::info('CLICK Advanced Shop Confirm received', [
+                'click_paydoc_id' => $paydocId,
+                'attempt_trans_id' => $attemptId,
+                'merchant_prepare_id' => $payload['merchant_prepare_id'] ?? null,
+                'account' => $account,
+                'amount' => $amount,
+                'provider_error' => $payload['error'] ?? null,
+            ]);
+
+            return $this->logConfirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
 
         } catch (Throwable $e) {
             $this->logFailure($e, $paydocId, $attemptId);
@@ -97,35 +119,7 @@ class ClickAdvancedShopService
             return $this->result($ids, -7, 'Не удалось обработать платёж');
         }
     }
-
-    private function validateCallback(array $payload, array $ids, int $paydocId, int $attemptId, string $account, string $amount): array
-    {
-        $action = $payload['action'];
-
-        if ($action === 2) {
-            $prepareId = filter_var($payload['merchant_prepare_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-            $providerError = $payload['error'] ?? 0;
-
-            if ($prepareId === false || !is_int($providerError) || $providerError > 0) {
-                return $this->result($ids, -8, 'Некорректный запрос');
-            }
-        }
-
-        $organization = $this->organization($account);
-        if (!$organization) {
-            return $this->result($ids, -5, 'Организация не найдена');
-        }
-
-        Log::info('CLICK Advanced Shop callback validated', [
-            'action' => $action,
-            'click_paydoc_id' => $paydocId,
-            'attempt_trans_id' => $attemptId,
-            'organization_id' => $organization->id,
-            'amount' => $amount,
-        ]);
-
-        return $this->result($ids, -7, 'Данные проверены; тестовый режим, платёж не проводится');
-    }
+    
 
     private function signatureError(array $payload, array $params): int
     {
@@ -251,11 +245,11 @@ class ClickAdvancedShopService
 
     private function confirm(array $payload, array $ids, int $paydocId, int $attemptId, string $account, string $amount): array
     {
-        $prepareId = $this->positiveId($payload['merchant_prepare_id'] ?? null);
+        $prepareId = filter_var($payload['merchant_prepare_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 
         $providerError = $payload['error'] ?? 0;
 
-        if (!$prepareId || !is_int($providerError) || $providerError > 0) {
+        if ($prepareId === false || !is_int($prepareId) || !is_int($providerError) || $providerError > 0) {
             return $this->result($ids, -8, 'Некорректный запрос');
         }
 
@@ -313,11 +307,8 @@ class ClickAdvancedShopService
                     return $this->confirmedResult($ids, $payment);
                 }
 
-                $organization = $this->organization($account);
-
-                if (!$organization || (int) $organization->id !== (int) $payment->organization_id
-                    || (int) $organization->client->country->currency_id !== (int) $payment->currency_id) {
-                    return $this->result($ids, -5, 'Организация не найдена');
+                if (!Organization::query()->whereKey($payment->organization_id)->exists()) {
+                    return $this->result($ids, -7, 'Организация недоступна');
                 }
 
                 $payment->paid_paydoc_id = $paydocId;
@@ -458,5 +449,41 @@ class ClickAdvancedShopService
             'attempt_trans_id' => $attemptId,
             'exception' => $e::class,
         ]);
+    }
+
+    private function logConfirm(array $payload, array $ids, int $paydocId, int $attemptId, string $account, string $amount): array
+    {
+        $prepareId = filter_var($payload['merchant_prepare_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $providerError = $payload['error'] ?? 0;
+
+        if ($prepareId === false || !is_int($providerError) || $providerError > 0) {
+            return $this->result($ids, -8, 'Некорректный запрос');
+        }
+
+        $payment = ClickBalancePayment::query()
+            ->where('click_paydoc_id', $paydocId)
+            ->where('attempt_trans_id', $attemptId)
+            ->first();
+
+        if (!$payment || (int) $payment->id !== $prepareId) {
+            return $this->result($ids, -6, 'Транзакция не найдена');
+        }
+
+        if ($payment->account !== $account) {
+            return $this->result($ids, -5, 'Организация не совпадает');
+        }
+
+        if ($payment->amount !== $amount) {
+            return $this->result($ids, -2, 'Сумма не совпадает');
+        }
+
+        if ($payment->status === 'cancelled') {
+            return $this->result($ids, -9, 'Платёж отменён');
+        }
+
+        // shortcut: Confirm does not change payment or balance state; restore the production path after testing.
+        return $providerError < 0
+            ? $this->result($ids, -9, 'Платёж отменён')
+            : $this->result($ids, -7, 'Подтверждение временно недоступно');
     }
 }

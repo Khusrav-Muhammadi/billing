@@ -167,6 +167,14 @@ Route::post('click/advanced-shop', \App\Http\Controllers\API\ClickAdvancedShopCo
     ->middleware('click.token')
     ->name('click.advanced-shop');
 
+Route::post('payme/merchant', \App\Http\Controllers\API\PaymeMerchantController::class)
+    ->middleware(\App\Http\Middleware\CheckPaymeAuth::class)
+    ->name('payme.merchant');
+
+// Route::get('payme/balance-checkout/{orderNumber}', \App\Http\Controllers\API\PaymeBalanceCheckoutController::class)
+//     ->middleware('crm.token')
+//     ->name('payme.balance-checkout');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::patch('client-payment/invoice/{payment}/customer', [\App\Http\Controllers\API\ClientPaymentController::class, 'updateInvoiceCustomer']);
 });

@@ -296,6 +296,11 @@ class DemoProvisioner
             'issue_demo_login_token' => true,
         ];
 
+        // Сфера и команда из конструктора на сайте: CRM подставит их в онбординг.
+        if (!empty($request->onboarding)) {
+            $payload['onboarding'] = $request->onboarding;
+        }
+
         $attempts = max(1, (int) config('demo.provisioning.crm_attempts', 8));
         $delayMs = (int) config('demo.provisioning.crm_retry_delay_ms', 1500);
         $timeout = (int) config('demo.provisioning.crm_timeout', 20);

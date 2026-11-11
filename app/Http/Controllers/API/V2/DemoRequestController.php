@@ -59,6 +59,7 @@ class DemoRequestController extends Controller
             'country_id' => $data['region_id'] ?? null,
             'partner_id' => $data['partner_id'] ?? null,
             'manager_id' => $data['manager_id'] ?? null,
+            'onboarding' => array_filter($data['onboarding'] ?? []) ?: null,
             'status' => DemoRequest::STATUS_QUEUED,
             'step' => DemoRequest::STEP_ACCOUNT,
             'ip' => $request->ip(),
@@ -155,6 +156,10 @@ class DemoRequestController extends Controller
             'partner_id' => ['nullable', 'integer'],
             'manager_id' => ['nullable', 'integer'],
             'cf_turnstile_response' => ['nullable', 'string', 'max:2048'],
+            // Выбор в конструкторе на сайте. Ключи сверяет CRM, здесь только формат.
+            'onboarding' => ['nullable', 'array'],
+            'onboarding.industry' => ['nullable', 'string', 'max:40', 'alpha_dash'],
+            'onboarding.team_size' => ['nullable', 'string', 'max:20', 'alpha_dash'],
         ], [
             'fio.required' => 'Укажите имя или название компании.',
             'phone.required' => 'Укажите телефон.',

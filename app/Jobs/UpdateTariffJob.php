@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Support\CrmHttp;
+use App\Support\CrmPackTypes;
 
 use App\Models\Organization;
 use App\Models\Tariff;
@@ -44,6 +45,8 @@ class UpdateTariffJob implements ShouldQueue
             'tariff_id' => $tariff->id,
             'user_count' => $tariff->user_count,
             'channels_count' => $tariff->channels_count ?? 3,
+            // CRM держит права этих пакетов при смене тарифа.
+            'packs' => CrmPackTypes::activeFor($this->organization),
         ];
 
         try {
