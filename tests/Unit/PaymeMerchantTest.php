@@ -1,8 +1,8 @@
 <?php
 
-use App\Enums\PaymentType;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -113,17 +113,19 @@ it('requires Payme Basic Auth and preserves the RPC id in errors', function () {
     expect(DB::table('payme_balance_transactions')->count())->toBe(0);
 });
 
-it('accepts test credentials only outside production and preserves colons in the password', function () {
+it('accepts test credentials in production and performs without crediting the balance', function () {
     config()->set('services.payme_merchant.test_login', 'TestPaycom');
     config()->set('services.payme_merchant.test_key', 'test:key');
-    config()->set('app.env', 'testing');
+    config()->set('app.env', 'production');
     $request = paymeRpc('CheckPerformTransaction', ['amount' => 100000000, 'account' => ['order_number' => '000000042']]);
     $this->withHeaders(['Authorization' => 'Basic ' . base64_encode('TestPaycom:test:key')])
         ->postJson('/api/payme/merchant', $request)->assertJsonPath('result.allow', true);
 
-    config()->set('app.env', 'production');
-    $this->postJson('/api/payme/merchant', $request)
-        ->assertJsonPath('id', 7)->assertJsonPath('error.code', -32504);
+    $create = paymeCreate();
+    $this->postJson('/api/payme/merchant', $create)->assertJsonPath('result.state', 1);
+    $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $create['params']['id']]))
+        ->assertJsonPath('result.state', 2);
+    expect(DB::table('client_balances')->count())->toBe(0);
 });
 
 it('checks exact account and fixed tiyin amount before creating a transaction', function () {
@@ -141,6 +143,7 @@ it('checks exact account and fixed tiyin amount before creating a transaction', 
 });
 
 it('creates and performs once, then reports the same transaction on retries and in the statement', function () {
+    config()->set('app.env', 'production');
     $create = paymeCreate();
     $time = $create['params']['time'];
     $created = $this->postJson('/api/payme/merchant', $create)
@@ -161,17 +164,18 @@ it('creates and performs once, then reports the same transaction on retries and 
         ->assertJsonPath('result.transactions.0.account.order_number', '000000042')
         ->assertJsonPath('result.transactions.0.amount', 100000000)
         ->assertJsonPath('result.transactions.0.state', 2);
-    expect(DB::table('client_balances')->where('type', 'income')->where('source', PaymentType::PAYME->value)->count())->toBe(1)
-        ->and(DB::table('client_balances')->value('sum'))->toBe(1000000);
+    expect(DB::table('client_balances')->count())->toBe(0)
+        ->and(DB::table('payme_balance_transactions')->value('income_balance_id'))->toBeNull();
 });
 
-it('allows two separate top-ups to the same balance and sorts the statement by Payme time', function () {
+it('allows two pending payments for one cumulative account and sorts the statement by Payme time', function () {
     $time = (int) floor(microtime(true) * 1000);
     $later = paymeCreate('bbbbbbbbbbbbbbbbbbbbbbbb', $time + 1);
     $earlier = paymeCreate('aaaaaaaaaaaaaaaaaaaaaaaa', $time);
 
     $this->postJson('/api/payme/merchant', $later)->assertJsonPath('result.state', 1);
     $this->postJson('/api/payme/merchant', $earlier)->assertJsonPath('result.state', 1);
+    expect(DB::table('payme_balance_transactions')->where('state', 1)->count())->toBe(2);
     $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $later['params']['id']]))
         ->assertJsonPath('result.state', 2);
     $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $earlier['params']['id']]))
@@ -181,10 +185,10 @@ it('allows two separate top-ups to the same balance and sorts the statement by P
         ->assertJsonCount(2, 'result.transactions')
         ->assertJsonPath('result.transactions.0.id', $earlier['params']['id'])
         ->assertJsonPath('result.transactions.1.id', $later['params']['id']);
-    expect(DB::table('client_balances')->where('type', 'income')->count())->toBe(2);
+    expect(DB::table('client_balances')->count())->toBe(0);
 });
 
-it('cancels a paid transaction with one reversal and preserves the original cancellation', function () {
+it('cancels a paid transaction without changing the balance and preserves the original cancellation', function () {
     $create = paymeCreate();
     $this->postJson('/api/payme/merchant', $create)->assertJsonPath('result.state', 1);
     $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $create['params']['id']]))
@@ -196,8 +200,8 @@ it('cancels a paid transaction with one reversal and preserves the original canc
     $this->postJson('/api/payme/merchant', $cancel)->assertJsonPath('result', $cancelled);
     $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $create['params']['id']]))
         ->assertJsonPath('error.code', -31008);
-    expect(DB::table('client_balances')->where('type', 'income')->count())->toBe(1)
-        ->and(DB::table('client_balances')->where('type', 'outcome')->where('source', PaymentType::PAYME->value)->count())->toBe(1)
+    expect(DB::table('client_balances')->count())->toBe(0)
+        ->and(DB::table('payme_balance_transactions')->value('reversal_balance_id'))->toBeNull()
         ->and(DB::table('payme_balance_transactions')->value('reason'))->toBe(5);
 });
 
@@ -225,13 +229,43 @@ it('expires a pending transaction after twelve hours and reports it in GetStatem
     expect(DB::table('client_balances')->count())->toBe(0);
 });
 
-it('rolls back a failed balance write and leaves the Payme transaction pending', function () {
+it('performs without requiring the balance table', function () {
     $create = paymeCreate();
     $this->postJson('/api/payme/merchant', $create)->assertJsonPath('result.state', 1);
     Schema::drop('client_balances');
 
     $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $create['params']['id']]))
-        ->assertJsonPath('error.code', -32400);
-    expect(DB::table('payme_balance_transactions')->value('state'))->toBe(1)
+        ->assertJsonPath('result.state', 2);
+    expect(DB::table('payme_balance_transactions')->value('state'))->toBe(2)
         ->and(DB::table('payme_balance_transactions')->value('income_balance_id'))->toBeNull();
+});
+
+it('refuses cancellation of a transaction that was already credited before sandbox mode', function () {
+    $create = paymeCreate();
+    $this->postJson('/api/payme/merchant', $create)->assertJsonPath('result.state', 1);
+    DB::table('payme_balance_transactions')->update(['state' => 2, 'income_balance_id' => 123]);
+
+    $this->postJson('/api/payme/merchant', paymeRpc('CancelTransaction', [
+        'id' => $create['params']['id'], 'reason' => 5,
+    ]))->assertJsonPath('error.code', -31008);
+    expect(DB::table('payme_balance_transactions')->value('state'))->toBe(2)
+        ->and(DB::table('client_balances')->count())->toBe(0);
+});
+
+it('logs the Payme request and response without Basic credentials', function () {
+    Log::spy();
+    $request = paymeRpc('CheckPerformTransaction', [
+        'amount' => 100000000,
+        'account' => ['order_number' => '000000042'],
+    ]);
+
+    $this->postJson('/api/payme/merchant', $request)->assertJsonPath('result.allow', true);
+
+    Log::shouldHaveReceived('info')->once()->with('Payme merchant callback', Mockery::on(
+        fn (array $context): bool => $context['method'] === 'CheckPerformTransaction'
+            && $context['rpc_id'] === 7
+            && $context['params'] === $request['params']
+            && $context['response']['result']['allow'] === true
+            && !str_contains(json_encode($context), 'test-key')
+    ));
 });
