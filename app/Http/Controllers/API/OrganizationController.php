@@ -196,14 +196,28 @@ class OrganizationController extends Controller
         }
 
         if ($request->filled('date_from')) {
-            $createdFrom = Carbon::parse((string)$request->query('date_from'))->subWeeks(2)->startOfDay();
+            $demoEndsFrom = Carbon::parse((string)$request->query('date_from'))->subWeeks(2)->startOfDay();
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($demoEndsFrom): void {
+                $clientQuery->where('created_at', '>=', $demoEndsFrom);
+            });
+        }
+
+        if ($request->filled('date_to')) {
+            $demoEndsTo = Carbon::parse((string)$request->query('date_to'))->subWeeks(2)->endOfDay();
+            $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($demoEndsTo): void {
+                $clientQuery->where('created_at', '<=', $demoEndsTo);
+            });
+        }
+
+        if ($request->filled('create_at_from')) {
+            $createdFrom = Carbon::parse((string)$request->query('create_at_from'))->startOfDay();
             $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($createdFrom): void {
                 $clientQuery->where('created_at', '>=', $createdFrom);
             });
         }
 
-        if ($request->filled('date_to')) {
-            $createdTo = Carbon::parse((string)$request->query('date_to'))->subWeeks(2)->endOfDay();
+        if ($request->filled('create_at_to')) {
+            $createdTo = Carbon::parse((string)$request->query('create_at_to'))->endOfDay();
             $organizationsQuery->whereHas('client', function (Builder $clientQuery) use ($createdTo): void {
                 $clientQuery->where('created_at', '<=', $createdTo);
             });

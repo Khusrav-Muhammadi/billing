@@ -473,14 +473,28 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         }
 
         if (!empty($data['date_from'])) {
-            $createdFrom = Carbon::parse($data['date_from'])->subWeeks(2)->startOfDay();
+            $demoEndsFrom = Carbon::parse($data['date_from'])->subWeeks(2)->startOfDay();
+            $query->whereHas('client', function (Builder $clientQuery) use ($demoEndsFrom) {
+                $clientQuery->where('created_at', '>=', $demoEndsFrom);
+            });
+        }
+
+        if (!empty($data['date_to'])) {
+            $demoEndsTo = Carbon::parse($data['date_to'])->subWeeks(2)->endOfDay();
+            $query->whereHas('client', function (Builder $clientQuery) use ($demoEndsTo) {
+                $clientQuery->where('created_at', '<=', $demoEndsTo);
+            });
+        }
+
+        if (!empty($data['create_at_from'])) {
+            $createdFrom = Carbon::parse($data['create_at_from'])->startOfDay();
             $query->whereHas('client', function (Builder $clientQuery) use ($createdFrom) {
                 $clientQuery->where('created_at', '>=', $createdFrom);
             });
         }
 
-        if (!empty($data['date_to'])) {
-            $createdTo = Carbon::parse($data['date_to'])->subWeeks(2)->endOfDay();
+        if (!empty($data['create_at_to'])) {
+            $createdTo = Carbon::parse($data['create_at_to'])->endOfDay();
             $query->whereHas('client', function (Builder $clientQuery) use ($createdTo) {
                 $clientQuery->where('created_at', '<=', $createdTo);
             });
