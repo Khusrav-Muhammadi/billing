@@ -114,6 +114,7 @@ class ClickAdvancedShopService
             return $this->logConfirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
 
         } catch (Throwable $e) {
+            
             $this->logFailure($e, $paydocId, $attemptId);
 
             return $this->result($ids, -7, 'Не удалось обработать платёж');
