@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Tariff;
 use App\Http\Requests\CommercialOfferRequest;
 use App\Models\Ai\AiTariffPlan;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -130,6 +131,10 @@ class CommercialOfferController extends Controller
             'currency' => 'nullable|string|max:20', // сум, $, € и т.д.
             'validity_days' => 'nullable|integer|min:1|max:365',
         ]);
+
+        $validated['tariff_features'] = Tariff::sanitizeOfferLines($validated['tariff_features'] ?? []);
+        $validated['modules'] = Tariff::sanitizeOfferLines($validated['modules'] ?? []);
+        $validated['one_time_services'] = Tariff::sanitizeOfferLines($validated['one_time_services'] ?? []);
 
         $currency = $validated['currency'] ?? 'сум';
 
@@ -432,7 +437,6 @@ class CommercialOfferController extends Controller
             ['name' => 'Количество пользователей', 'value' => '30 шт.'],
             ['name' => 'Дашборд'],
             ['name' => 'Интеграция Instagram', 'value' => '10 канал'],
-            ['name' => 'Интеграция Telegram', 'value' => '10 канал'],
             ['name' => 'Интеграция WhatsApp', 'value' => '10 канал'],
             ['name' => 'Интеграция Messenger', 'value' => '10 канал'],
             ['name' => 'Мобильное приложение'],
@@ -465,7 +469,6 @@ class CommercialOfferController extends Controller
             ['name' => 'Обучение сотрудников', 'status' => 'included', 'price' => 0],
             ['name' => 'Консультационная поддержка', 'status' => 'included', 'price' => 0],
             ['name' => 'Интеграция Instagram', 'status' => 'included', 'value' => '10 канала'],
-            ['name' => 'Интеграция Telegram', 'status' => 'included', 'value' => '10 канала'],
             ['name' => 'Интеграция WhatsApp', 'status' => 'included', 'value' => '10 канала'],
             ['name' => 'Интеграция Messenger', 'status' => 'included', 'value' => '10 канала'],
             ['name' => 'Внедрение', 'status' => 'selected', 'price' => 30600000],

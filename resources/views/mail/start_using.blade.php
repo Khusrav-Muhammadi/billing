@@ -72,10 +72,10 @@
 
             <div class="feat">
                 <div class="ficon">
-                    <i class="ti ti-brand-telegram" style="color:#4d55d4;font-size:16px" aria-hidden="true"></i>
+                    <i class="ti ti-brand-whatsapp" style="color:#4d55d4;font-size:16px" aria-hidden="true"></i>
                 </div>
                 <div>
-                    <p style="font-size:14px;color:#111827;margin:0;font-weight:700">Подключить Instagram, Telegram и WhatsApp</p>
+                    <p style="font-size:14px;color:#111827;margin:0;font-weight:700">Подключить Instagram и WhatsApp</p>
                     <p style="font-size:12px;color:#9ca3af;margin:2px 0 0">Все мессенджеры в одном окне</p>
                 </div>
             </div>

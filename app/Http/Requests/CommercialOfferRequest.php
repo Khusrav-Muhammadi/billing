@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Tariff;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CommercialOfferRequest extends FormRequest
@@ -85,8 +86,9 @@ class CommercialOfferRequest extends FormRequest
         ], $data['contacts'] ?? []);
 
         // Ensure arrays exist
-        $data['additional_services'] = $data['additional_services'] ?? [];
-        $data['one_time_payments'] = $data['one_time_payments'] ?? [];
+        $data['additional_services'] = Tariff::sanitizeOfferLines($data['additional_services'] ?? []);
+        $data['one_time_payments'] = Tariff::sanitizeOfferLines($data['one_time_payments'] ?? []);
+        $data['features'] = Tariff::sanitizeOfferLines($data['features'] ?? []);
 
         // Calculate costs
         $calculations = $this->calculateCosts($data, $periodMonths, $currency);

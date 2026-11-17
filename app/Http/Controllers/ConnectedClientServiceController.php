@@ -594,6 +594,9 @@ class ConnectedClientServiceController extends Controller
             $includedQty = [];
             $includedPaid = [];
             foreach (($tariff->includedServices ?? []) as $includedService) {
+                if (Tariff::isDedicatedTelegramChannelLine($includedService->name)) {
+                    continue;
+                }
                 $serviceKey = 'service-' . $includedService->id;
                 $includedServicesKeys[] = $serviceKey;
                 $includedQty[$serviceKey] = (int) ($includedService->pivot?->quantity ?? 1);
@@ -628,6 +631,9 @@ class ConnectedClientServiceController extends Controller
         // Услуги аналогично
         $servicesForJs = [];
         foreach ($services as $service) {
+            if (Tariff::isDedicatedTelegramChannelLine($service->name)) {
+                continue;
+            }
             $serviceEnd = $this->parseDateToTs($service->end_date ? (string) $service->end_date : null);
             $isActiveByEndDate = $serviceEnd === null || $serviceEnd >= $today;
 

@@ -5141,12 +5141,7 @@ class CPGenerator {
         // Интеграции с соц.сетями
         if (tf.socialIntegrations) {
             const social = tf.socialIntegrations;
-            if (social.telegram && social.telegram.channels > 0) {
-                tariffFeatures.push({
-                    name: "Интеграция Telegram",
-                    value: `${social.telegram.channels} канал${social.telegram.channels > 1 ? 'а' : ''}`
-                });
-            }
+
             if (social.whatsapp && social.whatsapp.channels > 0) {
                 tariffFeatures.push({
                     name: "Интеграция WhatsApp",

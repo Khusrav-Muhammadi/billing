@@ -870,6 +870,7 @@
         @if(isset($tariff_features) && count($tariff_features) > 0)
         <table class="features-table">
             @foreach($tariff_features as $feature)
+            @continue(\App\Models\Tariff::isDedicatedTelegramChannelLine($feature['name'] ?? null))
             <tr>
                 <td>{{ $feature['name'] }}</td>
                 <td class="{{ isset($feature['value']) ? '' : 'check' }}">
@@ -904,6 +905,7 @@
         <h2 class="section-title">Дополнительные модули</h2>
         <table class="modules-table">
             @foreach($modules as $module)
+            @continue(\App\Models\Tariff::isDedicatedTelegramChannelLine($module['name'] ?? null))
             <tr>
                 <td>{{ $module['name'] }}</td>
                 <td class="{{ $module['status'] === 'included' ? 'check' : ($module['status'] === 'not_available' ? 'cross' : '') }}">
@@ -953,6 +955,7 @@
         <h2 class="section-title">Услуги внедрения и обучения (разово)</h2>
         <table class="services-table">
             @foreach($one_time_services as $service)
+            @continue(\App\Models\Tariff::isDedicatedTelegramChannelLine($service['name'] ?? null))
             @php
                 $isImplementationService = trim((string)($service['name'] ?? '')) === 'Внедрение';
                 $showImplementationDiscount = $isImplementationService

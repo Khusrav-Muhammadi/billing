@@ -101,6 +101,95 @@ class Tariff extends Model
         return self::isBaseTariffName($this->name);
     }
 
+    /**
+     * Подключение Telegram-аккаунта закрыто: доп. канал и отдельная строка интеграции.
+     * Списки «WhatsApp / Instagram / Telegram» сюда не входят — из них убирается только Telegram.
+     */
+    public static function isDedicatedTelegramChannelLine(?string $name): bool
+    {
+        $name = mb_strtolower(str_replace(['Ё', 'ё'], ['Е', 'е'], trim((string) $name)), 'UTF-8');
+        if ($name === '' || str_contains($name, 'mini')) {
+            return false;
+        }
+
+        $isTelegram = str_contains($name, 'telegram') || str_contains($name, 'телеграм');
+        if (!$isTelegram) {
+            return false;
+        }
+
+        if (str_contains($name, 'whatsapp') || str_contains($name, 'instagram') || str_contains($name, 'messenger')) {
+            return false;
+        }
+
+        return str_contains($name, 'канал')
+            || str_contains($name, 'аккаунт')
+            || str_contains($name, 'интеграц')
+            || str_contains($name, 'подключ');
+    }
+
+    public static function stripTelegramFromIntegrationText(string $text): string
+    {
+        if (!preg_match('/telegram|телеграм/iu', $text) || preg_match('/mini/iu', $text)) {
+            return $text;
+        }
+
+        if (!preg_match('/whatsapp|instagram|messenger/iu', $text)) {
+            return $text;
+        }
+
+        $updated = preg_replace('#\s*/\s*Telegram\b#iu', '', $text) ?? $text;
+        $updated = preg_replace('#\bTelegram\s*/\s*#iu', '', $updated) ?? $updated;
+        $updated = preg_replace('#,\s*Telegram\b#iu', '', $updated) ?? $updated;
+        $updated = preg_replace('#\s+и\s+Telegram\b#iu', '', $updated) ?? $updated;
+        $updated = preg_replace('#\bTelegram\s+и\s+#iu', '', $updated) ?? $updated;
+
+        return trim(preg_replace('/\s{2,}/u', ' ', $updated) ?? $updated);
+    }
+
+    public static function sanitizeOfferLines(array $lines): array
+    {
+        $result = [];
+
+        foreach ($lines as $line) {
+            if (is_string($line)) {
+                if (self::isDedicatedTelegramChannelLine($line)) {
+                    continue;
+                }
+                $result[] = self::stripTelegramFromIntegrationText($line);
+                continue;
+            }
+
+            if (!is_array($line)) {
+                $result[] = $line;
+                continue;
+            }
+
+            $label = (string) ($line['name'] ?? $line['title'] ?? '');
+            if (self::isDedicatedTelegramChannelLine($label)) {
+                continue;
+            }
+
+            foreach (['name', 'title'] as $key) {
+                if (isset($line[$key]) && is_string($line[$key])) {
+                    $line[$key] = self::stripTelegramFromIntegrationText($line[$key]);
+                }
+            }
+
+            $result[] = $line;
+        }
+
+        return array_values($result);
+    }
+
+    public static function sanitizeTariffFeatures(array $features): array
+    {
+        if (isset($features['socialIntegrations']) && is_array($features['socialIntegrations'])) {
+            unset($features['socialIntegrations']['telegram']);
+        }
+
+        return $features;
+    }
+
     public static function isFingroupAccountingTariffName(?string $name): bool
     {
         $normalized = mb_strtolower(str_replace(['Ё', 'ё'], ['Е', 'е'], trim((string) $name)), 'UTF-8');

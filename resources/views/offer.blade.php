@@ -548,6 +548,7 @@
         </thead>
         <tbody>
         @foreach($features as $feature)
+            @continue(\App\Models\Tariff::isDedicatedTelegramChannelLine($feature['title'] ?? null))
             <tr>
                 <td>
                     <div class="feature-title">{{ $feature['title'] }}</div>
@@ -618,6 +619,7 @@
                 </thead>
                 <tbody>
                 @foreach($additional_services as $service)
+                    @continue(\App\Models\Tariff::isDedicatedTelegramChannelLine($service['name'] ?? null))
                     <tr>
                         <td>
                             <span class="badge">МЕС</span>

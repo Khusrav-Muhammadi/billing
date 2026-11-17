@@ -37,7 +37,7 @@
       "includedServices": [],
       "features": [
         "Воронка продаж",
-        "Интеграция: WhatsApp / Instagram / Telegram",
+        "Интеграция: WhatsApp / Instagram",
         "Управление задачами",
         "Календарь (встречи, записи)",
         "Мобильное приложение shamCRM"
@@ -46,7 +46,6 @@
         "users": 3,
         "dashboard": true,
         "socialIntegrations": {
-          "telegram": { "channels": 1, "discount": 100 },
           "whatsapp": { "channels": 1, "discount": 100 },
           "instagram": { "channels": 1, "discount": 100 },
           "messenger": { "channels": 1, "discount": 100 },
@@ -95,7 +94,7 @@
       "includedServices": [],
       "features": [
         "Воронка продаж",
-        "Интеграция: WhatsApp / Instagram / Telegram",
+        "Интеграция: WhatsApp / Instagram",
         "Управление задачами",
         "Календарь (встречи, записи)",
         "Мобильное приложение shamCRM"
@@ -104,7 +103,6 @@
         "users": 10,
         "dashboard": true,
         "socialIntegrations": {
-          "telegram": { "channels": 3, "discount": 100 },
           "whatsapp": { "channels": 3, "discount": 100 },
           "instagram": { "channels": 3, "discount": 100 },
           "messenger": { "channels": 3, "discount": 100 },
@@ -153,7 +151,7 @@
       "includedServices": ["telegram_b2c", "telegram_b2b", "sms_broadcast"],
       "features": [
         "Воронка продаж",
-        "Интеграция: WhatsApp / Instagram / Telegram",
+        "Интеграция: WhatsApp / Instagram",
         "Управление задачами",
         "Календарь (встречи, записи)",
         "Мобильное приложение shamCRM",
@@ -165,7 +163,6 @@
         "users": 20,
         "dashboard": true,
         "socialIntegrations": {
-          "telegram": { "channels": 5, "discount": 100 },
           "whatsapp": { "channels": 5, "discount": 100 },
           "instagram": { "channels": 5, "discount": 100 },
           "messenger": { "channels": 5, "discount": 100 },
@@ -214,7 +211,7 @@
       "includedServices": ["telegram_b2c", "telegram_b2b", "sms_broadcast", "extra_funnel"],
       "features": [
         "Воронка продаж",
-        "Интеграция: WhatsApp / Instagram / Telegram",
+        "Интеграция: WhatsApp / Instagram",
         "Управление задачами",
         "Календарь (встречи, записи)",
         "Мобильное приложение shamCRM",
@@ -226,7 +223,6 @@
         "users": 30,
         "dashboard": true,
         "socialIntegrations": {
-          "telegram": { "channels": 10, "discount": 100 },
           "whatsapp": { "channels": 10, "discount": 100 },
           "instagram": { "channels": 10, "discount": 100 },
           "messenger": { "channels": 10, "discount": 100 },

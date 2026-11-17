@@ -569,7 +569,7 @@
         <div class="table-row">
             <div class="table-cell">
                 <div class="feature-title">Интеграция:</div>
-                <div class="feature-subtitle">WhatsApp / Instagram / Telegram</div>
+                <div class="feature-subtitle">WhatsApp / Instagram</div>
             </div>
             <div class="table-cell"></div>
         </div>

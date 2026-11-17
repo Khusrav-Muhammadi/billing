@@ -1117,6 +1117,9 @@ class CommercialFooferController extends Controller
             $includedQuantities = [];
             $includedPaid = [];
             foreach ($tariff->includedServices as $includedService) {
+                if (Tariff::isDedicatedTelegramChannelLine($includedService->name)) {
+                    continue;
+                }
                 $serviceKey = 'service-' . (int)$includedService->id;
                 $includedServices[] = $serviceKey;
                 $includedQuantities[$serviceKey] = max(1, (int)($includedService->pivot?->quantity ?? 1));
@@ -1146,8 +1149,8 @@ class CommercialFooferController extends Controller
                 'includedServices' => $includedServices,
                 'includedServiceQuantities' => $includedQuantities,
                 'includedServicePaidFlags' => $includedPaid,
-                'features' => (array)data_get($templateTariff, 'features', []),
-                'tariffFeatures' => (array)data_get($templateTariff, 'tariffFeatures', []),
+                'features' => Tariff::sanitizeOfferLines((array)data_get($templateTariff, 'features', [])),
+                'tariffFeatures' => Tariff::sanitizeTariffFeatures((array)data_get($templateTariff, 'tariffFeatures', [])),
             ];
         }
 
@@ -1163,6 +1166,9 @@ class CommercialFooferController extends Controller
 
         $servicesForJs = [];
         foreach ($services as $service) {
+            if (Tariff::isDedicatedTelegramChannelLine($service->name)) {
+                continue;
+            }
             $endTs = $this->parseDateToTs($service->end_date);
             if ($endTs !== null && $endTs < $asOfTs) {
                 continue;
@@ -2459,7 +2465,7 @@ class CommercialFooferController extends Controller
 
         $tariff = Tariff::query()
             ->whereKey($selectedTariffId)
-            ->with(['includedServices:id,can_increase'])
+            ->with(['includedServices:id,name,can_increase'])
             ->first();
 
         if (!$tariff) {
@@ -2468,6 +2474,9 @@ class CommercialFooferController extends Controller
 
         $result = [];
         foreach ($tariff->includedServices as $service) {
+            if (Tariff::isDedicatedTelegramChannelLine($service->name)) {
+                continue;
+            }
             $serviceKey = 'service-' . (int)$service->id;
             $result[$serviceKey] = [
                 'can_increase' => (bool)$service->can_increase,

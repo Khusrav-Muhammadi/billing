@@ -100,6 +100,9 @@ class SiteCatalogService
 
             $included = [];
             foreach ($tariff->includedServices as $service) {
+                if (Tariff::isDedicatedTelegramChannelLine($service->name)) {
+                    continue;
+                }
                 $included[] = [
                     'id' => (int) $service->id,
                     'name' => (string) $service->name,
@@ -141,6 +144,9 @@ class SiteCatalogService
         $items = [];
 
         foreach ($services as $service) {
+            if (Tariff::isDedicatedTelegramChannelLine($service->name)) {
+                continue;
+            }
             $endTs = $this->parseDateToTs($service->end_date);
             if ($endTs !== null && $endTs < $asOfTs) {
                 continue;

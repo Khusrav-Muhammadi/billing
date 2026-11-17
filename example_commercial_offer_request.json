@@ -22,11 +22,6 @@
       "included": true
     },
     {
-      "title": "Интеграция Telegram",
-      "subtitle": "10 канал",
-      "included": true
-    },
-    {
       "title": "Интеграция WhatsApp",
       "subtitle": "10 канал",
       "included": true
@@ -137,10 +132,6 @@
     },
     {
       "name": "Интеграция Instagram",
-      "price": 0
-    },
-    {
-      "name": "Интеграция Telegram",
       "price": 0
     },
     {
