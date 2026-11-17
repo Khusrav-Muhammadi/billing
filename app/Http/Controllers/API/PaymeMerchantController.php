@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Payment\PaymeMerchantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use JsonException;
 
 class PaymeMerchantController extends Controller
@@ -33,6 +34,14 @@ class PaymeMerchantController extends Controller
             ) + ['id' => $id]);
         }
 
-        return response()->json($this->service->handle($payload['method'], $payload['params']) + ['id' => $id]);
+        $result = $this->service->handle($payload['method'], $payload['params']) + ['id' => $id];
+        Log::info('Payme merchant callback', [
+            'method' => $payload['method'],
+            'rpc_id' => $id,
+            'params' => $payload['params'],
+            'response' => $result,
+        ]);
+
+        return response()->json($result);
     }
 }

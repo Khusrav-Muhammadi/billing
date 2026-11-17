@@ -2,8 +2,6 @@
 
 namespace App\Services\Payment;
 
-use App\Enums\PaymentType;
-use App\Models\ClientBalance;
 use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\Organization;
@@ -178,6 +176,7 @@ class PaymeMerchantService
                 return $this->accountError();
             }
 
+            /* shortcut: Payme callbacks only record transaction states; restore balance crediting after sandbox approval.
             $income = ClientBalance::query()->create([
                 'date' => now(),
                 'organization_id' => $payment->organization_id,
@@ -188,6 +187,7 @@ class PaymeMerchantService
             ]);
 
             $payment->income_balance_id = $income->id;
+            */
             $payment->state = 2;
             $payment->perform_time = $this->milliseconds();
             $payment->save();
@@ -219,6 +219,11 @@ class PaymeMerchantService
             }
 
             if ($payment->state === 2) {
+                if ($payment->income_balance_id !== null) {
+                    return $this->stateError();
+                }
+
+                /* shortcut: Paid sandbox transactions only change Payme state; restore reversals with balance crediting.
                 $reversal = ClientBalance::query()->create([
                     'date' => now(),
                     'organization_id' => $payment->organization_id,
@@ -228,6 +233,7 @@ class PaymeMerchantService
                     'source' => PaymentType::PAYME,
                 ]);
                 $payment->reversal_balance_id = $reversal->id;
+                */
                 $payment->state = -2;
             } else {
                 $payment->state = -1;
