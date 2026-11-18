@@ -38,6 +38,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api')
                 ->group(base_path('routes/payments.php'));
 
+            // Партнёрский портал partners.shamcrm.com (server-to-server, X-Partners-Token).
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/partner_program.php'));
+
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
         });

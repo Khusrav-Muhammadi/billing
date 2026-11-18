@@ -247,6 +247,12 @@ class CommercialFooferController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Партнёр с неодобренной заявкой (портал partners.shamcrm.com) не может создавать КП.
+        $authUser = Auth::user();
+        if ($authUser && $authUser->role === 'partner' && ($authUser->approval_status ?? 'approved') !== 'approved') {
+            return response()->json(['message' => 'Заявка партнёра ещё не одобрена.'], 403);
+        }
+
         $validated = $request->validate([
             'offer_id' => ['nullable', 'integer', 'exists:commercial_offers,id'],
             'organization_id' => ['required', 'integer', 'exists:organizations,id'],

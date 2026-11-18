@@ -14,6 +14,14 @@ class AuthController extends Controller
     {
         if (Auth::attempt($request->credentials())) {
             $user = Auth::user();
+
+            // Партнёрский портал: отклонённые заявки не входят. Ожидающие входят и видят «на рассмотрении».
+            if ($user->role === 'partner' && ($user->approval_status ?? 'approved') === 'rejected') {
+                Auth::logout();
+
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
             $token = $user->createToken('PartnerToken');
 
             return response()->json([
