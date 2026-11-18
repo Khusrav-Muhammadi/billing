@@ -1,4 +1,7 @@
 @php
+    // sham-new-back: показываем только итоговые цены, без зачёркиваний и строк «Скидка».
+    $hideDiscounts = !empty($hideDiscounts);
+
     function formatPrice($number) {
         return number_format((float) $number, 2, ',', ' ');
     }
@@ -856,7 +859,7 @@
         @endphp
         <div class="tariff-price-label" style="text-align: center; margin-bottom: 30px;">
             <div>Стоимость тарифа:</div>
-            @if($is12Months)
+            @if($is12Months && !$hideDiscounts)
                 <div class="price-breakdown" style="display: inline-flex; flex-direction: column; align-items: center; gap: 5px; line-height: 1.2; margin-top: 10px;">
                     <span class="price-before-discount" style="font-size: 18px; font-weight: 500; text-decoration: line-through; color: #8b95aa;">{{ formatPrice($originalPrice) }} {{ $currency }}</span>
                     <span class="discount-line" style="font-size: 16px; font-weight: 700; color: #16a34a;">Скидка 15% (−{{ formatPrice($discountAmount) }} {{ $currency }})</span>
@@ -901,21 +904,30 @@
     @endif
 
     <!-- MODULES SECTION -->
+    @php
+        // Недоступные модули (✗) в КП не выводим — только то, что есть.
+        $visibleModules = array_values(array_filter($modules ?? [], static function ($module) {
+            return ($module['status'] ?? '') !== 'not_available'
+                && !\App\Models\Tariff::isDedicatedTelegramChannelLine($module['name'] ?? null);
+        }));
+    @endphp
+    @if(count($visibleModules) > 0)
     <div class="section-block" style="margin-top: 40px;">
         <h2 class="section-title">Дополнительные модули</h2>
         <table class="modules-table">
-            @foreach($modules as $module)
-            @continue(\App\Models\Tariff::isDedicatedTelegramChannelLine($module['name'] ?? null))
+            @foreach($visibleModules as $module)
             <tr>
                 <td>{{ $module['name'] }}</td>
-                <td class="{{ $module['status'] === 'included' ? 'check' : ($module['status'] === 'not_available' ? 'cross' : '') }}">
+                <td class="{{ $module['status'] === 'included' ? 'check' : '' }}">
                     @if($module['status'] === 'included')
                         ✓
                     @elseif($module['status'] === 'selected')
                         @php
                             $aiPromoOriginalPrice = getAiPromoOriginalPrice($module['name'], $currency);
                         @endphp
-                        @if($aiPromoOriginalPrice !== null)
+                        @if($aiPromoOriginalPrice !== null && $hideDiscounts)
+                            {{ formatPrice(0) }} {{ $currency }}
+                        @elseif($aiPromoOriginalPrice !== null)
                             <div class="price-breakdown">
                                 <div class="price-before-discount">{{ formatPrice($aiPromoOriginalPrice) }} {{ $currency }}</div>
                                 <div class="discount-line">
@@ -927,14 +939,13 @@
                         @else
                             {{ formatPrice($module['price']) }} {{ $currency }}
                         @endif
-                    @else
-                        ✗
                     @endif
                 </td>
             </tr>
             @endforeach
         </table>
     </div>
+    @endif
 
     <!-- ONE-TIME SERVICES SECTION -->
     @if(isset($one_time_services) && count($one_time_services) > 0)
@@ -959,6 +970,7 @@
             @php
                 $isImplementationService = trim((string)($service['name'] ?? '')) === 'Внедрение';
                 $showImplementationDiscount = $isImplementationService
+                    && !$hideDiscounts
                     && $hasImplementationDiscount
                     && isset($service['status'])
                     && $service['status'] === 'selected';
@@ -982,6 +994,8 @@
 
                             <div class="price-after-discount">{{ formatPrice($service['price']) }} {{ $currency }}</div>
                         </div>
+                    @elseif($aiPromoOriginalPrice !== null && $hideDiscounts)
+                        {{ formatPrice(0) }} {{ $currency }}
                     @elseif($aiPromoOriginalPrice !== null)
                         <div class="price-breakdown">
                             <div class="price-before-discount">{{ formatPrice($aiPromoOriginalPrice) }} {{ $currency }}</div>
@@ -1085,7 +1099,9 @@
                         <th>Подарок</th>
                         <td>
                             +{{ $aiGiftMonths }} {{ $aiMonthWord($aiGiftMonths) }}
+                            @unless($hideDiscounts)
                             <span style="color:#16a34a;">(скидка 100%)</span>
+                            @endunless
                         </td>
                     </tr>
                     @endif
@@ -1095,13 +1111,13 @@
                         <td>{{ formatPrice($aiUnit) }} {{ $currency }}</td>
                     </tr>
                     @endif
-                    @if($aiOriginal > 0 && $aiDemoDays <= 0)
+                    @if($aiOriginal > 0 && $aiDemoDays <= 0 && !$hideDiscounts)
                     <tr>
                         <th>Сумма за доп. период без скидки</th>
                         <td>{{ formatPrice($aiOriginal) }} {{ $currency }}</td>
                     </tr>
                     @endif
-                    @if($aiDiscountPct > 0 && $aiMonths > 0)
+                    @if($aiDiscountPct > 0 && $aiMonths > 0 && !$hideDiscounts)
                     <tr>
                         <th>Скидка</th>
                         <td>
@@ -1174,7 +1190,7 @@
                 <tr>
                     <td>Дополнительные модули за {{ $tariff['period_months'] }} мес.</td>
                     <td>
-                        @if($hasSelectedDeepSales)
+                        @if($hasSelectedDeepSales && !$hideDiscounts)
                             <div class="price-breakdown">
                                 <span class="price-before-discount">{{ formatPrice($modulesOriginalTotal) }} {{ $currency }}</span>
                                 <span class="discount-line">Скидка на DeepSales</span>
@@ -1227,7 +1243,7 @@
                     <tr>
                         <td>
                             {{ $aiLabel }} «{{ $aiRow['plan_name'] ?? '' }}»
-                            +{{ (int) $aiRow['gift_months'] }} мес. в подарок (скидка 100%)
+                            +{{ (int) $aiRow['gift_months'] }} мес. в подарок@unless($hideDiscounts) (скидка 100%)@endunless
                         </td>
                         <td>0 {{ $currency }}</td>
                     </tr>
@@ -1292,6 +1308,12 @@
                 Оплата принимается только в безналичной форме на расчетный счет компании или через официальных партнеров. Передача наличных денежных средств сотрудникам компании или на их карту <strong>ЗАПРЕЩЕНА</strong>. В случае нарушения данного правила компания не несет ответственность.
             </div>
         </div>
+
+        @if((float) ($travelExpenses ?? 0) <= 0)
+        <div class="travel-expenses-note" style="margin-top: 20px; padding: 16px 20px; border: 1px solid #e5e7eb; background-color: #f9fafb; border-radius: 12px; text-align: left; color: #374151; font-size: 15px; line-height: 1.5; font-family: 'Cygrotesk', 'Inter', Arial, sans-serif;">
+            <strong>Командировочные расходы:</strong> командировочные расходы не указаны в коммерческом предложении.
+        </div>
+        @endif
     </div>
 </div>
 

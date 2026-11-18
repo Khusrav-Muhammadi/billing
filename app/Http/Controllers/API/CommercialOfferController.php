@@ -130,6 +130,8 @@ class CommercialOfferController extends Controller
 
             'currency' => 'nullable|string|max:20', // сум, $, € и т.д.
             'validity_days' => 'nullable|integer|min:1|max:365',
+            'hide_discounts' => 'nullable|boolean', // sham-new-back: без зачёркнутых цен и строк скидок
+            'travel_expenses' => 'nullable|numeric|min:0', // > 0 — строка в разовых услугах, иначе текст «не указаны»
         ]);
 
         $validated['tariff_features'] = Tariff::sanitizeOfferLines($validated['tariff_features'] ?? []);
@@ -194,6 +196,8 @@ class CommercialOfferController extends Controller
         // Prepare view data
         $viewData = [
             'isPdf' => true,
+            'hideDiscounts' => (bool) ($validated['hide_discounts'] ?? false),
+            'travelExpenses' => (float) ($validated['travel_expenses'] ?? 0),
             'client' => $validated['client_name'],
             'manager' => $validated['manager_name'],
             'date' => $validated['date'] ?? now()->format('d.m.Y'),
