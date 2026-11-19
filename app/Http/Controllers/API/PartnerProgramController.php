@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendPartnerPortalAccessJob;
 use App\Models\User;
 use App\Services\PartnerProgram\PartnerDemoService;
+use App\Services\PartnerProgram\PartnerOwnDemoService;
 use App\Services\PartnerProgram\PartnerProgramService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -108,6 +109,44 @@ class PartnerProgramController extends Controller
         $demoRequest = $demos->create($partner, $data);
 
         return response()->json(['demo' => $demos->serialize($demoRequest)], $demoRequest->isPending() ? 202 : 200);
+    }
+
+    /** Своё демо партнёра (привязанное) или null. */
+    public function ownDemo(User $partner, PartnerOwnDemoService $own): JsonResponse
+    {
+        abort_unless($partner->role === 'partner', 404);
+
+        return response()->json(['demo' => $own->current($partner)]);
+    }
+
+    /** Привязать существующее демо: шаг 1, код на почту демо. */
+    public function ownDemoLink(Request $request, User $partner, PartnerOwnDemoService $own): JsonResponse
+    {
+        abort_unless($partner->role === 'partner', 404);
+        $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
+
+        return response()->json($own->startLink($partner, $data['email']));
+    }
+
+    /** Привязать существующее демо: шаг 2, проверка кода. */
+    public function ownDemoConfirm(Request $request, User $partner, PartnerOwnDemoService $own): JsonResponse
+    {
+        abort_unless($partner->role === 'partner', 404);
+        $data = $request->validate(['code' => ['required', 'string', 'size:6']]);
+
+        return response()->json(['demo' => $own->confirmLink($partner, $data['code'])]);
+    }
+
+    /** Одноразовая ссылка входа в своё демо. */
+    public function ownDemoLogin(User $partner, PartnerOwnDemoService $own): JsonResponse
+    {
+        abort_unless($partner->role === 'partner', 404);
+
+        try {
+            return response()->json(['url' => $own->loginUrl($partner)]);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => 'Не удалось открыть демо. Попробуйте через минуту.'], 502);
+        }
     }
 
     public function demos(User $partner, PartnerDemoService $demos): JsonResponse
