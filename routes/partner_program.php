@@ -20,7 +20,9 @@ Route::prefix('partner-program')
         Route::get('partners/{partner}/demos', [PartnerProgramController::class, 'demos']);
         Route::post('partners/{partner}/demos', [PartnerProgramController::class, 'storeDemo']);
         Route::get('partners/{partner}/own-demo', [PartnerProgramController::class, 'ownDemo']);
-        Route::post('partners/{partner}/own-demo/link', [PartnerProgramController::class, 'ownDemoLink'])->middleware('throttle:5,10');
-        Route::post('partners/{partner}/own-demo/confirm', [PartnerProgramController::class, 'ownDemoConfirm'])->middleware('throttle:10,10');
-        Route::post('partners/{partner}/own-demo/login', [PartnerProgramController::class, 'ownDemoLogin'])->middleware('throttle:20,1');
+        // Лимиты own-demo считаются по партнёру внутри PartnerOwnDemoService: здесь все запросы
+        // приходят с одного IP портала, и throttle по IP делил бы счётчик между всеми партнёрами.
+        Route::post('partners/{partner}/own-demo/link', [PartnerProgramController::class, 'ownDemoLink']);
+        Route::post('partners/{partner}/own-demo/confirm', [PartnerProgramController::class, 'ownDemoConfirm']);
+        Route::post('partners/{partner}/own-demo/login', [PartnerProgramController::class, 'ownDemoLogin']);
     });

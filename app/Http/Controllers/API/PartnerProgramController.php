@@ -145,7 +145,8 @@ class PartnerProgramController extends Controller
         try {
             return response()->json(['url' => $own->loginUrl($partner)]);
         } catch (\RuntimeException $e) {
-            return response()->json(['message' => 'Не удалось открыть демо. Попробуйте через минуту.'], 502);
+            // 503, не 502: Cloudflare подменяет 502 от origin своей страницей и теряет наш ответ.
+            return response()->json(['message' => 'Не удалось открыть демо. Попробуйте через минуту.'], 503);
         }
     }
 

@@ -11,6 +11,7 @@ use App\Services\Site\DemoEmailAvailability;
 use App\Support\CrmHttp;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -41,6 +42,9 @@ class PartnerOwnDemoService
      */
     public function startLink(User $partner, string $email): array
     {
+        // Не больше 5 писем с кодом за 15 минут на партнёра.
+        $this->hit('link', $partner, 5, self::CODE_TTL_MINUTES * 60, 'email');
+
         $email = DemoEmailAvailability::normalize($email);
 
         $client = Client::query()
@@ -102,6 +106,12 @@ class PartnerOwnDemoService
     /** Одноразовая ссылка входа в демо партнёра. */
     public function loginUrl(User $partner): string
     {
+        // Не больше 20 входов в минуту на партнёра.
+        if (RateLimiter::tooManyAttempts($this->limiterKey('login', $partner), 20)) {
+            throw new RuntimeException('Too many demo login attempts.');
+        }
+        RateLimiter::hit($this->limiterKey('login', $partner), 60);
+
         $client = $this->linkedClient($partner);
         $organization = $client ? $this->organization($client) : null;
 
@@ -203,6 +213,24 @@ class PartnerOwnDemoService
     private function crmHost(Client $client): string
     {
         return $client->sub_domain ? rtrim(preg_replace('#^https?://#', '', $client->crmUrl()), '/') : '';
+    }
+
+    /** @throws ValidationException */
+    private function hit(string $action, User $partner, int $max, int $decaySeconds, string $field): void
+    {
+        $key = $this->limiterKey($action, $partner);
+
+        if (RateLimiter::tooManyAttempts($key, $max)) {
+            $minutes = max(1, (int) ceil(RateLimiter::availableIn($key) / 60));
+            throw ValidationException::withMessages([$field => "Слишком много попыток. Попробуйте через {$minutes} мин."]);
+        }
+
+        RateLimiter::hit($key, $decaySeconds);
+    }
+
+    private function limiterKey(string $action, User $partner): string
+    {
+        return 'partner_own_demo_' . $action . '_' . $partner->id;
     }
 
     private function codeKey(User $partner): string

@@ -365,7 +365,7 @@ class ClientPaymentController extends Controller
                     ]));
 
                     $this->sendPaymentVerificationLink($commercialOffer, $payment, 'alif', $verificationUrl);
-                    $url = $this->trustedReturnUrl($request) ?: route('application.index');
+                    $url = $this->trustedReturnUrl($request) ?: $this->partnersApplicationUrl();
 
                     return $request->expectsJson()
                         ? response()->json(['redirect_url' => $url])
@@ -389,7 +389,7 @@ class ClientPaymentController extends Controller
                     ]));
 
                     $this->sendPaymentVerificationLink($commercialOffer, $payment, 'octo', $verificationUrl);
-                    $url = $this->trustedReturnUrl($request) ?: route('application.index');
+                    $url = $this->trustedReturnUrl($request) ?: $this->partnersApplicationUrl();
 
                     return $request->expectsJson()
                         ? response()->json(['redirect_url' => $url])
@@ -661,6 +661,12 @@ class ClientPaymentController extends Controller
     private function paymentReturnUrl(Payment $payment): string
     {
         return route('client-payment.online.success', ['payment' => $payment->id]);
+    }
+
+    /** Куда вернуть партнёра, если return_url не доверенный: в «Подключение» портала, а не на billing-back. */
+    private function partnersApplicationUrl(): string
+    {
+        return rtrim((string) config('partners.url', 'https://partners.shamcrm.com'), '/') . '/application';
     }
 
     private function trustedReturnUrl(Request $request): ?string

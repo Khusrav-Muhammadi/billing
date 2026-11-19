@@ -32,7 +32,6 @@ class PartnerDemoService
     {
         $email = DemoEmailAvailability::normalize($data['email']);
 
-        // Повторное нажатие: заявка этого партнёра на эту почту уже в работе или готова.
         $existing = DemoRequest::query()
             ->where('email', $email)
             ->whereIn('status', [DemoRequest::STATUS_QUEUED, DemoRequest::STATUS_PROVISIONING, DemoRequest::STATUS_READY])
