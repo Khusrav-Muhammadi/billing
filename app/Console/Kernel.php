@@ -17,6 +17,8 @@ class Kernel extends ConsoleKernel
 
 
         $schedule->command('app:control-nfr-command')->dailyAt('00:01');
+        // Тёплые лиды партнёров: SLA 24 часа (команда ничего не делает, пока PARTNERS_LEADS_ENABLED=false).
+        $schedule->command('partners:leads-sla')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('app:notify-client')->dailyAt('09:00')->withoutOverlapping();
         $schedule->command('app:mark-unpartnered-organizations-without-connection')->dailyAt('00:05')->withoutOverlapping();
         $schedule->command('app:create-day-closing')->dailyAt('23:50')->withoutOverlapping();

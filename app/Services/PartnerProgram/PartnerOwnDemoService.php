@@ -173,6 +173,11 @@ class PartnerOwnDemoService
         if (!$client->partner_id) {
             $client->forceFill(['partner_id' => $partner->id])->save();
         }
+
+        // У одобренного партнёра демо = его рабочая CRM (NFR).
+        if (($partner->approval_status ?? PartnerProgramService::STATUS_APPROVED) === PartnerProgramService::STATUS_APPROVED && !$client->nfr) {
+            $client->forceFill(['nfr' => true])->save();
+        }
     }
 
     /** @throws ValidationException */

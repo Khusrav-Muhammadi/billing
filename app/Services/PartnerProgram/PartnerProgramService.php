@@ -75,6 +75,11 @@ class PartnerProgramService
                 );
             }
 
+            // Демо партнёра становится его рабочей CRM (NFR): не отключается и принимает тёплые лиды.
+            if ($partner->demo_client_id) {
+                Client::query()->whereKey($partner->demo_client_id)->update(['nfr' => true]);
+            }
+
             PartnerStatusHistory::query()->create([
                 'partner_id' => $partner->id,
                 'date' => now()->toDateString(),

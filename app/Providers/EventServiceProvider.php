@@ -79,6 +79,14 @@ class EventServiceProvider extends ServiceProvider
         Organization::observe(OrganizationObserver::class);
         Partner::observe(PartnerObserver::class);
         AiTariffPlan::observe(AiTariffPlanObserver::class);
+
+        // Тёплые лиды: новая заявка на демо без партнёра/менеджера уходит партнёру в очереди.
+        // Задержка — чтобы ProvisionDemoAccountJob успел создать клиента (его закрепим за партнёром).
+        \App\Models\DemoRequest::created(function (\App\Models\DemoRequest $request) {
+            if (\App\Services\PartnerProgram\PartnerLeadService::enabled() && !$request->partner_id && !$request->manager_id) {
+                \App\Jobs\CreatePartnerLeadJob::dispatch($request)->delay(now()->addMinute());
+            }
+        });
     }
 
     /**

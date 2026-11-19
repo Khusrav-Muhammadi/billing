@@ -150,6 +150,19 @@ class PartnerProgramController extends Controller
         }
     }
 
+    /** Тёплые лиды партнёра. */
+    public function leads(User $partner, \App\Services\PartnerProgram\PartnerLeadService $leads): JsonResponse
+    {
+        abort_unless($partner->role === 'partner', 404);
+
+        return response()->json([
+            'enabled' => \App\Services\PartnerProgram\PartnerLeadService::enabled(),
+            'sla_hours' => (int) config('partners_portal.leads.sla_hours', 24),
+            'has_crm' => (bool) $partner->demo_client_id,
+            'leads' => $leads->forPartner($partner)->values(),
+        ]);
+    }
+
     public function demos(User $partner, PartnerDemoService $demos): JsonResponse
     {
         abort_unless($partner->role === 'partner', 404);
