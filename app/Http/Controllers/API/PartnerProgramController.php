@@ -94,6 +94,19 @@ class PartnerProgramController extends Controller
         return response()->json(['partner' => $this->service->serializePartner($partner->refresh())]);
     }
 
+    /** Валюта договора партнёра (портал присылает при подтверждении договора). */
+    public function setCurrency(Request $request, User $partner): JsonResponse
+    {
+        abort_unless($partner->role === 'partner', 404);
+        $data = $request->validate([
+            'currency' => ['required', 'string', 'in:UZS,USD,TJS'],
+        ]);
+
+        $this->service->setCurrency($partner, $data['currency']);
+
+        return response()->json(['partner' => $this->service->serializePartner($partner->refresh())]);
+    }
+
     /** Демо shamCRM: своё (на почту партнёра) или для клиента партнёра. */
     public function storeDemo(Request $request, User $partner, PartnerDemoService $demos): JsonResponse
     {

@@ -16,6 +16,7 @@ Route::prefix('partner-program')
         Route::post('partners/{partner}/approve', [PartnerProgramController::class, 'approve']);
         Route::post('partners/{partner}/reject', [PartnerProgramController::class, 'reject']);
         Route::post('partners/{partner}/percent', [PartnerProgramController::class, 'setPercent']);
+        Route::post('partners/{partner}/currency', [PartnerProgramController::class, 'setCurrency']);
         Route::get('partners/{partner}/stats', [PartnerProgramController::class, 'stats']);
         Route::get('partners/{partner}/demos', [PartnerProgramController::class, 'demos']);
         Route::post('partners/{partner}/demos', [PartnerProgramController::class, 'storeDemo']);

@@ -113,6 +113,18 @@ class PartnerProgramService
         );
     }
 
+    /**
+     * Валюта партнёра по договору с портала (UZS, USD, TJS): users.currency_id.
+     * Из неё генератор КП берёт валюту, в которой партнёр рассчитывается с shamCRM.
+     */
+    public function setCurrency(User $partner, string $code): User
+    {
+        $currency = Currency::query()->whereRaw('UPPER(symbol_code) = ?', [strtoupper($code)])->firstOrFail();
+        $partner->forceFill(['currency_id' => $currency->id])->save();
+
+        return $partner;
+    }
+
     public function currentPercent(User $partner): array
     {
         $row = PartnerProcent::query()
@@ -183,6 +195,11 @@ class PartnerProgramService
             'turnover_by_currency' => array_map(fn ($v) => round($v, 2), $byCurrency),
             'turnover_uzs' => round($turnoverUzs, 2),
             'missing_rates' => $missingRates,
+            // Сколько сумов в одной единице валюты: портал показывает оборот и пороги уровней в валюте договора партнёра.
+            'rates_to_uzs' => array_filter([
+                'USD' => $this->convert(1, 'USD', 'UZS'),
+                'TJS' => $this->convert(1, 'TJS', 'UZS'),
+            ], static fn ($rate) => $rate !== null && $rate > 0),
             'benefit_by_month' => $benefitByMonth,
             'clients' => [
                 'total' => (clone $clients)->where('is_demo', false)->count(),
