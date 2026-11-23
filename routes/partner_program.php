@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\ClientHealthController;
 use App\Http\Controllers\API\PartnerProgramController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,4 +28,8 @@ Route::prefix('partner-program')
         Route::post('partners/{partner}/own-demo/link', [PartnerProgramController::class, 'ownDemoLink']);
         Route::post('partners/{partner}/own-demo/confirm', [PartnerProgramController::class, 'ownDemoConfirm']);
         Route::post('partners/{partner}/own-demo/login', [PartnerProgramController::class, 'ownDemoLogin']);
+
+        // Индекс здоровья клиентов (светофор) для админки портала.
+        Route::get('client-health', [ClientHealthController::class, 'index']);
+        Route::get('client-health/{client}', [ClientHealthController::class, 'history'])->whereNumber('client');
     });

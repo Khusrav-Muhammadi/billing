@@ -15,8 +15,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:control-demo-command')->dailyAt('00:01');
         $schedule->command('send:email')->dailyAt('00:01');
 
-
-        $schedule->command('app:control-nfr-command')->dailyAt('00:01');
+        // app:control-nfr-command удалена в fb59706 (4 мая 2026): NFR — рабочая CRM партнёра и не отключается.
+        // Строка расписания осталась и каждую ночь падала с «command not defined».
         // Тёплые лиды партнёров: SLA 24 часа (команда ничего не делает, пока PARTNERS_LEADS_ENABLED=false).
         $schedule->command('partners:leads-sla')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('app:notify-client')->dailyAt('09:00')->withoutOverlapping();
@@ -32,6 +32,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:ai-sync-call-analyse-quotas --queued')->dailyAt('00:10')->withoutOverlapping();
         // Лимит файлового хранилища в CRM: тариф + активные пакеты add_storage.
         $schedule->command('app:sync-storage-quotas --queued')->dailyAt('00:15')->withoutOverlapping();
+        // Индекс здоровья клиента (светофор) за вчера: после закрытия дня (23:50) и ночных синхронизаций.
+        $schedule->command('app:client-health-calculate')->dailyAt('01:00')->withoutOverlapping(180)->runInBackground();
     }
 
     /**
