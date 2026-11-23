@@ -8,12 +8,14 @@ use Illuminate\Support\Carbon;
 /**
  * Индекс здоровья клиента (ТЗ «светофор», Nov 23, 2026). Чистый расчёт без БД и HTTP.
  *
+ * Главное — работа в CRM (75%), а не то, сколько сотрудников заходит: нормально, если
+ * из 10 сотрудников в CRM работают 2–3 человека (правка от 24.11.2026).
+ *
  * Баллы за 7 дней (неделя 0 из метрик CRM):
- *  - Входы (20%): сколько дней в среднем заходил каждый пользователь; 4 дня и больше = 100.
- *    Среднее по всем пользователям компании: кто не заходил, тот даёт 0.
- *  - Охват (30%): доля пользователей, которые заходили хотя бы раз.
- *  - Диалоги (25%): обработанные диалоги против среднего за 4 прошлые недели.
- *  - Сущности (25%): новые лиды, сделки, заказы и товары + смены этапа (лиды, сделки, заказы)
+ *  - Входы (15%): в сколько дней из 7 в CRM работал хоть кто-то из компании; 5 дней и больше = 100.
+ *  - Охват (10%): доля пользователей, которые заходили хотя бы раз; 30% и больше = 100.
+ *  - Диалоги (35%): обработанные диалоги против среднего за 4 прошлые недели.
+ *  - Сущности (40%): новые лиды, сделки, заказы и товары + смены этапа (лиды, сделки, заказы)
  *    против среднего за 4 прошлые недели.
  *    Сравнение: неделя / среднее × 100, но не больше 100. Если за 5 недель ноль — пункт не
  *    считается, его вес делится на остальные. Если база 0, а сейчас есть — 100.
@@ -21,7 +23,7 @@ use Illuminate\Support\Carbon;
  * Цвет:
  *  - зелёный — 70 и выше;
  *  - жёлтый — 40–69, или индекс упал на 20+ за 2 недели;
- *  - красный — ниже 40, или 7 дней никто не заходил, или заходит меньше 30% пользователей,
+ *  - красный — ниже 40, или 7 дней никто не заходил,
  *    или до конца оплаты 30 дней и меньше при жёлтом цвете (только платные);
  *  - серый — первые 28 дней после оплаты (платные). Серый перекрывает всё, кроме
  *    «7 дней никто не заходил»: это остаётся красным даже у нового клиента.
@@ -29,16 +31,18 @@ use Illuminate\Support\Carbon;
 class ClientHealthCalculator
 {
     public const WEIGHTS = [
-        'logins' => 20,
-        'coverage' => 30,
-        'dialogs' => 25,
-        'entities' => 25,
+        'logins' => 15,
+        'coverage' => 10,
+        'dialogs' => 35,
+        'entities' => 40,
     ];
 
-    public const LOGIN_DAYS_FOR_MAX = 4;
+    /** Дней из 7, в которые кто-то работал в CRM, для 100 баллов «Входов» (рабочая неделя). */
+    public const LOGIN_DAYS_FOR_MAX = 5;
+    /** Доля пользователей (%), с которой «Охват» = 100. */
+    public const COVERAGE_FOR_MAX = 30;
     public const GREEN_FROM = 70;
     public const YELLOW_FROM = 40;
-    public const MIN_COVERAGE = 30;
     public const DROP_POINTS = 20;
     public const DROP_DAYS = 14;
     public const PAID_SOON_DAYS = 30;
@@ -52,7 +56,7 @@ class ClientHealthCalculator
     ];
 
     /**
-     * @param array $metrics ответ CRM: users_total, activity{active_users, active_user_days, tracked_since, backfilled_since}, weeks[0..4]
+     * @param array $metrics ответ CRM: users_total, activity{active_users, active_user_days, active_days, tracked_since, backfilled_since}, weeks[0..4]
      * @param array $context date (Y-m-d), client_type (paid|demo), paid_until (?Y-m-d), period_started_at (?Y-m-d), previous_index (?int, индекс 14 дней назад)
      */
     public function calculate(array $metrics, array $context): array
@@ -63,14 +67,16 @@ class ClientHealthCalculator
         $usersTotal = max(0, (int) ($metrics['users_total'] ?? 0));
         $activeUsers = max(0, (int) data_get($metrics, 'activity.active_users', 0));
         $activeUserDays = max(0, (int) data_get($metrics, 'activity.active_user_days', 0));
+        // Дни, когда в CRM работал хоть кто-то. Старая CRM этого не отдаёт: тогда берём
+        // пользователе-дни (не больше 7) — это верхняя оценка, до выкладки CRM.
+        $activeDays = data_get($metrics, 'activity.active_days');
+        $activeDays = $activeDays !== null ? max(0, min(7, (int) $activeDays)) : min(7, $activeUserDays);
 
         $weeks = $this->weeks($metrics['weeks'] ?? []);
 
         $scores = [
-            'logins' => $usersTotal > 0
-                ? $this->cap(($activeUserDays / $usersTotal) / self::LOGIN_DAYS_FOR_MAX * 100)
-                : 0.0,
-            'coverage' => $usersTotal > 0 ? $this->cap($activeUsers / $usersTotal * 100) : 0.0,
+            'logins' => $this->cap($activeDays / self::LOGIN_DAYS_FOR_MAX * 100),
+            'coverage' => $usersTotal > 0 ? $this->cap($activeUsers / $usersTotal * 100 / self::COVERAGE_FOR_MAX * 100) : 0.0,
             'dialogs' => $this->compare(array_column($weeks, 'dialogs')),
             'entities' => $this->compare(array_map(
                 fn (array $w) => $w['leads_new'] + $w['deals_new'] + $w['orders_new'] + $w['goods_new'] + $w['stage_changes'],
@@ -79,7 +85,6 @@ class ClientHealthCalculator
         ];
 
         $index = $this->index($scores);
-        $coverage = $scores['coverage'];
 
         $previous = isset($context['previous_index']) && $context['previous_index'] !== null
             ? (int) $context['previous_index']
@@ -94,7 +99,6 @@ class ClientHealthCalculator
         $isNew = $isPaid && $dayOfPeriod !== null && $dayOfPeriod >= 1 && $dayOfPeriod <= self::NEW_CLIENT_DAYS;
 
         $nobody = $activeUsers === 0;
-        $lowCoverage = !$nobody && $coverage < self::MIN_COVERAGE;
 
         // Цвет по индексу и падению.
         $color = match (true) {
@@ -109,7 +113,7 @@ class ClientHealthCalculator
         $paidSoon = $isPaid && $daysLeft !== null && $daysLeft <= self::PAID_SOON_DAYS;
         $paidSoonRed = $paidSoon && $color === ClientHealthSnapshot::YELLOW;
 
-        if ($nobody || $lowCoverage || $paidSoonRed) {
+        if ($nobody || $paidSoonRed) {
             $color = ClientHealthSnapshot::RED;
         }
 
@@ -125,12 +129,6 @@ class ClientHealthCalculator
         }
         if ($nobody) {
             $reasons[] = $this->reason('no_logins', '7 дней никто не заходил');
-        }
-        if ($lowCoverage) {
-            $reasons[] = $this->reason('low_coverage', sprintf(
-                'Заходят %d%% пользователей (%d из %d), нужно от %d%%',
-                (int) floor($coverage), $activeUsers, $usersTotal, self::MIN_COVERAGE
-            ));
         }
         if ($index < self::YELLOW_FROM) {
             $reasons[] = $this->reason('low_index', "Индекс {$index} ниже " . self::YELLOW_FROM);
