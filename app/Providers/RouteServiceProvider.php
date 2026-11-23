@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\VerifyPartnersPortalToken;
+use App\Support\CrmHttp;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -25,6 +27,15 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
+            // Межсерверные вызовы (CRM, партнёрский портал) идут с одного IP. Общий лимит
+            // 60/мин по IP резал их: в 01:00 и 13:00 все тенанты CRM шлют client/activity,
+            // проходили ~60 из ~540, остальные получали 429 и «последняя активность»
+            // клиентов в биллинге застывала. С верным сервисным токеном общий лимит не
+            // применяем; свои лимиты маршрутов (throttle:N,1) продолжают действовать.
+            if ($this->hasValidServiceToken($request)) {
+                return Limit::none();
+            }
+
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
@@ -46,5 +57,24 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
         });
+    }
+
+    /** X-Service-Token (CRM) или X-Partners-Token (портал) совпадает с секретом из .env. */
+    private function hasValidServiceToken(Request $request): bool
+    {
+        $pairs = [
+            [CrmHttp::HEADER, (string) config('services.sham.crm_token', '')],
+            [VerifyPartnersPortalToken::HEADER, (string) config('partners_portal.token', '')],
+        ];
+
+        foreach ($pairs as [$header, $expected]) {
+            $expected = trim($expected);
+            $provided = trim((string) $request->header($header, ''));
+            if ($expected !== '' && $provided !== '' && hash_equals($expected, $provided)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -226,11 +226,28 @@ class ClientController extends Controller
             abort(404);
         }
 
-        $client->last_activity = $request->last_activity;
-        $client->save();
+        // Дата приходит из CRM: последнее использование токена пользователем.
+        // Пустое или более старое значение не затирает уже известную дату.
+        $raw = $request->input('last_activity');
+        $incoming = null;
+        if (is_string($raw) && trim($raw) !== '') {
+            try {
+                // Старая CRM шлёт ISO в UTC (…Z): переводим в пояс приложения, иначе в базу
+                // попадает время UTC и активность отстаёт на 5 часов.
+                $incoming = Carbon::parse($raw)->setTimezone(config('app.timezone'));
+            } catch (\Throwable) {
+                $incoming = null;
+            }
+        }
+
+        if ($incoming && (!$client->last_activity || $incoming->gt($client->last_activity))) {
+            $client->last_activity = $incoming;
+            $client->save();
+        }
 
         return response()->json([
-            'result' => 'success'
+            'result' => 'success',
+            'last_activity' => $client->last_activity?->toDateTimeString(),
         ]);
     }
 
