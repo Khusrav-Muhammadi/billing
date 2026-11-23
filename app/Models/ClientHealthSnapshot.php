@@ -20,7 +20,7 @@ class ClientHealthSnapshot extends Model
 
     protected $fillable = [
         'client_id', 'date', 'client_type',
-        'logins_score', 'coverage_score', 'dialogs_score', 'deals_score', 'health_index',
+        'logins_score', 'coverage_score', 'dialogs_score', 'entities_score', 'health_index',
         'color', 'reasons', 'reason_text', 'paid_until', 'period_started_at', 'metrics',
     ];
 
@@ -33,7 +33,7 @@ class ClientHealthSnapshot extends Model
         'logins_score' => 'float',
         'coverage_score' => 'float',
         'dialogs_score' => 'float',
-        'deals_score' => 'float',
+        'entities_score' => 'float',
         'health_index' => 'integer',
     ];
 

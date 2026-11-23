@@ -9,8 +9,9 @@ class ClientHealthCalculatorTest extends TestCase
 {
     private function metrics(array $override = []): array
     {
-        $week = fn (int $w, int $dialogs, int $deals) => [
-            'week' => $w, 'dialogs' => $dialogs, 'leads_new' => $deals, 'deals_new' => 0, 'stage_changes' => 0,
+        $week = fn (int $w, int $dialogs, int $entities) => [
+            'week' => $w, 'dialogs' => $dialogs, 'leads_new' => $entities, 'deals_new' => 0,
+            'orders_new' => 0, 'goods_new' => 0, 'stage_changes' => 0,
         ];
 
         return array_replace_recursive([
@@ -71,7 +72,21 @@ class ClientHealthCalculatorTest extends TestCase
         $this->assertSame(87, $r['health_index']);
     }
 
-    public function test_compare_with_previous_four_weeks(): void
+    public function test_entities_count_leads_deals_orders_goods_and_stage_changes(): void
+    {
+        $m = $this->metrics();
+        // Неделя 0: 2 лида + 2 сделки + 3 заказа + 1 товар + 2 смены этапа = 10, база по 20 -> 50 баллов.
+        $m['weeks'][0] = ['week' => 0, 'dialogs' => 20, 'leads_new' => 2, 'deals_new' => 2, 'orders_new' => 3, 'goods_new' => 1, 'stage_changes' => 2];
+        foreach ([1, 2, 3, 4] as $w) {
+            $m['weeks'][$w] = ['week' => $w, 'dialogs' => 20, 'leads_new' => 0, 'deals_new' => 0, 'orders_new' => 15, 'goods_new' => 5, 'stage_changes' => 0];
+        }
+
+        $r = (new ClientHealthCalculator())->calculate($m, $this->context());
+
+        $this->assertSame(50.0, $r['entities_score']);
+    }
+
+        public function test_compare_with_previous_four_weeks(): void
     {
         $calc = new ClientHealthCalculator();
 

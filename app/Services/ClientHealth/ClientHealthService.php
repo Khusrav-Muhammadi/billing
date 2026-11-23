@@ -70,7 +70,7 @@ class ClientHealthService
             'logins_score' => null,
             'coverage_score' => null,
             'dialogs_score' => null,
-            'deals_score' => null,
+            'entities_score' => null,
             'health_index' => 0,
             'color' => ClientHealthSnapshot::RED,
             'reasons' => [['code' => 'crm_unavailable', 'text' => $text]],

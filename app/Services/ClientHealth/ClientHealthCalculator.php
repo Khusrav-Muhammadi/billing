@@ -13,7 +13,8 @@ use Illuminate\Support\Carbon;
  *    Среднее по всем пользователям компании: кто не заходил, тот даёт 0.
  *  - Охват (30%): доля пользователей, которые заходили хотя бы раз.
  *  - Диалоги (25%): обработанные диалоги против среднего за 4 прошлые недели.
- *  - Сделки (25%): новые лиды + новые сделки + смены этапа против среднего за 4 прошлые недели.
+ *  - Сущности (25%): новые лиды, сделки, заказы и товары + смены этапа (лиды, сделки, заказы)
+ *    против среднего за 4 прошлые недели.
  *    Сравнение: неделя / среднее × 100, но не больше 100. Если за 5 недель ноль — пункт не
  *    считается, его вес делится на остальные. Если база 0, а сейчас есть — 100.
  *
@@ -31,7 +32,7 @@ class ClientHealthCalculator
         'logins' => 20,
         'coverage' => 30,
         'dialogs' => 25,
-        'deals' => 25,
+        'entities' => 25,
     ];
 
     public const LOGIN_DAYS_FOR_MAX = 4;
@@ -47,7 +48,7 @@ class ClientHealthCalculator
         'logins' => 'входы',
         'coverage' => 'охват',
         'dialogs' => 'диалоги',
-        'deals' => 'сделки',
+        'entities' => 'сущности',
     ];
 
     /**
@@ -71,8 +72,8 @@ class ClientHealthCalculator
                 : 0.0,
             'coverage' => $usersTotal > 0 ? $this->cap($activeUsers / $usersTotal * 100) : 0.0,
             'dialogs' => $this->compare(array_column($weeks, 'dialogs')),
-            'deals' => $this->compare(array_map(
-                fn (array $w) => $w['leads_new'] + $w['deals_new'] + $w['stage_changes'],
+            'entities' => $this->compare(array_map(
+                fn (array $w) => $w['leads_new'] + $w['deals_new'] + $w['orders_new'] + $w['goods_new'] + $w['stage_changes'],
                 $weeks
             )),
         ];
@@ -159,7 +160,7 @@ class ClientHealthCalculator
             $reasons[] = $this->reason('weak', 'Слабо: ' . implode(', ', $weak));
         }
 
-        foreach (['dialogs' => 'Диалоги', 'deals' => 'Сделки'] as $key => $label) {
+        foreach (['dialogs' => 'Диалоги', 'entities' => 'Сущности'] as $key => $label) {
             if ($scores[$key] === null) {
                 $reasons[] = $this->reason('skipped_' . $key, "{$label} не считаются: за 5 недель их не было");
             }
@@ -169,7 +170,7 @@ class ClientHealthCalculator
             $reasons[] = $this->reason('tracking', $note);
         }
 
-        $decisive = array_filter($reasons, fn ($r) => !in_array($r['code'], ['tracking', 'skipped_dialogs', 'skipped_deals'], true));
+        $decisive = array_filter($reasons, fn ($r) => !in_array($r['code'], ['tracking', 'skipped_dialogs', 'skipped_entities'], true));
         $reasonText = $color === ClientHealthSnapshot::GREEN && $decisive === []
             ? 'Всё в норме'
             : implode('; ', array_column($decisive ?: $reasons, 'text'));
@@ -178,7 +179,7 @@ class ClientHealthCalculator
             'logins_score' => $scores['logins'],
             'coverage_score' => $scores['coverage'],
             'dialogs_score' => $scores['dialogs'],
-            'deals_score' => $scores['deals'],
+            'entities_score' => $scores['entities'],
             'health_index' => $index,
             'color' => $color,
             'reasons' => array_values($reasons),
@@ -225,7 +226,7 @@ class ClientHealthCalculator
     {
         $result = [];
         for ($w = 0; $w < 5; $w++) {
-            $result[$w] = ['dialogs' => 0, 'leads_new' => 0, 'deals_new' => 0, 'stage_changes' => 0];
+            $result[$w] = ['dialogs' => 0, 'leads_new' => 0, 'deals_new' => 0, 'orders_new' => 0, 'goods_new' => 0, 'stage_changes' => 0];
         }
         foreach ($weeks as $i => $week) {
             $w = (int) ($week['week'] ?? $i);

@@ -116,7 +116,7 @@ class ClientHealthController extends Controller
                 'logins' => $s->logins_score,
                 'coverage' => $s->coverage_score,
                 'dialogs' => $s->dialogs_score,
-                'deals' => $s->deals_score,
+                'entities' => $s->entities_score,
             ],
             'reason' => $s->reason_text,
             'paid_until' => $s->paid_until?->toDateString(),
