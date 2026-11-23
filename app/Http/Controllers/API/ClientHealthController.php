@@ -22,7 +22,12 @@ class ClientHealthController extends Controller
             'type' => ['nullable', Rule::in(['paid', 'demo'])],
             'search' => ['nullable', 'string', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
-            'per_page' => ['nullable', 'integer', 'min:10', 'max:200'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+            // Партнёрский кабинет: только клиенты партнёра (clients.partner_id). Портал сам решает, чей это id.
+            'partner_id' => ['nullable', 'integer', 'min:1'],
+            // Строки только для этих клиентов (колонка «Здоровье» в списке клиентов).
+            'client_ids' => ['nullable', 'array', 'max:500'],
+            'client_ids.*' => ['integer', 'min:1'],
         ]);
 
         $date = ClientHealthSnapshot::query()->max('date');
@@ -33,6 +38,8 @@ class ClientHealthController extends Controller
         $base = ClientHealthSnapshot::query()
             ->whereDate('date', $date)
             ->when($data['type'] ?? null, fn ($q, $type) => $q->where('client_type', $type))
+            ->when($data['partner_id'] ?? null, fn ($q, $partnerId) => $q->whereHas('client', fn ($c) => $c->where('partner_id', $partnerId)))
+            ->when($data['client_ids'] ?? null, fn ($q, $ids) => $q->whereIn('client_id', array_map('intval', $ids)))
             ->when(trim((string) ($data['search'] ?? '')), function ($q, $search) {
                 $q->whereHas('client', fn ($c) => $c->where(fn ($w) => $w
                     ->where('name', 'like', '%' . $search . '%')
