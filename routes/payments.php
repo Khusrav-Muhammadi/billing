@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'partner.approved'])->group(function () {
     Route::get('accounts', [AccountController::class, 'index']);
     Route::get('client-payment/invoice/{payment}', [ApiClientPaymentController::class, 'invoice']);
     Route::post('client-payment/invoice/{payment}/email', [ApiClientPaymentController::class, 'sendInvoiceEmail']);

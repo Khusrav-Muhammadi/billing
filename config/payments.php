@@ -1,19 +1,22 @@
 <?php
 
-
+/*
+ * Ключи провайдеров оплаты — только в .env. Раньше лежали в этом файле, то есть в git:
+ * после переноса их нужно сменить в кабинетах Alif и Octo и обновить .env.
+ */
 return [
     'alif' => [
-        'token' => 'Yw/KJo4zFR8Lizpn4a37i6a80zRKesnTYbf4R6Ypz0Bj',
-        'token_test' => 'vaCx7qkNNahFb9LhN+ZF2EqhT/+9c8uK5LrGXvGoG/yf',
-        'url_test' => 'https://api-dev.alifpay.uz/v2/invoice',
-        'url' => 'https://api.alifpay.uz/v2/invoice',
-        'payment_page' => 'https://checkout.alifpay.uz?invoice=',
-        'payment_page_dev' => 'https://checkout-dev.alifpay.uz?invoice='
+        'token' => env('ALIF_TOKEN'),
+        'token_test' => env('ALIF_TOKEN_TEST'),
+        'url_test' => env('ALIF_URL_TEST', 'https://api-dev.alifpay.uz/v2/invoice'),
+        'url' => env('ALIF_URL', 'https://api.alifpay.uz/v2/invoice'),
+        'payment_page' => env('ALIF_PAYMENT_PAGE', 'https://checkout.alifpay.uz?invoice='),
+        'payment_page_dev' => env('ALIF_PAYMENT_PAGE_DEV', 'https://checkout-dev.alifpay.uz?invoice='),
     ],
 
     'octobank' => [
-        'shop_id' => '34852',
-        'shop_secret' => 'dd0ad08d-ab03-4988-8699-ed1b992fa80f',
-        'url' => 'https://secure.octo.uz/prepare_payment'
-    ]
+        'shop_id' => env('OCTO_SHOP_ID'),
+        'shop_secret' => env('OCTO_SHOP_SECRET'),
+        'url' => env('OCTO_URL', 'https://secure.octo.uz/prepare_payment'),
+    ],
 ];

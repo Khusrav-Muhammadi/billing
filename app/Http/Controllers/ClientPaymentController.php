@@ -226,6 +226,28 @@ class ClientPaymentController extends Controller
                 }
             }
 
+            // Партнёр оплачивает только своё сохранённое КП и только от своего имени.
+            $authUser = Auth::user();
+            $isAdmin = mb_strtolower(trim((string) ($authUser?->role ?? ''))) === 'admin';
+            if (!$isAdmin) {
+                if (!$commercialOffer) {
+                    throw new \Exception('Сначала сохраните подключение, затем можно оплачивать.');
+                }
+                $authId = (int) ($authUser?->id ?? 0);
+                if ((int) $commercialOffer->partner_id !== $authId && (int) $commercialOffer->created_by !== $authId) {
+                    throw new \Exception('КП не найдено.');
+                }
+                if (isset($data['partner_id']) && (int) $data['partner_id'] !== $authId) {
+                    throw new \Exception('Оплатить можно только от своего имени.');
+                }
+            }
+
+            // Сумма оплаты — из сохранённого КП, а не из запроса (раньше можно было оплатить 1 сум за годовой тариф).
+            if ($commercialOffer) {
+                $this->assertPaymentMatchesOffer($commercialOffer, $data);
+                $data['sum'] = round((float) $commercialOffer->payable_total, 2);
+            }
+
             DB::beginTransaction();
 
             $organizationId = $data['organization_id'] ?? null;
@@ -615,6 +637,37 @@ class ClientPaymentController extends Controller
         }
 
         return $paymentPage . rawurlencode($invoiceId);
+    }
+
+    /**
+     * Сумма и позиции оплаты должны совпадать с итогом КП (payable_total). Генератор считает их одинаково,
+     * поэтому расхождение больше копеек — это подмена в запросе.
+     */
+    private function assertPaymentMatchesOffer(CommercialOffer $offer, array $data): void
+    {
+        $expected = round((float) $offer->payable_total, 2);
+        if ($expected <= 0) {
+            throw new \Exception('В КП нет суммы к оплате. Пересохраните подключение.');
+        }
+
+        $tolerance = max(1.0, $expected * 0.001);
+        $requested = $this->toDecimal($data['sum'] ?? 0);
+        $itemsTotal = 0.0;
+        foreach ((array) ($data['data'] ?? []) as $datum) {
+            $itemsTotal += $this->toDecimal(data_get($datum, 'price'));
+        }
+
+        if (abs($requested - $expected) > $tolerance || abs($itemsTotal - $expected) > $tolerance) {
+            Log::warning('Payment sum does not match commercial offer', [
+                'commercial_offer_id' => $offer->id,
+                'expected' => $expected,
+                'requested' => $requested,
+                'items_total' => $itemsTotal,
+                'user_id' => Auth::id(),
+            ]);
+
+            throw new \Exception('Сумма оплаты не совпадает с сохранённым КП. Пересохраните подключение и попробуйте снова.');
+        }
     }
 
     private function lockCommercialOfferAfterPayment(?CommercialOffer $offer, Payment $payment, ?string $paymentLink = null, ?int $statusAccountId = null): void

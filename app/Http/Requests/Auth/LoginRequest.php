@@ -48,6 +48,15 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // В админку биллинга входят только сотрудники shamCRM. Партнёры и их менеджеры — через партнёрский портал.
+        if (mb_strtolower((string) Auth::user()?->role) !== 'admin') {
+            Auth::guard('web')->logout();
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'login' => trans('auth.failed'),
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

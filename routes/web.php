@@ -75,9 +75,10 @@ Route::get('blade', function () {
 });
 Route::get('{invoice}/download', [InvoiceController::class, 'download'])
     ->name('invoice.download');
-Route::get('/dashboard', [\App\Http\Controllers\DashBoardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\DashBoardController::class, 'index'])->middleware(['auth', 'verified', 'role:admin'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+// Админка биллинга — только сотрудники shamCRM (role = admin). Партнёры работают через partners.shamcrm.com.
+Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('kp/config', [ConnectedClientServiceController::class, 'config'])->name('kp.config');
     // Backward-compatible alias: some builds still call /api/kp/config from the iframe.
     Route::get('api/kp/config', [ConnectedClientServiceController::class, 'config'])->name('api.kp.config');

@@ -16,9 +16,10 @@ class TransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'organization_id' => ['nullable', Rule::exists('organizations','id')],
-            'date' => ['required'],
-            'sum' => ['required'],
+            'organization_id' => ['nullable', 'integer', Rule::exists('organizations','id')],
+            'date' => ['required', 'date'],
+            // Только пополнение: сумма положительная и с разумным верхом (раньше принималось что угодно, в том числе минус).
+            'sum' => ['required', 'numeric', 'gt:0', 'max:1000000000000'],
         ];
     }
 }

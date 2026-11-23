@@ -1,6 +1,7 @@
 <?php
 
 return [
-    'api_token' => 'site_2dbc42bbe9fff16f951ba218cb5fd5b37c8627cee47545f3',
-    'token_header' => 'X-Site-Token',
+    // Токен сайта shamcrm.com (заголовок X-Site-Token). Только из .env.
+    'api_token' => env('SITE_API_TOKEN'),
+    'token_header' => env('SITE_TOKEN_HEADER', 'X-Site-Token'),
 ];

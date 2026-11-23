@@ -34,7 +34,10 @@ class ClientController extends Controller
 
     public function activation(Request $request)
     {
-        if ($request->header('X-Internal-Token') != config('constants.internal_api_token')) {
+        // Строгое сравнение без утечки по времени; пустой токен в .env закрывает роут.
+        $expected = trim((string) config('constants.internal_api_token', ''));
+        $provided = (string) $request->header('X-Internal-Token', '');
+        if ($expected === '' || !hash_equals($expected, $provided)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 

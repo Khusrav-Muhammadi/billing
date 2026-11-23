@@ -359,6 +359,12 @@ class CommercialFooferController extends Controller
 
             $offer->items()->delete();
 
+            // Процент партнёра в строках КП приходит из браузера. Для партнёра ограничиваем его ставкой
+            // из partner_procents на дату цен; админ может указать любой процент, но не больше 100.
+            $isAdminUser = mb_strtolower(trim((string) (Auth::user()?->role ?? ''))) === 'admin';
+            $pricingTs = $offer->pricing_date ? strtotime((string) $offer->pricing_date) : time();
+            $contractPercents = $this->resolvePartnerPercents((int) ($offer->partner_id ?? 0), $pricingTs ?: time());
+
             foreach ($rows as $row) {
                 if (!is_array($row)) {
                     continue;
@@ -379,7 +385,7 @@ class CommercialFooferController extends Controller
                     continue;
                 }
 
-                $itemTariff = Tariff::query()->select('id', 'is_one_time', 'is_external')->find($tariffId);
+                $itemTariff = Tariff::query()->select('id', 'is_one_time', 'is_external', 'is_tariff', 'is_extra_user')->find($tariffId);
                 if (!$itemTariff) {
                     continue;
                 }
@@ -403,13 +409,21 @@ class CommercialFooferController extends Controller
                     $unitPrice = $this->toDecimal($totalPrice / max(1, $quantity));
                 }
 
+                $partnerPercent = ($isExternalLine || $isImplementationLine)
+                    ? 0.0
+                    : max(0.0, min(100.0, $this->toDecimal(data_get($row, 'partner_percent', 0))));
+                if (!$isAdminUser) {
+                    $isTariffLine = (bool) ($itemTariff->is_tariff ?? false) && !(bool) ($itemTariff->is_extra_user ?? false);
+                    $partnerPercent = min($partnerPercent, (float) ($isTariffLine ? $contractPercents['tariff'] : $contractPercents['pack']));
+                }
+
                 $offer->items()->create([
                     'tariff_id' => (int)$itemTariff->id,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'months' => $months,
-                    'discount_percent' => $this->toDecimal(data_get($row, 'discount_percent', 0)),
-                    'partner_percent' => ($isExternalLine || $isImplementationLine) ? 0 : $this->toDecimal(data_get($row, 'partner_percent', 0)),
+                    'discount_percent' => max(0.0, min(100.0, $this->toDecimal(data_get($row, 'discount_percent', 0)))),
+                    'partner_percent' => $partnerPercent,
                     'total_price' => $totalPrice,
                 ]);
             }

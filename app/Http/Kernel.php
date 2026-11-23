@@ -70,5 +70,9 @@ class Kernel extends HttpKernel
         'click.token' => \App\Http\Middleware\VerifyClickCallbackToken::class,
         // Партнёрский портал partners.shamcrm.com (общий секрет X-Partners-Token).
         'partners.token' => \App\Http\Middleware\VerifyPartnersPortalToken::class,
+        // Роли: role:admin — админка биллинга и денежные операции.
+        'role' => \App\Http\Middleware\EnsureUserRole::class,
+        // Партнёр с неодобренной заявкой не работает с API клиентов, КП и оплат.
+        'partner.approved' => \App\Http\Middleware\EnsurePartnerApproved::class,
     ];
 }

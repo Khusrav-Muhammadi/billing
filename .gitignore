@@ -20,3 +20,6 @@ yarn-error.log
 /.vscode
 /tmp
 docker-compose.yml
+
+# Копия .env с секретами, не коммитить
+.en

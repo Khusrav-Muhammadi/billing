@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use Illuminate\Validation\ValidationException;
+
 use App\Jobs\ActivationJob;
 use App\Jobs\ChangeRequestStatusJob;
 use App\Jobs\DisableDemoJob;
@@ -182,15 +184,31 @@ class ClientRepository implements ClientRepositoryInterface
 
     public function createTransaction(Client $client, array $data)
     {
-        $organization = Organization::find($data['organization_id'] ?? null) ?? $client->organizations()->first();
-        DB::transaction(function () use ($data, $client, $organization) {
+        DB::transaction(function () use ($data, $client) {
+            // Организация только этого клиента и под блокировкой: два одновременных пополнения не теряют друг друга.
+            $organizationQuery = $client->organizations()->lockForUpdate();
+            $organization = !empty($data['organization_id'])
+                ? $organizationQuery->whereKey((int) $data['organization_id'])->first()
+                : $organizationQuery->orderBy('id')->first();
+
+            if (!$organization) {
+                throw ValidationException::withMessages([
+                    'organization_id' => 'Организация не принадлежит этому клиенту.',
+                ]);
+            }
+
+            $sum = round((float) $data['sum'], 2);
+            if ($sum <= 0) {
+                throw ValidationException::withMessages(['sum' => 'Сумма пополнения должна быть больше нуля.']);
+            }
+
+            $data['sum'] = $sum;
             $data['type'] = TransactionType::CREDIT;
             $data['client_id'] = $client->id;
             $data['organization_id'] = $organization->id;
             Transaction::create($data);
 
-            $organization->balance += $data['sum'];
-            $organization->save();
+            $organization->increment('balance', $sum);
         });
     }
 

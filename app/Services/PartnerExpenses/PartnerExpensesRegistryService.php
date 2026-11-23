@@ -153,28 +153,41 @@ class PartnerExpensesRegistryService
         return round($discountedAmount / $coefficient, 4);
     }
 
+    /**
+     * Процент комиссии по строке КП. Ставка партнёра (partner_procents на дату статуса) — потолок:
+     * процент из строки КП приходит из браузера и раньше брался как есть (partner_percent=500 давал комиссию x5).
+     */
     private function resolvePartnerPercent(CommercialOffer $offer, $item, CommercialOfferStatus $status): float
     {
+        $contractPercent = $this->resolveContractPercent($offer, $item, $status);
         $itemPercent = round(max(0, (float) $item->partner_percent), 2);
+
         if ($itemPercent > 0) {
-            return $itemPercent;
+            return min($itemPercent, $contractPercent);
         }
 
+        return $contractPercent;
+    }
+
+    /** Ставка партнёра из partner_procents на дату статуса КП: с подписки или с доп. опций, 0..100. */
+    private function resolveContractPercent(CommercialOffer $offer, $item, CommercialOfferStatus $status): float
+    {
         $resolvedTariffId = (int) ($item->tariff_id ?: ($offer->tariff_id ?: 0));
 
         if (!$offer->partner_id) {
             return 0.0;
         }
 
-        if (!$offer->status_date) {
-            return 0.0;
-        }
-
-        $asOf = $offer->status_date->toDateString();
+        // Дата ставки: дата КП, иначе дата статуса оплаты. Без даты процент из КП раньше брался как есть,
+        // теперь он ограничен ставкой, поэтому без даты нельзя возвращать 0 — комиссия бы пропала.
+        $asOfSource = $offer->status_date ?: ($status->status_date ?: now());
+        $asOf = \Illuminate\Support\Carbon::parse($asOfSource)->toDateString();
 
         $row = PartnerProcent::query()
             ->where('partner_id', (int) $offer->partner_id)
-            ->whereDate('date', '<=', $asOf)
+            ->where(function ($query) use ($asOf) {
+                $query->whereNull('date')->orWhereDate('date', '<=', $asOf);
+            })
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->first(['procent_from_tariff', 'procent_from_pack']);
