@@ -29,6 +29,9 @@ class CalculateClientHealthCommand extends Command
 
     protected $description = 'Индекс здоровья клиентов: расчёт и история по дням';
 
+    /** Больше этой доли недоступных CRM за запуск — общий сбой, красными не отмечаем. */
+    private const MAX_FAILED_SHARE = 0.2;
+
     public function handle(ClientHealthService $service, ClientHealthContextService $context): int
     {
         $end = $this->option('date') ? Carbon::parse($this->option('date'))->startOfDay() : now()->subDay()->startOfDay();
@@ -48,30 +51,66 @@ class CalculateClientHealthCommand extends Command
 
         $done = 0;
         $skipped = 0;
-        $failed = 0;
+        /** @var array<int, array{client: Client, error: string, date: string}> $failed CRM не ответила: один раз на клиента за запуск */
+        $failed = [];
+        /** @var array<int, true> $ok клиенты, у которых CRM ответила хотя бы раз */
+        $ok = [];
 
         for ($i = $days - 1; $i >= 0; $i--) {
             $date = $end->copy()->subDays($i);
 
             foreach ($clients as $client) {
                 /** @var Client $client */
+                if (isset($failed[$client->id])) {
+                    continue; // CRM этого клиента уже не ответила в этом запуске: эндпоинт тот же, не долбим
+                }
+
                 try {
                     $snapshot = $service->calculate($client, $date);
-                    $snapshot ? $done++ : $skipped++;
+                    if ($snapshot) {
+                        $done++;
+                        $ok[$client->id] = true;
+                    } else {
+                        $skipped++;
+                    }
                 } catch (Throwable $e) {
-                    $failed++;
-                    Log::warning('client-health: расчёт не удался', [
+                    $failed[$client->id] = ['client' => $client, 'error' => $e->getMessage(), 'date' => $date->toDateString()];
+                    Log::warning('client-health: CRM клиента не ответила', [
                         'client_id' => $client->id,
                         'sub_domain' => $client->sub_domain,
                         'date' => $date->toDateString(),
                         'error' => $e->getMessage(),
                     ]);
-                    $this->warn("#{$client->id} {$client->sub_domain} {$date->toDateString()}: {$e->getMessage()}");
                 }
             }
         }
 
-        $this->info("Посчитано: {$done}, пропущено (не платный и не демо): {$skipped}, ошибок: {$failed}.");
+        // Отчётный день: клиенты с недоступной CRM — красные с причиной. Если CRM не ответила
+        // слишком многим, это общий сбой, а не проблема клиентов: красным никого не красим.
+        $total = count($ok) + count($failed);
+        $share = $total > 0 ? count($failed) / $total : 0;
+        $marked = 0;
+        if ($failed !== [] && $share <= self::MAX_FAILED_SHARE) {
+            foreach ($failed as $row) {
+                try {
+                    $service->recordUnavailable($row['client'], $end, $row['error']) && $marked++;
+                } catch (Throwable $e) {
+                    Log::warning('client-health: не удалось записать недоступную CRM', ['client_id' => $row['client']->id, 'error' => $e->getMessage()]);
+                }
+            }
+        }
+
+        foreach ($failed as $row) {
+            $this->warn("#{$row['client']->id} {$row['client']->sub_domain}: {$row['error']} (с {$row['date']}, дальше в этом запуске не запрашивали)");
+        }
+        if ($failed !== [] && $share > self::MAX_FAILED_SHARE) {
+            $this->error(sprintf('CRM не ответила для %d%% клиентов: похоже на общий сбой, красными их не отметили.', (int) round($share * 100)));
+        }
+
+        $this->info(sprintf(
+            'Посчитано: %d, пропущено (не платный и не демо): %d, CRM недоступна: %d (отмечены красными за %s: %d).',
+            $done, $skipped, count($failed), $end->toDateString(), $marked
+        ));
 
         return self::SUCCESS;
     }
