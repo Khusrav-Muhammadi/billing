@@ -125,7 +125,7 @@ class ClientHealthCalculatorTest extends TestCase
         $this->assertSame(50.0, $r['entities_score']);
     }
 
-        public function test_compare_with_previous_four_weeks(): void
+    public function test_compare_with_median_of_previous_four_weeks(): void
     {
         $calc = new ClientHealthCalculator();
 
@@ -133,6 +133,46 @@ class ClientHealthCalculatorTest extends TestCase
         $this->assertSame(100.0, $calc->compare([40, 20, 20, 20, 20]));
         $this->assertSame(100.0, $calc->compare([5, 0, 0, 0, 0]));
         $this->assertNull($calc->compare([0, 0, 0, 0, 0]));
+        // Одна неделя с импортом (как у Aqiqa) базу не завышает: медиана 3982, а не среднее 5499.
+        $this->assertSame(89.9, $calc->compare([3579, 10770, 4338, 3627, 3261]));
+        // Пользовались не больше чем в половине недель и сейчас 0 — пункт не считается.
+        $this->assertNull($calc->compare([0, 0, 0, 0, 2]));
+    }
+
+    public function test_dialogs_under_10_percent_of_work_are_not_counted(): void
+    {
+        // Как у Avalon: диалоги 0, 4, 2, 32, 64 при 400–750 сущностях в неделю.
+        $m = $this->metrics();
+        $dialogs = [0, 4, 2, 32, 64];
+        $entities = [543, 578, 393, 748, 731];
+        foreach ($m['weeks'] as $i => &$w) {
+            $w['dialogs'] = $dialogs[$i];
+            $w['leads_new'] = $entities[$i];
+        }
+        unset($w);
+
+        $r = (new ClientHealthCalculator())->calculate($m, $this->context());
+
+        $this->assertNull($r['dialogs_score']);
+        $this->assertSame('green', $r['color']);
+        $this->assertStringContainsString('меньше 10% работы', implode(' ', array_column($r['reasons'], 'text')));
+    }
+
+    public function test_chat_only_client_keeps_dialogs(): void
+    {
+        // Сущностей мало, но диалоги — основная работа: диалоги считаются, сущности нет.
+        $m = $this->metrics();
+        foreach ($m['weeks'] as &$w) {
+            $w['dialogs'] = 200;
+            $w['leads_new'] = 5;
+        }
+        unset($w);
+        $m['weeks'][0]['dialogs'] = 50;
+
+        $r = (new ClientHealthCalculator())->calculate($m, $this->context());
+
+        $this->assertSame(25.0, $r['dialogs_score']);
+        $this->assertNull($r['entities_score']);
     }
 
     public function test_nobody_logged_in_is_red_even_for_new_client(): void

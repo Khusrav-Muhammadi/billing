@@ -14,11 +14,15 @@ use Illuminate\Support\Carbon;
  * Баллы за 7 дней (неделя 0 из метрик CRM):
  *  - Входы (15%): в сколько дней из 7 в CRM работал хоть кто-то из компании; 5 дней и больше = 100.
  *  - Охват (10%): доля пользователей, которые заходили хотя бы раз; 30% и больше = 100.
- *  - Диалоги (35%): обработанные диалоги против среднего за 4 прошлые недели.
+ *  - Диалоги (35%): обработанные диалоги против обычной недели (медиана 4 прошлых недель).
  *  - Сущности (40%): новые лиды, сделки, заказы и товары + смены этапа (лиды, сделки, заказы)
- *    против среднего за 4 прошлые недели.
- *    Сравнение: неделя / среднее × 100, но не больше 100. Если за 5 недель ноль — пункт не
- *    считается, его вес делится на остальные. Если база 0, а сейчас есть — 100.
+ *    против обычной недели.
+ *    Сравнение: неделя / медиана × 100, но не больше 100. Медиана, а не среднее: одна неделя
+ *    с импортом или массовым переносом этапов не завышает базу.
+ *    Пункт не считается (вес делится на остальные), если клиент им почти не пользуется:
+ *    медиана 0 и сейчас 0 (было не больше чем в половине недель), или и в обычную, и в эту
+ *    неделю это меньше 10% всей работы (диалоги + сущности). Нужно для клиентов, которые
+ *    работают с лидами без чатов, и наоборот. Если база 0, а сейчас есть — 100.
  *
  * Цвет:
  *  - зелёный — 70 и выше;
@@ -47,6 +51,8 @@ class ClientHealthCalculator
     public const DROP_DAYS = 14;
     public const PAID_SOON_DAYS = 30;
     public const NEW_CLIENT_DAYS = 28;
+    /** Доля пункта в работе клиента (диалоги + сущности), ниже которой пункт не считается. */
+    public const MINOR_SHARE = 0.10;
 
     private const LABELS = [
         'logins' => 'входы',
@@ -74,14 +80,20 @@ class ClientHealthCalculator
 
         $weeks = $this->weeks($metrics['weeks'] ?? []);
 
+        $work = [
+            'dialogs' => array_column($weeks, 'dialogs'),
+            'entities' => array_map(
+                fn (array $w) => $w['leads_new'] + $w['deals_new'] + $w['orders_new'] + $w['goods_new'] + $w['stage_changes'],
+                $weeks
+            ),
+        ];
+        $minor = $this->minorWork($work);
+
         $scores = [
             'logins' => $this->cap($activeDays / self::LOGIN_DAYS_FOR_MAX * 100),
             'coverage' => $usersTotal > 0 ? $this->cap($activeUsers / $usersTotal * 100 / self::COVERAGE_FOR_MAX * 100) : 0.0,
-            'dialogs' => $this->compare(array_column($weeks, 'dialogs')),
-            'entities' => $this->compare(array_map(
-                fn (array $w) => $w['leads_new'] + $w['deals_new'] + $w['orders_new'] + $w['goods_new'] + $w['stage_changes'],
-                $weeks
-            )),
+            'dialogs' => in_array('dialogs', $minor, true) ? null : $this->compare($work['dialogs']),
+            'entities' => in_array('entities', $minor, true) ? null : $this->compare($work['entities']),
         ];
 
         $index = $this->index($scores);
@@ -160,7 +172,9 @@ class ClientHealthCalculator
 
         foreach (['dialogs' => 'Диалоги', 'entities' => 'Сущности'] as $key => $label) {
             if ($scores[$key] === null) {
-                $reasons[] = $this->reason('skipped_' . $key, "{$label} не считаются: за 5 недель их не было");
+                $reasons[] = $this->reason('skipped_' . $key, in_array($key, $minor, true)
+                    ? "{$label} не считаются: это меньше 10% работы клиента"
+                    : "{$label} не считаются: клиент ими почти не пользуется");
             }
         }
 
@@ -207,8 +221,7 @@ class ClientHealthCalculator
     public function compare(array $byWeek): ?float
     {
         $current = (float) ($byWeek[0] ?? 0);
-        $previous = array_slice(array_values($byWeek), 1, 4);
-        $baseline = array_sum($previous) / 4;
+        $baseline = $this->baseline($byWeek);
 
         if ($baseline <= 0 && $current <= 0) {
             return null;
@@ -218,6 +231,41 @@ class ClientHealthCalculator
         }
 
         return $this->cap($current / $baseline * 100);
+    }
+
+    /** Обычная неделя: медиана 4 прошлых недель. */
+    public function baseline(array $byWeek): float
+    {
+        $previous = array_map('floatval', array_pad(array_slice(array_values($byWeek), 1, 4), 4, 0));
+        sort($previous);
+
+        return ($previous[1] + $previous[2]) / 2;
+    }
+
+    /**
+     * Пункты работы, которыми клиент почти не пользуется: и в обычную неделю, и в эту
+     * они меньше MINOR_SHARE от диалогов + сущностей.
+     *
+     * @param array{dialogs: array, entities: array} $work
+     * @return string[]
+     */
+    private function minorWork(array $work): array
+    {
+        $base = array_map(fn (array $w) => $this->baseline($w), $work);
+        $now = array_map(fn (array $w) => (float) ($w[0] ?? 0), $work);
+        $baseTotal = array_sum($base);
+        $nowTotal = array_sum($now);
+
+        $minor = [];
+        foreach ($work as $key => $_) {
+            $baseShare = $baseTotal > 0 ? $base[$key] / $baseTotal : 0;
+            $nowShare = $nowTotal > 0 ? $now[$key] / $nowTotal : 0;
+            if ($baseTotal > 0 && $baseShare < self::MINOR_SHARE && $nowShare < self::MINOR_SHARE) {
+                $minor[] = $key;
+            }
+        }
+
+        return $minor;
     }
 
     private function weeks(array $weeks): array
