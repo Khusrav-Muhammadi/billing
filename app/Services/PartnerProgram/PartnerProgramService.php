@@ -185,6 +185,20 @@ class PartnerProgramService
         }
         ksort($benefitByMonth);
 
+        // Комиссия по годам за всё время (кабинет показывает «в этом году» и «в прошлом году»).
+        $benefitByYear = [];
+        $yearRows = PartnerExpense::query()
+            ->where('partner_id', $partner->id)
+            ->selectRaw('YEAR(date) as y, currency_id, SUM(partner_amount) as total')
+            ->groupBy('y', 'currency_id')
+            ->get();
+        foreach ($yearRows as $row) {
+            $code = strtoupper((string) ($currencyCodes[$row->currency_id] ?? 'USD'));
+            $year = (string) $row->y;
+            $benefitByYear[$year][$code] = round(($benefitByYear[$year][$code] ?? 0) + (float) $row->total, 2);
+        }
+        ksort($benefitByYear);
+
         $clients = Client::query()->where('partner_id', $partner->id);
 
         return [
@@ -201,6 +215,7 @@ class PartnerProgramService
                 'TJS' => $this->convert(1, 'TJS', 'UZS'),
             ], static fn ($rate) => $rate !== null && $rate > 0),
             'benefit_by_month' => $benefitByMonth,
+            'benefit_by_year' => $benefitByYear,
             'clients' => [
                 'total' => (clone $clients)->where('is_demo', false)->count(),
                 'active' => (clone $clients)->where('is_demo', false)->where('is_active', true)->count(),
