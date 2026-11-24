@@ -194,7 +194,7 @@ class ClientHealthCalculatorTest extends TestCase
         $m['weeks'][0]['dialogs'] = 66;
         $m['weeks'][0]['leads_new'] = 318;
 
-        $r = (new ClientHealthCalculator())->calculate($m, $this->context(['last_activity' => '2026-09-28 20:03:01']));
+        $r = (new ClientHealthCalculator())->calculate($m, $this->context(['last_activity' => '2026-09-28 20:03:01', 'previous_index' => 75]));
 
         $this->assertSame(0, $r['health_index']);
         $this->assertSame('red', $r['color']);
@@ -203,6 +203,7 @@ class ClientHealthCalculatorTest extends TestCase
         $this->assertStringStartsWith('7 дней никто не заходил (последний вход 28.09.2026)', $r['reason_text']);
         $this->assertContains('auto_only', array_column($r['reasons'], 'code'));
         $this->assertStringNotContainsString('Слабо', $r['reason_text']);
+        $this->assertStringNotContainsString('упал', $r['reason_text']);
     }
 
     public function test_new_client_is_grey_for_28_days(): void

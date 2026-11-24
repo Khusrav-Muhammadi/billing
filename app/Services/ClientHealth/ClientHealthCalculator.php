@@ -168,7 +168,7 @@ class ClientHealthCalculator
                 ? "Жёлтый (индекс {$index}) и до конца оплаты {$daysLeft} дн."
                 : "Жёлтый (индекс {$index}) и оплата закончилась");
         }
-        if ($dropped) {
+        if ($dropped && !$nobody) {
             $reasons[] = $this->reason('drop', "Индекс упал на {$drop} за 2 недели (было {$previous})");
         }
         if ($color === ClientHealthSnapshot::YELLOW && $index < self::GREEN_FROM) {
