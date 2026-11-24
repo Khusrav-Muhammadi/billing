@@ -47,12 +47,21 @@ class PartnerProgramController extends Controller
     {
         $status = $request->query('approval_status');
 
+        // Активный партнёр в админке портала = есть хотя бы один клиент с действующим подключением.
+        $activeClients = \App\Models\Organization::query()
+            ->whereHas('latestConnection', fn ($q) => $q->where('status', 'connected'))
+            ->join('clients', 'clients.id', '=', 'organizations.client_id')
+            ->whereNotNull('clients.partner_id')
+            ->groupBy('clients.partner_id')
+            ->selectRaw('clients.partner_id AS pid, COUNT(DISTINCT organizations.client_id) AS c')
+            ->pluck('c', 'pid');
+
         $partners = User::query()
             ->where('role', 'partner')
             ->when($status, fn ($q) => $q->where('approval_status', $status))
             ->orderByDesc('id')
             ->get()
-            ->map(fn (User $u) => $this->service->serializePartner($u))
+            ->map(fn (User $u) => $this->service->serializePartner($u) + ['active_clients' => (int) ($activeClients[$u->id] ?? 0)])
             ->values();
 
         return response()->json(['partners' => $partners]);
