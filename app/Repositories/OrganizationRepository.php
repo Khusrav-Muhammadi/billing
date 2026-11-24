@@ -8,6 +8,7 @@ use App\Jobs\ActivationJob;
 use App\Jobs\CreateOrganizationJob;
 use App\Jobs\SendOrganizationLicense;
 use App\Models\Client;
+use App\Models\ClientHealthSnapshot;
 use App\Models\Organization;
 use App\Models\OrganizationPack;
 use App\Models\Price;
@@ -345,10 +346,31 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         $this->applyOrganizationSearch($query, $data['search'] ?? null);
         $this->applyOrganizationFilters($query, $data);
         $this->applyValidityUntilFilter($query, $data['valid_until_to'] ?? null);
+        $this->applyHealthFilter($query, $data['health'] ?? null);
 
         $this->applyOrganizationSorting($query, $data);
 
         return $query->paginate(50)->withQueryString();
+    }
+
+    /** Фильтр по цвету светофора на последний посчитанный день (плитки «Здоровье клиентов» в портале). */
+    private function applyHealthFilter(Builder $query, ?string $color): void
+    {
+        if (!in_array($color, ClientHealthSnapshot::COLOR_ORDER, true)) {
+            return;
+        }
+
+        $date = ClientHealthSnapshot::query()->max('date');
+        if ($date === null) {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        $query->whereIn('client_id', ClientHealthSnapshot::query()
+            ->whereDate('date', $date)
+            ->where('client_type', 'paid')
+            ->where('color', $color)
+            ->select('client_id'));
     }
 
     private function applyValidityUntilFilter(Builder $query, ?string $validUntilTo): void
