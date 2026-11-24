@@ -49,7 +49,8 @@ class PartnerOwnDemoService
 
         $client = Client::query()
             ->whereRaw('LOWER(email) = ?', [$email])
-            ->where('is_demo', true)
+            // Демо или уже рабочая NFR партнёра (после одобрения is_demo может быть снят, а nfr = 1).
+            ->where(fn ($q) => $q->where('is_demo', true)->orWhere('nfr', true))
             ->latest('id')
             ->first();
 
