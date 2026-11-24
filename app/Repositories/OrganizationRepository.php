@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Support\ClientAccess;
 use App\Support\CrmHttp;
 
 use App\Jobs\ActivationJob;
@@ -444,7 +445,9 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
     public function nfr(array $data)
     {
-        $query = Organization::query()->whereHas('client', function (Builder $q)  {
+        // Раньше без ограничения: любой партнёр видел NFR всех партнёров.
+        $query = ClientAccess::scopeOrganizations(Organization::query(), auth()->user())
+            ->whereHas('client', function (Builder $q)  {
                     return $q->where('nfr', true);
                 })
             ->with(['client.partner', 'client.country.currency', 'connectedServices.tariff', 'latestConnection']);

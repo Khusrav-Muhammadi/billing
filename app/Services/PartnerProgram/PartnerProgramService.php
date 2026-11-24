@@ -151,7 +151,7 @@ class PartnerProgramService
             ->where('partner_id', $partner->id)
             ->where('status', 'paid')
             ->when($since, fn ($q) => $q->where('status_date', '>=', $since))
-            ->get(['id', 'currency', 'grand_total', 'status_date']);
+            ->get(['id', 'currency', 'grand_total', 'status_date', 'request_type']);
 
         $byCurrency = [];
         foreach ($offers as $offer) {
@@ -171,6 +171,23 @@ class PartnerProgramService
         }
 
         $from = now()->startOfMonth()->subMonths(11)->toDateString();
+
+        // Продажи по месяцам за 12 месяцев (дата оплаты): подключения, продления, прочие (доп. услуги, ИИ).
+        $salesByMonth = [];
+        foreach ($offers as $offer) {
+            if (!$offer->status_date || Carbon::parse($offer->status_date)->toDateString() < $from) {
+                continue;
+            }
+            $month = Carbon::parse($offer->status_date)->format('Y-m');
+            $kind = match ((string) $offer->request_type) {
+                'connection' => 'connections',
+                'renewal', 'renewal_no_changes' => 'renewals',
+                default => 'other',
+            };
+            $salesByMonth[$month] ??= ['connections' => 0, 'renewals' => 0, 'other' => 0];
+            $salesByMonth[$month][$kind]++;
+        }
+        ksort($salesByMonth);
         $benefit = PartnerExpense::query()
             ->where('partner_id', $partner->id)
             ->where('date', '>=', $from)
@@ -215,6 +232,7 @@ class PartnerProgramService
                 'TJS' => $this->convert(1, 'TJS', 'UZS'),
             ], static fn ($rate) => $rate !== null && $rate > 0),
             'benefit_by_month' => $benefitByMonth,
+            'sales_by_month' => $salesByMonth,
             'benefit_by_year' => $benefitByYear,
             'clients' => [
                 'total' => (clone $clients)->where('is_demo', false)->count(),
@@ -235,6 +253,8 @@ class PartnerProgramService
             'address' => $partner->address,
             'country_id' => $partner->country_id,
             'currency_id' => $partner->currency_id,
+            // Код валюты партнёра (UZS, USD, TJS…): портал показывает суммы в ней, пока нет договора.
+            'currency' => $partner->currency_id ? strtoupper((string) $partner->currency?->symbol_code) : null,
             'status' => $partner->status,
             'approval_status' => $partner->approval_status ?? self::STATUS_APPROVED,
             'registered_via' => $partner->registered_via ?? null,

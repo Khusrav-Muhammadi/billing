@@ -19,6 +19,8 @@ class PartnerRequestController extends Controller
 
     public function show(PartnerRequest $partnerRequest)
     {
+        $this->ensureOwn($partnerRequest);
+
         return $partnerRequest->load('tariff');
     }
 
@@ -29,12 +31,25 @@ class PartnerRequestController extends Controller
 
     public function update(PartnerRequest $partnerRequest, StoreRequest $request)
     {
+        $this->ensureOwn($partnerRequest);
+
         return $this->repository->update($partnerRequest, $request->validated());
     }
 
     public function changeStatus(PartnerRequest $partnerRequest)
     {
+        $this->ensureOwn($partnerRequest);
+
         return $this->repository->changeStatus($partnerRequest);
     }
 
+    /** Заявку видит и меняет только её партнёр (или админ): раньше открывалась любому по id. */
+    private function ensureOwn(PartnerRequest $partnerRequest): void
+    {
+        $user = auth()->user();
+        abort_unless(
+            \App\Support\ClientAccess::isAdmin($user) || (int) $partnerRequest->partner_id === (int) $user?->id,
+            404
+        );
+    }
 }

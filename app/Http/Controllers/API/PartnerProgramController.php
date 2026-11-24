@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\PartnerProgram\PartnerDemoService;
 use App\Services\PartnerProgram\PartnerOwnDemoService;
 use App\Services\PartnerProgram\PartnerProgramService;
+use App\Services\PartnerProgram\PartnerReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -57,6 +58,7 @@ class PartnerProgramController extends Controller
             ->pluck('c', 'pid');
 
         $partners = User::query()
+            ->with('currency:id,symbol_code')
             ->where('role', 'partner')
             ->when($status, fn ($q) => $q->where('approval_status', $status))
             ->orderByDesc('id')
@@ -65,6 +67,23 @@ class PartnerProgramController extends Controller
             ->values();
 
         return response()->json(['partners' => $partners]);
+    }
+
+    /**
+     * Отчёт по партнёрам за период (по умолчанию текущий месяц): подключения, продления, оборот, комиссия,
+     * светофор партнёров, светофор их клиентов, NFR. Для рабочего стола и раздела «Партнёры» в админке портала.
+     */
+    public function report(Request $request, PartnerReportService $report): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+
+        $from = isset($data['from']) ? \Illuminate\Support\Carbon::parse($data['from']) : now()->startOfMonth();
+        $to = isset($data['to']) ? \Illuminate\Support\Carbon::parse($data['to']) : now();
+
+        return response()->json($report->report($from->startOfDay(), $to->endOfDay()));
     }
 
     public function show(User $partner): JsonResponse

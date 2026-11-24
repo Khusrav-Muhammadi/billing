@@ -270,9 +270,13 @@ class CommercialFooferController extends Controller
             $offerId = isset($validated['offer_id']) ? (int)$validated['offer_id'] : null;
             $organizationId = (int)$validated['organization_id'];
 
-            $organization = Organization::query()
-                ->with('client:id,phone,email,partner_id')
-                ->findOrFail($organizationId);
+            // КП только на свою организацию (как в списке application-data/organizations):
+            // иначе партнёр мог оформить подключение чужого клиента на себя.
+            $organizationQuery = Organization::query()->with('client:id,phone,email,partner_id');
+            if (!\App\Support\ClientAccess::isAdmin(Auth::user())) {
+                $this->applyCurrentUserOrganizationScope($organizationQuery);
+            }
+            $organization = $organizationQuery->findOrFail($organizationId);
 
             if ($offerId) {
                 $offer = $this->ownedOffersQuery()->lockForUpdate()->findOrFail($offerId);
@@ -473,6 +477,13 @@ class CommercialFooferController extends Controller
 
     public function connectionContext(Organization $organization): JsonResponse
     {
+        // Подключения и баланс чужой организации партнёру не отдаём (раньше открывалось по любому id).
+        if (!\App\Support\ClientAccess::isAdmin(Auth::user())) {
+            $query = Organization::query()->whereKey($organization->id);
+            $this->applyCurrentUserOrganizationScope($query);
+            abort_unless($query->exists(), 404);
+        }
+
         $columns = [
             'id',
             'partner_id',

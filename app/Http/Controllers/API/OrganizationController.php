@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use App\Services\Organizations\OrganizationValidityService;
 use App\Services\Sale\SaleService;
+use App\Support\ClientAccess;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -37,6 +38,8 @@ class OrganizationController extends Controller
 
     public function store(Client $client, StoreRequest $request): JsonResponse
     {
+        abort_unless(ClientAccess::ownsClient(auth()->user(), $client), 404);
+
         $organization = $this->repository->store($client, $request->validated());
 
         if (!$organization) {
@@ -50,6 +53,8 @@ class OrganizationController extends Controller
 
     public function show(Organization $organization)
     {
+        abort_unless(ClientAccess::canViewOrganization(auth()->user(), $organization), 404);
+
         $packs = Pack::where('tariff_id', $organization->client?->tariff_id)->with('tariff')->get();
 
         return response()->json(['success' => true, 'packs' => $packs, 'organization' => $organization->load('packs.pack', 'businessType')]);
@@ -57,6 +62,8 @@ class OrganizationController extends Controller
 
     public function update(Organization $organization, \App\Http\Requests\Organization\UpdateRequest $request)
     {
+        abort_unless(ClientAccess::canManageOrganization(auth()->user(), $organization), 404);
+
         $this->repository->update($organization, $request->validated());
 
         return response()->json(['success' => true]);
@@ -64,6 +71,9 @@ class OrganizationController extends Controller
 
     public function destroy(Organization $organization)
     {
+        // Удалить организацию может только админ: партнёр раньше мог удалить любую по id.
+        abort_unless(ClientAccess::isAdmin(auth()->user()), 403, 'Недостаточно прав.');
+
         $this->repository->destroy($organization);
 
         return response()->json(['success' => true]);
@@ -148,7 +158,8 @@ class OrganizationController extends Controller
                 $clientQuery
                     ->where('nfr', false);
 
-                if ((int)$authUser->id === 11 || (int)$authUser->id === 1) {
+                // Админ портала видит все демо (раньше только пользователи 1 и 11).
+                if ((int)$authUser->id === 11 || (int)$authUser->id === 1 || ClientAccess::isAdmin($authUser)) {
                     return;
                 }
 
@@ -245,6 +256,8 @@ class OrganizationController extends Controller
 
     public function showV2(Organization $organization): JsonResponse
     {
+        abort_unless(ClientAccess::canViewOrganization(auth()->user(), $organization), 404);
+
         $organization->load([
             'client:id,name,email,phone,sub_domain,last_activity,is_active,is_demo,partner_id,country_id,manager_id,created_at',
             'client.country:id,name,currency_id',
@@ -465,24 +478,6 @@ class OrganizationController extends Controller
                 }
             }
         });
-    }
-
-    private function canAccessOrganization(Organization $organization): bool
-    {
-        $authUser = auth()->user();
-        if (!$authUser) {
-            return false;
-        }
-
-        if ($authUser->role === 'partner') {
-            return (int)($organization->client?->partner_id ?? 0) === (int)$authUser->id;
-        }
-
-        if ($authUser->role === 'manager') {
-            return (int)($organization->client?->manager_id ?? 0) === (int)$authUser->id;
-        }
-
-        return true;
     }
 
     private function applyDemoOrganizationSorting(Builder $query, Request $request): void

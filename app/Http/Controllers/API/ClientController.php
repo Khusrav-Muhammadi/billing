@@ -22,6 +22,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\OrganizationRepository;
+use App\Support\ClientAccess;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -47,6 +48,8 @@ class ClientController extends Controller
 
     public function show(Client $client)
     {
+        abort_unless(ClientAccess::ownsClient(auth()->user(), $client), 404);
+
         $organizations = Organization::where('client_id', $client->id)->get();
         $transactions = Transaction::where('client_id', $client->id)
             ->with(['tariff', 'client', 'organization', 'sale'])
@@ -101,7 +104,15 @@ class ClientController extends Controller
 
     public function update(Client $client, UpdateRequest $request)
     {
-        $this->repository->update($client, $request->validated());
+        abort_unless(ClientAccess::ownsClient(auth()->user(), $client), 404);
+
+        $data = $request->validated();
+        // Переназначить клиента другому партнёру может только админ.
+        if (!ClientAccess::isAdmin(auth()->user())) {
+            unset($data['partner_id']);
+        }
+
+        $this->repository->update($client, $data);
 
         return response()->json(['success' => true]);
     }
@@ -186,6 +197,8 @@ class ClientController extends Controller
 
     public function getOrganizations(Client $client)
     {
+        abort_unless(ClientAccess::ownsClient(auth()->user(), $client), 404);
+
         return response()->json([
             'result' => Organization::query()->where('client_id', $client->id)->with('businessType')->paginate(10),
         ]);
@@ -193,6 +206,8 @@ class ClientController extends Controller
 
     public function getTransactions(Client $client, Request $request)
     {
+        abort_unless(ClientAccess::ownsClient(auth()->user(), $client), 404);
+
         return response()->json([
             'result' => Transaction::query()->where('client_id', $client->id)->when()->with('tariff',  'sale', 'organization')->paginate(50),
         ]);
@@ -200,6 +215,9 @@ class ClientController extends Controller
 
     public function getPartners()
     {
+        // Список всех партнёров с контактами — только админу: партнёр раньше видел почты и телефоны всех.
+        abort_unless(ClientAccess::isAdmin(auth()->user()), 403, 'Недостаточно прав.');
+
         return response()->json([
             'result' => User::query()->where('role', 'partner')->paginate(50),
         ]);
@@ -297,6 +315,8 @@ class ClientController extends Controller
 
     public function getHistory(Client $client)
     {
+        abort_unless(ClientAccess::ownsClient(auth()->user(), $client), 404);
+
         return response()->json([
             'result' => $client->load(['history.changes', 'history.user']),
         ]);

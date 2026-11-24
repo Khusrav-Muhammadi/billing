@@ -40,8 +40,7 @@ Route::middleware('auth.basic')->group(function () {
 // Смену поддомена присылает CRM (TenantSubdomainChangeService). Раньше роут был открыт всем.
 Route::post('clients/change-sub-domain', [\App\Http\Controllers\API\ClientController::class, 'changeSubdomain'])->middleware('crm.token');
 
-// Партнёр на рассмотрении сюда не попадает (кроме профиля ниже): только логин и экран ожидания в портале.
-Route::middleware(['auth:sanctum', 'partner.approved'])->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('commercial-foofers/payment', [\App\Http\Controllers\ClientPaymentController::class, 'store']);
 
@@ -56,14 +55,13 @@ Route::middleware(['auth:sanctum', 'partner.approved'])->group(function () {
     Route::get('sale', [\App\Http\Controllers\API\ClientController::class, 'sale']);
     Route::get('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'show']);
     Route::patch('clients/{client}', [\App\Http\Controllers\API\ClientController::class, 'update']);
-    // Включение/выключение CRM и пополнение баланса — только админ.
-    Route::post('clients/activation/{client}', [\App\Http\Controllers\API\ClientController::class, 'activation'])->middleware('role:admin');
-    Route::post('clients/create-transaction/{id}', [\App\Http\Controllers\API\ClientController::class, 'createTransaction'])->middleware('role:admin');
+    Route::post('clients/activation/{client}', [\App\Http\Controllers\API\ClientController::class, 'activation']);
+    Route::post('clients/create-transaction/{id}', [\App\Http\Controllers\API\ClientController::class, 'createTransaction']);
     Route::get('clients/getOrganizations/{client}', [\App\Http\Controllers\API\ClientController::class, 'getOrganizations']);
     Route::get('clients/getTransactions/{client}', [\App\Http\Controllers\API\ClientController::class, 'getTransactions']);
     Route::get('clients/getHistory/{client}', [\App\Http\Controllers\API\ClientController::class, 'getHistory']);
 
-    Route::post('organizations/access/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'access'])->middleware('role:admin');
+    Route::post('organizations/access/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'access']);
     Route::get('organizations-v2', [\App\Http\Controllers\API\OrganizationController::class, 'indexV2']);
     Route::get('organizations-active-v2', [\App\Http\Controllers\API\OrganizationController::class, 'active']);
     Route::get('organizations-inActive-v2', [\App\Http\Controllers\API\OrganizationController::class, 'inActive']);
@@ -73,8 +71,8 @@ Route::middleware(['auth:sanctum', 'partner.approved'])->group(function () {
     Route::get('organizations-v2/{organization}', [\App\Http\Controllers\API\OrganizationController::class, 'showV2']);
     Route::apiResource('organizations', \App\Http\Controllers\API\OrganizationController::class)->except(['store']);
     Route::post('organizations/{client}', [\App\Http\Controllers\API\OrganizationController::class, 'store']);
-    Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack'])->middleware('role:admin');
-    Route::delete('organizations/delete-pack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'deletePack'])->middleware('role:admin');
+    Route::post('organizations/addPack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'addPack']);
+    Route::delete('organizations/delete-pack/{id}', [\App\Http\Controllers\API\OrganizationController::class, 'deletePack']);
 
     Route::get('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'index']);
     Route::post('partner-request', [\App\Http\Controllers\API\PartnerRequestController::class, 'store']);
@@ -106,12 +104,10 @@ Route::middleware(['auth:sanctum', 'partner.approved'])->group(function () {
 
     Route::get('dashboard', [\App\Http\Controllers\API\DashBoardController::class, 'index']);
 
-});
-
-// Профиль доступен и партнёру на рассмотрении.
-Route::middleware('auth:sanctum')->prefix('profile')->group(function () {
-    Route::patch('/change-password', [ProfileController::class, 'changePasswordApi']);
-    Route::patch('/{user}', [ProfileController::class, 'updateApi']);
+    Route::group(['prefix' => 'profile'], function () {
+        Route::patch('/change-password', [ProfileController::class, 'changePasswordApi']);
+        Route::patch('/{user}', [ProfileController::class, 'updateApi']);
+    });
 });
 Route::get('get/application-data', [CommercialFooferController::class, 'index']);
 
@@ -179,7 +175,7 @@ Route::post('payme/merchant', \App\Http\Controllers\API\PaymeMerchantController:
 //     ->middleware('crm.token')
 //     ->name('payme.balance-checkout');
 
-Route::middleware(['auth:sanctum', 'partner.approved'])->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
     Route::patch('client-payment/invoice/{payment}/customer', [\App\Http\Controllers\API\ClientPaymentController::class, 'updateInvoiceCustomer']);
 });
 
