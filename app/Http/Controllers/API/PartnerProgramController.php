@@ -86,6 +86,44 @@ class PartnerProgramController extends Controller
         return response()->json($report->report($from->startOfDay(), $to->endOfDay()));
     }
 
+    /**
+     * Админ портала закрепляет клиента без партнёра за партнёром («Отправить партнёру» в карточке организации).
+     * Чужого клиента не переназначаем: только если партнёра у клиента нет.
+     */
+    public function assignOrganizationPartner(Request $request, \App\Models\Organization $organization): JsonResponse
+    {
+        $data = $request->validate([
+            'partner_id' => ['required', 'integer'],
+        ]);
+
+        $partner = User::query()->whereKey($data['partner_id'])->where('role', 'partner')->first();
+        if (!$partner || ($partner->approval_status ?? PartnerProgramService::STATUS_APPROVED) !== PartnerProgramService::STATUS_APPROVED) {
+            return response()->json(['message' => 'Партнёр не найден или ещё не одобрен.'], 422);
+        }
+
+        $client = $organization->client;
+        if (!$client) {
+            return response()->json(['message' => 'У организации нет клиента.'], 422);
+        }
+        if ($client->partner_id !== null) {
+            return response()->json(['message' => 'У этого клиента уже есть партнёр.'], 422);
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($organization, $client, $partner) {
+            $client->update(['partner_id' => $partner->id]);
+
+            // Ночная команда снимает партнёра у демо старше 30 дней без подключения (один раз на организацию).
+            // Закрепление админом — осознанное решение: такую старую организацию отмечаем, чтобы его не сняли этой же ночью.
+            if ($organization->partner_auto_cleared_at === null
+                && $organization->created_at?->lte(now()->subDays(30))
+                && !$organization->connections()->exists()) {
+                $organization->forceFill(['partner_auto_cleared_at' => now()])->save();
+            }
+        });
+
+        return response()->json(['success' => true, 'partner' => ['id' => $partner->id, 'name' => $partner->name]]);
+    }
+
     public function show(User $partner): JsonResponse
     {
         abort_unless($partner->role === 'partner', 404);

@@ -15,6 +15,8 @@ Route::prefix('partner-program')
         Route::post('register', [PartnerProgramController::class, 'register']);
         Route::get('partners', [PartnerProgramController::class, 'index']);
         Route::get('partners-report', [PartnerProgramController::class, 'report']);
+        // «Отправить партнёру»: админ портала закрепляет клиента без партнёра.
+        Route::post('organizations/{organization}/assign-partner', [PartnerProgramController::class, 'assignOrganizationPartner'])->whereNumber('organization');
         Route::get('partners/{partner}', [PartnerProgramController::class, 'show']);
         Route::post('partners/{partner}/approve', [PartnerProgramController::class, 'approve']);
         Route::post('partners/{partner}/reject', [PartnerProgramController::class, 'reject']);
