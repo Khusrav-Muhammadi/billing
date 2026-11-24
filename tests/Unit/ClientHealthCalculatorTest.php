@@ -186,6 +186,25 @@ class ClientHealthCalculatorTest extends TestCase
         $this->assertStringContainsString('7 дней никто не заходил', $r['reason_text']);
     }
 
+    public function test_without_logins_incoming_leads_and_phone_replies_do_not_count(): void
+    {
+        // furasentr-new: в CRM с сентября никто не заходит, но лиды создают интеграции,
+        // а на чаты отвечают с телефона. Раньше индекс был 75 при красном цвете.
+        $m = $this->metrics(['users_total' => 2, 'activity' => ['active_users' => 0, 'active_user_days' => 0, 'active_days' => 0, 'tracked_since' => null]]);
+        $m['weeks'][0]['dialogs'] = 66;
+        $m['weeks'][0]['leads_new'] = 318;
+
+        $r = (new ClientHealthCalculator())->calculate($m, $this->context(['last_activity' => '2026-09-28 20:03:01']));
+
+        $this->assertSame(0, $r['health_index']);
+        $this->assertSame('red', $r['color']);
+        $this->assertSame(0.0, $r['dialogs_score']);
+        $this->assertSame(0.0, $r['entities_score']);
+        $this->assertStringStartsWith('7 дней никто не заходил (последний вход 28.09.2026)', $r['reason_text']);
+        $this->assertContains('auto_only', array_column($r['reasons'], 'code'));
+        $this->assertStringNotContainsString('Слабо', $r['reason_text']);
+    }
+
     public function test_new_client_is_grey_for_28_days(): void
     {
         $calc = new ClientHealthCalculator();

@@ -27,7 +27,8 @@ use Illuminate\Support\Carbon;
  * Цвет:
  *  - зелёный — 70 и выше;
  *  - жёлтый — 40–69, или индекс упал на 20+ за 2 недели;
- *  - красный — ниже 40, или 7 дней никто не заходил,
+ *  - красный — ниже 40, или 7 дней никто не заходил (тогда и диалоги с сущностями = 0:
+ *    без входов это поток из интеграций и ответы с телефона, а не работа в CRM),
  *    или до конца оплаты 30 дней и меньше при жёлтом цвете (только платные);
  *  - серый — первые 28 дней после оплаты (платные). Серый перекрывает всё, кроме
  *    «7 дней никто не заходил»: это остаётся красным даже у нового клиента.
@@ -63,7 +64,7 @@ class ClientHealthCalculator
 
     /**
      * @param array $metrics ответ CRM: users_total, activity{active_users, active_user_days, active_days, tracked_since, backfilled_since}, weeks[0..4]
-     * @param array $context date (Y-m-d), client_type (paid|demo), paid_until (?Y-m-d), period_started_at (?Y-m-d), previous_index (?int, индекс 14 дней назад)
+     * @param array $context date (Y-m-d), client_type (paid|demo), paid_until (?Y-m-d), period_started_at (?Y-m-d), previous_index (?int, индекс 14 дней назад), last_activity (?дата последнего входа из clients)
      */
     public function calculate(array $metrics, array $context): array
     {
@@ -96,6 +97,19 @@ class ClientHealthCalculator
             'entities' => in_array('entities', $minor, true) ? null : $this->compare($work['entities']),
         ];
 
+        // 7 дней никто не заходил: лиды и диалоги, которые всё равно есть, — не работа в CRM.
+        // Лиды создают интеграции, а «диалоги» — ответы с телефона (WhatsApp и т.п.), которые
+        // CRM только зеркалит. Иначе клиент, который не открывал CRM с сентября, получает 75.
+        $nobody = $activeUsers === 0;
+        $autoOnly = $nobody && (($work['dialogs'][0] ?? 0) + ($work['entities'][0] ?? 0)) > 0;
+        if ($nobody) {
+            foreach (['dialogs', 'entities'] as $key) {
+                if ($scores[$key] !== null) {
+                    $scores[$key] = 0.0;
+                }
+            }
+        }
+
         $index = $this->index($scores);
 
         $previous = isset($context['previous_index']) && $context['previous_index'] !== null
@@ -109,8 +123,6 @@ class ClientHealthCalculator
         $periodStart = !empty($context['period_started_at']) ? Carbon::parse($context['period_started_at'])->startOfDay() : null;
         $dayOfPeriod = $periodStart ? (int) $periodStart->diffInDays($date, false) + 1 : null;
         $isNew = $isPaid && $dayOfPeriod !== null && $dayOfPeriod >= 1 && $dayOfPeriod <= self::NEW_CLIENT_DAYS;
-
-        $nobody = $activeUsers === 0;
 
         // Цвет по индексу и падению.
         $color = match (true) {
@@ -140,9 +152,15 @@ class ClientHealthCalculator
             $reasons[] = $this->reason('new', "Новый клиент: {$dayOfPeriod}-й день из " . self::NEW_CLIENT_DAYS);
         }
         if ($nobody) {
-            $reasons[] = $this->reason('no_logins', '7 дней никто не заходил');
+            $last = !empty($context['last_activity']) ? Carbon::parse($context['last_activity']) : null;
+            $reasons[] = $this->reason('no_logins', $last && $last->lt($date->copy()->subDays(6))
+                ? '7 дней никто не заходил (последний вход ' . $last->format('d.m.Y') . ')'
+                : '7 дней никто не заходил');
         }
-        if ($index < self::YELLOW_FROM) {
+        if ($autoOnly) {
+            $reasons[] = $this->reason('auto_only', 'Лиды и диалоги приходят сами (интеграции, ответы с телефона), но в CRM никто не работает: не считаются');
+        }
+        if ($index < self::YELLOW_FROM && !$nobody) {
             $reasons[] = $this->reason('low_index', "Индекс {$index} ниже " . self::YELLOW_FROM);
         }
         if ($paidSoonRed) {
@@ -166,7 +184,7 @@ class ClientHealthCalculator
                 $weak[] = self::LABELS[$key] . ' ' . (int) round($score);
             }
         }
-        if ($weak !== [] && $color !== ClientHealthSnapshot::GREEN) {
+        if ($weak !== [] && $color !== ClientHealthSnapshot::GREEN && !$nobody) {
             $reasons[] = $this->reason('weak', 'Слабо: ' . implode(', ', $weak));
         }
 
@@ -296,7 +314,7 @@ class ClientHealthCalculator
         $since = collect([$tracked, $backfilled])->filter()->min();
 
         if ($since === null) {
-            return 'Учёт входов в CRM ещё не включён: входы и охват 0';
+            return 'С начала учёта входов в CRM никто не заходил';
         }
         if ($since > $weekFrom) {
             return "Учёт входов неполный: данные с {$since}";

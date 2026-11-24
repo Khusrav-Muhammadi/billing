@@ -38,6 +38,7 @@ class ClientHealthService
             'paid_until' => $context['paid_until'],
             'period_started_at' => $context['period_started_at'],
             'previous_index' => $this->context->previousIndex($client, $date),
+            'last_activity' => $client->last_activity,
         ]);
 
         return $this->save($client, $date, $result + [
