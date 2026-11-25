@@ -95,6 +95,26 @@ function paymeCreate(string $id = 'aaaaaaaaaaaaaaaaaaaaaaaa', ?int $time = null)
     ]);
 }
 
+it('returns a Payme GET checkout link only to CRM for a payable account', function () {
+    $endpoint = '/api/payme/balance-checkout/000000042';
+
+    $this->withHeaders(['X-Service-Token' => ''])->getJson($endpoint)->assertUnauthorized();
+
+    $response = $this->withHeaders(['X-Service-Token' => 'crm-token'])->getJson($endpoint)
+        ->assertOk()
+        ->assertJsonPath('amount', 1000000)
+        ->assertJsonPath('amount_tiyin', 100000000);
+
+    $url = $response->json('checkout_url');
+    expect($url)->toStartWith('https://test.paycom.uz/');
+    expect(base64_decode(substr($url, strlen('https://test.paycom.uz/')), true))
+        ->toBe('m=merchant123;ac.order_number=000000042;a=100000000');
+
+    $this->getJson('/api/payme/balance-checkout/unknown')->assertNotFound();
+    expect(DB::table('payme_balance_transactions')->count())->toBe(0)
+        ->and(DB::table('client_balances')->count())->toBe(0);
+});
+
 it('requires Payme Basic Auth and preserves the RPC id in errors', function () {
     $request = paymeRpc('CheckPerformTransaction', ['amount' => 100000000, 'account' => ['order_number' => '000000042']]);
 
