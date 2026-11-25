@@ -79,7 +79,7 @@ class PaymeMerchantService
         }
 
         return ($params['amount'] ?? null) === self::TOP_UP_TIYIN
-            ? ['result' => ['allow' => true]]
+            ? ['result' => ['allow' => true, 'additional' => ['amount' => self::TOP_UP_TIYIN]]]
             : $this->amountError();
     }
 
