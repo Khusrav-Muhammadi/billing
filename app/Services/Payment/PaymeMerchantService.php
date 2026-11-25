@@ -15,6 +15,7 @@ class PaymeMerchantService
     // фиксированная сумма пополнения, в UZS и в тийинах (1 UZS = 100 тийинов)
     public const TOP_UP_UZS = 1000000;
     public const TOP_UP_TIYIN = self::TOP_UP_UZS * 100;
+    public const AMOUNT_LOOKUP_TIYIN = 100;
 
     public function handle(string $method, array $params): array
     {
@@ -78,8 +79,9 @@ class PaymeMerchantService
             return $this->accountError();
         }
 
-        return ($params['amount'] ?? null) === self::TOP_UP_TIYIN
-            ? ['result' => ['allow' => true]]
+        // Payme запрашивает сумму платежа проверочным запросом на 1 сум.
+        return in_array($params['amount'] ?? null, [self::AMOUNT_LOOKUP_TIYIN, self::TOP_UP_TIYIN], true)
+            ? ['result' => ['allow' => true, 'additional' => ['amount' => self::TOP_UP_UZS]]]
             : $this->amountError();
     }
 

@@ -95,6 +95,26 @@ function paymeCreate(string $id = 'aaaaaaaaaaaaaaaaaaaaaaaa', ?int $time = null)
     ]);
 }
 
+it('returns a Payme GET checkout link only to CRM for a payable account', function () {
+    $endpoint = '/api/payme/balance-checkout/000000042';
+
+    $this->withHeaders(['X-Service-Token' => ''])->getJson($endpoint)->assertUnauthorized();
+
+    $response = $this->withHeaders(['X-Service-Token' => 'crm-token'])->getJson($endpoint)
+        ->assertOk()
+        ->assertJsonPath('amount', 1000000)
+        ->assertJsonPath('amount_tiyin', 100000000);
+
+    $url = $response->json('checkout_url');
+    expect($url)->toStartWith('https://test.paycom.uz/');
+    expect(base64_decode(substr($url, strlen('https://test.paycom.uz/')), true))
+        ->toBe('m=merchant123;ac.order_number=000000042;a=100000000');
+
+    $this->getJson('/api/payme/balance-checkout/unknown')->assertNotFound();
+    expect(DB::table('payme_balance_transactions')->count())->toBe(0)
+        ->and(DB::table('client_balances')->count())->toBe(0);
+});
+
 it('requires Payme Basic Auth and preserves the RPC id in errors', function () {
     $request = paymeRpc('CheckPerformTransaction', ['amount' => 100000000, 'account' => ['order_number' => '000000042']]);
 
@@ -128,18 +148,32 @@ it('accepts test credentials in production and performs without crediting the ba
     expect(DB::table('client_balances')->count())->toBe(0);
 });
 
-it('checks exact account and fixed tiyin amount before creating a transaction', function () {
-    $check = paymeRpc('CheckPerformTransaction', ['amount' => 100000000, 'account' => ['order_number' => '000000042']]);
-    $this->postJson('/api/payme/merchant', $check)->assertJsonPath('result.allow', true)->assertJsonPath('id', 7);
+it('returns the fixed payable amount for a one-sum lookup but only creates a full payment', function () {
+    $check = paymeRpc('CheckPerformTransaction', ['amount' => 100, 'account' => ['order_number' => '000000042']]);
+    $this->postJson('/api/payme/merchant', $check)
+        ->assertJsonPath('result.allow', true)
+        ->assertJsonPath('result.additional.amount', 100000000)
+        ->assertJsonPath('id', 7);
 
     $check['params']['amount'] = 100000001;
     $this->postJson('/api/payme/merchant', $check)->assertJsonPath('error.code', -31001);
-    $check['params']['amount'] = 100000000;
+    $check['params']['amount'] = 100;
     $check['params']['account']['order_number'] = '42';
     $this->postJson('/api/payme/merchant', $check)
         ->assertJsonPath('error.code', -31050)->assertJsonPath('error.data', 'order_number');
     $check['params']['account']['order_number'] = '000000043';
     $this->postJson('/api/payme/merchant', $check)->assertJsonPath('error.code', -31050);
+
+    $check['params']['account']['order_number'] = '000000042';
+    $check['params']['amount'] = 100000000;
+    $this->postJson('/api/payme/merchant', $check)
+        ->assertJsonPath('result.allow', true)
+        ->assertJsonPath('result.additional.amount', 100000000);
+
+    $create = paymeCreate();
+    $create['params']['amount'] = 100;
+    $this->postJson('/api/payme/merchant', $create)->assertJsonPath('error.code', -31001);
+    expect(DB::table('payme_balance_transactions')->count())->toBe(0);
 });
 
 it('creates and performs once, then reports the same transaction on retries and in the statement', function () {
