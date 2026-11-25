@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap');
+
 /* ========================================
    Reset & Base
 ======================================== */
@@ -1660,4 +1662,282 @@ body {
     margin-bottom: 0;
     padding-bottom: 0;
     border-bottom: none;
+}
+
+/* ========================================
+   Вид админки shamCRM. PDF-блок выше не трогаем.
+======================================== */
+body {
+    font-family: Onest, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #ffffff;
+    color: #1c1f36;
+}
+
+.header {
+    border-bottom: 1px solid #e7e8eb;
+}
+
+.entity-label,
+.setting-label,
+.one-time-label,
+.channels-label {
+    color: #272b46;
+    font-weight: 500;
+}
+
+.entity-combo-input,
+.entity-select,
+.one-time-input,
+.custom-service-name-input,
+.qty-input {
+    border: 1px solid #e7e8eb;
+    border-radius: 0.5rem;
+    background: #f8f9fb;
+    color: #1c1f36;
+    font-family: inherit;
+}
+
+.entity-combo-input:focus,
+.entity-select:focus,
+.one-time-input:focus,
+.custom-service-name-input:focus,
+.qty-input:focus {
+    outline: none;
+    border-color: #0b0efd;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgb(11 14 253 / 0.2);
+}
+
+.entity-combo-dropdown,
+.modal-content {
+    border: 1px solid #e7e8eb;
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 24px -12px rgba(17, 24, 38, 0.18);
+}
+
+.entity-combo-item:hover,
+.entity-combo-item[aria-selected="true"] {
+    background: #eef0ff;
+}
+
+.entity-meta-copy {
+    color: #080bd0;
+}
+
+.entity-meta-value {
+    background: #f3f4f6;
+    color: #1c1f36;
+    border-radius: 0.375rem;
+}
+
+.settings-panel,
+.extra-users-section,
+.one-time-input-wrapper,
+.one-time-fixed-wrapper,
+.ai-agent-section {
+    background: #f8f9fb;
+    border: 1px solid #e7e8eb;
+    border-radius: 0.75rem;
+}
+
+.section-title,
+.summary-title,
+.tariff-name,
+.price-value,
+.service-info h3,
+.service-price,
+.users-info strong,
+.total-row.grand span:first-child,
+.total-row.grand .total-value,
+.one-time-fixed-price {
+    color: #1c1f36;
+}
+
+.subtitle,
+.users-info span,
+.service-info p,
+.price-period,
+.tariff-description,
+.tariff-suggested-impl,
+.summary-item-name,
+.total-row span:first-child,
+.period-details,
+.footer,
+.one-time-hint,
+.one-time-currency {
+    color: #6b7088;
+}
+
+.period-selector,
+.currency-selector,
+.quantity-control,
+.channels-control {
+    background: #fff;
+    border: 1px solid #e7e8eb;
+    border-radius: 0.5rem;
+    padding: 4px;
+}
+
+.currency-btn,
+.period-btn,
+.qty-btn {
+    border: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: #383c57;
+    font-family: inherit;
+}
+
+.currency-btn:hover,
+.period-btn:hover,
+.qty-btn:hover {
+    background: #f3f4f6;
+}
+
+.currency-btn.active,
+.period-btn.active {
+    background: #0b0efd;
+    color: #fff;
+    border-color: #0b0efd;
+}
+
+.discount-badge {
+    background: #fef3c7;
+    color: #d97706;
+    border-radius: 999px;
+}
+
+.period-btn.active .discount-badge {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+.tariff-card,
+.service-card,
+.summary-card,
+.pay-tile {
+    background: #fff;
+    border: 1px solid #e7e8eb;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgba(17, 24, 38, 0.04);
+}
+
+.tariff-card:hover,
+.service-card:hover,
+.pay-tile:hover {
+    border-color: #c5caff;
+}
+
+.tariff-card.selected,
+.service-card.selected {
+    border: 1px solid #0b0efd;
+    box-shadow: 0 0 0 3px rgb(11 14 253 / 0.12);
+}
+
+.tariff-select-indicator {
+    border-color: #e7e8eb;
+}
+
+.tariff-card.selected .tariff-select-indicator {
+    background: #0b0efd;
+    border-color: #0b0efd;
+}
+
+.service-card.included {
+    background: #f8f9fb;
+    border-color: #e7e8eb;
+}
+
+.toggle-slider {
+    background: #cfd2da;
+}
+
+.service-toggle input:checked + .toggle-slider {
+    background: #0b0efd;
+}
+
+.action-btn {
+    border: 1px solid #e7e8eb;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #272b46;
+    font-weight: 600;
+}
+
+.action-btn.secondary {
+    background: #fff;
+}
+
+.action-btn.secondary:hover,
+.add-custom-service-btn:hover,
+.modal-close:hover {
+    background: #f3f4f6;
+    border-color: #cfd2da;
+}
+
+.action-btn.primary {
+    background: #0b0efd;
+    border-color: #0b0efd;
+    color: #fff;
+}
+
+.action-btn.primary:hover {
+    background: #080bd0;
+    border-color: #080bd0;
+}
+
+#saveBtn,
+#payBtn {
+    border-radius: 0.5rem;
+}
+
+.summary-divider,
+.footer,
+.modal-header,
+.modal-footer,
+.ai-category-block {
+    border-color: #e7e8eb;
+}
+
+.total-row.grand {
+    border-top: 1px solid #e7e8eb;
+}
+
+.payments-table {
+    border: 1px solid #e7e8eb;
+}
+
+.payments-table thead,
+.payments-table th.section-header,
+.payments-table tr.section-separator td {
+    background: #f8f9fb;
+}
+
+.payments-table th,
+.payments-table td,
+.payments-table th.section-header {
+    border-color: #e7e8eb;
+    color: #272b46;
+}
+
+.summary-item-name .item-type {
+    background: #eef0ff;
+    color: #080bd0;
+    border-radius: 999px;
+}
+
+.success-icon {
+    background: #0b0efd;
+}
+
+.loading-spinner {
+    border-color: #e7e8eb;
+    border-top-color: #0b0efd;
+}
+
+.add-custom-service-btn,
+.remove-custom-service-btn,
+.modal-close {
+    border-color: #e7e8eb;
+    border-radius: 999px;
 }

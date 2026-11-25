@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Закрытие дня
@@ -10,12 +10,6 @@
             <h4 class="card-title mb-0">Закрытие дня</h4>
             <a href="{{ route('day-closing.create') }}" class="btn btn-primary">Добавить</a>
         </div>
-
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
 
         <div class="table-responsive">
             <table class="table table-hover">

@@ -14,12 +14,18 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::create([
-            'name' => 'Admin',
-            'login' => 'admin',
-            'email' => 'admin@gmail.com',
-            'password' => Hash::make('password'),
-        ]);
+        $admin = User::query()->firstOrCreate(
+            ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'Admin',
+                'login' => 'admin',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+            ]
+        );
+        if ($admin->role !== 'admin') {
+            $admin->forceFill(['role' => 'admin'])->save();
+        }
 
         $this->call([
             GeoSeeder::class,

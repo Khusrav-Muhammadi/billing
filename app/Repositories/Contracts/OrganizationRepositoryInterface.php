@@ -9,6 +9,8 @@ use App\Models\User;
 interface OrganizationRepositoryInterface
 {
     public function index(array $data);
+
+    public function count(array $data): int;
     public function active(array $data);
     public function inActive(array $data);
     public function nfr(array $data);

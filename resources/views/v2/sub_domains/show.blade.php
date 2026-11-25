@@ -1,10 +1,12 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Клиент - {{ $client->name }}
 @endsection
 
 @section('content')
+    @include('admin.health.client-card', ['snapshot' => $healthSnapshot ?? null, 'clientId' => $client->id])
+
     <form method="POST" action="{{ route('client.update', $client->id) }}">
         @csrf
         @method('PATCH')
@@ -81,17 +83,6 @@
     </form>
 
     <div class="table-responsive">
-        <div style="margin-bottom: 10px">
-            @if($errors->any())
-                <div class="alert alert-danger">
-                    <ul>
-                        @foreach($errors as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-        </div>
         <div class="d-flex">
             <div class="card table-container flex-fill mr-3">
                 <div class="d-flex justify-content-between align-items-center mb-3 ">

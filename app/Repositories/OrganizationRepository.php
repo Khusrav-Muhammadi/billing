@@ -354,6 +354,26 @@ class OrganizationRepository implements OrganizationRepositoryInterface
         return $query->paginate(50)->withQueryString();
     }
 
+    /** Тот же набор, что index(), без связей и пагинации — для плиток «Все» и «Отключенные». */
+    public function count(array $data): int
+    {
+        $user = auth()->user();
+        $query = Organization::query()
+            ->when($user && $user->role != 'admin', function ($q) use ($user) {
+                $q->whereHas('client', function (Builder $q) use ($user) {
+                    return $q->where('partner_id', $user->id);
+                });
+            })
+            ->whereHas('connections');
+
+        $this->applyOrganizationSearch($query, $data['search'] ?? null);
+        $this->applyOrganizationFilters($query, $data);
+        $this->applyValidityUntilFilter($query, $data['valid_until_to'] ?? null);
+        $this->applyHealthFilter($query, $data['health'] ?? null);
+
+        return $query->count();
+    }
+
     /** Фильтр по цвету светофора на последний посчитанный день (плитки «Здоровье клиентов» в портале). */
     private function applyHealthFilter(Builder $query, ?string $color): void
     {

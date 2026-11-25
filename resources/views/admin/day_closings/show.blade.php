@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Закрытие дня {{ $dayClosing->doc_number }}

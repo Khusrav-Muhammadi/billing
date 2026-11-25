@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Партнеры
@@ -15,6 +15,21 @@
         </div>
     </form>
 
+    @php
+        $healthDots = ['red' => '#ef4444', 'yellow' => '#f59e0b', 'grey' => '#9ca3af', 'green' => '#10b981'];
+        $healthLabels = ['red' => 'Красные', 'yellow' => 'Жёлтые', 'grey' => 'Новые', 'green' => 'Зелёные'];
+        $healthPills = ['red' => 'badge-danger', 'yellow' => 'badge-warning', 'grey' => 'badge-secondary', 'green' => 'badge-success'];
+    @endphp
+    <div class="row mb-3">
+        @foreach($healthDots as $color => $dot)
+            <div class="col-md-3 mb-2">
+                <a href="{{ route('organization_v2.index', ['health' => $color]) }}" class="card d-block p-3 text-decoration-none">
+                    <div class="text-muted"><span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background:{{ $dot }}"></span> {{ $healthLabels[$color] }}</div>
+                    <div class="fs-4 fw-bold text-dark">{{ (int) ($partnerHealthTotals[$color] ?? 0) }}</div>
+                </a>
+            </div>
+        @endforeach
+    </div>
 
     <div class="card-body">
         <h4 class="card-title">Партнеры</h4>
@@ -25,6 +40,10 @@
                 <tr>
                     <th>№</th>
                     <th>Имя</th>
+                    <th>Клиенты</th>
+                    <th>
+                        <a href="{{ request()->fullUrlWithQuery(['sort' => request('sort') === 'health' ? null : 'health']) }}" class="text-dark text-decoration-none">Светофор{{ request('sort') === 'health' ? ' ↓' : '' }}</a>
+                    </th>
                     <th>Телефон</th>
                     <th>E-mail</th>
                     <th>Статус</th>
@@ -53,6 +72,17 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                         <td>{{ $partner->name }}</td>
+                        <td>{{ (int) ($activeClients[$partner->id] ?? 0) }}</td>
+                        <td class="text-nowrap">
+                            @foreach($healthPills as $color => $pill)
+                                @php $n = (int) ($healthByPartner[$partner->id][$color] ?? 0); @endphp
+                                @if($n > 0)
+                                    <a href="{{ route('organization_v2.index', ['partner' => $partner->id, 'health' => $color]) }}" class="badge {{ $pill }} text-decoration-none">● {{ $n }}</a>
+                                @else
+                                    <span class="badge {{ $pill }}" style="opacity:.4">● 0</span>
+                                @endif
+                            @endforeach
+                        </td>
                         <td>{{ $partner->phone }}</td>
                         <td>{{ $partner->email }}</td>
                         <td>{{ ($partner->status ?? 'partner') === 'agent' ? 'Agent' : 'Partner' }}</td>

@@ -1,6 +1,6 @@
 /.phpunit.cache
 /node_modules
-/public/build
+# Сборку коммитим: на сервере нет node (как в partners).
 /public/hot
 /public/storage
 /storage/*.key

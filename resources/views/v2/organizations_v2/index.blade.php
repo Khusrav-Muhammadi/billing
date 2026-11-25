@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Организация
@@ -7,7 +7,12 @@
 
 @section('content')
 
+    @isset($health)
+        @include('admin.health.blocks')
+    @endisset
+
     <form id="filterForm" method="GET" action="{{ route('organization_v2.index') }}">
+        <input type="hidden" name="health" value="{{ request('health') }}">
         <div class="row mb-3 align-items-end">
             <div class="col-md-2">
                 <label class="form-label">Тип подключения</label>

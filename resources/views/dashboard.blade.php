@@ -1,153 +1,78 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
-    Дашбоард
+    Дашборд
 @endsection
 
 @php
     $money = static fn ($value) => '$' . number_format((float) $value, 2, '.', ' ');
+    $kpis = [
+        ['Активные клиенты', $cards['active_clients']],
+        ['Чистый доход за месяц', $money($cards['month_income'])],
+        ['Количество партнеров', $cards['partners']],
+        ['Доход от партнеров', $money($cards['partner_income'])],
+        ['Поступления за год', $money($cards['gross_income'])],
+        ['Партнерские расходы', $money($cards['partner_expenses'])],
+        ['Скидки', $money($cards['discount_expenses'])],
+        ['Внедрение', $money($cards['implementation_income'])],
+    ];
 @endphp
 
 @section('content')
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0">Дашбоард за {{ $dashboardYear }}</h4>
-        <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center" style="gap: 8px;">
-            <label for="dashboardYear" class="mb-0">Год</label>
-            <input id="dashboardYear" name="year" type="number" min="2020" max="{{ now()->year + 1 }}"
-                   value="{{ $dashboardYear }}" class="form-control" style="width: 110px;">
-            <button type="submit" class="btn btn-primary btn-sm">Показать</button>
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <p class="mb-0 text-sm text-ink-500">Показатели за {{ $dashboardYear }} год</p>
+        <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-2">
+            <div>
+                <label for="dashboardYear" class="label">Год</label>
+                <input id="dashboardYear" name="year" type="number" min="2020" max="{{ now()->year + 1 }}"
+                       value="{{ $dashboardYear }}" class="input py-2" style="width: 110px;">
+            </div>
+            <button type="submit" class="btn btn-primary px-4 py-2">Показать</button>
         </form>
     </div>
 
+    <div class="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        @foreach($kpis as [$label, $value])
+            <div class="kpi">
+                <p class="kpi-label mb-0">{{ $label }}</p>
+                <p class="kpi-value">{{ $value }}</p>
+            </div>
+        @endforeach
+    </div>
 
-
-
-    <div class="row">
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="card-text"><strong>Активные клиенты</strong></div>
-                    <div class="card-text">{{ $cards['active_clients'] }}</div>
+    <div class="mb-5 grid gap-3 lg:grid-cols-2">
+        <div class="card p-5">
+            <p class="mb-4 text-sm font-semibold text-ink-900">Типы операций по оплатам</p>
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="w-full max-w-[220px]">
+                    <canvas id="operationTypeChart" width="200" height="100"></canvas>
                 </div>
+                <div id="operationTypeLegend" class="min-w-[180px] flex-1 text-sm"></div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="card-text"><strong>Чистый доход за месяц</strong></div>
-                    <div class="card-text">{{ $money($cards['month_income']) }}</div>
+        <div class="card p-5">
+            <p class="mb-4 text-sm font-semibold text-ink-900">Партнеры по типу</p>
+            <div class="flex flex-wrap items-center gap-4">
+                <div class="w-full max-w-[220px]">
+                    <canvas id="partnersChart" width="200" height="100"></canvas>
                 </div>
+                <div id="partnersLegend" class="min-w-[180px] flex-1 text-sm"></div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="card-text"><strong>Количество партнеров</strong></div>
-                    <div class="card-text">{{ $cards['partners'] }}</div>
-                </div>
-            </div>
+        <div class="card p-5">
+            <div id="connectionStatusChart"></div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="card-text"><strong>Доход от партнеров</strong></div>
-                    <div class="card-text">{{ $money($cards['partner_income']) }}</div>
-                </div>
-            </div>
+        <div class="card p-5">
+            <div id="tariffRevenueChart"></div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="card-text"><strong>Поступления за год</strong></div>
-                    <div class="card-text">{{ $money($cards['gross_income']) }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="card-text"><strong>Партнерские расходы</strong></div>
-                    <div class="card-text">{{ $money($cards['partner_expenses']) }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="card-text"><strong>Скидки</strong></div>
-                    <div class="card-text">{{ $money($cards['discount_expenses']) }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 mb-3">
-            <div class="card border-0 h-100">
-                <div class="card-body">
-                    <div class="card-text"><strong>Внедрение</strong></div>
-                    <div class="card-text">{{ $money($cards['implementation_income']) }}</div>
-                </div>
-            </div>
-        </div>
+    <div class="card p-5">
+        <div id="financialRegistryChart"></div>
     </div>
-
-    <div class="row" style="margin-top: 15px">
-        <div class="col-md-6">
-            <div class="card border-0">
-                <div class="card-body">
-                    <div class="card-text"><strong>Типы операций по оплатам</strong></div>
-                    <div class="d-flex flex-wrap">
-                        <div class="doughnut-wrapper w-50">
-                            <canvas id="operationTypeChart" width="200" height="100"></canvas>
-                        </div>
-                        <div id="operationTypeLegend"
-                             class="pl-lg-3 rounded-legend align-self-center flex-grow legend-vertical legend-bottom-left"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card border-0">
-                <div class="card-body">
-                    <div class="card-title">Партнеры по типу</div>
-                    <div class="d-flex flex-wrap">
-                        <div class="doughnut-wrapper w-50">
-                            <canvas id="partnersChart" width="200" height="100"></canvas>
-                        </div>
-                        <div id="partnersLegend"
-                             class="pl-lg-3 rounded-legend align-self-center flex-grow legend-vertical legend-bottom-left"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row" style="margin-top: 15px">
-        <div class="col-md-6">
-            <div class="card border-0">
-                <div class="card-body">
-                    <figure class="highcharts-figure">
-                        <div id="connectionStatusChart"></div>
-                    </figure>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card border-0">
-                <div class="card-body">
-                    <figure class="highcharts-figure">
-                        <div id="tariffRevenueChart"></div>
-                    </figure>
-                </div>
-            </div>
-        </div>
-    </div>
-
 @endsection
 
 @section('script')
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
@@ -155,18 +80,20 @@
     <script src="https://code.highcharts.com/modules/accessibility.js"></script>
     <script>
         const monthLabels = @json($monthLabels);
+        const chartColors = ['#0b0efd', '#10b981', '#f59e0b', '#ef4444', '#6870ff', '#6b7088'];
 
         function renderLegend(containerId, labels, colors, values, amounts) {
             const container = document.getElementById(containerId);
             if (!container) return;
 
-            container.innerHTML = '<ul>' + labels.map(function (label, index) {
+            container.innerHTML = '<ul style="margin:0;padding:0;list-style:none">' + labels.map(function (label, index) {
                 const amountText = amounts ? ' / $' + Number(amounts[index] || 0).toLocaleString('ru-RU', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 }) : '';
-                return '<li><span class="legend-dots" style="background:' + colors[index % colors.length] + '"></span>'
-                    + label + ' - ' + (values[index] || 0) + amountText + '</li>';
+                return '<li style="display:flex;align-items:center;gap:8px;margin:6px 0;color:#272b46">'
+                    + '<span style="width:8px;height:8px;border-radius:999px;flex:none;background:' + colors[index % colors.length] + '"></span>'
+                    + '<span>' + label + ' — ' + (values[index] || 0) + amountText + '</span></li>';
             }).join('') + '</ul>';
         }
 
@@ -182,15 +109,14 @@
                         data: data,
                         backgroundColor: colors,
                         hoverBackgroundColor: colors,
-                        borderColor: colors
+                        borderColor: '#ffffff',
+                        borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
                     plugins: {
-                        legend: {
-                            display: false
-                        }
+                        legend: { display: false }
                     }
                 }
             });
@@ -203,7 +129,7 @@
             'operationTypeLegend',
             @json($operationTypeLabels),
             @json($operationTypeData),
-            ['#1326f8', '#ffd70d', '#119b18', '#c20920', '#6f42c1'],
+            chartColors,
             @json($operationTypeAmounts)
         );
 
@@ -212,104 +138,54 @@
             'partnersLegend',
             ['Partner', 'Agent'],
             [@json($activePartners), @json($inactivePartners)],
-            ['#119b18', '#c20920']
+            ['#10b981', '#ef4444']
         );
 
-        Highcharts.chart('connectionStatusChart', {
+        const chartBase = {
             chart: {
-                type: 'column'
+                backgroundColor: 'transparent',
+                style: { fontFamily: 'Onest, sans-serif' }
             },
-            title: {
-                text: 'Подключения и отключения клиентов'
-            },
-            xAxis: {
-                categories: monthLabels,
-                crosshair: true
-            },
-            yAxis: {
-                min: 0,
-                title: {
-                    text: 'Клиенты'
-                }
-            },
-            tooltip: {
-                valueSuffix: ' клиентов'
-            },
-            plotOptions: {
-                column: {
-                    pointPadding: 0.2,
-                    borderWidth: 0
-                }
-            },
-            series: [
-                {
-                    name: 'Подключены',
-                    data: @json($activeClientsByMonth)
-                },
-                {
-                    name: 'Отключены',
-                    data: @json($inactiveClientsByMonth)
-                }
-            ]
-        });
+            credits: { enabled: false },
+            colors: chartColors,
+            title: { style: { color: '#1c1f36', fontSize: '14px', fontWeight: '600' } }
+        };
 
-        Highcharts.chart('tariffRevenueChart', {
-            title: {
-                text: 'Доход по тарифам и услугам',
-                align: 'left'
-            },
-            xAxis: {
-                categories: monthLabels,
-                crosshair: true
-            },
-            yAxis: {
-                min: 0,
-                title: {
-                    text: 'Сумма, USD'
-                }
-            },
-            tooltip: {
-                valuePrefix: '$',
-                valueDecimals: 2
-            },
+        Highcharts.chart('connectionStatusChart', Highcharts.merge(chartBase, {
+            chart: { type: 'column' },
+            title: { text: 'Подключения и отключения клиентов' },
+            xAxis: { categories: monthLabels, crosshair: true },
+            yAxis: { min: 0, title: { text: 'Клиенты' } },
+            tooltip: { valueSuffix: ' клиентов' },
+            plotOptions: { column: { pointPadding: 0.2, borderWidth: 0 } },
+            series: [
+                { name: 'Подключены', data: @json($activeClientsByMonth) },
+                { name: 'Отключены', data: @json($inactiveClientsByMonth) }
+            ]
+        }));
+
+        Highcharts.chart('tariffRevenueChart', Highcharts.merge(chartBase, {
+            title: { text: 'Доход по тарифам и услугам', align: 'left' },
+            xAxis: { categories: monthLabels, crosshair: true },
+            yAxis: { min: 0, title: { text: 'Сумма, USD' } },
+            tooltip: { valuePrefix: '$', valueDecimals: 2 },
             series: @json($tariffRevenueChartData),
             responsive: {
                 rules: [{
-                    condition: {
-                        maxWidth: 500
-                    },
+                    condition: { maxWidth: 500 },
                     chartOptions: {
-                        legend: {
-                            layout: 'horizontal',
-                            align: 'center',
-                            verticalAlign: 'bottom'
-                        }
+                        legend: { layout: 'horizontal', align: 'center', verticalAlign: 'bottom' }
                     }
                 }]
             }
-        });
+        }));
 
-        Highcharts.chart('financialRegistryChart', {
-            title: {
-                text: 'Финансы по реестрам',
-                align: 'left'
-            },
-            xAxis: {
-                categories: monthLabels,
-                crosshair: true
-            },
-            yAxis: {
-                min: 0,
-                title: {
-                    text: 'Сумма, USD'
-                }
-            },
-            tooltip: {
-                shared: true,
-                valuePrefix: '$',
-                valueDecimals: 2
-            },
+        Highcharts.chart('financialRegistryChart', Highcharts.merge(chartBase, {
+            title: { text: 'Финансы по реестрам', align: 'left' },
+            xAxis: { categories: monthLabels, crosshair: true },
+            yAxis: { min: 0, title: { text: 'Сумма, USD' } },
+            tooltip: { shared: true, valuePrefix: '$', valueDecimals: 2 },
             series: @json($financialSeries)
-        });
+        }));
     </script>
 @endsection

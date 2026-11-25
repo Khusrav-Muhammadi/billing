@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title') ИИ-Подписка #{{ $aiSubscription->id }} @endsection
 

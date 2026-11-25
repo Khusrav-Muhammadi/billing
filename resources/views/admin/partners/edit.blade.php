@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Клиенты
@@ -12,6 +12,8 @@
         <a href="#" data-bs-toggle="modal" data-bs-target="#history" class="btn btn-outline-dark mb-2 ml-2">
             <i class="mdi mdi-history" style="font-size: 30px"></i>
         </a>
+
+        @include('admin.health.partner-block')
 
         <form method="POST" action="{{ route('partner.update', $partner->id) }}">
             @csrf
@@ -266,7 +268,7 @@
             </table>
         @else
             <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> У этого партнера пока нет истории статусов.
+                <i class="mdi mdi-information-outline"></i> У этого партнера пока нет истории статусов.
             </div>
         @endif
     </div>
@@ -362,7 +364,7 @@
             </table>
         @else
             <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> У этого партнера пока нет статуса.
+                <i class="mdi mdi-information-outline"></i> У этого партнера пока нет статуса.
             </div>
         @endif
     </div>
@@ -472,7 +474,7 @@
             </table>
         @else
             <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> У этого партнера пока нет менеджеров.
+                <i class="mdi mdi-information-outline"></i> У этого партнера пока нет менеджеров.
             </div>
         @endif
     </div>
@@ -573,7 +575,7 @@
             </table>
         @else
             <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> У этого партнера пока нет кураторов.
+                <i class="mdi mdi-information-outline"></i> У этого партнера пока нет кураторов.
             </div>
         @endif
     </div>

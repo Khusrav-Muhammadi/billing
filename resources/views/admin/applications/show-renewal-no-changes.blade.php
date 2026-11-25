@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Просмотр КП
@@ -30,10 +30,13 @@
             <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Назад</a>
         </div>
 
-        <iframe
-            src="{{ $iframeUrl }}"
-            title="Просмотр: {{ $requestTypeLabel }}"
-            style="width: 100%; min-height: 90vh; border: 1px solid #e6e6e6; border-radius: 8px;"
-        ></iframe>
+<div class="card overflow-hidden">
+    <iframe
+        src="{{ $iframeUrl }}"
+        title="Просмотр: {{ $requestTypeLabel }}"
+        class="w-full border-0"
+        style="height: calc(100vh - 4rem - 3rem);"
+    ></iframe>
+</div>
     </div>
 @endsection

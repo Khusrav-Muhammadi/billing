@@ -150,6 +150,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::delete('delete-pack/{organizationPack}', [OrganizationV2Controller::class, 'deletePack'])->name('organization_v2.pack.destroy');
     });
 
+    Route::prefix('client-health')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\ClientHealthController::class, 'index'])->name('client-health.index');
+        Route::get('/{client}', [\App\Http\Controllers\Admin\ClientHealthController::class, 'show'])->whereNumber('client')->name('client-health.show');
+    });
+
     Route::group(['prefix' => 'application'], function () {
         Route::get('/', [ApplicationController::class, 'index'])->name('application.index');
         Route::get('/export/excel', [ApplicationController::class, 'exportPaidExcel'])->name('application.export.excel');

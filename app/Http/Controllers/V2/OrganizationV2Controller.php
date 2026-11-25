@@ -20,9 +20,11 @@ use App\Models\OrganizationConnectionStatus;
 use App\Models\Tariff;
 use App\Models\User;
 use App\Repositories\Contracts\OrganizationRepositoryInterface;
+use App\Services\ClientHealth\ClientHealthReadService;
 use App\Services\Mailing\BrevoMailService;
 use App\Services\Organizations\OrganizationValidityService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
@@ -36,19 +38,38 @@ class OrganizationV2Controller extends Controller
 
     public function index(Request $request)
     {
-        $organizations = $this->repository->index($request->all());
+        $filters = $request->all();
+        $healthTab = (string) ($filters['health'] ?? '');
+        if ($healthTab === 'off') {
+            $filters['status'] = '0';
+            unset($filters['health']);
+        }
+
+        $organizations = $this->repository->index($filters);
         $this->hydrateRealBalances($organizations);
         app(OrganizationValidityService::class)->hydrate($organizations);
 
         $partners = User::query()->where('role', 'partner')->get();
         $tariffs = Tariff::all();
         $countries = Country::all();
+        $healthByClient = $this->healthByClient($organizations);
+        $read = app(ClientHealthReadService::class);
+        $health = [
+            'available' => $read->latestDate() !== null,
+            'date' => $read->latestDate(),
+            'counts' => $read->counts(null, 'paid'),
+            'color' => in_array($request->query('health'), ['red', 'yellow', 'grey', 'green', 'off'], true) ? $request->query('health') : null,
+            'totals' => Cache::remember('billing_org_totals', 300, fn () => [
+                'all' => $this->repository->count([]),
+                'disconnected' => $this->repository->count(['status' => '0']),
+            ]),
+        ];
 
         if ($request->ajax()) {
-            return view('admin.partials.organizations_v2', compact('organizations'))->render();
+            return view('admin.partials.organizations_v2', compact('organizations', 'healthByClient'))->render();
         }
 
-        return view('v2.organizations_v2.index', compact('organizations', 'partners', 'tariffs', 'countries'));
+        return view('v2.organizations_v2.index', compact('organizations', 'partners', 'tariffs', 'countries', 'health', 'healthByClient'));
     }
 
     public function demo(Request $request)
@@ -59,15 +80,17 @@ class OrganizationV2Controller extends Controller
 
         $partners = User::query()->where('role', 'partner')->get();
         $countries = Country::all();
+        $healthByClient = $this->healthByClient($organizations);
 
         if ($request->ajax()) {
             return view('admin.partials.organizations_v2', [
                 'organizations' => $organizations,
                 'isDemoList' => true,
+                'healthByClient' => $healthByClient,
             ])->render();
         }
 
-        return view('v2.organizations_v2.demo', compact('organizations', 'partners', 'countries'));
+        return view('v2.organizations_v2.demo', compact('organizations', 'partners', 'countries', 'healthByClient'));
     }
 
     public function store(Client $client, StoreRequest $request): RedirectResponse
@@ -145,6 +168,8 @@ class OrganizationV2Controller extends Controller
             ->orderByDesc('id')
             ->first();
 
+        $healthSnapshot = app(ClientHealthReadService::class)->forClients([(int) $organization->client_id])[(int) $organization->client_id] ?? null;
+
         return view('v2.organizations_v2.show', compact(
             'organization',
             'connectedServices',
@@ -153,7 +178,8 @@ class OrganizationV2Controller extends Controller
             'realBalance',
             'integrationLogs',
             'aiBalance',
-            'aiSubscription'
+            'aiSubscription',
+            'healthSnapshot'
         ));
     }
 
@@ -224,6 +250,16 @@ class OrganizationV2Controller extends Controller
 
             return redirect()->back()->with('error', 'Не удалось повторить запрос: ' . $e->getMessage());
         }
+    }
+
+    private function healthByClient(Collection|LengthAwarePaginator $organizations): array
+    {
+        $items = $organizations instanceof LengthAwarePaginator
+            ? collect($organizations->items())
+            : $organizations;
+        $ids = $items->pluck('client_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        return app(ClientHealthReadService::class)->forClients($ids);
     }
 
     private function hydrateRealBalances(Collection|LengthAwarePaginator $organizations): void

@@ -1,13 +1,10 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     {{ $requestTypeLabel ?? 'Подключение' }}
 @endsection
 
 @section('content')
-    <div class="mb-3">
-        <h5 class="mb-1">{{ $requestTypeLabel ?? 'Подключение' }}</h5>
-    </div>
     @php
         $query = [
             'csrf_token' => csrf_token(),
@@ -27,9 +24,12 @@
         }
         $iframeUrl = asset('kp_generator/index.html') . '?' . http_build_query($query);
     @endphp
+<div class="card overflow-hidden">
     <iframe
         src="{{ $iframeUrl }}"
         title="KP Generator"
-        style="width: 100%; min-height: 90vh; border: 1px solid #e6e6e6; border-radius: 8px;"
+        class="w-full border-0"
+        style="height: calc(100vh - 4rem - 3rem);"
     ></iframe>
+</div>
 @endsection

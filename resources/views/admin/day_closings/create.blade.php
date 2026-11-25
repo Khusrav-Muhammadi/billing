@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Создание закрытия дня
@@ -11,16 +11,6 @@
         <div class="mb-3">
             <a href="{{ route('day-closing.index') }}" class="btn btn-outline-danger">Назад</a>
         </div>
-
-        @if($errors->any())
-            <div class="alert alert-danger">
-                <ul class="mb-0">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
 
         <form method="POST" action="{{ route('day-closing.store') }}">
             @csrf

@@ -1,14 +1,10 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Запросы из сайта
 @endsection
 
 @section('content')
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-
     <div class="card-body">
         <h4 class="card-title">Запросы из сайта</h4>
         <p class="text-muted mb-3">Заявки с форм shamcrm.com: партнёрская программа и остальные обращения, кроме демо.</p>

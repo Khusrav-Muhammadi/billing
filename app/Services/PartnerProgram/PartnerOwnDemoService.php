@@ -124,7 +124,8 @@ class PartnerOwnDemoService
             ->timeout(15)
             ->post(
                 CrmHttp::tenantUrl((string) $client->sub_domain, (string) config('services.sham.domain'), '/api/organization/demo-login-token'),
-                ['b_organization_id' => $organization->id]
+                // own_crm: привязанная CRM уже рабочая (NFR, не демо) — CRM иначе отвечает 404.
+                ['b_organization_id' => $organization->id, 'own_crm' => (bool) $client->nfr]
             );
 
         $token = $response->json('result.demo_login_token');

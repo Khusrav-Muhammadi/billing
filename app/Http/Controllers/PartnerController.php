@@ -8,13 +8,16 @@ use App\Http\Requests\Partner\StoreStatusRequest;
 use App\Http\Requests\Partner\UpdateManagerRequest;
 use App\Http\Requests\Partner\UpdateRequest;
 use App\Models\Account;
+use App\Models\ClientHealthSnapshot;
 use App\Models\Country;
 use App\Models\Currency;
+use App\Models\Organization;
 use App\Models\Partner;
 use App\Models\PartnerProcent;
 use App\Models\PartnerStatus;
 use App\Models\User;
 use App\Repositories\Contracts\PartnerRepositoryInterface;
+use App\Services\ClientHealth\ClientHealthReadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -24,9 +27,33 @@ class PartnerController extends Controller
 
     public function index(Request $request)
     {
+        $read = app(ClientHealthReadService::class);
+        $healthByPartner = $read->countsByPartner('paid');
+        $activeClients = $read->activeClientsByPartner();
         $partners = $this->repository->index($request->all());
 
-        return view('admin.partners.index', compact('partners'));
+        if ($request->query('sort') === 'health') {
+            $partners = $partners->sort(function ($a, $b) use ($healthByPartner) {
+                $ar = $healthByPartner[$a->id]['red'] ?? 0;
+                $br = $healthByPartner[$b->id]['red'] ?? 0;
+                if ($ar !== $br) {
+                    return $br <=> $ar;
+                }
+                $ay = $healthByPartner[$a->id]['yellow'] ?? 0;
+                $by = $healthByPartner[$b->id]['yellow'] ?? 0;
+
+                return $by <=> $ay;
+            })->values();
+        }
+
+        $partnerHealthTotals = array_fill_keys(ClientHealthSnapshot::COLOR_ORDER, 0);
+        foreach ($healthByPartner as $row) {
+            foreach ($partnerHealthTotals as $color => $n) {
+                $partnerHealthTotals[$color] += $row[$color] ?? 0;
+            }
+        }
+
+        return view('admin.partners.index', compact('partners', 'healthByPartner', 'activeClients', 'partnerHealthTotals'));
     }
 
     public function create()
@@ -86,7 +113,17 @@ class PartnerController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        return view('admin.partners.edit', compact('partner', 'accounts', 'partnerCurrencies', 'countries', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory'));
+        $read = app(ClientHealthReadService::class);
+        $partnerHealthCounts = $read->counts((int) $partner->id, 'paid');
+        $partnerHealthRows = collect($read->list([
+            'partner_id' => (int) $partner->id,
+            'type' => 'paid',
+        ])->items())->take(10);
+        $partnerHealthOrgs = $partnerHealthRows->isEmpty()
+            ? collect()
+            : Organization::query()->whereIn('client_id', $partnerHealthRows->pluck('client_id'))->pluck('id', 'client_id');
+
+        return view('admin.partners.edit', compact('partner', 'accounts', 'partnerCurrencies', 'countries', 'managers', 'curators', 'availableCurators', 'procents', 'statusHistory', 'partnerHistory', 'partnerHealthCounts', 'partnerHealthRows', 'partnerHealthOrgs'));
     }
 
     public function update(User $partner, UpdateRequest $request)

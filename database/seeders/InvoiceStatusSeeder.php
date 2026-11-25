@@ -12,10 +12,12 @@ class InvoiceStatusSeeder extends Seeder
      */
     public function run(): void
     {
-        InvoiceStatus::insert([
+        foreach ([
             ['name' => 'Новый', 'is_new' => 1],
             ['name' => 'Успешный', 'is_success' => 1],
             ['name' => 'Не успешный', 'is_failed' => 1],
-        ]);
+        ] as $row) {
+            InvoiceStatus::query()->firstOrCreate(['name' => $row['name']], $row);
+        }
     }
 }

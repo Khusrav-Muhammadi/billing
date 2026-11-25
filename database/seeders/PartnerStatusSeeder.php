@@ -12,9 +12,11 @@ class PartnerStatusSeeder extends Seeder
      */
     public function run(): void
     {
-        PartnerStatus::insert([
+        foreach ([
             ['name' => 'Активный', 'is_active' => true, 'connect_amount' => 1, 'organization_connect_percent' => 1, 'tariff_price_percent' => 1],
             ['name' => 'Неактивный', 'is_active' => false, 'connect_amount' => 1, 'organization_connect_percent' => 1, 'tariff_price_percent' => 1],
-        ]);
+        ] as $row) {
+            PartnerStatus::query()->firstOrCreate(['name' => $row['name']], $row);
+        }
     }
 }

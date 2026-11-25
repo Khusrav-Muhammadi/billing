@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Коммерческие предложения
@@ -8,13 +8,6 @@
 @section('content')
     <div class="card-body">
         <h4 class="card-title">Оплата</h4>
-
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
-        @if(isset($errors) && $errors->any())
-            <div class="alert alert-danger">{{ $errors->first() }}</div>
-        @endif
 
         <form id="filterForm" method="GET" action="{{ route('application.index') }}">
             <div class="row mb-3 align-items-end">
@@ -297,7 +290,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">История статусов подключения #{{ $offer->id }}</h5>
-                            <button type="button" class="modal-x-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Закрыть">×</button>
+                            <button type="button" class="modal-x-close" data-bs-dismiss="modal" aria-label="Закрыть">×</button>
                         </div>
                         <div class="modal-body">
                             <div class="table-responsive mb-3">
@@ -369,7 +362,7 @@
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title">Добавить статус подключения #{{ $offer->id }}</h5>
-                                <button type="button" class="modal-x-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Закрыть">×</button>
+                                <button type="button" class="modal-x-close" data-bs-dismiss="modal" aria-label="Закрыть">×</button>
                             </div>
                             <form method="POST" action="{{ route('application.status.store', $offer) }}">
                                 @csrf
@@ -439,7 +432,7 @@
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title">Изменить статус подключения #{{ $offer->id }}</h5>
-                                    <button type="button" class="modal-x-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Закрыть">×</button>
+                                    <button type="button" class="modal-x-close" data-bs-dismiss="modal" aria-label="Закрыть">×</button>
                                 </div>
                                 <form method="POST" action="{{ route('application.status.update', $statusRow->id) }}">
                                     @csrf

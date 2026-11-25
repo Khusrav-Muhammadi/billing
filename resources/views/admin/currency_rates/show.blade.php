@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Курсы {{ $currency->symbol_code }}
@@ -7,16 +7,6 @@
 @section('content')
 
     <div class="card-body">
-
-        @if($errors->any())
-            <div class="alert alert-danger">
-                <ul class="mb-0">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
 
         <a href="{{ route('currency-rate.index') }}" type="button" class="btn btn-light">Назад</a>
         <a href="" type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#create">Добавить курс</a>

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title')
     Организация - {{ $organization->name }}
@@ -46,6 +46,8 @@
                 </ul>
             </div>
         </div>
+
+        @include('admin.health.client-card', ['snapshot' => $healthSnapshot ?? null, 'clientId' => $organization->client_id])
 
         <div class="card mb-4 p-3">
             <h4 class="card-title mb-3">Организация</h4>
@@ -431,7 +433,7 @@
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title">{{ $typeLabel }} — {{ $actionLabel }}</h5>
-                                        <button type="button" class="modal-x-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Закрыть">×</button>
+                                        <button type="button" class="modal-x-close" data-bs-dismiss="modal" aria-label="Закрыть">×</button>
                                     </div>
                                     <div class="modal-body">
                                         <div class="mb-3">

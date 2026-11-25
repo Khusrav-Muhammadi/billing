@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Pack;
+use App\Models\Tariff;
 use Illuminate\Database\Seeder;
 
 class PackSeeder extends Seeder
@@ -12,10 +13,22 @@ class PackSeeder extends Seeder
      */
     public function run(): void
     {
-        Pack::insert([
-            ['name' => 'Пользователи', 'type' => 'user', 'amount' => 1, 'price' => 2.99, 'tariff_id' => 1],
-            ['name' => 'Пользователи', 'type' => 'user', 'amount' => 1, 'price' => 2.59, 'tariff_id' => 2],
-            ['name' => 'Пользователи', 'type' => 'user', 'amount' => 1, 'price' => 2.19, 'tariff_id' => 3],
-        ]);
+        $prices = [
+            'Стандарт' => '2.9900',
+            'Премиум' => '2.5900',
+            'VIP' => '2.1900',
+        ];
+
+        foreach ($prices as $tariffName => $price) {
+            $tariffId = Tariff::query()->where('name', $tariffName)->value('id');
+            if (!$tariffId) {
+                continue;
+            }
+
+            Pack::query()->firstOrCreate(
+                ['name' => 'Пользователи', 'tariff_id' => $tariffId],
+                ['type' => 'user', 'amount' => 1, 'price' => $price]
+            );
+        }
     }
 }

@@ -22,6 +22,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Repositories\Contracts\ClientRepositoryInterface;
 use App\Repositories\OrganizationRepository;
+use App\Services\ClientHealth\ClientHealthReadService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -124,8 +125,9 @@ class SubdomainController extends Controller
         $partners = User::query()->where('role', 'partner')->get();
 
         $expirationDate = $this->calculateValidateDate($client);
+        $healthSnapshot = app(ClientHealthReadService::class)->forClients([(int) $client->id])[(int) $client->id] ?? null;
 
-        return view('v2.sub_domains.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales', 'partners', 'expirationDate', 'countries'));
+        return view('v2.sub_domains.show', compact('client', 'organizations', 'transactions', 'businessTypes', 'packs', 'tariffs', 'sales', 'partners', 'expirationDate', 'countries', 'healthSnapshot'));
     }
 
     protected function calculateDailyPayment(Client $client): float
