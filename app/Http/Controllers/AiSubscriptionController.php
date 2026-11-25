@@ -9,6 +9,7 @@ use App\Models\Ai\AiTariffPlan;
 use App\Models\Ai\AiUsageLog;
 use App\Models\Ai\AiUsageRawLog;
 use App\Services\Ai\AiUsageSpendSummary;
+use App\Services\ClientHealth\ClientHealthReadService;
 use Illuminate\Http\Request;
 
 class AiSubscriptionController extends Controller
@@ -58,8 +59,16 @@ class AiSubscriptionController extends Controller
 
         $subscriptions = $query->paginate(50)->withQueryString();
         $plans         = AiTariffPlan::query()->orderBy('name')->get();
+        $healthByClient = app(ClientHealthReadService::class)->forClients(
+            $subscriptions->getCollection()
+                ->map(fn (AiSubscription $sub) => (int) $sub->organization?->client_id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all()
+        );
 
-        return view('admin.ai-subscriptions.index', compact('subscriptions', 'plans'));
+        return view('admin.ai-subscriptions.index', compact('subscriptions', 'plans', 'healthByClient'));
     }
 
     public function show(AiSubscription $aiSubscription, AiUsageSpendSummary $aiUsageSpendSummary)
@@ -90,12 +99,18 @@ class AiSubscriptionController extends Controller
         // Итоги списаний за токены: за всё время и за текущий календарный месяц.
         $aiSpend = $aiUsageSpendSummary->forOrganization((int) $aiSubscription->organization_id);
 
+        $healthClientId = (int) ($aiSubscription->organization?->client_id ?? 0);
+        $healthSnapshot = $healthClientId
+            ? (app(ClientHealthReadService::class)->forClients([$healthClientId])[$healthClientId] ?? null)
+            : null;
+
         return view('admin.ai-subscriptions.show', compact(
             'aiSubscription',
             'balance',
             'transactions',
             'usageLogs',
-            'aiSpend'
+            'aiSpend',
+            'healthSnapshot'
         ));
     }
 

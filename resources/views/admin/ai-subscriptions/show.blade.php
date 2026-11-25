@@ -6,6 +6,11 @@
 <div class="card-body">
     <a href="{{ route('ai-subscription.index') }}" class="btn btn-outline-secondary btn-sm mb-3">← Назад</a>
 
+    @include('admin.health.client-card', [
+        'snapshot' => $healthSnapshot ?? null,
+        'clientId' => $aiSubscription->organization?->client_id,
+    ])
+
     <div class="row g-3">
 
         {{-- Подписка --}}

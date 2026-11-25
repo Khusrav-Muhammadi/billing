@@ -1,17 +1,18 @@
 @extends('layouts.admin')
 
 @section('title')
-    Клиенты
+    Изменение партнера
 @endsection
 
 @section('content')
+<div style="max-width: 1100px;">
 
-    <div class="card-body">
-        <h4 class="card-title">Изменение партнера</h4>
-        <a href="#" onclick="history.back();" class="btn btn-outline-danger" style="margin-bottom: 10px">Назад</a>
-        <a href="#" data-bs-toggle="modal" data-bs-target="#history" class="btn btn-outline-dark mb-2 ml-2">
-            <i class="mdi mdi-history" style="font-size: 30px"></i>
-        </a>
+    <div class="mb-4 d-flex flex-wrap gap-2">
+        <a href="#" onclick="history.back(); return false;" class="btn btn-outline-danger">Назад</a>
+        <a href="#" data-bs-toggle="modal" data-bs-target="#history" class="btn btn-secondary">История</a>
+    </div>
+
+    <div class="card mb-5 p-5">
 
         @include('admin.health.partner-block')
 
@@ -19,6 +20,8 @@
             @csrf
             @method('PATCH')
 
+            <div class="row">
+            <div class="col-md-6">
             <div class="form-group">
                 <label for="name">ФИО</label>
                 <input type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name', $partner->name) }}">
@@ -27,6 +30,8 @@
                 @enderror
             </div>
 
+            </div>
+            <div class="col-md-6">
             <div class="form-group">
                 <label for="phone">Телефон <span class="text-danger">*</span></label>
                 <input type="tel" class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone', $partner->phone) }}" required>
@@ -35,6 +40,10 @@
                 @enderror
             </div>
 
+            </div>
+            </div>
+            <div class="row">
+            <div class="col-md-6">
             <div class="form-group">
                 <label for="email">E-mail</label>
                 <input type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email', $partner->email) }}">
@@ -42,16 +51,8 @@
                 <span class="text-danger">{{ $message }}</span>
                 @enderror
             </div>
-
-
-            <div class="form-group">
-                <label for="address">Адрес</label>
-                <textarea name="address" cols="30" rows="5" class="form-control @error('address') is-invalid @enderror">{{ old('address', $partner->address) }}</textarea>
-                @error('address')
-                <span class="text-danger">{{ $message }}</span>
-                @enderror
             </div>
-
+            <div class="col-md-6">
             <div class="form-group">
                 <label for="country_id">Страна <span class="text-danger">*</span></label>
                 <select class="form-control @error('country_id') is-invalid @enderror" id="country_id" name="country_id" required>
@@ -66,20 +67,30 @@
                 <span class="text-danger d-block">{{ $message }}</span>
                 @enderror
             </div>
+            </div>
+            </div>
+
+            <div class="form-group">
+                <label for="address">Адрес</label>
+                <textarea name="address" cols="30" rows="4" class="form-control @error('address') is-invalid @enderror">{{ old('address', $partner->address) }}</textarea>
+                @error('address')
+                <span class="text-danger">{{ $message }}</span>
+                @enderror
+            </div>
 
             @php($paymentMethods = old('payment_methods', $partner->payment_methods ?? ['card', 'invoice']))
             <div class="form-group">
                 <label>Способы оплаты <span class="text-danger">*</span></label>
                 <div class="d-flex flex-wrap gap-3">
-                    <label class="mb-0">
+                    <label class="mb-0" style="display:inline-flex;align-items:center;gap:6px;">
                         <input type="checkbox" name="payment_methods[]" value="card" {{ in_array('card', (array) $paymentMethods, true) ? 'checked' : '' }}>
                         Карта
                     </label>
-                    <label class="mb-0">
+                    <label class="mb-0" style="display:inline-flex;align-items:center;gap:6px;">
                         <input type="checkbox" name="payment_methods[]" value="invoice" {{ in_array('invoice', (array) $paymentMethods, true) ? 'checked' : '' }}>
                         Счет
                     </label>
-                    <label class="mb-0">
+                    <label class="mb-0" style="display:inline-flex;align-items:center;gap:6px;">
                         <input type="checkbox" name="payment_methods[]" value="cash" {{ in_array('cash', (array) $paymentMethods, true) ? 'checked' : '' }}>
                         Наличка
                     </label>
@@ -92,6 +103,8 @@
                 @enderror
             </div>
 
+            <div class="row">
+            <div class="col-md-6">
             <div class="form-group">
                 <label for="account_id">Счет партнера</label>
                 <select class="form-control @error('account_id') is-invalid @enderror" id="account_id" name="account_id">
@@ -108,6 +121,8 @@
                 @enderror
             </div>
 
+            </div>
+            <div class="col-md-6">
             <div class="form-group">
                 <label for="currency_id">Валюта партнера <span class="text-danger">*</span></label>
                 <select class="form-control @error('currency_id') is-invalid @enderror" id="currency_id" name="currency_id" required>
@@ -123,6 +138,8 @@
                 <span class="text-danger d-block">{{ $message }}</span>
                 @enderror
             </div>
+            </div>
+            </div>
 
             <div class="form-group">
                 <label for="sham_link">Ссылка партнера <span class="text-danger">*</span></label>
@@ -135,7 +152,7 @@
 	            <div class="form-group">
 	                <label class="d-block" for="has_implementation">Наличие внедрения</label>
 	                <input type="hidden" name="has_implementation" value="0">
-	                <label class="mb-0">
+	                <label class="mb-0" style="display:inline-flex;align-items:center;gap:6px;">
 	                    <input type="checkbox" id="has_implementation" name="has_implementation" value="1" {{ old('has_implementation', $partner->has_implementation) ? 'checked' : '' }}>
 	                    Да
 	                </label>
@@ -147,7 +164,7 @@
 	            <div class="form-group" id="implementationRequiredWrap" style="display:none;">
 	                <label class="d-block" for="implementation_required">Внедрение обязательно</label>
 	                <input type="hidden" name="implementation_required" value="0">
-	                <label class="mb-0">
+	                <label class="mb-0" style="display:inline-flex;align-items:center;gap:6px;">
 	                    <input type="checkbox"
 	                           id="implementation_required"
 	                           name="implementation_required"
@@ -234,10 +251,7 @@
         </div>
     </div>
 
-    <!-- Отступ между формой и таблицей -->
-    <div style="margin-top: 40px;"></div>
-
-    <div class="card-body">
+    <div class="card mb-5 p-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Статусы партнера (Agent / Partner)</h5>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createPartnerStatuses">
@@ -274,7 +288,7 @@
     </div>
 
     <!-- Секция менеджеров -->
-    <div class="card-body">
+    <div class="card mb-5 p-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Процент партнера</h5>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createPartnerProcents">
@@ -290,7 +304,7 @@
                     <th width="25%">Дата</th>
                     <th width="20%">Процент от тарифа</th>
                     <th width="20%">Процент от пакета</th>
-                    <th width="10%">Действия</th>
+                    <th>Действия</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -301,7 +315,7 @@
                         <td>{{ $procent->procent_from_tariff }}</td>
                         <td>{{ $procent->procent_from_pack }}</td>
                         <td>
-                            <div class="btn-group-vertical btn-group-sm">
+                            <div class="d-flex flex-wrap gap-2">
                                 <a data-bs-toggle="modal" data-bs-target="#updateProcent{{$procent->id}}" href="#" class="btn btn-outline-primary btn-sm mb-1">
                                     Изменить
                                 </a>
@@ -369,7 +383,7 @@
         @endif
     </div>
 
-    <div class="card-body">
+    <div class="card mb-5 p-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Менеджеры партнера</h5>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createManager">
@@ -386,7 +400,7 @@
                     <th width="20%">Телефон</th>
                     <th width="25%">Почта</th>
                     <th width="15%">Ссылка</th>
-                    <th width="10%">Действия</th>
+                    <th>Действия</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -402,7 +416,7 @@
                             </a>
                         </td>
                         <td>
-                            <div class="btn-group-vertical btn-group-sm">
+                            <div class="d-flex flex-wrap gap-2">
                                 <a data-bs-toggle="modal" data-bs-target="#updateManager{{$manager->id}}" href="#" class="btn btn-outline-primary btn-sm mb-1">
                                     Изменить
                                 </a>
@@ -534,7 +548,7 @@
         </div>
     </div>
 
-    <div class="card-body">
+    <div class="card mb-5 p-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="mb-0">Кураторы партнера</h5>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createCurator">
@@ -550,7 +564,7 @@
                     <th width="35%">ФИО</th>
                     <th width="25%">Телефон</th>
                     <th width="25%">Почта</th>
-                    <th width="10%">Действия</th>
+                    <th>Действия</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -726,4 +740,5 @@
         </script>
     @endif
 
+</div>
 @endsection

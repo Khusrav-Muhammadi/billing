@@ -201,6 +201,7 @@ textarea.form-control { min-height: 6.5rem; }
 .input-group > .form-control { flex: 1 1 auto; min-width: 0; }
 
 .modal { display: none; position: fixed; inset: 0; z-index: 1055; overflow-y: auto; }
+.modal.show { display: block; }
 .modal-dialog { position: relative; width: auto; margin: 1.75rem auto; max-width: 500px; pointer-events: none; }
 .modal-dialog-centered { display: flex; align-items: center; min-height: calc(100% - 3.5rem); }
 .modal-dialog-scrollable { max-height: calc(100% - 3.5rem); }

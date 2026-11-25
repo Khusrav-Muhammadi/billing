@@ -128,7 +128,9 @@ class PartnerProgramController extends Controller
     {
         abort_unless($partner->role === 'partner', 404);
 
-        return response()->json(['partner' => $this->service->serializePartner($partner)]);
+        return response()->json([
+            'partner' => $this->service->serializePartner($partner) + $this->service->partnerProfile($partner),
+        ]);
     }
 
     public function approve(Request $request, User $partner): JsonResponse

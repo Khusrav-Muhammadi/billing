@@ -2,6 +2,7 @@
     <thead>
     <tr>
         <th>№</th>
+        <th>Здоровье</th>
         <th>ФИО</th>
         <th>Телефон</th>
         <th>Почта</th>
@@ -16,6 +17,12 @@
     @foreach($clients as $client)
         <tr style="cursor: pointer" data-href="{{ route('sub_domain.show', $client->id) }}" onclick="window.location.href=this.dataset.href">
             <td>{{ $loop->iteration }}</td>
+            <td>
+                @include('admin.health.circle', [
+                    'snapshot' => ($healthByClient ?? [])[(int) $client->id] ?? null,
+                    'clientId' => $client->id,
+                ])
+            </td>
             <td>{{ $client->name }}</td>
             <td>{{ $client->phone }}</td>
             <td>{{ $client->email }}</td>

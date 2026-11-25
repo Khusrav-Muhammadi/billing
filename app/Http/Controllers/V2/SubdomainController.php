@@ -39,12 +39,15 @@ class SubdomainController extends Controller
         $partners = User::query()->where('role', 'partner')->get();
         $managers = User::query()->where('role', 'manager')->get();
         $tariffs = Tariff::all();
+        $healthByClient = app(ClientHealthReadService::class)->forClients(
+            $clients->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->all()
+        );
 
 //        if ($request->ajax()) {
-//            return view('admin.partials.sub_domains', compact('clients'))->render();
+//            return view('admin.partials.sub_domains', compact('clients', 'healthByClient'))->render();
 //        }
 
-        return view('v2.sub_domains.index', compact('clients', 'partners', 'tariffs', 'managers'));
+        return view('v2.sub_domains.index', compact('clients', 'partners', 'tariffs', 'managers', 'healthByClient'));
     }
 
     public function create()

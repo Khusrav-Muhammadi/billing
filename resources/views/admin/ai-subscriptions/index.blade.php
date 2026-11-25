@@ -60,6 +60,7 @@
                 <thead>
                 <tr>
                     <th>#</th>
+                    <th>Здоровье</th>
                     <th><a href="{{ $sortLink('id') }}" class="text-dark text-decoration-none">ID {{ $sortIcon('id') }}</a></th>
                     <th><a href="{{ $sortLink('organization') }}" class="text-dark text-decoration-none">Организация {{ $sortIcon('organization') }}</a></th>
                     <th>Телефон</th>
@@ -79,6 +80,12 @@
                         data-href="{{ route('ai-subscription.show', $sub->id) }}"
                         style="cursor: pointer;">
                         <td>{{ ($subscriptions->firstItem() ?? 1) + $loop->index }}</td>
+                        <td class="text-nowrap">
+                            @include('admin.health.circle', [
+                                'snapshot' => ($healthByClient ?? [])[(int) $sub->organization?->client_id] ?? null,
+                                'clientId' => $sub->organization?->client_id,
+                            ])
+                        </td>
                         <td>{{ $sub->id }}</td>
                         <td>{{ $sub->organization?->name ?? '—' }}</td>
                         <td>{{ $sub->organization?->phone ?? '—' }}</td>
@@ -115,7 +122,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center text-muted py-4">Подписок не найдено</td>
+                        <td colspan="12" class="text-center text-muted py-4">Подписок не найдено</td>
                     </tr>
                 @endforelse
                 </tbody>

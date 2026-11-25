@@ -1,24 +1,24 @@
 @php
     $dots = ['red' => '#ef4444', 'yellow' => '#f59e0b', 'grey' => '#9ca3af', 'green' => '#10b981'];
     $labels = ['red' => 'Красные', 'yellow' => 'Жёлтые', 'grey' => 'Новые', 'green' => 'Зелёные'];
-    $pills = ['red' => 'badge-danger', 'yellow' => 'badge-warning', 'grey' => 'badge-secondary', 'green' => 'badge-success'];
 @endphp
-<div class="card mb-4 p-3">
-    <h4 class="card-title">Здоровье клиентов партнёра</h4>
-    <div class="row mb-3">
+<div class="mb-4 rounded-xl border border-ink-200 bg-ink-50 p-4">
+    <p class="mb-3 text-sm font-semibold text-ink-900">Здоровье клиентов</p>
+    <div class="flex flex-wrap gap-2">
         @foreach($dots as $color => $dot)
-            <div class="col-md-3 mb-2">
-                <a href="{{ route('organization_v2.index', ['partner' => $partner->id, 'health' => $color]) }}" class="d-block text-decoration-none">
-                    <span class="badge {{ $pills[$color] }}">● {{ $labels[$color] }} {{ (int) ($partnerHealthCounts[$color] ?? 0) }}</span>
-                </a>
-            </div>
+            <a href="{{ route('organization_v2.index', ['partner' => $partner->id, 'health' => $color]) }}"
+               class="inline-flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm font-medium text-ink-800 no-underline hover:border-ink-300">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:9999px;background:{{ $dot }}"></span>
+                {{ $labels[$color] }}
+                <span class="font-semibold text-ink-900">{{ (int) ($partnerHealthCounts[$color] ?? 0) }}</span>
+            </a>
         @endforeach
     </div>
     @if($partnerHealthRows->isEmpty())
-        <p class="text-muted mb-0">Индекс ещё не посчитан</p>
+        <p class="mb-0 mt-3 text-sm text-ink-500">Индекс ещё не посчитан</p>
     @else
-        <div class="table-responsive">
-            <table class="table table-sm">
+        <div class="mt-3 overflow-x-auto">
+            <table class="table mb-0">
                 <thead>
                 <tr>
                     <th>Клиент</th>
@@ -40,9 +40,7 @@
                             @endif
                         </td>
                         <td>
-                            <a href="{{ route('client-health.show', $row->client_id) }}" title="{{ $row->reason_text }}"
-                               class="d-inline-flex align-items-center justify-content-center text-decoration-none"
-                               style="width:40px;height:40px;border-radius:9999px;background:{{ $dots[$row->color] ?? '#9ca3af' }};color:#fff;font-weight:700;">{{ $row->health_index }}</a>
+                            @include('admin.health.circle', ['snapshot' => $row, 'clientId' => $row->client_id])
                         </td>
                         <td class="small">{{ $row->reason_text ?: '—' }}</td>
                         <td class="text-nowrap">{{ $row->paid_until?->format('d.m.Y') ?: '—' }}</td>

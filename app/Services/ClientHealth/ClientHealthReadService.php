@@ -81,8 +81,8 @@ class ClientHealthReadService
         }
 
         $rows = ClientHealthSnapshot::query()
-            ->whereDate('date', $date)
-            ->when($type, fn ($q) => $q->where('client_type', $type))
+            ->whereDate('client_health_snapshots.date', $date)
+            ->when($type, fn ($q) => $q->where('client_health_snapshots.client_type', $type))
             ->join('clients', 'clients.id', '=', 'client_health_snapshots.client_id')
             ->whereNotNull('clients.partner_id')
             ->groupBy('clients.partner_id', 'client_health_snapshots.color')

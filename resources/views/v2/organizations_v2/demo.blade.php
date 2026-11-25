@@ -61,7 +61,7 @@
 	        <h4 class="card-title">Клиенты</h4>
 	        <a href="{{ route('client.create') }}" type="button" class="btn btn-primary">Создать</a>
 	        <div class="table-responsive">
-	            @include('admin.partials.organizations_v2', ['organizations' => $organizations, 'isDemoList' => true])
+	            @include('admin.partials.organizations_v2', ['organizations' => $organizations, 'isDemoList' => true, 'healthByClient' => $healthByClient ?? []])
 	        </div>
 	    </div>
 

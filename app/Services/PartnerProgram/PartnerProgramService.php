@@ -265,6 +265,78 @@ class PartnerProgramService
         ];
     }
 
+    /**
+     * Карточка для просмотра в админке портала. Только show: в списке партнёров эти связи не грузим.
+     * Пароли менеджеров и кураторов не отдаём.
+     */
+    public function partnerProfile(User $partner): array
+    {
+        $partner->loadMissing('account:id,name');
+
+        $methods = array_values(array_filter((array) ($partner->payment_methods ?? []), fn ($m) => is_string($m) && $m !== ''));
+        if ($methods === []) {
+            $methods = ['card', 'invoice'];
+        }
+
+        $person = fn (User $user) => [
+            'id' => (int) $user->id,
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'email' => $user->email,
+        ];
+
+        $managers = User::query()
+            ->where('role', 'manager')
+            ->where('partner_id', $partner->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'email']);
+
+        $curators = User::query()
+            ->join('partner_curators', 'partner_curators.curator_id', '=', 'users.id')
+            ->where('partner_curators.partner_id', $partner->id)
+            ->where('users.role', 'manager')
+            ->orderBy('users.name')
+            ->get(['users.id', 'users.name', 'users.phone', 'users.email']);
+
+        $percents = PartnerProcent::query()
+            ->where('partner_id', $partner->id)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get(['id', 'date', 'procent_from_tariff', 'procent_from_pack'])
+            ->map(fn (PartnerProcent $row) => [
+                'date' => $row->date ? Carbon::parse($row->date)->format('Y-m-d') : null,
+                'tariff' => (int) $row->procent_from_tariff,
+                'pack' => (int) $row->procent_from_pack,
+            ])
+            ->values()
+            ->all();
+
+        $statuses = PartnerStatusHistory::query()
+            ->with('author:id,name')
+            ->where('partner_id', $partner->id)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (PartnerStatusHistory $row) => [
+                'date' => optional($row->date)->format('Y-m-d'),
+                'status' => (string) $row->status,
+                'author' => $row->author?->name,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'payment_methods' => $methods,
+            'has_implementation' => (bool) $partner->has_implementation,
+            'implementation_required' => (bool) $partner->implementation_required,
+            'account' => $partner->account ? ['id' => (int) $partner->account->id, 'name' => $partner->account->name] : null,
+            'managers' => $managers->map($person)->values()->all(),
+            'curators' => $curators->map($person)->values()->all(),
+            'percents' => $percents,
+            'statuses' => $statuses,
+        ];
+    }
+
     /** Курс по последней записи currency_rates (прямой, обратный или через USD). */
     public function convert(float $amount, string $from, string $to): ?float
     {

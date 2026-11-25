@@ -52,19 +52,11 @@
             style="cursor: pointer;">
             <td>{{ method_exists($organizations, 'firstItem') ? (($organizations->firstItem() ?? 1) + $loop->index) : $loop->iteration }}</td>
             @if(isset($healthByClient))
-                @php
-                    $snapshot = $healthByClient[(int) $organization->client_id] ?? null;
-                    $hDot = ['red' => '#ef4444', 'yellow' => '#f59e0b', 'grey' => '#9ca3af', 'green' => '#10b981'][$snapshot->color ?? ''] ?? null;
-                @endphp
-                <td class="text-nowrap" @if($snapshot) title="{{ $snapshot->reason_text }}" @endif>
-                    @if($snapshot && $hDot)
-                        <a href="{{ route('client-health.show', $organization->client_id) }}"
-                           class="d-inline-flex align-items-center justify-content-center text-decoration-none"
-                           style="width:40px;height:40px;border-radius:9999px;background:{{ $hDot }};color:#fff;font-weight:700;">{{ $snapshot->health_index }}</a>
-                    @else
-                        <span class="d-inline-flex align-items-center justify-content-center"
-                              style="width:40px;height:40px;border-radius:9999px;border:2px dashed #e7e8eb;color:#cfd2da;">—</span>
-                    @endif
+                <td class="text-nowrap">
+                    @include('admin.health.circle', [
+                        'snapshot' => $healthByClient[(int) $organization->client_id] ?? null,
+                        'clientId' => $organization->client_id,
+                    ])
                 </td>
             @endif
             <td>{{ $organization->order_number ?? '-' }}</td>
