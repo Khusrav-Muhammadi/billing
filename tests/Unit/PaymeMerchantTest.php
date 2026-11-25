@@ -148,18 +148,32 @@ it('accepts test credentials in production and performs without crediting the ba
     expect(DB::table('client_balances')->count())->toBe(0);
 });
 
-it('checks exact account and fixed tiyin amount before creating a transaction', function () {
-    $check = paymeRpc('CheckPerformTransaction', ['amount' => 100000000, 'account' => ['order_number' => '000000042']]);
-    $this->postJson('/api/payme/merchant', $check)->assertJsonPath('result.allow', true)->assertJsonPath('id', 7);
+it('returns the fixed payable amount for a one-sum lookup but only creates a full payment', function () {
+    $check = paymeRpc('CheckPerformTransaction', ['amount' => 100, 'account' => ['order_number' => '000000042']]);
+    $this->postJson('/api/payme/merchant', $check)
+        ->assertJsonPath('result.allow', true)
+        ->assertJsonPath('result.additional.amount', 100000000)
+        ->assertJsonPath('id', 7);
 
     $check['params']['amount'] = 100000001;
     $this->postJson('/api/payme/merchant', $check)->assertJsonPath('error.code', -31001);
-    $check['params']['amount'] = 100000000;
+    $check['params']['amount'] = 100;
     $check['params']['account']['order_number'] = '42';
     $this->postJson('/api/payme/merchant', $check)
         ->assertJsonPath('error.code', -31050)->assertJsonPath('error.data', 'order_number');
     $check['params']['account']['order_number'] = '000000043';
     $this->postJson('/api/payme/merchant', $check)->assertJsonPath('error.code', -31050);
+
+    $check['params']['account']['order_number'] = '000000042';
+    $check['params']['amount'] = 100000000;
+    $this->postJson('/api/payme/merchant', $check)
+        ->assertJsonPath('result.allow', true)
+        ->assertJsonPath('result.additional.amount', 100000000);
+
+    $create = paymeCreate();
+    $create['params']['amount'] = 100;
+    $this->postJson('/api/payme/merchant', $create)->assertJsonPath('error.code', -31001);
+    expect(DB::table('payme_balance_transactions')->count())->toBe(0);
 });
 
 it('creates and performs once, then reports the same transaction on retries and in the statement', function () {
