@@ -173,9 +173,9 @@ Route::post('payme/merchant', \App\Http\Controllers\API\PaymeMerchantController:
     ->middleware(\App\Http\Middleware\CheckPaymeAuth::class)
     ->name('payme.merchant');
 
-// Route::get('payme/balance-checkout/{orderNumber}', \App\Http\Controllers\API\PaymeBalanceCheckoutController::class)
-//     ->middleware('crm.token')
-//     ->name('payme.balance-checkout');
+Route::get('payme/balance-checkout/{orderNumber}', \App\Http\Controllers\API\PaymeBalanceCheckoutController::class)
+    ->middleware('crm.token')
+    ->name('payme.balance-checkout');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::patch('client-payment/invoice/{payment}/customer', [\App\Http\Controllers\API\ClientPaymentController::class, 'updateInvoiceCustomer']);
