@@ -81,7 +81,7 @@ class PaymeMerchantService
 
         // Payme запрашивает сумму платежа проверочным запросом на 1 сум.
         return in_array($params['amount'] ?? null, [self::AMOUNT_LOOKUP_TIYIN, self::TOP_UP_TIYIN], true)
-            ? ['result' => ['allow' => true, 'additional' => ['amount' => self::TOP_UP_TIYIN]]]
+            ? ['result' => ['allow' => true, 'additional' => ['amount' => self::TOP_UP_UZS]]]
             : $this->amountError();
     }
 
