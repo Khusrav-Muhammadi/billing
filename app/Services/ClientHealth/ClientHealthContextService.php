@@ -92,7 +92,7 @@ class ClientHealthContextService
         return [
             'client_type' => 'demo',
             'paid_until' => $demo->created_at->copy()->addDays(self::DEMO_DAYS)->toDateString(),
-            'period_started_at' => null,
+            'period_started_at' => $demo->created_at->toDateString(),
             'organization_id' => (int) $demo->id,
         ];
     }

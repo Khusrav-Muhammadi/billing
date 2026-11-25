@@ -79,7 +79,7 @@ class ApplicationController extends Controller
         $offers = $offers
             ->orderByRaw('COALESCE(commercial_offers.status_date, commercial_offers.created_at) DESC')
             ->orderByDesc('id')
-            ->paginate(1000)
+            ->paginate(50)
             ->withQueryString();
 
         $accounts = Account::query()

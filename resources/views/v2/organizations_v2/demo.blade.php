@@ -7,7 +7,14 @@
 
 @section('content')
 
+    @isset($health)
+        @include('admin.health.blocks', ['health' => $health, 'forDemo' => true])
+    @endisset
+
     <form id="filterForm" method="GET" action="{{ route('organization_v2.demo') }}">
+        @if(filled(request('health')))
+            <input type="hidden" name="health" value="{{ request('health') }}">
+        @endif
         <div class="row mb-3 align-items-end">
             <div class="col-md-2">
                 <label class="form-label">Страна</label>
@@ -53,7 +60,7 @@
             </div>
             <div class="col-md-12 mt-3">
                 <button type="submit" class="btn btn-primary">Фильтр</button>
-                <a href="{{ route('organization_v2.demo') }}" class="btn btn-outline-secondary">Сбросить</a>
+                <a href="{{ route('organization_v2.demo', array_filter(['health' => request('health')])) }}" class="btn btn-outline-secondary">Сбросить</a>
             </div>
         </div>
     </form>

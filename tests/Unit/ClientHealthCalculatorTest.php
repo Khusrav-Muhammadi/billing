@@ -248,7 +248,69 @@ class ClientHealthCalculatorTest extends TestCase
 
         $this->assertSame('yellow', $calc->calculate($m, $this->context(['paid_until' => '2026-12-23']))['color']); // 31 день
         $this->assertSame('red', $calc->calculate($m, $this->context(['paid_until' => '2026-12-22']))['color']);    // 30 дней
-        // У демо срок оплаты не учитывается.
-        $this->assertSame('yellow', $calc->calculate($m, $this->context(['client_type' => 'demo', 'paid_until' => '2026-11-25', 'period_started_at' => null]))['color']);
+    }
+
+    public function test_demo_uses_its_own_colors_not_the_paid_index(): void
+    {
+        $calc = new ClientHealthCalculator();
+        $quiet = $this->metrics(['activity' => ['active_users' => 0, 'active_user_days' => 0, 'active_days' => 0]]);
+        foreach ($quiet['weeks'] as &$week) {
+            $week['dialogs'] = 0;
+            $week['leads_new'] = 0;
+        }
+        unset($week);
+
+        $day = fn (string $started, array $extra = []) => $calc->calculate($quiet, $this->context($extra + [
+            'client_type' => 'demo',
+            'period_started_at' => $started,
+            'paid_until' => '2026-12-05',
+            'last_activity' => null,
+        ]));
+
+        $grey = $day('2026-11-21');
+        $this->assertSame('grey', $grey['color']);
+        $this->assertSame(0, $grey['health_index']);
+        $this->assertStringContainsString('2-й день', $grey['reason_text']);
+
+        $red = $day('2026-11-20');
+        $this->assertSame('red', $red['color']);
+        $this->assertSame(0, $red['health_index']);
+
+        $withLogin = $quiet;
+        $withLogin['activity']['active_users'] = 1;
+        $yellow = $calc->calculate($withLogin, $this->context([
+            'client_type' => 'demo',
+            'period_started_at' => '2026-11-10',
+            'paid_until' => '2026-12-01',
+            'last_activity' => '2026-11-12',
+        ]));
+        $this->assertSame('yellow', $yellow['color']);
+        $this->assertSame(40, $yellow['health_index']);
+
+        $ending = $calc->calculate($withLogin, $this->context([
+            'client_type' => 'demo',
+            'period_started_at' => '2026-11-08',
+            'paid_until' => '2026-11-22',
+            'last_activity' => '2026-11-10',
+        ]));
+        $this->assertSame('red', $ending['color']);
+        $this->assertStringContainsString('работы в CRM нет', $ending['reason_text']);
+
+        $worked = $this->metrics(['activity' => ['active_users' => 0, 'active_user_days' => 0, 'active_days' => 0]]);
+        foreach ($worked['weeks'] as &$week) {
+            $week['dialogs'] = 0;
+            $week['leads_new'] = 0;
+        }
+        unset($week);
+        $worked['weeks'][1]['leads_new'] = 1;
+        $green = $calc->calculate($worked, $this->context([
+            'client_type' => 'demo',
+            'period_started_at' => '2026-11-08',
+            'paid_until' => '2026-11-22',
+            'last_activity' => '2026-11-09',
+        ]));
+        $this->assertSame('green', $green['color']);
+        $this->assertSame(80, $green['health_index']);
+        $this->assertNull($green['logins_score']);
     }
 }

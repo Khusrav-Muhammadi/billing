@@ -1,20 +1,18 @@
 @extends('layouts.admin')
 
 @section('title')
-    Коммерческие предложения
+    Подключение
 @endsection
 
 
 @section('content')
     <div class="card-body">
-        <h4 class="card-title">Оплата</h4>
-
-        <form id="filterForm" method="GET" action="{{ route('application.index') }}">
-            <div class="row mb-3 align-items-end">
-                <div class="col-md-2">
+        <form id="filterForm" method="GET" action="{{ route('application.index') }}" class="mb-3">
+            <div class="d-flex flex-wrap align-items-end gap-2">
+                <div style="width: 170px;">
                     <label class="form-label">Партнер</label>
                     <select name="partner_id" class="form-control">
-                        <option value="">Партнер</option>
+                        <option value="">Все</option>
                         @foreach($partners as $partner)
                             <option value="{{ $partner->id }}" @selected((string)($filters['partner_id'] ?? '') === (string)$partner->id)>
                                 {{ $partner->name }}
@@ -22,10 +20,10 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Тип подключения</label>
+                <div style="width: 190px;">
+                    <label class="form-label">Тип</label>
                     <select name="request_type" class="form-control">
-                        <option value="">Тип подключения</option>
+                        <option value="">Все</option>
                         @foreach($requestTypes as $typeValue => $typeLabel)
                             <option value="{{ $typeValue }}" @selected(($filters['request_type'] ?? '') === $typeValue)>
                                 {{ $typeLabel }}
@@ -33,10 +31,10 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div style="width: 160px;">
                     <label class="form-label">Услуга</label>
                     <select name="tariff_id" class="form-control">
-                        <option value="">Услуга</option>
+                        <option value="">Все</option>
                         @foreach($tariffs as $tariff)
                             <option value="{{ $tariff->id }}" @selected((string)($filters['tariff_id'] ?? '') === (string)$tariff->id)>
                                 {{ $tariff->name }}
@@ -44,42 +42,40 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Период оплаты</label>
+                <div style="width: 130px;">
+                    <label class="form-label">Период</label>
                     <select name="period_months" class="form-control">
-                        <option value="">Период оплаты</option>
+                        <option value="">Все</option>
                         <option value="6" @selected((string)($filters['period_months'] ?? '') === '6')>6 мес.</option>
                         <option value="12" @selected((string)($filters['period_months'] ?? '') === '12')>12 мес.</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Статус операции</label>
+                <div style="width: 150px;">
+                    <label class="form-label">Статус</label>
                     <select name="operation_status" class="form-control">
-                        <option value="">Статус операции</option>
+                        <option value="">Все</option>
                         <option value="draft" @selected(($filters['operation_status'] ?? '') === 'draft')>Черновик</option>
                         <option value="pending" @selected(($filters['operation_status'] ?? '') === 'pending')>В ожидании</option>
                         <option value="paid" @selected(($filters['operation_status'] ?? '') === 'paid')>Оплачено</option>
                         <option value="canceled" @selected(($filters['operation_status'] ?? '') === 'canceled')>Отменено</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div style="width: 150px;">
                     <label class="form-label">Дата от</label>
                     <input type="date" name="date_from" class="form-control" value="{{ $filters['date_from'] ?? '' }}">
                 </div>
-                <div class="col-md-2 mt-3">
+                <div style="width: 150px;">
                     <label class="form-label">Дата до</label>
                     <input type="date" name="date_to" class="form-control" value="{{ $filters['date_to'] ?? '' }}">
                 </div>
-                <div class="col-md-12 mt-3 d-flex gap-2 align-items-center flex-wrap">
-                    <button type="submit" class="btn btn-primary">Фильтр</button>
-                    <a href="{{ route('application.index') }}" class="btn btn-outline-secondary ms-2">Сбросить</a>
-                    <a href="{{ route('application.export.excel', $filterQuery) }}"
-                       class="btn btn-outline-success d-inline-flex align-items-center justify-content-center"
-                       title="Скачать Excel (оплаченные подключения)"
-                       style="width: 42px; height: 38px; padding: 0;">
-                        <i class="mdi mdi-file-excel" style="font-size: 22px; line-height: 1;"></i>
-                    </a>
-                </div>
+                <button type="submit" class="btn btn-primary">Фильтр</button>
+                <a href="{{ route('application.index') }}" class="btn btn-outline-secondary">Сбросить</a>
+                <a href="{{ route('application.export.excel', $filterQuery) }}"
+                   class="btn btn-outline-success d-inline-flex align-items-center justify-content-center"
+                   title="Скачать Excel (оплаченные подключения)"
+                   style="width: 42px; height: 42px; padding: 0;">
+                    <i class="mdi mdi-file-excel" style="font-size: 22px; line-height: 1;"></i>
+                </a>
             </div>
         </form>
 

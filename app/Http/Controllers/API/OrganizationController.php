@@ -7,6 +7,7 @@ use App\Http\Requests\Organization\AddPackRequest;
 use App\Http\Requests\Organization\LegalInfoRequest;
 use App\Http\Requests\Organization\StoreRequest;
 use App\Models\ClientBalance;
+use App\Models\ClientHealthSnapshot;
 use App\Models\ConnectedClientServices;
 use App\Models\Client;
 use App\Models\IntegrationActionLog;
@@ -239,6 +240,20 @@ class OrganizationController extends Controller
             $this->applyV2OrganizationSearch($organizationsQuery, $search);
         }
 
+        $health = (string) $request->query('health', '');
+        if (in_array($health, ClientHealthSnapshot::COLOR_ORDER, true)) {
+            $healthDate = ClientHealthSnapshot::query()->max('date');
+            if ($healthDate === null) {
+                $organizationsQuery->whereRaw('1 = 0');
+            } else {
+                $organizationsQuery->whereIn('client_id', ClientHealthSnapshot::query()
+                    ->whereDate('date', $healthDate)
+                    ->where('client_type', 'demo')
+                    ->where('color', $health)
+                    ->select('client_id'));
+            }
+        }
+
         $this->applyDemoOrganizationSorting($organizationsQuery, $request);
 
         $organizations = $organizationsQuery
@@ -286,14 +301,17 @@ class OrganizationController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $tx = request('tx');
         $balanceOperations = ClientBalance::query()
             ->where('organization_id', (int)$organization->id)
             ->with('currency:id,name,symbol_code')
+            ->when(in_array($tx, ['income', 'outcome'], true), fn ($q) => $q->where('type', $tx))
             ->orderByDesc('date')
             ->orderByDesc('id')
-            ->get();
+            ->paginate(100)
+            ->withQueryString();
 
-        $realBalance = $this->calculateRealBalance($organization, $balanceOperations);
+        $realBalance = $this->calculateRealBalance($organization);
 
         $integrationLogs = IntegrationActionLog::query()
             ->where(function ($query) use ($organization): void {
@@ -312,7 +330,15 @@ class OrganizationController extends Controller
             'organization' => $organization,
             'connected_services' => $connectedServices,
             'connection_status_history' => $connectionStatusHistory,
-            'balance_operations' => $balanceOperations,
+            'balance_operations' => $balanceOperations->items(),
+            'balance_operations_meta' => [
+                'current_page' => $balanceOperations->currentPage(),
+                'last_page' => $balanceOperations->lastPage(),
+                'per_page' => $balanceOperations->perPage(),
+                'total' => $balanceOperations->total(),
+                'from' => $balanceOperations->firstItem(),
+                'to' => $balanceOperations->lastItem(),
+            ],
             'real_balance' => $realBalance,
             'integration_logs' => $integrationLogs,
         ]);
@@ -670,20 +696,17 @@ class OrganizationController extends Controller
         }
     }
 
-    private function calculateRealBalance(Organization $organization, Collection $operations): float
+    private function calculateRealBalance(Organization $organization): float
     {
-        $targetCurrencyId = (int)($organization->client?->country?->currency_id ?? 0);
+        $query = ClientBalance::query()->where('organization_id', (int) $organization->id);
+        $targetCurrencyId = (int) ($organization->client?->country?->currency_id ?? 0);
 
-        $rows = $operations;
-        if ($targetCurrencyId > 0) {
-            $sameCurrencyRows = $operations->where('currency_id', $targetCurrencyId)->values();
-            if ($sameCurrencyRows->isNotEmpty()) {
-                $rows = $sameCurrencyRows;
-            }
+        if ($targetCurrencyId > 0 && (clone $query)->where('currency_id', $targetCurrencyId)->exists()) {
+            $query->where('currency_id', $targetCurrencyId);
         }
 
-        $income = (float)$rows->where('type', 'income')->sum('sum');
-        $outcome = (float)$rows->where('type', 'outcome')->sum('sum');
+        $income = (float) (clone $query)->where('type', 'income')->sum('sum');
+        $outcome = (float) (clone $query)->where('type', 'outcome')->sum('sum');
 
         return round($income - $outcome, 4);
     }

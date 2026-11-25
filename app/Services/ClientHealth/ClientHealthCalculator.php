@@ -55,6 +55,13 @@ class ClientHealthCalculator
     /** Доля пункта в работе клиента (диалоги + сущности), ниже которой пункт не считается. */
     public const MINOR_SHARE = 0.10;
 
+    /** Демо: первые дни без оценки, потом свой цвет. Кружок 0 / 40 / 80, не индекс платных. */
+    public const DEMO_GREY_DAYS = 2;
+    public const DEMO_ENDING_DAYS = 2;
+    public const DEMO_INDEX_RED = 0;
+    public const DEMO_INDEX_YELLOW = 40;
+    public const DEMO_INDEX_GREEN = 80;
+
     private const LABELS = [
         'logins' => 'входы',
         'coverage' => 'охват',
@@ -68,8 +75,12 @@ class ClientHealthCalculator
      */
     public function calculate(array $metrics, array $context): array
     {
+        if (($context['client_type'] ?? 'paid') === 'demo') {
+            return $this->demo($metrics, $context);
+        }
+
         $date = Carbon::parse($context['date'])->startOfDay();
-        $isPaid = ($context['client_type'] ?? 'paid') === 'paid';
+        $isPaid = true;
 
         $usersTotal = max(0, (int) ($metrics['users_total'] ?? 0));
         $activeUsers = max(0, (int) data_get($metrics, 'activity.active_users', 0));
@@ -214,6 +225,75 @@ class ClientHealthCalculator
             'color' => $color,
             'reasons' => array_values($reasons),
             'reason_text' => mb_substr($reasonText, 0, 500),
+        ];
+    }
+
+    /**
+     * Демо живёт 14 дней и бесплатное, поэтому платный индекс ему не подходит.
+     * Серый — 1–2-й день. С 3-го: красный, если никто ни разу не входил, или осталось
+     * не больше 2 дней и работы нет; жёлтый, если входили, но за 14 дней нет работы;
+     * зелёный, если входили и есть лид, сделка, заказ, товар, смена этапа или диалог.
+     * Кружок: 0 / 40 / 80.
+     */
+    private function demo(array $metrics, array $context): array
+    {
+        $date = Carbon::parse($context['date'])->startOfDay();
+        $periodStart = !empty($context['period_started_at']) ? Carbon::parse($context['period_started_at'])->startOfDay() : null;
+        $dayOfPeriod = $periodStart ? (int) $periodStart->diffInDays($date, false) + 1 : null;
+
+        $paidUntil = !empty($context['paid_until']) ? Carbon::parse($context['paid_until'])->startOfDay() : null;
+        $daysLeft = $paidUntil ? (int) $date->diffInDays($paidUntil, false) : null;
+
+        $activeUsers = max(0, (int) data_get($metrics, 'activity.active_users', 0));
+        $activeDays = data_get($metrics, 'activity.active_days');
+        $activeDays = $activeDays !== null
+            ? (int) $activeDays
+            : (int) data_get($metrics, 'activity.active_user_days', 0);
+        $loggedIn = $activeUsers > 0 || $activeDays > 0 || !empty($context['last_activity']);
+
+        $weeks = $this->weeks($metrics['weeks'] ?? []);
+        $work = 0;
+        foreach ([0, 1] as $w) {
+            $week = $weeks[$w];
+            $work += $week['dialogs'] + $week['leads_new'] + $week['deals_new'] + $week['orders_new'] + $week['goods_new'] + $week['stage_changes'];
+        }
+        $hasWork = $work > 0;
+        $ending = $daysLeft !== null && $daysLeft <= self::DEMO_ENDING_DAYS;
+        $tooEarly = $dayOfPeriod !== null && $dayOfPeriod >= 1 && $dayOfPeriod <= self::DEMO_GREY_DAYS;
+
+        if ($tooEarly) {
+            $color = ClientHealthSnapshot::GREY;
+            $index = self::DEMO_INDEX_RED;
+            $reason = $this->reason('demo_new', "Демо: {$dayOfPeriod}-й день из " . ClientHealthContextService::DEMO_DAYS . ', цвет с 3-го дня');
+        } elseif (!$loggedIn) {
+            $color = ClientHealthSnapshot::RED;
+            $index = self::DEMO_INDEX_RED;
+            $reason = $this->reason('demo_no_login', 'Демо: с 3-го дня никто не входил в CRM');
+        } elseif (!$hasWork && $ending) {
+            $color = ClientHealthSnapshot::RED;
+            $index = self::DEMO_INDEX_RED;
+            $reason = $this->reason('demo_ending', $daysLeft > 0
+                ? "Демо: осталось {$daysLeft} дн., а работы в CRM нет"
+                : 'Демо заканчивается, а работы в CRM нет');
+        } elseif (!$hasWork) {
+            $color = ClientHealthSnapshot::YELLOW;
+            $index = self::DEMO_INDEX_YELLOW;
+            $reason = $this->reason('demo_idle', 'Демо: в CRM входили, но за 14 дней нет лидов, сделок, заказов, товаров и диалогов');
+        } else {
+            $color = ClientHealthSnapshot::GREEN;
+            $index = self::DEMO_INDEX_GREEN;
+            $reason = $this->reason('demo_ok', 'Демо: входили и есть работа в CRM');
+        }
+
+        return [
+            'logins_score' => null,
+            'coverage_score' => null,
+            'dialogs_score' => null,
+            'entities_score' => null,
+            'health_index' => $index,
+            'color' => $color,
+            'reasons' => [$reason],
+            'reason_text' => $reason['text'],
         ];
     }
 

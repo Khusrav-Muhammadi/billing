@@ -375,7 +375,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
     }
 
     /** Фильтр по цвету светофора на последний посчитанный день (плитки «Здоровье клиентов» в портале). */
-    private function applyHealthFilter(Builder $query, ?string $color): void
+    private function applyHealthFilter(Builder $query, ?string $color, string $type = 'paid'): void
     {
         if (!in_array($color, ClientHealthSnapshot::COLOR_ORDER, true)) {
             return;
@@ -389,7 +389,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
 
         $query->whereIn('client_id', ClientHealthSnapshot::query()
             ->whereDate('date', $date)
-            ->where('client_type', 'paid')
+            ->where('client_type', $type)
             ->where('color', $color)
             ->select('client_id'));
     }
@@ -545,6 +545,7 @@ class OrganizationRepository implements OrganizationRepositoryInterface
             });
         }
 
+        $this->applyHealthFilter($query, $data['health'] ?? null, 'demo');
         $this->applyOrganizationSorting($query, $data, true);
 
         return $query->paginate(50)->withQueryString();

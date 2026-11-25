@@ -3,13 +3,14 @@
     Клик фильтрует основную таблицу (?health=red|yellow|grey|green|off), повторный клик снимает фильтр.
 --}}
 @php
+    $forDemo = !empty($forDemo);
     $blocks = [
-        'all' => ['label' => 'Все', 'hint' => 'все подключённые клиенты', 'dot' => '#0b0efd', 'count' => $health['totals']['all'] ?? null],
-        'red' => ['label' => 'Красные', 'hint' => 'нужна помощь сейчас', 'dot' => '#ef4444', 'count' => $health['counts']['red'] ?? 0, 'help' => true],
-        'yellow' => ['label' => 'Жёлтые', 'hint' => 'активность падает', 'dot' => '#f59e0b', 'count' => $health['counts']['yellow'] ?? 0, 'help' => true],
-        'grey' => ['label' => 'Новые', 'hint' => 'первые 28 дней после оплаты', 'dot' => '#9ca3af', 'count' => $health['counts']['grey'] ?? 0, 'help' => true],
-        'green' => ['label' => 'Зелёные', 'hint' => 'всё в норме', 'dot' => '#10b981', 'count' => $health['counts']['green'] ?? 0, 'help' => true],
-        'off' => ['label' => 'Отключенные', 'hint' => 'подключение остановлено', 'dot' => '#64748b', 'count' => $health['totals']['disconnected'] ?? null],
+        'all' => ['label' => 'Все', 'hint' => $forDemo ? 'все демо-аккаунты' : 'все подключённые клиенты', 'dot' => '#0b0efd', 'count' => $health['totals']['all'] ?? null],
+        'red' => ['label' => 'Красные', 'hint' => $forDemo ? 'с 3-го дня никто не входил, или срок кончается без работы' : 'нужна помощь сейчас', 'dot' => '#ef4444', 'count' => $health['counts']['red'] ?? 0, 'help' => true],
+        'yellow' => ['label' => 'Жёлтые', 'hint' => $forDemo ? 'входили, но за 14 дней нет работы в CRM' : 'активность падает', 'dot' => '#f59e0b', 'count' => $health['counts']['yellow'] ?? 0, 'help' => true],
+        'grey' => ['label' => $forDemo ? 'Серые' : 'Новые', 'hint' => $forDemo ? 'первые 2 дня демо' : 'первые 28 дней после оплаты', 'dot' => '#9ca3af', 'count' => $health['counts']['grey'] ?? 0, 'help' => true],
+        'green' => ['label' => 'Зелёные', 'hint' => $forDemo ? 'входили и есть работа в CRM' : 'всё в норме', 'dot' => '#10b981', 'count' => $health['counts']['green'] ?? 0, 'help' => true],
+        'off' => ['label' => $forDemo ? 'Истёкшие' : 'Отключенные', 'hint' => $forDemo ? 'демо старше 14 дней' : 'подключение остановлено', 'dot' => '#64748b', 'count' => $health['totals']['disconnected'] ?? null],
     ];
     $active = $health['color'] ?? null;
 @endphp
@@ -35,10 +36,10 @@
 
     <p class="mt-2 text-xs text-ink-500">
         @if(!empty($health['date']))
-            Данные на {{ \Illuminate\Support\Carbon::parse($health['date'])->format('d.m.Y') }}, считаются каждую ночь за последние 7 дней.
+            Данные на {{ \Illuminate\Support\Carbon::parse($health['date'])->format('d.m.Y') }}@if($forDemo), по правилам демо за 14 дней@else, считаются каждую ночь за последние 7 дней@endif.
         @else
             Расчёт ещё не запускался. Цвета появятся после ночного расчёта.
         @endif
     </p>
-    @include('admin.health.help')
+    @include($forDemo ? 'admin.health.help-demo' : 'admin.health.help')
 </div>

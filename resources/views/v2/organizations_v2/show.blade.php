@@ -283,12 +283,23 @@
             </div>
         </div>
 
+        @php
+            $txFilter = in_array(request('tx'), ['income', 'outcome'], true) ? request('tx') : 'all';
+            $txLink = function (string $filter) use ($organization) {
+                $query = request()->except(['page', 'tx']);
+                if ($filter !== 'all') {
+                    $query['tx'] = $filter;
+                }
+
+                return route('organization_v2.show', ['organization' => $organization] + $query);
+            };
+        @endphp
         <div class="card p-3">
             <h4 class="card-title mb-3">Транзакции</h4>
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 12px;">
-                <button type="button" class="btn btn-sm btn-outline-secondary active" data-transaction-filter="all" aria-pressed="true">Все</button>
-                <button type="button" class="btn btn-sm btn-outline-success" data-transaction-filter="income" aria-pressed="false">Пополнения</button>
-                <button type="button" class="btn btn-sm btn-outline-danger" data-transaction-filter="outcome" aria-pressed="false">Списания</button>
+                <a href="{{ $txLink('all') }}" class="btn btn-sm {{ $txFilter === 'all' ? 'btn-secondary' : 'btn-outline-secondary' }}">Все</a>
+                <a href="{{ $txLink('income') }}" class="btn btn-sm {{ $txFilter === 'income' ? 'btn-success' : 'btn-outline-success' }}">Пополнения</a>
+                <a href="{{ $txLink('outcome') }}" class="btn btn-sm {{ $txFilter === 'outcome' ? 'btn-danger' : 'btn-outline-danger' }}">Списания</a>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover">
@@ -303,8 +314,8 @@
                     </thead>
                     <tbody>
                     @forelse($balanceOperations as $operation)
-                        <tr data-transaction-type="{{ $operation->type }}">
-                            <td>{{ $loop->iteration }}</td>
+                        <tr>
+                            <td>{{ ($balanceOperations->firstItem() ?? 1) + $loop->index }}</td>
                             <td>{{ optional($operation->date)->format('d.m.Y H:i') ?: optional($operation->created_at)->format('d.m.Y H:i') }}</td>
                             <td>
                                 @if($operation->type === 'income')
@@ -326,6 +337,9 @@
                     </tbody>
                 </table>
             </div>
+            @if($balanceOperations->hasPages())
+                <div class="mt-3">{{ $balanceOperations->links() }}</div>
+            @endif
         </div>
 
         <div class="card mt-4 p-3">
@@ -563,43 +577,4 @@
     </div>
     @endif
 
-@endsection
-
-@section('script')
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const buttons = Array.from(document.querySelectorAll('[data-transaction-filter]'));
-            const rows = Array.from(document.querySelectorAll('tr[data-transaction-type]'));
-            if (!buttons.length || !rows.length) return;
-
-            const setActiveButton = (activeBtn) => {
-                buttons.forEach((btn) => {
-                    const isActive = btn === activeBtn;
-                    btn.classList.toggle('active', isActive);
-                    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-                });
-            };
-
-            const applyFilter = (filter) => {
-                const normalized = String(filter || 'all');
-                rows.forEach((row) => {
-                    const type = String(row.getAttribute('data-transaction-type') || '');
-                    const shouldShow = normalized === 'all' || type === normalized;
-                    row.style.display = shouldShow ? '' : 'none';
-                });
-            };
-
-            buttons.forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    const filter = btn.getAttribute('data-transaction-filter') || 'all';
-                    setActiveButton(btn);
-                    applyFilter(filter);
-                });
-            });
-
-            const active = buttons.find((b) => b.classList.contains('active')) || buttons[0];
-            setActiveButton(active);
-            applyFilter(active.getAttribute('data-transaction-filter') || 'all');
-        });
-    </script>
 @endsection

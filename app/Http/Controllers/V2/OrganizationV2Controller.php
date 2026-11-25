@@ -74,13 +74,31 @@ class OrganizationV2Controller extends Controller
 
     public function demo(Request $request)
     {
-        $organizations = $this->repository->demo($request->all());
+        $filters = $request->all();
+        $healthTab = (string) ($filters['health'] ?? '');
+        if ($healthTab === 'off') {
+            $filters['status'] = '0';
+            unset($filters['health']);
+        }
+
+        $organizations = $this->repository->demo($filters);
         $this->hydrateRealBalances($organizations);
         $this->hydrateDemoValidateDates($organizations);
 
         $partners = User::query()->where('role', 'partner')->get();
         $countries = Country::all();
         $healthByClient = $this->healthByClient($organizations);
+        $read = app(ClientHealthReadService::class);
+        $health = [
+            'available' => $read->latestDate() !== null,
+            'date' => $read->latestDate(),
+            'counts' => $read->counts(null, 'demo'),
+            'color' => in_array($request->query('health'), ['red', 'yellow', 'grey', 'green', 'off'], true) ? $request->query('health') : null,
+            'totals' => Cache::remember('billing_demo_totals', 300, fn () => [
+                'all' => $this->repository->demo([])->total(),
+                'disconnected' => $this->repository->demo(['status' => '0'])->total(),
+            ]),
+        ];
 
         if ($request->ajax()) {
             return view('admin.partials.organizations_v2', [
@@ -90,7 +108,7 @@ class OrganizationV2Controller extends Controller
             ])->render();
         }
 
-        return view('v2.organizations_v2.demo', compact('organizations', 'partners', 'countries', 'healthByClient'));
+        return view('v2.organizations_v2.demo', compact('organizations', 'partners', 'countries', 'healthByClient', 'health'));
     }
 
     public function store(Client $client, StoreRequest $request): RedirectResponse
@@ -135,14 +153,17 @@ class OrganizationV2Controller extends Controller
                 ->get();
         }
 
+        $tx = request('tx');
         $balanceOperations = ClientBalance::query()
             ->where('organization_id', (int) $organization->id)
             ->with('currency:id,name,symbol_code')
+            ->when(in_array($tx, ['income', 'outcome'], true), fn ($q) => $q->where('type', $tx))
             ->orderByDesc('date')
             ->orderByDesc('id')
-            ->get();
+            ->paginate(100)
+            ->withQueryString();
 
-        $realBalance = $this->calculateRealBalance($organization, $balanceOperations);
+        $realBalance = $this->calculateRealBalance($organization);
 
         $integrationLogs = IntegrationActionLog::query()
             ->where(function ($query) use ($organization): void {
@@ -322,20 +343,17 @@ class OrganizationV2Controller extends Controller
         }
     }
 
-    private function calculateRealBalance(Organization $organization, Collection $operations): float
+    private function calculateRealBalance(Organization $organization): float
     {
+        $query = ClientBalance::query()->where('organization_id', (int) $organization->id);
         $targetCurrencyId = (int) ($organization->client?->country?->currency_id ?? 0);
 
-        $rows = $operations;
-        if ($targetCurrencyId > 0) {
-            $sameCurrencyRows = $operations->where('currency_id', $targetCurrencyId)->values();
-            if ($sameCurrencyRows->isNotEmpty()) {
-                $rows = $sameCurrencyRows;
-            }
+        if ($targetCurrencyId > 0 && (clone $query)->where('currency_id', $targetCurrencyId)->exists()) {
+            $query->where('currency_id', $targetCurrencyId);
         }
 
-        $income = (float) $rows->where('type', 'income')->sum('sum');
-        $outcome = (float) $rows->where('type', 'outcome')->sum('sum');
+        $income = (float) (clone $query)->where('type', 'income')->sum('sum');
+        $outcome = (float) (clone $query)->where('type', 'outcome')->sum('sum');
 
         return round($income - $outcome, 4);
     }
