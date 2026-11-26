@@ -166,6 +166,12 @@ Route::post('client-payment/webhook/octo', [\App\Http\Controllers\ClientPaymentC
 Route::post('click/advanced-shop', \App\Http\Controllers\API\ClickAdvancedShopController::class)
     ->middleware('click.token')
     ->name('click.advanced-shop');
+Route::post('click/invoice', \App\Http\Controllers\API\ClickInvoiceController::class)
+    ->middleware('crm.token')
+    ->name('click.invoice.create');
+Route::get('click/balance-checkout/{orderNumber}', \App\Http\Controllers\API\ClickBalanceCheckoutController::class)
+    ->middleware('crm.token')
+    ->name('click.balance-checkout');
 
 Route::post('payme/merchant', \App\Http\Controllers\API\PaymeMerchantController::class)
     ->middleware(\App\Http\Middleware\CheckPaymeAuth::class)
