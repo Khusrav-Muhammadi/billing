@@ -838,6 +838,7 @@
     </div>
 
     <!-- TARIFF SECTION -->
+    @if(empty($servicesOnly))
     <div class="section-block">
         <div class="tariff-header">
             <div class="tariff-info">
@@ -888,6 +889,7 @@
         </table>
         @endif
     </div>
+    @endif
 
     <!-- ADDITIONAL USERS SECTION -->
     @if(isset($additional_users) && $additional_users['quantity'] > 0)
@@ -1161,10 +1163,12 @@
 
         <div class="total-section">
             <table class="total-table">
+                @if(empty($servicesOnly))
                 <tr>
                     <td>Тариф "{{ $tariff['name'] }}" за {{ $tariff['period_months'] }} мес.</td>
                     <td>{{ formatPrice($calculations['tariff_total']) }} {{ $currency }}</td>
                 </tr>
+                @endif
                 @php
                     $hasSelectedDeepSales = false;
                     $deepSalesOriginalPrice = 0;

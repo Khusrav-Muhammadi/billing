@@ -128,6 +128,7 @@ class CommercialOfferController extends Controller
             'ai_items.*.current_month_amount' => 'nullable|numeric|min:0',
             'ai_items.*.balance_topup' => 'nullable|numeric|min:0',
 
+            'services_only' => 'nullable|boolean',
             'currency' => 'nullable|string|max:20', // сум, $, € и т.д.
             'validity_days' => 'nullable|integer|min:1|max:365',
             'hide_discounts' => 'nullable|boolean', // sham-new-back: без зачёркнутых цен и строк скидок
@@ -196,6 +197,7 @@ class CommercialOfferController extends Controller
         // Prepare view data
         $viewData = [
             'isPdf' => true,
+            'servicesOnly' => (bool) ($validated['services_only'] ?? false),
             'hideDiscounts' => (bool) ($validated['hide_discounts'] ?? false),
             'travelExpenses' => (float) ($validated['travel_expenses'] ?? 0),
             'client' => $validated['client_name'],
