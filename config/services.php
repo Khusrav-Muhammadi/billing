@@ -54,6 +54,9 @@ return [
     'click_advanced' => [
         'service_id' => env('CLICK_ADVANCED_SERVICE_ID'),
         'secret_key' => env('CLICK_ADVANCED_SECRET_KEY'),
+        'merchant_id' => env('CLICK_ADVANCED_MERCHANT_ID', 41042),
+        'merchant_user_id' => env('CLICK_ADVANCED_MERCHANT_USER_ID', 57129),
+        'return_url' => env('CLICK_ADVANCED_RETURN_URL'),
     ],
 
     'payme_merchant' => [
