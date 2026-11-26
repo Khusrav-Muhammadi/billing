@@ -169,7 +169,7 @@ class PaymeMerchantService
             return $this->amountError();
         }
 
-        return ['result' => ['allow' => true, 'additional' => ['amount' => $expected]]];
+        return ['result' => ['allow' => true, 'additional' => ['amount' => $expected, 'amount_raw' => -$expected]]];
     }
 
     private function create(array $params): array
