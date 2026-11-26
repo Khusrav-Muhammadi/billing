@@ -29,6 +29,7 @@ beforeEach(function () {
         $table->boolean('is_active')->default(false);
         $table->boolean('is_demo')->default(true);
         $table->unsignedBigInteger('partner_id')->nullable();
+        $table->timestamps();
     });
     Schema::create('organizations', function (Blueprint $table) {
         $table->id();
@@ -220,6 +221,7 @@ it('returns the fixed payable amount for a one-sum lookup but only creates a ful
     $this->postJson('/api/payme/merchant', $check)
         ->assertJsonPath('result.allow', true)
         ->assertJsonPath('result.additional.amount', 100000000)
+        ->assertJsonPath('result.additional.amount_raw', -100000000)
         ->assertJsonPath('id', 7);
 
     $check['params']['amount'] = 100000001;
@@ -386,7 +388,8 @@ it('quotes the latest unpaid uzs offer and ignores a newer offer in another curr
         'amount' => 100,
         'account' => ['order_number' => '000000042'],
     ]))->assertJsonPath('result.allow', true)
-        ->assertJsonPath('result.additional.amount', 250050);
+        ->assertJsonPath('result.additional.amount', 250050)
+        ->assertJsonPath('result.additional.amount_raw', -250050);
 
     $this->postJson('/api/payme/merchant', paymeRpc('CreateTransaction', [
         'id' => 'cccccccccccccccccccccccc',
