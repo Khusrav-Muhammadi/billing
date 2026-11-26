@@ -2,20 +2,24 @@
 
 namespace App\Services\Payment;
 
-use App\Models\ConnectedClientServices;
+use App\Models\CommercialOffer;
 use App\Models\Currency;
 use App\Models\Organization;
 use App\Models\PaymeBalanceTransaction;
+use App\Models\Payment;
+use App\Services\CommercialOffers\CommercialOfferPaymeSettlement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class PaymeMerchantService
 {
-    // фиксированная сумма пополнения, в UZS и в тийинах (1 UZS = 100 тийинов)
-    public const TOP_UP_UZS = 1000000;
-    public const TOP_UP_TIYIN = self::TOP_UP_UZS * 100;
+    // Проверочный запрос Payme «сколько к оплате»: 1 сум.
     public const AMOUNT_LOOKUP_TIYIN = 100;
+
+    public function __construct(private CommercialOfferPaymeSettlement $settlement)
+    {
+    }
 
     public function handle(string $method, array $params): array
     {
@@ -34,30 +38,110 @@ class PaymeMerchantService
                 'method' => $method,
                 'payme_id' => is_string($params['id'] ?? null) ? $params['id'] : null,
                 'exception' => $e::class,
+                'message' => $e->getMessage(),
             ]);
 
             return $this->error(-32400, 'Системная ошибка', 'System error', 'Tizim xatosi');
         }
     }
 
-    public function checkoutUrl(string $account): ?string
+    /**
+     * Ссылка и сумма для CRM: последнее неоплаченное КП организации в сумах.
+     *
+     * @return array{checkout_url: string, amount: int|float, amount_tiyin: int, commercial_offer_id: int}|array{error: string}
+     */
+    public function checkoutDetails(string $orderNumber): array
     {
-        if (!$this->organization($account)) {
-            return null;
+        $organization = $this->organization($orderNumber);
+        if (!$organization) {
+            return ['error' => 'organization'];
         }
 
+        $offer = $this->payableOffer($organization);
+        if (!$offer) {
+            return ['error' => 'offer'];
+        }
+
+        $tiyin = self::toTiyin((string) $offer->payable_total);
+
+        return [
+            'checkout_url' => $this->checkoutUrl((string) $organization->order_number, $tiyin),
+            'amount' => $tiyin % 100 === 0 ? intdiv($tiyin, 100) : round($tiyin / 100, 2),
+            'amount_tiyin' => $tiyin,
+            'commercial_offer_id' => (int) $offer->id,
+        ];
+    }
+
+    public function checkoutUrl(string $orderNumber, int $amountTiyin): string
+    {
+        $account = $this->normalizeOrderNumber($orderNumber);
         $merchantId = (string) config('services.payme_merchant.merchant_id');
         $checkoutBase = rtrim((string) config('services.payme_merchant.checkout_url'), '/');
 
-        if ($merchantId === '' || $checkoutBase === '') {
-            throw new \RuntimeException('Payme checkout is not configured');
+        if ($account === null || $amountTiyin <= 0 || $merchantId === '' || $checkoutBase === '') {
+            throw new \RuntimeException('Ссылка Payme временно недоступна.');
         }
 
         $params = 'm=' . rawurlencode($merchantId)
             . ';ac.order_number=' . rawurlencode($account)
-            . ';a=' . self::TOP_UP_TIYIN;
+            . ';a=' . $amountTiyin;
 
         return $checkoutBase . '/' . base64_encode($params);
+    }
+
+    public function acceptsOffer(CommercialOffer $offer): bool
+    {
+        $organization = Organization::query()->find($offer->organization_id);
+        if (!$organization) {
+            return false;
+        }
+
+        $payable = $this->payableOffer($organization);
+
+        return $payable !== null && (int) $payable->id === (int) $offer->id;
+    }
+
+    public static function toTiyin(string|int|float|null $amount): int
+    {
+        if (is_float($amount)) {
+            $normalized = number_format($amount, 4, '.', '');
+        } else {
+            $normalized = str_replace([' ', ','], ['', '.'], trim((string) $amount));
+        }
+
+        if ($normalized === '' || !preg_match('/^-?\d+(?:\.\d+)?$/', $normalized)) {
+            return 0;
+        }
+
+        $negative = str_starts_with($normalized, '-');
+        if ($negative) {
+            $normalized = substr($normalized, 1);
+        }
+
+        [$whole, $fraction] = array_pad(explode('.', $normalized, 2), 2, '');
+        $whole = ltrim($whole, '0');
+        if ($whole === '') {
+            $whole = '0';
+        }
+        if (strlen($whole) > 15) {
+            return 0;
+        }
+
+        $fraction = substr(str_pad($fraction, 3, '0'), 0, 3);
+        $tiyin = ((int) $whole * 100) + (int) substr($fraction, 0, 2);
+        if ((int) $fraction[2] >= 5) {
+            $tiyin++;
+        }
+
+        return $negative ? -$tiyin : $tiyin;
+    }
+
+    public static function tiyinToSum(int $tiyin): string
+    {
+        $sign = $tiyin < 0 ? '-' : '';
+        $tiyin = abs($tiyin);
+
+        return $sign . intdiv($tiyin, 100) . '.' . str_pad((string) ($tiyin % 100), 2, '0', STR_PAD_LEFT);
     }
 
     public function error(int $code, string $ru, string $en, string $uz, ?string $data = null): array
@@ -73,135 +157,141 @@ class PaymeMerchantService
 
     private function checkPerform(array $params): array
     {
-        $account = $this->account($params);
-
-        if ($account === null || !$this->organization($account)) {
-            return $this->accountError();
+        $resolved = $this->resolvePayable($params);
+        if (isset($resolved['error'])) {
+            return $resolved['error'];
         }
 
-        // Payme запрашивает сумму платежа проверочным запросом на 1 сум.
-        return in_array($params['amount'] ?? null, [self::AMOUNT_LOOKUP_TIYIN, self::TOP_UP_TIYIN], true)
-            ? ['result' => ['allow' => true, 'additional' => ['amount' => self::TOP_UP_UZS]]]
-            : $this->amountError();
+        $expected = self::toTiyin((string) $resolved['offer']->payable_total);
+        $amount = $this->amount($params);
+
+        if (!in_array($amount, [self::AMOUNT_LOOKUP_TIYIN, $expected], true)) {
+            return $this->amountError();
+        }
+
+        return ['result' => ['allow' => true, 'additional' => ['amount' => $expected]]];
     }
 
     private function create(array $params): array
     {
         $id = $this->paymeId($params);
-
         $time = $params['time'] ?? null;
+        $amount = $this->amount($params);
+        $account = $this->account($params);
 
-        if ($id === null || !is_int($time) || $time < 1000000000000 || $time > 9999999999999) {
+        if ($id === null || !is_int($time) || $time < 1000000000000 || $time > 9999999999999 || $amount === null) {
             return $this->invalidRequest();
         }
 
-        $account = $this->account($params);
-        $amount = $params['amount'] ?? null;
-        $existing = PaymeBalanceTransaction::query()->where('payme_id', $id)->first();
+        return DB::transaction(function () use ($params, $id, $time, $amount, $account): array {
+            $existing = PaymeBalanceTransaction::query()->where('payme_id', $id)->lockForUpdate()->first();
+            if ($existing) {
+                return $existing->payme_time === $time && $existing->account === $account
+                    && (int) $existing->amount_tiyin === $amount && (int) $existing->state === 1
+                        ? ['result' => $this->createdResult($existing)]
+                        : $this->stateError();
+            }
 
-        if ($existing) {
-            return $existing->payme_time === $time && $existing->account === $account
-                && $existing->amount_tiyin === $amount && $existing->state === 1
-                    ? ['result' => $this->createdResult($existing)]
-                    : $this->stateError();
-        }
+            $resolved = $this->resolvePayable($params);
+            if (isset($resolved['error'])) {
+                return $resolved['error'];
+            }
 
-        if ($account === null || !($organization = $this->organization($account))) {
-            return $this->accountError();
-        }
+            /** @var Organization $organization */
+            $organization = $resolved['organization'];
+            /** @var CommercialOffer $offer */
+            $offer = CommercialOffer::query()->whereKey($resolved['offer']->id)->lockForUpdate()->first();
+            $latest = $this->payableOffer($organization);
+            if (!$offer || !$latest || (int) $latest->id !== (int) $offer->id) {
+                return $this->unpaidOfferError();
+            }
 
-        if ($amount !== self::TOP_UP_TIYIN) {
-            return $this->amountError();
-        }
+            if ($amount !== self::toTiyin((string) $offer->payable_total)) {
+                return $this->amountError();
+            }
 
-        try {
+            $currencyId = $this->currencyId($organization);
+            if ($currencyId === null) {
+                return $this->error(-32400, 'Системная ошибка', 'System error', 'Tizim xatosi');
+            }
+
             $payment = PaymeBalanceTransaction::query()->create([
                 'payme_id' => $id,
                 'payme_time' => $time,
                 'organization_id' => $organization->id,
+                'commercial_offer_id' => $offer->id,
                 'account' => $account,
                 'amount_tiyin' => $amount,
-                'currency_id' => $organization->client->country->currency_id,
+                'currency_id' => $currencyId,
                 'state' => 1,
                 'create_time' => $this->milliseconds(),
             ]);
-        } catch (Throwable $e) {
 
-            $payment = PaymeBalanceTransaction::query()->where('payme_id', $id)->first();
-
-            if (!$payment) {
-                throw $e;
-            }
-
-            return $payment->payme_time === $time && $payment->account === $account
-                && $payment->amount_tiyin === $amount && $payment->state === 1
-                    ? ['result' => $this->createdResult($payment)]
-                    : $this->stateError();
-        }
-
-        return ['result' => $this->createdResult($payment)];
+            return ['result' => $this->createdResult($payment)];
+        }, 3);
     }
 
     private function perform(array $params): array
     {
         $id = $this->paymeId($params);
-
         if ($id === null) {
             return $this->invalidRequest();
         }
 
-        return DB::transaction(function () use ($id): array {
-            $payment = PaymeBalanceTransaction::query()->where('payme_id', $id)->lockForUpdate()->first();
+        $paidOffer = null;
+        $paidStatus = null;
 
+        $result = DB::transaction(function () use ($id, &$paidOffer, &$paidStatus): array {
+            $payment = PaymeBalanceTransaction::query()->where('payme_id', $id)->lockForUpdate()->first();
             if (!$payment) {
                 return $this->notFound();
             }
 
-            if ($payment->state === 2) {
+            if ((int) $payment->state === 2) {
                 return ['result' => $this->performedResult($payment)];
             }
 
-            if ($payment->state !== 1) {
+            if ((int) $payment->state !== 1) {
                 return $this->stateError();
             }
 
             if ($this->milliseconds() - $payment->payme_time >= 43200000) {
-                $payment->state = -1;
-                $payment->reason = 4;
-                $payment->cancel_time = $this->milliseconds();
-                $payment->save();
+                $this->cancelPending($payment, 4);
 
                 return $this->stateError();
             }
-            
-            if (!Organization::query()->whereKey($payment->organization_id)->exists()) {
-                return $this->accountError();
+
+            $offer = $payment->commercial_offer_id
+                ? CommercialOffer::query()->whereKey($payment->commercial_offer_id)->lockForUpdate()->first()
+                : null;
+
+            if (!$offer || !$this->canSettle($payment, $offer)) {
+                $this->cancelPending($payment, 3);
+
+                return $this->stateError();
             }
 
-            /* shortcut: Payme callbacks only record transaction states; restore balance crediting after sandbox approval.
-            $income = ClientBalance::query()->create([
-                'date' => now(),
-                'organization_id' => $payment->organization_id,
-                'sum' => $this->sum($payment->amount_tiyin),
-                'currency_id' => $payment->currency_id,
-                'type' => 'income',
-                'source' => PaymentType::PAYME,
-            ]);
-
-            $payment->income_balance_id = $income->id;
-            */
+            $status = $this->settlement->settle($offer, $payment);
             $payment->state = 2;
             $payment->perform_time = $this->milliseconds();
             $payment->save();
 
+            $paidOffer = $offer->fresh();
+            $paidStatus = $status->fresh();
+
             return ['result' => $this->performedResult($payment)];
         }, 3);
+
+        if ($paidOffer && $paidStatus) {
+            $this->settlement->notify($paidOffer, $paidStatus);
+        }
+
+        return $result;
     }
 
     private function cancel(array $params): array
     {
         $id = $this->paymeId($params);
-
         $reason = $params['reason'] ?? null;
 
         if ($id === null || !is_int($reason) || !in_array($reason, [1, 2, 3, 4, 5, 10], true)) {
@@ -209,41 +299,20 @@ class PaymeMerchantService
         }
 
         return DB::transaction(function () use ($id, $reason): array {
-
             $payment = PaymeBalanceTransaction::query()->where('payme_id', $id)->lockForUpdate()->first();
-
             if (!$payment) {
                 return $this->notFound();
             }
 
-            if ($payment->state < 0) {
+            if ((int) $payment->state < 0) {
                 return ['result' => $this->cancelledResult($payment)];
             }
 
-            if ($payment->state === 2) {
-                if ($payment->income_balance_id !== null) {
-                    return $this->stateError();
-                }
-
-                /* shortcut: Paid sandbox transactions only change Payme state; restore reversals with balance crediting.
-                $reversal = ClientBalance::query()->create([
-                    'date' => now(),
-                    'organization_id' => $payment->organization_id,
-                    'sum' => $this->sum($payment->amount_tiyin),
-                    'currency_id' => $payment->currency_id,
-                    'type' => 'outcome',
-                    'source' => PaymentType::PAYME,
-                ]);
-                $payment->reversal_balance_id = $reversal->id;
-                */
-                $payment->state = -2;
-            } else {
-                $payment->state = -1;
+            if ((int) $payment->state === 2) {
+                return $this->stateError();
             }
 
-            $payment->reason = $reason;
-            $payment->cancel_time = $this->milliseconds();
-            $payment->save();
+            $this->cancelPending($payment, $reason);
 
             return ['result' => $this->cancelledResult($payment)];
         }, 3);
@@ -264,7 +333,6 @@ class PaymeMerchantService
     private function statement(array $params): array
     {
         $from = $params['from'] ?? null;
-
         $to = $params['to'] ?? null;
 
         if (!is_int($from) || !is_int($to) || $from < 0 || $to < $from) {
@@ -287,40 +355,111 @@ class PaymeMerchantService
         return ['result' => ['transactions' => $transactions]];
     }
 
-    private function organization(string $account): ?Organization
+    /**
+     * Последнее сохранённое неоплаченное КП. Если оно не в сумах, Payme его не берёт.
+     */
+    private function payableOffer(Organization $organization): ?CommercialOffer
     {
-        $organization = Organization::query()->with('client.country')
-            ->where('order_number', $account)->first();
+        $offer = CommercialOffer::query()
+            ->where('organization_id', $organization->id)
+            ->whereNotNull('saved_at')
+            ->where('payable_total', '>', 0)
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhereNotIn('status', ['paid', 'canceled']);
+            })
+            ->whereDoesntHave('offerStatuses', fn ($query) => $query->where('status', 'paid'))
+            ->where(function ($query) {
+                $query->whereNull('payment_id')
+                    ->orWhereDoesntHave('payment', fn ($query) => $query->whereNotNull('paid_at'));
+            })
+            ->orderByDesc('id')
+            ->first();
 
-        $currencyId = Currency::query()->where('symbol_code', 'UZS')->value('id');
-
-        if (!$organization || $organization->order_number !== $account || !$currencyId
-            || (int) ($organization->client?->country?->currency_id ?? 0) !== (int) $currencyId) {
+        if (!$offer || strtoupper((string) $offer->payable_currency) !== 'UZS') {
             return null;
         }
 
-        $hasTariff = ConnectedClientServices::query()
-            ->where('client_id', $organization->id)
-            ->where('status', true)
-            ->whereNull('deactivated_at')
-            ->whereDate('date', '<=', now()->toDateString())
-            ->whereHas('tariff', fn ($query) => $query
-                ->where('is_tariff', true)
-                ->where('is_extra_user', false)
-                ->where('is_external', false))
-            ->where(function ($query) use ($currencyId) {
-                $query->where('offer_currency_id', $currencyId)
-                    ->orWhere(function ($query) use ($currencyId) {
-                        $query->whereNull('offer_currency_id')
-                            ->where(function ($query) use ($currencyId) {
-                                $query->where('payable_currency_id', $currencyId)
-                                    ->orWhereNull('payable_currency_id');
-                            });
-                    });
-            })
-            ->exists();
+        return self::toTiyin((string) $offer->payable_total) > 0 ? $offer : null;
+    }
 
-        return $hasTariff ? $organization : null;
+    /**
+     * @return array{organization: Organization, offer: CommercialOffer}|array{error: array}
+     */
+    private function resolvePayable(array $params): array
+    {
+        $account = $this->account($params);
+        if ($account === null) {
+            return ['error' => $this->accountError()];
+        }
+
+        $organization = $this->organization($account);
+        if (!$organization) {
+            return ['error' => $this->accountError()];
+        }
+
+        $offer = $this->payableOffer($organization);
+        if (!$offer) {
+            return ['error' => $this->unpaidOfferError()];
+        }
+
+        return ['organization' => $organization, 'offer' => $offer];
+    }
+
+    private function canSettle(PaymeBalanceTransaction $payment, ?CommercialOffer $offer): bool
+    {
+        if (!$offer || !$payment->commercial_offer_id) {
+            return false;
+        }
+
+        if ((int) $offer->id !== (int) $payment->commercial_offer_id
+            || (int) $offer->organization_id !== (int) $payment->organization_id
+            || $offer->saved_at === null
+            || in_array((string) $offer->status, ['paid', 'canceled'], true)
+            || strtoupper((string) $offer->payable_currency) !== 'UZS'
+            || $this->isPaid($offer)) {
+            return false;
+        }
+
+        return self::toTiyin((string) $offer->payable_total) === (int) $payment->amount_tiyin
+            && (int) $payment->amount_tiyin > 0;
+    }
+
+    private function isPaid(CommercialOffer $offer): bool
+    {
+        if ((string) $offer->status === 'paid') {
+            return true;
+        }
+
+        if ($offer->offerStatuses()->where('status', 'paid')->exists()) {
+            return true;
+        }
+
+        return $offer->payment_id
+            && Payment::query()->whereKey($offer->payment_id)->whereNotNull('paid_at')->exists();
+    }
+
+    private function organization(string $account): ?Organization
+    {
+        $orderNumber = $this->normalizeOrderNumber($account);
+        if ($orderNumber === null) {
+            return null;
+        }
+
+        return Organization::query()
+            ->with('client.country')
+            ->where('order_number', $orderNumber)
+            ->first();
+    }
+
+    private function normalizeOrderNumber(string $value): ?string
+    {
+        $value = trim($value);
+        if (!preg_match('/^\d{9}$/', $value)) {
+            return null;
+        }
+
+        return $value;
     }
 
     private function account(array $params): ?string
@@ -328,14 +467,48 @@ class PaymeMerchantService
         $account = $params['account'] ?? null;
         $value = is_array($account) ? ($account['order_number'] ?? null) : null;
 
-        return is_string($value) && $value !== '' ? $value : null;
+        return is_string($value) ? $this->normalizeOrderNumber($value) : null;
+    }
+
+    private function amount(array $params): ?int
+    {
+        $amount = $params['amount'] ?? null;
+        if (is_int($amount)) {
+            return $amount;
+        }
+
+        if (is_string($amount) && preg_match('/^\d+$/', $amount)) {
+            return (int) $amount;
+        }
+
+        return null;
+    }
+
+    private function currencyId(Organization $organization): ?int
+    {
+        $currencyId = (int) ($organization->client?->country?->currency_id ?? 0);
+        if ($currencyId > 0) {
+            return $currencyId;
+        }
+
+        $uzs = Currency::query()->where('symbol_code', 'UZS')->value('id');
+
+        return $uzs ? (int) $uzs : null;
     }
 
     private function paymeId(array $params): ?string
     {
         $id = $params['id'] ?? null;
 
-        return is_string($id) ? $id : null;
+        return is_string($id) && $id !== '' ? $id : null;
+    }
+
+    private function cancelPending(PaymeBalanceTransaction $payment, int $reason): void
+    {
+        $payment->state = -1;
+        $payment->reason = $reason;
+        $payment->cancel_time = $this->milliseconds();
+        $payment->save();
     }
 
     private function createdResult(PaymeBalanceTransaction $payment): array
@@ -365,11 +538,6 @@ class PaymeMerchantService
         ];
     }
 
-    private function sum(int $tiyin): string
-    {
-        return intdiv($tiyin, 100) . '.' . str_pad((string) ($tiyin % 100), 2, '0', STR_PAD_LEFT);
-    }
-
     private function milliseconds(): int
     {
         return (int) floor(microtime(true) * 1000);
@@ -378,6 +546,17 @@ class PaymeMerchantService
     private function accountError(): array
     {
         return $this->error(-31050, 'Организация не найдена', 'Organization not found', 'Tashkilot topilmadi', 'order_number');
+    }
+
+    private function unpaidOfferError(): array
+    {
+        return $this->error(
+            -31050,
+            'Нет неоплаченного подключения в сумах',
+            'No unpaid connection in UZS',
+            "So'mda to'lanmagan ulanish yo'q",
+            'order_number'
+        );
     }
 
     private function amountError(): array

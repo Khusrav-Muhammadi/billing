@@ -1443,7 +1443,7 @@ class CPGenerator {
         });
 
         if (this.state.isPaid) {
-            ['payByCardBtn', 'payByInvoiceBtn', 'payByCashBtn'].forEach((id) => {
+            ['payByCardBtn', 'payByPaymeBtn', 'payByInvoiceBtn', 'payByCashBtn'].forEach((id) => {
                 const btn = document.getElementById(id);
                 if (btn && 'disabled' in btn) {
                     btn.disabled = true;
@@ -2012,6 +2012,12 @@ class CPGenerator {
             if (!button) return;
             button.style.display = allowedMethods.includes(method) ? '' : 'none';
         });
+
+        const paymeButton = document.getElementById('payByPaymeBtn');
+        if (paymeButton) {
+            const showPayme = allowedMethods.includes('card') && this.resolvePaymentCurrencyCode() === 'UZS';
+            paymeButton.style.display = showPayme ? '' : 'none';
+        }
     }
 
     getPartnerTariffPercent() {
@@ -4399,6 +4405,13 @@ class CPGenerator {
             payByCardBtn.addEventListener('click', () => {
                 const paymentType = this.getPaymentTypeForCard(); // alif or octo
                 this.submitPayment(paymentType);
+            });
+        }
+
+        const payByPaymeBtn = document.getElementById('payByPaymeBtn');
+        if (payByPaymeBtn) {
+            payByPaymeBtn.addEventListener('click', () => {
+                this.submitPayment('payme');
             });
         }
 

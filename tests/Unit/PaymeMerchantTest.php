@@ -1,7 +1,9 @@
 <?php
 
+use App\Events\CommercialOfferPaidStatusEvent;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -24,6 +26,9 @@ beforeEach(function () {
     Schema::create('clients', function (Blueprint $table) {
         $table->id();
         $table->unsignedBigInteger('country_id');
+        $table->boolean('is_active')->default(false);
+        $table->boolean('is_demo')->default(true);
+        $table->unsignedBigInteger('partner_id')->nullable();
     });
     Schema::create('organizations', function (Blueprint $table) {
         $table->id();
@@ -57,7 +62,54 @@ beforeEach(function () {
         $table->string('source')->nullable();
         $table->timestamps();
     });
+    Schema::create('commercial_offers', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('organization_id')->nullable();
+        $table->unsignedBigInteger('partner_id')->nullable();
+        $table->unsignedBigInteger('payment_id')->nullable();
+        $table->string('status')->nullable();
+        $table->string('request_type')->nullable();
+        $table->timestamp('saved_at')->nullable();
+        $table->date('status_date')->nullable();
+        $table->string('payable_currency')->nullable();
+        $table->decimal('payable_total', 20, 4)->default(0);
+        $table->string('client_name')->nullable();
+        $table->string('client_phone')->nullable();
+        $table->string('client_email')->nullable();
+        $table->timestamps();
+    });
+    Schema::create('commercial_offer_statuses', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('commercial_offer_id');
+        $table->string('status');
+        $table->date('status_date')->nullable();
+        $table->string('payment_method')->nullable();
+        $table->unsignedBigInteger('account_id')->nullable();
+        $table->string('payment_order_number')->nullable();
+        $table->unsignedBigInteger('author_id')->nullable();
+        $table->timestamps();
+    });
+    Schema::create('payments', function (Blueprint $table) {
+        $table->id();
+        $table->string('name');
+        $table->string('phone');
+        $table->string('email');
+        $table->decimal('sum', 20, 4);
+        $table->string('payment_type');
+        $table->string('transaction_id')->nullable();
+        $table->string('provider_status')->nullable();
+        $table->timestamp('paid_at')->nullable();
+        $table->timestamps();
+    });
+    Schema::create('payment_items', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('payment_id');
+        $table->string('service_name');
+        $table->decimal('price', 20, 4);
+        $table->timestamps();
+    });
     (require base_path('database/migrations/2026_11_03_000000_create_payme_balance_transactions_table.php'))->up();
+    (require base_path('database/migrations/2026_11_26_120000_add_offer_to_payme_balance_transactions.php'))->up();
 
     DB::table('currencies')->insert([['id' => 1, 'symbol_code' => 'UZS'], ['id' => 2, 'symbol_code' => 'USD']]);
     DB::table('countries')->insert([['id' => 1, 'currency_id' => 1], ['id' => 2, 'currency_id' => 2]]);
@@ -71,6 +123,21 @@ beforeEach(function () {
         ['client_id' => 42, 'tariff_id' => 1, 'status' => true, 'date' => now()->subDay(), 'offer_currency_id' => 1],
         ['client_id' => 43, 'tariff_id' => 1, 'status' => true, 'date' => now()->subDay(), 'offer_currency_id' => 2],
     ]);
+    DB::table('commercial_offers')->insert([
+        'id' => 7,
+        'organization_id' => 42,
+        'status' => 'draft',
+        'request_type' => 'connection',
+        'saved_at' => now(),
+        'payable_currency' => 'UZS',
+        'payable_total' => 1000000,
+        'client_name' => 'Пример',
+        'client_phone' => '998901112233',
+        'client_email' => 'client@example.com',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    Event::fake([CommercialOfferPaidStatusEvent::class]);
 
     config()->set('services.payme_merchant.login', 'Paycom');
     config()->set('services.payme_merchant.key', 'test-key');
@@ -160,6 +227,10 @@ it('returns the fixed payable amount for a one-sum lookup but only creates a ful
     $check['params']['amount'] = 100;
     $check['params']['account']['order_number'] = '42';
     $this->postJson('/api/payme/merchant', $check)
+        ->assertJsonPath('error.code', -31050)
+        ->assertJsonPath('error.data', 'order_number');
+    $check['params']['account']['order_number'] = '000000099';
+    $this->postJson('/api/payme/merchant', $check)
         ->assertJsonPath('error.code', -31050)->assertJsonPath('error.data', 'order_number');
     $check['params']['account']['order_number'] = '000000043';
     $this->postJson('/api/payme/merchant', $check)->assertJsonPath('error.code', -31050);
@@ -199,7 +270,11 @@ it('creates and performs once, then reports the same transaction on retries and 
         ->assertJsonPath('result.transactions.0.amount', 100000000)
         ->assertJsonPath('result.transactions.0.state', 2);
     expect(DB::table('client_balances')->count())->toBe(0)
-        ->and(DB::table('payme_balance_transactions')->value('income_balance_id'))->toBeNull();
+        ->and(DB::table('payme_balance_transactions')->value('income_balance_id'))->toBeNull()
+        ->and(DB::table('commercial_offers')->value('status'))->toBe('paid')
+        ->and(DB::table('payments')->whereNotNull('paid_at')->count())->toBe(1)
+        ->and((int) DB::table('clients')->where('id', 1)->value('is_demo'))->toBe(0);
+    Event::assertDispatchedTimes(CommercialOfferPaidStatusEvent::class, 1);
 });
 
 it('allows two pending payments for one cumulative account and sorts the statement by Payme time', function () {
@@ -213,30 +288,30 @@ it('allows two pending payments for one cumulative account and sorts the stateme
     $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $later['params']['id']]))
         ->assertJsonPath('result.state', 2);
     $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $earlier['params']['id']]))
-        ->assertJsonPath('result.state', 2);
+        ->assertJsonPath('error.code', -31008);
 
     $this->postJson('/api/payme/merchant', paymeRpc('GetStatement', ['from' => $time, 'to' => $time + 1]))
         ->assertJsonCount(2, 'result.transactions')
         ->assertJsonPath('result.transactions.0.id', $earlier['params']['id'])
-        ->assertJsonPath('result.transactions.1.id', $later['params']['id']);
-    expect(DB::table('client_balances')->count())->toBe(0);
+        ->assertJsonPath('result.transactions.0.state', -1)
+        ->assertJsonPath('result.transactions.1.id', $later['params']['id'])
+        ->assertJsonPath('result.transactions.1.state', 2);
+    expect(DB::table('commercial_offer_statuses')->where('status', 'paid')->count())->toBe(1)
+        ->and(DB::table('client_balances')->count())->toBe(0);
 });
 
-it('cancels a paid transaction without changing the balance and preserves the original cancellation', function () {
+it('refuses cancellation after the connection is paid', function () {
     $create = paymeCreate();
     $this->postJson('/api/payme/merchant', $create)->assertJsonPath('result.state', 1);
     $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $create['params']['id']]))
         ->assertJsonPath('result.state', 2);
 
-    $cancel = paymeRpc('CancelTransaction', ['id' => $create['params']['id'], 'reason' => 5]);
-    $cancelled = $this->postJson('/api/payme/merchant', $cancel)
-        ->assertJsonPath('result.state', -2)->json('result');
-    $this->postJson('/api/payme/merchant', $cancel)->assertJsonPath('result', $cancelled);
-    $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $create['params']['id']]))
+    $this->postJson('/api/payme/merchant', paymeRpc('CancelTransaction', ['id' => $create['params']['id'], 'reason' => 5]))
         ->assertJsonPath('error.code', -31008);
-    expect(DB::table('client_balances')->count())->toBe(0)
-        ->and(DB::table('payme_balance_transactions')->value('reversal_balance_id'))->toBeNull()
-        ->and(DB::table('payme_balance_transactions')->value('reason'))->toBe(5);
+    expect(DB::table('payme_balance_transactions')->value('state'))->toBe(2)
+        ->and(DB::table('commercial_offers')->value('status'))->toBe('paid')
+        ->and(DB::table('payme_balance_transactions')->value('reason'))->toBeNull()
+        ->and(DB::table('client_balances')->count())->toBe(0);
 });
 
 it('cancels a pending transaction and rejects a late Perform without a balance entry', function () {
@@ -302,4 +377,50 @@ it('logs the Payme request and response without Basic credentials', function () 
             && $context['response']['result']['allow'] === true
             && !str_contains(json_encode($context), 'test-key')
     ));
+});
+
+it('quotes the latest unpaid uzs offer and ignores a newer offer in another currency', function () {
+    DB::table('commercial_offers')->where('id', 7)->update(['payable_total' => 2500.5]);
+
+    $this->postJson('/api/payme/merchant', paymeRpc('CheckPerformTransaction', [
+        'amount' => 100,
+        'account' => ['order_number' => '000000042'],
+    ]))->assertJsonPath('result.allow', true)
+        ->assertJsonPath('result.additional.amount', 250050);
+
+    $this->postJson('/api/payme/merchant', paymeRpc('CreateTransaction', [
+        'id' => 'cccccccccccccccccccccccc',
+        'time' => (int) floor(microtime(true) * 1000),
+        'amount' => 100000000,
+        'account' => ['order_number' => '000000042'],
+    ]))->assertJsonPath('error.code', -31001);
+
+    DB::table('commercial_offers')->insert([
+        'id' => 8,
+        'organization_id' => 42,
+        'status' => 'draft',
+        'request_type' => 'renewal',
+        'saved_at' => now(),
+        'payable_currency' => 'USD',
+        'payable_total' => 10,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->postJson('/api/payme/merchant', paymeRpc('CheckPerformTransaction', [
+        'amount' => 100,
+        'account' => ['order_number' => '000000042'],
+    ]))->assertJsonPath('error.code', -31050);
+});
+
+it('does not perform when the offer amount changed or it was already paid', function () {
+    $create = paymeCreate();
+    $this->postJson('/api/payme/merchant', $create)->assertJsonPath('result.state', 1);
+    DB::table('commercial_offers')->where('id', 7)->update(['payable_total' => 10]);
+
+    $this->postJson('/api/payme/merchant', paymeRpc('PerformTransaction', ['id' => $create['params']['id']]))
+        ->assertJsonPath('error.code', -31008);
+    expect(DB::table('commercial_offers')->where('id', 7)->value('status'))->toBe('draft')
+        ->and((int) DB::table('payme_balance_transactions')->value('state'))->toBe(-1)
+        ->and(DB::table('payments')->count())->toBe(0);
 });

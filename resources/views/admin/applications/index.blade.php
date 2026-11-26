@@ -137,12 +137,14 @@
                         $rawPaymentType = strtolower((string) optional($offer->payment)->payment_type);
                         $paymentTypeCode = match ($rawPaymentType) {
                             'alif', 'octo' => 'card',
+                            'payme' => 'payme',
                             'invoice' => 'invoice',
                             'cash' => 'cash',
                             default => (string) ($offer->latestOfferStatus?->payment_method ?? ''),
                         };
                         $paymentTypeLabel = match ($paymentTypeCode) {
                             'card' => 'Карта',
+                            'payme' => 'Payme',
                             'invoice' => 'Счет',
                             'cash' => 'Наличка',
                             default => '—',
@@ -273,6 +275,7 @@
                 $rawPaymentType = strtolower((string) optional($offer->payment)->payment_type);
                 $paymentTypeCode = match ($rawPaymentType) {
                     'alif', 'octo' => 'card',
+                    'payme' => 'payme',
                     'invoice' => 'invoice',
                     'cash' => 'cash',
                     default => (string) ($offer->latestOfferStatus?->payment_method ?? ''),
@@ -313,6 +316,7 @@
                                             };
                                             $methodLabel = match ((string) $statusRow->payment_method) {
                                                 'card' => 'Карта',
+                                                'payme' => 'Payme',
                                                 'invoice' => 'Счет',
                                                 'cash' => 'Наличка',
                                                 default => (string) $statusRow->payment_method,

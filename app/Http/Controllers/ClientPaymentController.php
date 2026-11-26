@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\ClientPaymentInvoiceEmailService;
 use App\Services\Mailing\BrevoMailService;
 use App\Services\Payment\InvoicePaymentItemPresenter;
+use App\Services\Payment\PaymeMerchantService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -248,6 +249,10 @@ class ClientPaymentController extends Controller
                 $data['sum'] = round((float) $commercialOffer->payable_total, 2);
             }
 
+            if (($data['payment_type'] ?? '') === 'payme') {
+                $this->assertPaymeOffer($commercialOffer);
+            }
+
             DB::beginTransaction();
 
             $organizationId = $data['organization_id'] ?? null;
@@ -421,6 +426,24 @@ class ClientPaymentController extends Controller
                 return $request->expectsJson()
                     ? response()->json(['redirect_url' => $checkoutUrl])
                     : redirect()->to($checkoutUrl);
+            }
+
+            if ($data['payment_type'] == 'payme') {
+                $checkoutUrl = $this->generatePaymePayLink($commercialOffer);
+                $this->lockCommercialOfferAfterPayment($commercialOffer, $payment, $checkoutUrl, null);
+
+                $verificationUrl = URL::temporarySignedRoute('payment.verification.show', now()->addDays(7), array_filter([
+                    'provider' => 'payme',
+                    'payment' => $payment->id,
+                    'return_url' => $this->trustedReturnUrl($request),
+                ]));
+
+                $this->sendPaymentVerificationLink($commercialOffer, $payment, 'payme', $verificationUrl);
+                $url = $this->trustedReturnUrl($request) ?: $this->partnersApplicationUrl();
+
+                return $request->expectsJson()
+                    ? response()->json(['redirect_url' => $url])
+                    : redirect()->to($url);
             }
 
             return $request->expectsJson()
@@ -639,6 +662,37 @@ class ClientPaymentController extends Controller
         return $paymentPage . rawurlencode($invoiceId);
     }
 
+    private function assertPaymeOffer(?CommercialOffer $offer): void
+    {
+        if (!$offer) {
+            throw new \Exception('Сначала сохраните подключение, затем можно оплачивать через Payme.');
+        }
+
+        if (strtoupper((string) $offer->payable_currency) !== 'UZS') {
+            throw new \Exception('Payme принимает только оплату в сумах.');
+        }
+
+        if (!app(PaymeMerchantService::class)->acceptsOffer($offer)) {
+            throw new \Exception('Через Payme можно оплатить только последнее неоплаченное подключение в сумах.');
+        }
+    }
+
+    private function generatePaymePayLink(CommercialOffer $offer): string
+    {
+        $offer->loadMissing('organization');
+        $orderNumber = trim((string) ($offer->organization?->order_number ?? ''));
+        if (!preg_match('/^\d{9}$/', $orderNumber)) {
+            throw new \Exception('У организации некорректный ID для оплаты в Payme.');
+        }
+
+        $amountTiyin = PaymeMerchantService::toTiyin((string) $offer->payable_total);
+        if ($amountTiyin <= 0) {
+            throw new \Exception('В КП нет суммы к оплате. Пересохраните подключение.');
+        }
+
+        return app(PaymeMerchantService::class)->checkoutUrl($orderNumber, $amountTiyin);
+    }
+
     /**
      * Сумма и позиции оплаты должны совпадать с итогом КП (payable_total). Генератор считает их одинаково,
      * поэтому расхождение больше копеек — это подмена в запросе.
@@ -800,7 +854,11 @@ class ClientPaymentController extends Controller
                     'recipientName' => $recipientName,
                     'payment' => $payment,
                     'offer' => $offer,
-                    'providerLabel' => $provider === 'alif' ? 'Alif' : 'Octo Bank',
+                    'providerLabel' => match ($provider) {
+                        'alif' => 'Alif',
+                        'payme' => 'Payme',
+                        default => 'Octo Bank',
+                    },
                     'checkoutUrl' => $verificationUrl,
                     'currency' => strtoupper((string)($offer->payable_currency ?: $offer->currency ?: '')),
                 ],

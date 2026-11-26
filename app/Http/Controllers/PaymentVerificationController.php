@@ -14,7 +14,7 @@ class PaymentVerificationController extends Controller
     {
         $provider = strtolower(trim($provider));
 
-        if (!in_array($provider, ['alif', 'octo'], true)) {
+        if (!in_array($provider, ['alif', 'octo', 'payme'], true)) {
             abort(404);
         }
 
@@ -43,7 +43,11 @@ class PaymentVerificationController extends Controller
 
         return view('public.payment-verification', [
             'provider' => $provider,
-            'providerLabel' => $provider === 'alif' ? 'Alif' : 'Octo Bank',
+            'providerLabel' => match ($provider) {
+                'alif' => 'Alif',
+                'payme' => 'Payme',
+                default => 'Octo Bank',
+            },
             'payment' => $payment,
             'offer' => $offer,
             'items' => $items,
@@ -55,7 +59,7 @@ class PaymentVerificationController extends Controller
     {
         $provider = strtolower(trim($provider));
 
-        if (!in_array($provider, ['alif', 'octo'], true)) {
+        if (!in_array($provider, ['alif', 'octo', 'payme'], true)) {
             abort(404);
         }
 
@@ -100,13 +104,14 @@ class PaymentVerificationController extends Controller
         $provider = $this->providerFromPayment($payment);
         $offer = $this->offerForPayment($payment);
         $items = $payment->paymentItems()->get(['service_name', 'price']);
-        $canPay = in_array($provider, ['alif', 'octo'], true)
+        $canPay = in_array($provider, ['alif', 'octo', 'payme'], true)
             && trim((string) ($offer?->payment_link ?? '')) !== '';
 
         return view('public.payment-verification', [
             'provider' => $provider,
             'providerLabel' => match ($provider) {
                 'alif' => 'Alif',
+                'payme' => 'Payme',
                 'octo' => 'Visa',
                 default => 'Счет',
             },
@@ -121,7 +126,7 @@ class PaymentVerificationController extends Controller
     public function publicGo(Request $request, Payment $payment)
     {
         $provider = $this->providerFromPayment($payment);
-        if (!in_array($provider, ['alif', 'octo'], true)) {
+        if (!in_array($provider, ['alif', 'octo', 'payme'], true)) {
             abort(404);
         }
 
@@ -146,6 +151,7 @@ class PaymentVerificationController extends Controller
     {
         return match (strtolower(trim((string) $payment->payment_type))) {
             'alif' => 'alif',
+            'payme' => 'payme',
             'visa', 'octo' => 'octo',
             default => 'invoice',
         };
