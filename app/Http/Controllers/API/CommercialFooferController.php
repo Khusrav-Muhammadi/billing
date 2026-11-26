@@ -276,7 +276,12 @@ class CommercialFooferController extends Controller
             if (!\App\Support\ClientAccess::isAdmin(Auth::user())) {
                 $this->applyCurrentUserOrganizationScope($organizationQuery);
             }
-            $organization = $organizationQuery->findOrFail($organizationId);
+            $organization = $organizationQuery->find($organizationId);
+            if (!$organization) {
+                throw ValidationException::withMessages([
+                    'organization_id' => 'Эта организация закреплена за другим партнёром.',
+                ]);
+            }
 
             if ($offerId) {
                 $offer = $this->ownedOffersQuery()->lockForUpdate()->findOrFail($offerId);
@@ -781,8 +786,12 @@ class CommercialFooferController extends Controller
         if ($role === 'partner') {
             $query->where(function (Builder $orgScope) use ($userId) {
                 $orgScope
+                    // Свой клиент или свободный (без партнёра): партнёр находит его по номеру заказа
+                    // и оформляет подключение. Чужих клиентов по-прежнему не даём.
                     ->whereHas('client', function (Builder $clientQuery) use ($userId) {
-                        $clientQuery->where('partner_id', $userId);
+                        $clientQuery->where(function (Builder $owner) use ($userId) {
+                            $owner->where('partner_id', $userId)->orWhereNull('partner_id');
+                        });
                     })
                     ->orWhereExists(function ($subQuery) use ($userId) {
                         $subQuery->selectRaw('1')
