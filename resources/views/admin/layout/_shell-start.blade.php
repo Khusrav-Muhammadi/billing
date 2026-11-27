@@ -7,6 +7,7 @@
         ['route' => 'sub_domain.index', 'match' => 'sub_domain.*', 'icon' => 'server', 'label' => 'Поддомены'],
         ['route' => 'organization_v2.index', 'match' => ['organization_v2.index', 'organization_v2.show', 'organization_v2.edit'], 'icon' => 'users', 'label' => 'Клиенты'],
         ['route' => 'client-health.index', 'match' => 'client-health.*', 'icon' => 'heart', 'label' => 'Здоровье клиентов'],
+        ['route' => 'client-activity.index', 'match' => 'client-activity.*', 'icon' => 'pulse', 'label' => 'Активность'],
         ['route' => 'ai-subscription.index', 'match' => 'ai-subscription.*', 'icon' => 'robot', 'label' => 'ИИ-клиенты'],
         ['route' => 'organization_v2.demo', 'match' => 'organization_v2.demo', 'icon' => 'clock', 'label' => 'Демо'],
         ['route' => 'site-application.index', 'match' => 'site-application.*', 'icon' => 'globe', 'label' => 'Запросы с сайта'],

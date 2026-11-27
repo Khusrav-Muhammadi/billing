@@ -47,6 +47,7 @@
         'calendar-check' => '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M8 3.5V7M16 3.5V7M3.5 10h17M8.5 15l2 2 4-4"/>',
         'cpu' => '<rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 3.5v2.5M12 3.5v2.5M15 3.5v2.5M9 18v2.5M12 18v2.5M15 18v2.5M3.5 9H6M3.5 12H6M3.5 15H6M18 9h2.5M18 12h2.5M18 15h2.5"/>',
         'heart' => '<path d="M12 19s-7-4.4-7-8.5A3.5 3.5 0 0112 8a3.5 3.5 0 017 2.5C19 14.6 12 19 12 19z"/>',
+        'pulse' => '<path d="M3 12h4l2.2-5.5L13 18l2.2-6H21"/>',
         'user' => '<circle cx="12" cy="8" r="3.5"/><path d="M5 19.5a7 7 0 0114 0"/>',
     ];
 @endphp

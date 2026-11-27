@@ -149,6 +149,34 @@ class ClientHealthReadService
             ->withQueryString();
     }
 
+    /**
+     * Доля работающих клиентов по дням ночного расчёта.
+     * Работают — зелёные и жёлтые. 100% — все клиенты, у которых в этот день есть снимок.
+     *
+     * @return list<array{date: string, total: int, working: int, percent: float, delta: ?float, direction: ?string, colors: array{red: int, yellow: int, grey: int, green: int}}>
+     */
+    public function activitySeries(?string $type, int $days): array
+    {
+        $days = max(1, min(120, $days));
+        $from = now()->startOfDay()->subDays($days - 1)->toDateString();
+
+        $rows = ClientHealthSnapshot::query()
+            ->when($type, fn ($q) => $q->where('client_type', $type))
+            ->where('date', '>=', $from)
+            ->select('date', 'color')
+            ->selectRaw('COUNT(*) as clients')
+            ->groupBy('date', 'color')
+            ->orderBy('date')
+            ->toBase()
+            ->get();
+
+        return (new ClientActivitySummary())->series($rows->map(fn ($row) => [
+            'date' => substr((string) $row->date, 0, 10),
+            'color' => (string) $row->color,
+            'count' => (int) $row->clients,
+        ]));
+    }
+
     public function history(Client $client, int $days = 60): Collection
     {
         return ClientHealthSnapshot::query()

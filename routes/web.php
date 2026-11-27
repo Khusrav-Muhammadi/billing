@@ -155,6 +155,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         Route::get('/{client}', [\App\Http\Controllers\Admin\ClientHealthController::class, 'show'])->whereNumber('client')->name('client-health.show');
     });
 
+    Route::get('client-activity', [\App\Http\Controllers\Admin\ClientActivityController::class, 'index'])->name('client-activity.index');
+
     Route::group(['prefix' => 'application'], function () {
         Route::get('/', [ApplicationController::class, 'index'])->name('application.index');
         Route::get('/export/excel', [ApplicationController::class, 'exportPaidExcel'])->name('application.export.excel');
