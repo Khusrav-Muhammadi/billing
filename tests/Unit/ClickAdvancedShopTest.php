@@ -4,6 +4,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -30,6 +31,7 @@ beforeEach(function () {
         $table->string('name');
         $table->string('legal_name')->nullable();
         $table->string('INN')->nullable();
+        $table->string('phone')->nullable();
         $table->string('order_number', 9)->nullable();
         $table->unsignedBigInteger('client_id');
     });
@@ -75,9 +77,9 @@ beforeEach(function () {
         ['id' => 2, 'country_id' => 2],
     ]);
     DB::table('organizations')->insert([
-        ['id' => 42, 'name' => 'Пример', 'legal_name' => 'ООО «Пример»', 'INN' => '123456789', 'order_number' => '000000042', 'client_id' => 1],
-        ['id' => 43, 'name' => 'Организация 43', 'legal_name' => null, 'INN' => null, 'order_number' => null, 'client_id' => 1],
-        ['id' => 44, 'name' => 'Организация 44', 'legal_name' => null, 'INN' => null, 'order_number' => '000000044', 'client_id' => 2],
+        ['id' => 42, 'name' => 'Пример', 'legal_name' => 'ООО «Пример»', 'INN' => '123456789', 'phone' => '+998 90 123 45 67', 'order_number' => '000000042', 'client_id' => 1],
+        ['id' => 43, 'name' => 'Организация 43', 'legal_name' => null, 'INN' => null, 'phone' => null, 'order_number' => null, 'client_id' => 1],
+        ['id' => 44, 'name' => 'Организация 44', 'legal_name' => null, 'INN' => null, 'phone' => null, 'order_number' => '000000044', 'client_id' => 2],
     ]);
     DB::table('tariffs')->insert(['id' => 1, 'is_tariff' => true, 'is_extra_user' => false, 'is_external' => false]);
     DB::table('connected_client_services')->insert([
@@ -88,6 +90,8 @@ beforeEach(function () {
 
     config()->set('services.click_advanced.service_id', '123');
     config()->set('services.click_advanced.secret_key', 'test-click-secret');
+    config()->set('services.click_advanced.merchant_id', '41042');
+    config()->set('services.click_advanced.merchant_user_id', '57129');
     config()->set('services.sham.crm_token', 'test-billing-crm-token');
     test()->withHeaders(['Authorization' => 'Basic ' . base64_encode('123:test-billing-crm-token')]);
 });
@@ -114,6 +118,88 @@ function clickAdvancedPayload(int $action, int $paydocId, int $attemptId, array 
 
     return $payload;
 }
+
+it('returns a CLICK payment link for the exact organization account', function () {
+    config()->set('services.click_advanced.return_url', 'https://crm.shamcrm.com/payment/result?source=click');
+
+    $this->getJson('/api/click/balance-checkout/000000042')->assertUnauthorized();
+
+    $result = $this->withHeaders(['X-Service-Token' => 'test-billing-crm-token'])
+        ->getJson('/api/click/balance-checkout/000000042')
+        ->assertOk()->assertJsonPath('account', '000000042')->assertJsonPath('amount', 1000000)
+        ->json();
+
+    $url = parse_url($result['checkout_url']);
+    parse_str($url['query'], $params);
+    expect($url['scheme'])->toBe('https')
+        ->and($url['host'])->toBe('my.click.uz')
+        ->and($url['path'])->toBe('/services/pay/')
+        ->and($params)->toBe([
+            'service_id' => '123',
+            'merchant_id' => '41042',
+            'amount' => '1000000.00',
+            'transaction_param' => '000000042',
+            'return_url' => 'https://crm.shamcrm.com/payment/result?source=click',
+        ]);
+
+    $this->getJson('/api/click/balance-checkout/42')->assertNotFound();
+
+    DB::table('organizations')->where('id', 42)->update(['order_number' => '17813530274434']);
+    config()->set('services.click_advanced.return_url', null);
+    $longAccountUrl = $this->getJson('/api/click/balance-checkout/17813530274434')
+        ->assertOk()->json('checkout_url');
+    parse_str(parse_url($longAccountUrl, PHP_URL_QUERY), $longAccountParams);
+    expect($longAccountParams['transaction_param'])->toBe('17813530274434')
+        ->and($longAccountParams)->not->toHaveKey('return_url');
+
+    config()->set('services.click_advanced.merchant_id', '');
+    $this->getJson('/api/click/balance-checkout/17813530274434')->assertServiceUnavailable();
+});
+
+it('creates a Click invoice for the organization phone using Merchant API Auth', function () {
+    Http::fake(['api.click.uz/*' => Http::response(['error_code' => 0, 'invoice_id' => 789], 200)]);
+
+    $this->withHeaders(['X-Service-Token' => ''])->postJson('/api/click/invoice', ['order_number' => '000000042'])
+        ->assertUnauthorized();
+    Http::assertNothingSent();
+
+    $result = $this->withHeaders(['X-Service-Token' => 'test-billing-crm-token'])
+        ->postJson('/api/click/invoice', ['order_number' => '000000042'])
+        ->assertCreated()->assertJsonPath('invoice_id', '789')
+        ->assertJsonPath('account', '000000042')->assertJsonPath('amount', 1000000)
+        ->json();
+
+    Http::assertSent(function ($request) use ($result): bool {
+        $auth = explode(':', $request->header('Auth')[0] ?? '');
+
+        return $request->method() === 'POST'
+            && $request->url() === 'https://api.click.uz/v2/merchant/invoice/create'
+            && $request['service_id'] === 123
+            && $request['amount'] === 1000000
+            && $request['phone_number'] === '998901234567'
+            && $request['merchant_trans_id'] === $result['merchant_trans_id']
+            && str_starts_with($result['merchant_trans_id'], '000000042-')
+            && count($auth) === 3 && $auth[0] === '57129'
+            && ctype_digit($auth[2])
+            && $auth[1] === sha1($auth[2] . 'test-click-secret');
+    });
+});
+
+it('does not request a Click invoice for an invalid account or phone', function () {
+    Http::fake();
+    $this->withHeaders(['X-Service-Token' => 'test-billing-crm-token'])
+        ->postJson('/api/click/invoice', ['order_number' => 'missing'])->assertNotFound();
+
+    DB::table('organizations')->where('id', 42)->update(['phone' => '123']);
+    $this->postJson('/api/click/invoice', ['order_number' => '000000042'])->assertUnprocessable();
+    Http::assertNothingSent();
+});
+
+it('does not report a Click provider rejection as an issued invoice', function () {
+    Http::fake(['api.click.uz/*' => Http::response(['error_code' => -1, 'error_note' => 'Rejected'], 200)]);
+    $this->withHeaders(['X-Service-Token' => 'test-billing-crm-token'])
+        ->postJson('/api/click/invoice', ['order_number' => '000000042'])->assertStatus(502);
+});
 
 it('requires Basic Auth with the CLICK service ID and billing CRM token', function () {
     $payload = ['service_id' => 123, 'action' => 0, 'params' => ['account' => '42']];
@@ -182,7 +268,7 @@ it('rejects invalid payment callbacks without creating payments or balance entri
         ->and(DB::table('client_balances')->count())->toBe(0);
 });
 
-it('prepares idempotently and leaves Confirm unprocessed without balance writes', function () {
+it('prepares idempotently and confirms once without balance writes', function () {
     config()->set('app.env', 'production');
     $params = ['amount' => 1000000, 'account' => '000000042'];
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 1, $params))
@@ -204,19 +290,25 @@ it('prepares idempotently and leaves Confirm unprocessed without balance writes'
 
     $confirm = clickAdvancedPayload(2, 100, 1, $params, $prepare['merchant_prepare_id']);
     $this->postJson('/api/click/advanced-shop', $confirm)
-        ->assertOk()->assertJsonPath('error', -7);
-    $this->postJson('/api/click/advanced-shop', $confirm)->assertJsonPath('error', -7);
+        ->assertOk()->assertJsonPath('error', 0)
+        ->assertJsonPath('merchant_confirm_id', $prepare['merchant_prepare_id']);
+    $this->postJson('/api/click/advanced-shop', $confirm)
+        ->assertJsonPath('error', 0)
+        ->assertJsonPath('merchant_confirm_id', $prepare['merchant_prepare_id']);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 1, $params))
         ->assertJsonPath('merchant_prepare_id', $prepare['merchant_prepare_id']);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 100, 2, $params, $second['merchant_prepare_id']))
-        ->assertJsonPath('error', -7);
+        ->assertJsonPath('error', -4);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 2, $params))
-        ->assertJsonPath('merchant_prepare_id', $second['merchant_prepare_id']);
+        ->assertJsonPath('error', -4);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 100, 3, $params))
-        ->assertJsonPath('error', 0);
+        ->assertJsonPath('error', -4);
 
     expect(DB::table('client_balances')->count())->toBe(0)
-        ->and(DB::table('click_balance_payments')->where('status', 'prepared')->count())->toBe(3);
+        ->and(DB::table('click_balance_payments')->where('status', 'paid')->count())->toBe(1)
+        ->and(DB::table('click_balance_payments')->where('status', 'prepared')->count())->toBe(1)
+        ->and(DB::table('click_balance_payments')->where('status', 'paid')->value('paid_paydoc_id'))->toBe(100)
+        ->and(DB::table('click_balance_payments')->where('status', 'paid')->value('income_balance_id'))->toBeNull();
 });
 
 it('keeps a prepared long account when its tariff becomes inactive before Confirm', function () {
@@ -236,10 +328,10 @@ it('keeps a prepared long account when its tariff becomes inactive before Confir
     DB::table('connected_client_services')->where('client_id', 45)->update(['status' => false]);
 
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 105, 1, $params, $prepare['merchant_prepare_id']))
-        ->assertJsonPath('error', -7);
+        ->assertJsonPath('error', 0);
 
     expect(DB::table('click_balance_payments')->value('account'))->toBe('17418416944265')
-        ->and(DB::table('click_balance_payments')->value('status'))->toBe('prepared')
+        ->and(DB::table('click_balance_payments')->value('status'))->toBe('paid')
         ->and(DB::table('client_balances')->count())->toBe(0);
 });
 
@@ -260,9 +352,9 @@ it('rejects bad signatures, changed amounts, and cancelled payments', function (
     $cancel = clickAdvancedPayload(2, 101, 1, $params, $prepare['merchant_prepare_id'], -1);
     $this->postJson('/api/click/advanced-shop', $cancel)->assertJsonPath('error', -9);
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 101, 1, $params, $prepare['merchant_prepare_id']))
-        ->assertJsonPath('error', -7);
+        ->assertJsonPath('error', -9);
     expect(DB::table('client_balances')->count())->toBe(0)
-        ->and(DB::table('click_balance_payments')->value('status'))->toBe('prepared');
+        ->and(DB::table('click_balance_payments')->value('status'))->toBe('cancelled');
 });
 
 it('logs Confirm without crediting or reversing the balance', function () {
@@ -271,14 +363,19 @@ it('logs Confirm without crediting or reversing the balance', function () {
     $prepare = $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(1, 102, 1, $params))
         ->assertJsonPath('error', 0)->json();
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 102, 1, $params, $prepare['merchant_prepare_id']))
-        ->assertJsonPath('error', -7);
+        ->assertJsonPath('error', 0);
+    expect(DB::table('click_balance_payments')->value('status'))->toBe('paid')
+        ->and(DB::table('client_balances')->count())->toBe(0);
 
     $cancel = clickAdvancedPayload(2, 102, 1, $params, $prepare['merchant_prepare_id'], -1);
     $this->postJson('/api/click/advanced-shop', $cancel)->assertJsonPath('error', -9);
     $this->postJson('/api/click/advanced-shop', $cancel)->assertJsonPath('error', -9);
 
     expect(DB::table('client_balances')->count())->toBe(0)
-        ->and(DB::table('click_balance_payments')->value('status'))->toBe('prepared');
+        ->and(DB::table('click_balance_payments')->value('status'))->toBe('cancelled')
+        ->and(DB::table('click_balance_payments')->value('provider_error'))->toBe(-1)
+        ->and(DB::table('click_balance_payments')->value('income_balance_id'))->toBeNull()
+        ->and(DB::table('click_balance_payments')->value('reversal_balance_id'))->toBeNull();
     Log::shouldHaveReceived('info')->times(3)->with('CLICK Advanced Shop Confirm received', Mockery::on(
         fn (array $context): bool => $context['click_paydoc_id'] === 102
             && $context['merchant_prepare_id'] === $prepare['merchant_prepare_id']
@@ -294,10 +391,10 @@ it('does not require the balance ledger to process a prepared Confirm', function
 
     Schema::drop('client_balances');
     $this->postJson('/api/click/advanced-shop', clickAdvancedPayload(2, 103, 1, $params, $prepare['merchant_prepare_id']))
-        ->assertJsonPath('error', -7);
+        ->assertJsonPath('error', 0);
 
-    expect(DB::table('click_balance_payments')->value('status'))->toBe('prepared')
-        ->and(DB::table('click_balance_payments')->value('paid_paydoc_id'))->toBeNull();
+    expect(DB::table('click_balance_payments')->value('status'))->toBe('paid')
+        ->and(DB::table('click_balance_payments')->value('paid_paydoc_id'))->toBe(103);
 });
 
 it('rejects payment actions without a CLICK secret key', function () {

@@ -9,14 +9,116 @@ use App\Models\ConnectedClientServices;
 use App\Models\Currency;
 use App\Models\Organization;
 use DateTimeImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ClickAdvancedShopService
 {
     // фиксированная сумма оплаты, заменить расчётом задолженности после согласования правила.
     private const FIXED_AMOUNT = 1000000;
+
+    public function checkoutDetails(string $account): array
+    {
+        $organization = $this->organization($account);
+        if (!$organization) {
+            return ['error' => 'organization'];
+        }
+
+        $serviceId = trim((string) config('services.click_advanced.service_id'));
+        $merchantId = trim((string) config('services.click_advanced.merchant_id'));
+        $returnUrl = trim((string) config('services.click_advanced.return_url'));
+
+        if (!ctype_digit($serviceId) || !ctype_digit($merchantId) || (int) $serviceId < 1 || (int) $merchantId < 1
+            || ($returnUrl !== '' && (!filter_var($returnUrl, FILTER_VALIDATE_URL)
+                || !str_starts_with($returnUrl, 'https://')))) {
+            return ['error' => 'configuration'];
+        }
+
+        $params = [
+            'service_id' => $serviceId,
+            'merchant_id' => $merchantId,
+            'amount' => self::FIXED_AMOUNT . '.00',
+            'transaction_param' => $account,
+        ];
+        if ($returnUrl !== '') {
+            $params['return_url'] = $returnUrl;
+        }
+
+        return [
+            'checkout_url' => 'https://my.click.uz/services/pay/?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986),
+            'account' => $account,
+            'amount' => self::FIXED_AMOUNT,
+        ];
+    }
+
+    public function createInvoice(string $account): array
+    {
+        $organization = $this->organization($account);
+        if (!$organization) {
+            return ['error' => 'organization'];
+        }
+
+        $phone = preg_replace('/\D+/', '', (string) $organization->phone);
+        if (!preg_match('/^998[0-9]{9}$/D', $phone)) {
+            return ['error' => 'phone'];
+        }
+
+        $serviceId = trim((string) config('services.click_advanced.service_id'));
+        $merchantUserId = trim((string) config('services.click_advanced.merchant_user_id'));
+        $secretKey = (string) config('services.click_advanced.secret_key');
+        if (!ctype_digit($serviceId) || !ctype_digit($merchantUserId) || $secretKey === '') {
+            return ['error' => 'configuration'];
+        }
+
+        $timestamp = (string) time();
+        $merchantTransId = $account . '-' . Str::ulid();
+
+        try {
+            $response = Http::asJson()->acceptJson()
+                ->withHeaders(['Auth' => $merchantUserId . ':' . sha1($timestamp . $secretKey) . ':' . $timestamp])
+                ->connectTimeout(3)->timeout(10)
+                ->post('https://api.click.uz/v2/merchant/invoice/create', [
+                    'service_id' => (int) $serviceId,
+                    'amount' => self::FIXED_AMOUNT,
+                    'phone_number' => $phone,
+                    'merchant_trans_id' => $merchantTransId,
+                ]);
+        } catch (ConnectionException $e) {
+            Log::error('CLICK invoice request failed', ['organization_id' => $organization->id, 'exception' => $e::class]);
+
+            return ['error' => 'provider'];
+        }
+
+        $data = $response->json();
+        if (!$response->successful() || !is_array($data)
+            || !in_array($data['error_code'] ?? null, [0, '0'], true)
+            || filter_var($data['invoice_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+            Log::warning('CLICK invoice was not created', [
+                'organization_id' => $organization->id,
+                'http_status' => $response->status(),
+                'error_code' => is_array($data) ? ($data['error_code'] ?? null) : null,
+            ]);
+
+            return ['error' => 'provider'];
+        }
+
+        Log::info('CLICK invoice created', [
+            'organization_id' => $organization->id,
+            'invoice_id' => (string) $data['invoice_id'],
+            'merchant_trans_id' => $merchantTransId,
+        ]);
+
+        return [
+            'invoice_id' => (string) $data['invoice_id'],
+            'merchant_trans_id' => $merchantTransId,
+            'account' => $account,
+            'amount' => self::FIXED_AMOUNT,
+        ];
+    }
 
     public function handle(array $payload): array
     {
@@ -94,10 +196,6 @@ class ClickAdvancedShopService
         }
 
         try {
-            // return $action === 1
-            //     ? $this->prepare($ids, $paydocId, $attemptId, $account, $amount)
-            //     : $this->confirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
-            
             if ($action === 1) {
                 return $this->prepare($ids, $paydocId, $attemptId, $account, $amount);
             }
@@ -111,7 +209,7 @@ class ClickAdvancedShopService
                 'provider_error' => $payload['error'] ?? null,
             ]);
 
-            return $this->logConfirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
+            return $this->confirm($payload, $ids, $paydocId, $attemptId, $account, $amount);
 
         } catch (Throwable $e) {
             
@@ -283,18 +381,18 @@ class ClickAdvancedShopService
                 }
 
                 if ($providerError < 0) {
-                    if ($payment->status === 'paid') {
-                        $reversal = ClientBalance::query()->create([
-                            'date' => now(),
-                            'organization_id' => $payment->organization_id,
-                            'sum' => $payment->amount,
-                            'currency_id' => $payment->currency_id,
-                            'type' => 'outcome',
-                            'source' => PaymentType::CLICK,
-                        ]);
-                        
-                        $payment->reversal_balance_id = $reversal->id;
-                    }
+                    // Заглушка: отмена меняет только ClickBalancePayment.
+                    // if ($payment->status === 'paid') {
+                    //     $reversal = ClientBalance::query()->create([
+                    //         'date' => now(),
+                    //         'organization_id' => $payment->organization_id,
+                    //         'sum' => $payment->amount,
+                    //         'currency_id' => $payment->currency_id,
+                    //         'type' => 'outcome',
+                    //         'source' => PaymentType::CLICK,
+                    //     ]);
+                    //     $payment->reversal_balance_id = $reversal->id;
+                    // }
 
                     $payment->status = 'cancelled';
                     $payment->provider_error = $providerError;
@@ -313,19 +411,16 @@ class ClickAdvancedShopService
                 }
 
                 $payment->paid_paydoc_id = $paydocId;
-
-                $payment->save();
-
-                $income = ClientBalance::query()->create([
-                    'date' => now(),
-                    'organization_id' => $payment->organization_id,
-                    'sum' => $payment->amount,
-                    'currency_id' => $payment->currency_id,
-                    'type' => 'income',
-                    'source' => PaymentType::CLICK,
-                ]);
-
-                $payment->income_balance_id = $income->id;
+                // Заглушка: подтверждение не зачисляет баланс.
+                // $income = ClientBalance::query()->create([
+                //     'date' => now(),
+                //     'organization_id' => $payment->organization_id,
+                //     'sum' => $payment->amount,
+                //     'currency_id' => $payment->currency_id,
+                //     'type' => 'income',
+                //     'source' => PaymentType::CLICK,
+                // ]);
+                // $payment->income_balance_id = $income->id;
                 $payment->status = 'paid';
                 $payment->paid_at = now();
                 $payment->save();
@@ -354,7 +449,7 @@ class ClickAdvancedShopService
 
             $this->logFailure($e, $paydocId, $attemptId);
 
-            return $this->result($ids, -7, 'Не удалось зачислить платёж');
+            return $this->result($ids, -7, 'Не удалось подтвердить платёж');
         }
     }
 
@@ -452,39 +547,4 @@ class ClickAdvancedShopService
         ]);
     }
 
-    private function logConfirm(array $payload, array $ids, int $paydocId, int $attemptId, string $account, string $amount): array
-    {
-        $prepareId = filter_var($payload['merchant_prepare_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        $providerError = $payload['error'] ?? 0;
-
-        if ($prepareId === false || !is_int($providerError) || $providerError > 0) {
-            return $this->result($ids, -8, 'Некорректный запрос');
-        }
-
-        $payment = ClickBalancePayment::query()
-            ->where('click_paydoc_id', $paydocId)
-            ->where('attempt_trans_id', $attemptId)
-            ->first();
-
-        if (!$payment || (int) $payment->id !== $prepareId) {
-            return $this->result($ids, -6, 'Транзакция не найдена');
-        }
-
-        if ($payment->account !== $account) {
-            return $this->result($ids, -5, 'Организация не совпадает');
-        }
-
-        if ($payment->amount !== $amount) {
-            return $this->result($ids, -2, 'Сумма не совпадает');
-        }
-
-        if ($payment->status === 'cancelled') {
-            return $this->result($ids, -9, 'Платёж отменён');
-        }
-
-        // shortcut: Confirm does not change payment or balance state; restore the production path after testing.
-        return $providerError < 0
-            ? $this->result($ids, -9, 'Платёж отменён')
-            : $this->result($ids, -7, 'Подтверждение временно недоступно');
-    }
 }
